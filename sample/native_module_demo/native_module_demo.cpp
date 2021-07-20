@@ -18,6 +18,9 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
+extern const char _binary_demo_js_start[];
+extern const char _binary_demo_js_end[];
+
 /*
  * Sync callback
  */
@@ -205,6 +208,18 @@ static napi_value Init(napi_env env, napi_value exports)
     return exports;
 }
 EXTERN_C_END
+
+// function name: NAPI_{ModuleName}_GetJSCode
+extern "C" __attribute__((visibility("default"))) void NAPI_demo_GetJSCode(const char** buf, int* bufLen)
+{
+    if (buf != nullptr) {
+        *buf = _binary_demo_js_start;
+    }
+
+    if (bufLen != nullptr) {
+        *bufLen = _binary_demo_js_end - _binary_demo_js_start;
+    }
+}
 
 /*
  * Module define
