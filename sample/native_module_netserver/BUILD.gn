@@ -34,11 +34,8 @@ ohos_shared_library("netserver") {
     "//utils/native/base:utilsecurec",
   ]
 
-  if (is_standard_system) {
-    external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
-  } else {
-    external_deps = [ "hilog:libhilog" ]
-  }
+  external_deps = [ "hilog_native:libhilog" ]
+
 
   relative_install_dir = "module"
 
