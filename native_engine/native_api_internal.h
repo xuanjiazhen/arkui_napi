@@ -20,6 +20,8 @@
 
 #include "napi/native_api.h"
 
+#include "js_native_api_common.h"
+
 static inline napi_status napi_clear_last_error(napi_env env)
 {
     ((NativeEngine*)env)->ClearLastError();
@@ -34,17 +36,5 @@ static inline napi_status napi_set_last_error(napi_env env,
     ((NativeEngine*)env)->SetLastError(error_code, engine_error_code, engine_reserved);
     return error_code;
 }
-
-#define RETURN_STATUS_IF_FALSE(env, condition, status) \
-    if (!(condition)) {                                \
-        return napi_set_last_error((env), (status));   \
-    }
-
-#define CHECK_ENV(env)           \
-    if ((env) == nullptr) {      \
-        return napi_invalid_arg; \
-    }
-
-#define CHECK_ARG(env, arg) RETURN_STATUS_IF_FALSE((env), ((arg) != nullptr), napi_invalid_arg)
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_API_INTERNAL_H */
