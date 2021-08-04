@@ -12,6 +12,14 @@
 # limitations under the License.
 
 import("//build/ohos.gni")
+import("//build/ohos/ace/ace.gni")
+
+base_output_path = get_label_info(":demo_js", "target_out_dir")
+demo_js_obj_path = base_output_path + "/demo.o"
+gen_js_obj("demo_js") {
+  input = "demo.js"
+  output = demo_js_obj_path
+}
 
 ohos_shared_library("demo") {
   include_dirs = [
@@ -24,7 +32,7 @@ ohos_shared_library("demo") {
     "native_module_demo.cpp",
   ]
 
-  deps = [ "//foundation/ace/napi:ace_napi" ]
+  deps = [ "//foundation/ace/napi:ace_napi", ":demo_js", ]
 
   relative_install_dir = "module"
 
