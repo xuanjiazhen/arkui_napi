@@ -15,8 +15,6 @@
 
 #include <string>
 
-#include "ability.h"
-
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
@@ -27,37 +25,61 @@
     void* data = nullptr;          \
     napi_get_cb_info(env, info, &argc, argv, &thisVar, &data)
 
+enum TestEnum {
+    ONE = 0,
+    TWO,
+    THREE,
+    FOUR
+};
+
 /*
- * Get bundle path
+ * Constructor
  */
-static napi_value JSAbilityGetBundlePath(napi_env env, napi_callback_info info)
+static napi_value DemoJavascriptClassConstructor(napi_env env, napi_callback_info info)
 {
-    GET_PARAMS(env, info, 0);
-    // get global value
+    napi_value thisArg = nullptr;
+    void* data = nullptr;
+
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisArg, &data);
+
     napi_value global = nullptr;
     napi_get_global(env, &global);
 
-    // get ability
-    napi_value abilityObj = nullptr;
-    napi_get_named_property(env, global, "ability", &abilityObj);
+    return thisArg;
+}
 
-    // get ability pointer
-    OHOS::AppExecFwk::Ability* ability = nullptr;
-    napi_get_value_external(env, abilityObj, (void**)&ability);
+/*
+ * Class Init
+ */
+void DemoJavascriptClassInit(napi_env env, napi_value exports)
+{
+    napi_value one = nullptr;
+    napi_value two = nullptr;
+    napi_value three = nullptr;
+    napi_value four = nullptr;
 
-    // get bundle path
-    std::string path = ability->GetBundleCodePath();
-    napi_value bundlePath = nullptr;
-    napi_create_string_utf8(env, path.c_str(), path.length(), &bundlePath);
-    return bundlePath;
+    napi_create_int32(env, TestEnum::ONE, &one);
+    napi_create_int32(env, TestEnum::TWO, &two);
+    napi_create_int32(env, TestEnum::THREE, &three);
+    napi_create_int32(env, TestEnum::FOUR, &four);
+
+    napi_property_descriptor descriptors[] = {
+        DECLARE_NAPI_STATIC_PROPERTY("ONE", one),
+        DECLARE_NAPI_STATIC_PROPERTY("TWO", two),
+        DECLARE_NAPI_STATIC_PROPERTY("THREE", three),
+        DECLARE_NAPI_STATIC_PROPERTY("FOUR", four),
+    };
+
+    napi_value result = nullptr;
+    napi_define_class(env, "DemoClass", NAPI_AUTO_LENGTH, DemoJavascriptClassConstructor, nullptr,
+                      sizeof(descriptors) / sizeof(*descriptors), descriptors, &result);
+
+    napi_set_named_property(env, exports, "DemoClass", result);
 }
 
 static napi_value AbilityExport(napi_env env, napi_value exports)
 {
-    static napi_property_descriptor desc[] = {
-        DECLARE_NAPI_FUNCTION("getBundlePath", JSAbilityGetBundlePath),
-    };
-    NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
+    DemoJavascriptClassInit(env, exports);
     return exports;
 }
 
