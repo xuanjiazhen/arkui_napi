@@ -14,6 +14,7 @@
  */
 
 #include "native_engine.h"
+#include "utils/log.h"
 
 #include <uv.h>
 
@@ -92,6 +93,13 @@ NativeAsyncWork* NativeEngine::CreateAsyncWork(NativeValue* asyncResource,
     return new NativeAsyncWork(this, execute, complete, data);
 }
 
+NativeAsyncWork* NativeEngine::CreateAsyncWork(NativeAsyncExecuteCallback execute,
+                                               NativeAsyncCompleteCallback complete,
+                                               void* data)
+{
+    return new NativeAsyncWork(this, execute, complete, data);
+}
+
 NativeErrorExtendedInfo* NativeEngine::GetLastError()
 {
     return &lastError_;
@@ -123,4 +131,39 @@ NativeValue* NativeEngine::GetAndClearLastException()
     NativeValue* temp = lastException_;
     lastException_ = nullptr;
     return temp;
+}
+
+void NativeEngine::EncodeToUtf8(NativeValue* nativeValue,
+                                char* buffer,
+                                int32_t* written,
+                                size_t bufferSize,
+                                int32_t* nchars)
+{
+    if (nativeValue == nullptr || nchars == nullptr || written == nullptr) {
+        HILOG_ERROR("NativeEngine EncodeToUtf8 args is nullptr");
+        return;
+    }
+
+    auto nativeString = reinterpret_cast<NativeString*>(nativeValue->GetInterface(NativeString::INTERFACE_ID));
+
+    if (nativeString == nullptr) {
+        HILOG_ERROR("nativeValue GetInterface is nullptr");
+        return;
+    }
+    *written = nativeString->EncodeWriteUtf8(buffer, bufferSize, nchars);
+}
+
+void NativeEngine::SetPostTask(PostTask postTask)
+{
+    HILOG_INFO("SetPostTask in");
+    postTask_ = postTask;
+}
+
+void NativeEngine::TriggerPostTask()
+{
+    if (postTask_ == nullptr) {
+        HILOG_ERROR("postTask_ is nullptr");
+        return;
+    }
+    postTask_();
 }
