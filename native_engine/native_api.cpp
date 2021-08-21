@@ -823,6 +823,7 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     auto nativeArgv = reinterpret_cast<NativeValue* const*>(argv);
 
     RETURN_STATUS_IF_FALSE(env, nativeFunc->TypeOf() == NATIVE_FUNCTION, napi_function_expected);
+    RETURN_STATUS_IF_FALSE(env, !engine->IsExceptionPending(), napi_pending_exception);
 
     HILOG_INFO("engine: %{public}p, nativeRecv: %{public}p, nativeFunc: %{public}p, nativeArgv: %{public}p",
         engine, nativeRecv, nativeFunc, nativeArgv);
@@ -832,8 +833,12 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     HILOG_INFO("engine: %{public}p, nativeRecv: %{public}p, nativeFunc: %{public}p, nativeArgv: %{public}p, "
         "resultValue: %{public}p", engine, nativeRecv, nativeFunc, nativeArgv, resultValue);
 
-    *result = reinterpret_cast<napi_value>(resultValue);
-    return napi_clear_last_error(env);
+    if (engine->IsExceptionPending()) {
+        return napi_set_last_error(env, napi_pending_exception);
+    } else {
+        *result = reinterpret_cast<napi_value>(resultValue);
+        return napi_clear_last_error(env);
+    }
 }
 
 NAPI_EXTERN napi_status
@@ -1238,9 +1243,13 @@ NAPI_EXTERN napi_status napi_throw(napi_env env, napi_value error)
     auto nativeValue = reinterpret_cast<NativeValue*>(error);
 
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsError(), napi_invalid_arg);
+    RETURN_STATUS_IF_FALSE(env, !engine->IsExceptionPending(), napi_pending_exception);
 
-    engine->Throw(nativeValue);
-    return napi_generic_failure;
+    if (engine->Throw(nativeValue)) {
+        return napi_clear_last_error(env);
+    } else {
+        return napi_set_last_error(env, napi_generic_failure);
+    }
 }
 
 NAPI_EXTERN napi_status napi_throw_error(napi_env env, const char* code, const char* msg)
@@ -1249,9 +1258,13 @@ NAPI_EXTERN napi_status napi_throw_error(napi_env env, const char* code, const c
     CHECK_ARG(env, msg);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
+    RETURN_STATUS_IF_FALSE(env, !engine->IsExceptionPending(), napi_pending_exception);
 
-    engine->Throw(NativeErrorType::NATIVE_COMMON_ERROR, code, msg);
-    return napi_generic_failure;
+    if (engine->Throw(NativeErrorType::NATIVE_COMMON_ERROR, code, msg)) {
+        return napi_clear_last_error(env);
+    } else {
+        return napi_set_last_error(env, napi_generic_failure);
+    }
 }
 
 NAPI_EXTERN napi_status napi_throw_type_error(napi_env env, const char* code, const char* msg)
@@ -1260,9 +1273,13 @@ NAPI_EXTERN napi_status napi_throw_type_error(napi_env env, const char* code, co
     CHECK_ARG(env, msg);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
+    RETURN_STATUS_IF_FALSE(env, !engine->IsExceptionPending(), napi_pending_exception);
 
-    engine->Throw(NativeErrorType::NATIVE_TYPE_ERROR, code, msg);
-    return napi_generic_failure;
+    if (engine->Throw(NativeErrorType::NATIVE_TYPE_ERROR, code, msg)) {
+        return napi_clear_last_error(env);
+    } else {
+        return napi_set_last_error(env, napi_generic_failure);
+    }
 }
 
 NAPI_EXTERN napi_status napi_throw_range_error(napi_env env, const char* code, const char* msg)
@@ -1271,9 +1288,13 @@ NAPI_EXTERN napi_status napi_throw_range_error(napi_env env, const char* code, c
     CHECK_ARG(env, msg);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
+    RETURN_STATUS_IF_FALSE(env, !engine->IsExceptionPending(), napi_pending_exception);
 
-    engine->Throw(NativeErrorType::NATIVE_RANGE_ERROR, code, msg);
-    return napi_generic_failure;
+    if (engine->Throw(NativeErrorType::NATIVE_RANGE_ERROR, code, msg)) {
+        return napi_clear_last_error(env);
+    } else {
+        return napi_set_last_error(env, napi_generic_failure);
+    }
 }
 
 NAPI_EXTERN napi_status napi_is_error(napi_env env, napi_value value, bool* result)

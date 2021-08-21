@@ -330,7 +330,13 @@ NativeValue* QuickJSNativeEngine::CallFunction(NativeValue* thisVar,
 
     scopeManager_->Close(scope);
 
-    return JSValueToNativeValue(this, result);
+    if (JS_IsException(result)) {
+        JSValue exception = JS_GetException(context_);
+        Throw(JSValueToNativeValue(this, exception));
+        return JSValueToNativeValue(this, JS_EXCEPTION);
+    } else {
+        return JSValueToNativeValue(this, result);
+    }
 }
 
 NativeValue* QuickJSNativeEngine::RunScript(NativeValue* script)
