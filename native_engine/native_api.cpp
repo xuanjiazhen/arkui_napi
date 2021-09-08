@@ -1587,6 +1587,19 @@ NAPI_EXTERN napi_status napi_run_script(napi_env env, napi_value script, napi_va
     return napi_clear_last_error(env);
 }
 
+// Runnint a buffer script
+NAPI_EXTERN napi_status napi_run_buffer_script(napi_env env, std::vector<uint8_t>& buffer, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, result);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    NativeValue* scriptValue = engine->CreateString(reinterpret_cast<char*>(buffer.data()), buffer.size());
+    auto resultValue = engine->RunScript(scriptValue);
+    *result = reinterpret_cast<napi_value>(resultValue);
+    return napi_clear_last_error(env);
+}
+
 // Memory management
 NAPI_EXTERN napi_status napi_adjust_external_memory(napi_env env, int64_t change_in_bytes, int64_t* adjusted_value)
 {
