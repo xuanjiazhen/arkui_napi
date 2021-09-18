@@ -16,6 +16,7 @@
 #include "test.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
+#include "securec.h"
 #include "utils/log.h"
 
 #define ASSERT_CHECK_CALL(call)   \
@@ -908,6 +909,75 @@ HWTEST_F(NativeEngineTest, IsCallableTest, testing::ext::TestSize.Level0)
     bool result = false;
     napi_is_callable(env, funcValue, &result);
     ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: EncodeToUtf8Test
+ * @tc.desc: Test EncodeToUtf8 Func.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, EncodeToUtf8Test, testing::ext::TestSize.Level0)
+{
+    std::string str = "encode";
+    auto testStr = engine_->CreateString(str.c_str(), str.length());
+    char* buffer = new char[str.length()];
+    size_t bufferSize = str.length();
+    int32_t written = 0;
+    int32_t nchars = 0;
+    ASSERT_EQ(memset_s(buffer, str.length(), 0, str.length()), EOK);
+    engine_->EncodeToUtf8(testStr, buffer, &written, bufferSize, &nchars);
+    ASSERT_EQ(written, 6);
+    ASSERT_EQ(nchars, 6);
+    delete[] buffer;
+
+    str = "encode\xc2\xab\xe2\x98\x80";
+    testStr = engine_->CreateString(str.c_str(), str.length());
+    buffer = new char[str.length()];
+    bufferSize = str.length();
+    ASSERT_EQ(memset_s(buffer, str.length(), 0, str.length()), EOK);
+    engine_->EncodeToUtf8(testStr, buffer, &written, bufferSize, &nchars);
+    ASSERT_EQ(written, 11);
+    ASSERT_EQ(nchars, 8);
+    delete[] buffer;
+
+    buffer = new char[str.length()];
+    bufferSize = str.length();
+    ASSERT_EQ(memset_s(buffer, str.length(), 0, str.length()), EOK);
+    bufferSize--;
+    engine_->EncodeToUtf8(testStr, buffer, &written, bufferSize, &nchars);
+    ASSERT_EQ(written, 8);
+    ASSERT_EQ(nchars, 7);
+    delete[] buffer;
+
+    buffer = new char[str.length()];
+    bufferSize = str.length();
+    ASSERT_EQ(memset_s(buffer, str.length(), 0, str.length()), EOK);
+    bufferSize -= 4;
+    engine_->EncodeToUtf8(testStr, buffer, &written, bufferSize, &nchars);
+    ASSERT_EQ(written, 6);
+    ASSERT_EQ(nchars, 6);
+    delete[] buffer;
+
+    str = "encode\xc2\xab\xe2\x98\x80t";
+    testStr = engine_->CreateString(str.c_str(), str.length());
+    buffer = new char[str.length()];
+    bufferSize = str.length();
+    ASSERT_EQ(memset_s(buffer, str.length(), 0, str.length()), EOK);
+    bufferSize--;
+    engine_->EncodeToUtf8(testStr, buffer, &written, bufferSize, &nchars);
+    ASSERT_EQ(written, 11);
+    ASSERT_EQ(nchars, 8);
+    delete[] buffer;
+
+    str = "";
+    testStr = engine_->CreateString(str.c_str(), str.length());
+    buffer = new char[str.length() + 1];
+    bufferSize = str.length() + 1;
+    ASSERT_EQ(memset_s(buffer, str.length(), 0, str.length()), EOK);
+    engine_->EncodeToUtf8(testStr, buffer, &written, bufferSize, &nchars);
+    ASSERT_EQ(written, 0);
+    ASSERT_EQ(nchars, 0);
+    delete[] buffer;
 }
 
 /**
