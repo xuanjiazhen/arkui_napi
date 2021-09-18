@@ -826,11 +826,7 @@ HWTEST_F(NativeEngineTest, CreateRuntimeTest, testing::ext::TestSize.Level0)
 
     napi_env newEnv = nullptr;
     napi_create_runtime(env, &newEnv);
-#ifdef USE_V8_ENGINE
     ASSERT_NE(newEnv, nullptr);
-#elif USE_QUICKJS_ENGINE
-    ASSERT_EQ(newEnv, nullptr);
-#endif
 }
 
 /**
