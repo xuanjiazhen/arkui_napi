@@ -602,13 +602,10 @@ void* QuickJSNativeEngine::CreateRuntime()
     }
     JSContext* context = JS_NewContext(runtime);
     if (context == nullptr) {
-        delete runtime;
         return nullptr;
     }
-    QuickJSNativeEngine qjsEngine = new QuickJSNativeEngine(runtime, context, this);
+    QuickJSNativeEngine* qjsEngine = new QuickJSNativeEngine(runtime, context, this);
     if (qjsEngine == nullptr) {
-        delete runtime;
-        delete context;
         return nullptr;
     }
     return reinterpret_cast<void*>(qjsEngine);
