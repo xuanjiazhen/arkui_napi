@@ -617,7 +617,7 @@ void* QuickJSNativeEngine::CreateRuntime()
     if (qjsEngine == nullptr) {
         return nullptr;
     }
-    return reinterpret_cast<void*>(qjsEngine);
+    return qjsEngine;
 }
 
 bool QuickJSNativeEngine::CheckTransferList(JSValue transferList)
