@@ -15,6 +15,27 @@
 
 #include "jerryscript_native_array_buffer.h"
 
+struct JerryScriptNativeArrayBufferContext {
+    JerryScriptNativeEngine* engine = nullptr;
+    void* data = nullptr;
+    NativeFinalize callback = nullptr;
+    void* hint = nullptr;
+};
+
+static jerry_object_native_info_t g_nativeInfo = {
+    .free_cb =
+        [](void* pointer) {
+            auto arrayBufferCtx = reinterpret_cast<JerryScriptNativeArrayBufferContext*>(pointer);
+            if (arrayBufferCtx != nullptr) {
+                if (arrayBufferCtx->callback != nullptr) {
+                    arrayBufferCtx->callback(arrayBufferCtx->engine, arrayBufferCtx->data, arrayBufferCtx->hint);
+                }
+                delete arrayBufferCtx;
+                arrayBufferCtx = nullptr;
+            }
+        },
+};
+
 JerryScriptNativeArrayBuffer::JerryScriptNativeArrayBuffer(JerryScriptNativeEngine* engine, jerry_value_t value)
     : JerryScriptNativeObject(engine, value)
 {
@@ -33,7 +54,14 @@ JerryScriptNativeArrayBuffer::JerryScriptNativeArrayBuffer(JerryScriptNativeEngi
                                                            void* hint)
     : JerryScriptNativeArrayBuffer(engine, 0)
 {
-    value_ = jerry_create_arraybuffer_external(length, (uint8_t*)value, [](void* nativePoint) { free(nativePoint); });
+    value_ = jerry_create_arraybuffer_external(length, (uint8_t*)value, [](void* native_point) {});
+    auto arrayBufferCtx = new JerryScriptNativeArrayBufferContext{
+        .engine = engine,
+        .data = value,
+        .callback = callback,
+        .hint = hint,
+    };
+    jerry_set_object_native_pointer(value_, arrayBufferCtx, &g_nativeInfo);
 }
 
 JerryScriptNativeArrayBuffer::~JerryScriptNativeArrayBuffer() {}

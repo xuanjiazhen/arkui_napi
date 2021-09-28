@@ -191,18 +191,17 @@ NativeValue* JerryScriptNativeEngine::CreatePromise(NativeDeferred** deferred)
 NativeValue* JerryScriptNativeEngine::CreateError(NativeValue* code, NativeValue* message)
 {
     jerry_value_t jerror = 0;
-    jerry_value_t jcode = 0;
 
     jerror = jerry_create_error_sz(JERRY_ERROR_COMMON, nullptr, 0);
     jerror = jerry_get_value_from_error(jerror, true);
 
     if (message) {
-        jerry_value_t jreturn = jerryx_set_property_str(jerror, "message", *message);
-        jerry_release_value(jreturn);
+        auto result = jerryx_set_property_str(jerror, "message", *message);
+        jerry_release_value(result);
     }
     if (code) {
-        jerry_value_t jreturn = jerryx_set_property_str(jerror, "code", *code);
-        jerry_release_value(jreturn);
+        auto result = jerryx_set_property_str(jerror, "code", *code);
+        jerry_release_value(result);
     }
     jerror = jerry_create_error_from_value(jerror, true);
 
@@ -234,12 +233,6 @@ NativeValue* JerryScriptNativeEngine::CallFunction(NativeValue* thisVar,
 
     if (jerry_value_is_error(result)) {
         jerry_value_t errorObj = jerry_get_value_from_error(result, true);
-        jerry_value_t propName = jerry_create_string_from_utf8((const jerry_char_t*)"message");
-        jerry_property_descriptor_t propDescriptor = { 0 };
-        jerry_get_own_property_descriptor(errorObj, propName, &propDescriptor);
-        jerry_value_t setResult = jerry_set_property(errorObj, propName, propDescriptor.value);
-        jerry_release_value(propName);
-        jerry_release_value(setResult);
         Throw(JerryValueToNativeValue(this, errorObj));
         return JerryValueToNativeValue(this, jerry_create_undefined());
     } else {
@@ -255,14 +248,19 @@ NativeValue* JerryScriptNativeEngine::RunScript(NativeValue* script)
     if (length == 0) {
         return nullptr;
     }
-    char* strScript = new char[length] { 0 };
-    pscript->GetCString(strScript, length, &length);
+    char* strScript = new char[length + 1] { 0 };
+    pscript->GetCString(strScript, length + 1, &length);
     jerry_value_t result = jerry_eval((const unsigned char*)strScript, pscript->GetLength(), JERRY_PARSE_NO_OPTS);
-    if (jerry_value_is_error(result)) {
-        result = jerry_get_value_from_error(result, true);
-    }
     delete []strScript;
-    return JerryValueToNativeValue(this, result);
+
+    if (jerry_value_is_error(result)) {
+        return JerryValueToNativeValue(this, jerry_get_value_from_error(result, true));
+    } else if (this->IsExceptionPending()) {
+        jerry_release_value(result);
+        return GetAndClearLastException();
+    } else {
+        return JerryValueToNativeValue(this, result);
+    }
 }
 
 NativeValue* JerryScriptNativeEngine::RunBufferScript(std::vector<uint8_t>& buffer)
@@ -293,7 +291,8 @@ NativeValue* JerryScriptNativeEngine::DefineClass(const char* name,
 
 NativeValue* JerryScriptNativeEngine::CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc)
 {
-    return JerryValueToNativeValue(this, jerry_construct_object(*constructor, (const jerry_value_t*)argv, argc));
+    jerry_value_t value = jerry_construct_object(*constructor, (const jerry_value_t*)argv, argc);
+    return JerryValueToNativeValue(this, value);
 }
 
 NativeReference* JerryScriptNativeEngine::CreateReference(NativeValue* value, uint32_t initialRefcount)
@@ -329,9 +328,11 @@ bool JerryScriptNativeEngine::Throw(NativeErrorType type, const char* code, cons
     if (code) {
         jerry_value_t jcode = jerry_create_string_from_utf8((const unsigned char*)code);
         jerryx_set_property_str(jerror, "code", jcode);
+        jerry_release_value(jcode);
     }
     jerror = jerry_create_error_from_value(jerror, true);
     this->lastException_ = new JerryScriptNativeObject(this, jerror);
+
     return true;
 }
 

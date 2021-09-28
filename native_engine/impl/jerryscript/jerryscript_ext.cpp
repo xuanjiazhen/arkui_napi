@@ -30,8 +30,11 @@ static jerry_object_native_info_t g_objectNativeInfo = {
     .free_cb = [](void *nativePointer) {
         auto externalCtx = (jerry_external_context*)nativePointer;
         if (externalCtx != nullptr) {
-            externalCtx->callback(externalCtx->value, externalCtx->hint);
+            if (externalCtx->callback != nullptr) {
+                externalCtx->callback(externalCtx->value, externalCtx->hint);
+            }
             delete externalCtx;
+            externalCtx = nullptr;
         }
     }
 };
@@ -39,46 +42,56 @@ static jerry_object_native_info_t g_objectNativeInfo = {
 
 bool jerry_add_external()
 {
+    bool result = false;
     auto callback = [](const jerry_value_t function,
                        const jerry_value_t thisVal,
                        const jerry_value_t args[],
-                       const jerry_length_t argc) -> jerry_value_t
-        {
-            return jerry_create_boolean(true);
-        };
+                       const jerry_length_t argc)
+                       -> jerry_value_t
+                       { 
+                           return jerry_acquire_value(thisVal);
+                       };
 
+    auto global = jerry_get_global_object();
     auto constructor = jerry_create_external_function(callback);
     auto prototype = jerry_create_object();
-    
-    jerry_value_t propName = jerry_create_string_from_utf8 ((const jerry_char_t*)"prototype");
-    jerry_value_t resultVal = jerry_set_property (constructor, propName, prototype);
-    jerry_release_value (propName);
-    
-    if (!jerry_value_to_boolean(resultVal)) {
-        HILOG_ERROR("jerry_add_external failed");
-        return false;
-    }
+    auto resultVal = jerryx_set_property_str(constructor, "prototype", prototype);
 
-    jerry_value_t global = jerry_get_global_object();
-    jerryx_set_property_str(global, "External", constructor);
+    if (jerry_value_is_error(resultVal)) {
+        HILOG_ERROR("jerry_add_external failed");
+    } else {
+        auto setExternalRet = jerryx_set_property_str(global, "External", constructor);
+        if (jerry_value_is_error(setExternalRet)) {
+            HILOG_ERROR("jerry_add_external failed");
+        } else {
+            result = true;
+        }
+        jerry_release_value(setExternalRet);
+    }
+    jerry_release_value(resultVal);
+    jerry_release_value(prototype);
+    jerry_release_value(constructor);
     jerry_release_value(global);
-    return true;
+    return result;
 }
 
 jerry_value_t jerry_create_external(void* value, jerry_finalizer_t finalizer, void* hint)
 {
-    auto externalCtx = new jerry_external_context {
+    auto externalCtx = new jerry_external_context{
         .value = value,
         .callback = finalizer,
         .hint = hint,
     };
+
+    jerry_value_t object = 0;
     jerry_value_t global = jerry_get_global_object();
     jerry_value_t external = jerryx_get_property_str(global, "External");
-    jerry_value_t object = jerry_create_undefined();
 
     if (!jerry_value_is_undefined(external)) {
         object = jerry_construct_object(external, nullptr, 0);
         jerry_set_object_native_pointer(object, (void*)externalCtx, &g_objectNativeInfo);
+    } else {
+        object = jerry_create_undefined();
     }
 
     jerry_release_value(external);
@@ -89,23 +102,24 @@ jerry_value_t jerry_create_external(void* value, jerry_finalizer_t finalizer, vo
 
 bool jerry_value_is_external(const jerry_value_t object)
 {
+    bool result = false;
     jerry_value_t global = jerry_get_global_object();
     jerry_value_t external = jerryx_get_property_str(global, "External");
-    jerry_value_t op = jerry_create_boolean(false);
 
     if (!jerry_value_is_undefined(external)) {
-        op = jerry_binary_operation(JERRY_BIN_OP_INSTANCEOF, object, external);
+        jerry_value_t op = jerry_binary_operation(JERRY_BIN_OP_INSTANCEOF, object, external);
+        result = jerry_get_boolean_value(op);
+        jerry_release_value(op);
     }
 
     jerry_release_value(external);
     jerry_release_value(global);
-    return jerry_get_boolean_value(op);
+    return result;
 }
 
 void* jerry_value_get_external(const jerry_value_t object)
 {
     jerry_external_context* externalCtx = nullptr;
-
     jerry_get_object_native_pointer(object, (void**)&externalCtx, &g_objectNativeInfo);
     if (externalCtx != nullptr) {
         return externalCtx->value;

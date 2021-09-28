@@ -30,10 +30,16 @@ namespace {
 jerry_object_native_info_t g_freeCallback = {
     .free_cb = [](void* nativePointer) -> void {
         auto info = (JerryScriptNativeObjectInfo*)nativePointer;
-        if (info != nullptr) {
-            info->cb(info->engine, info->data, info->hint);
-            delete info;
+        if (info == nullptr) {
+            return;
         }
+
+        if (info->cb != nullptr) {
+            info->cb(info->engine, info->data, info->hint);
+        }
+        
+        delete info;
+        info = nullptr;
     },
 };
 } // namespace
@@ -133,11 +139,15 @@ bool JerryScriptNativeObject::DefineProperty(NativePropertyDescriptor propertyDe
         prop.is_writable_defined = true;
     }
 
+    bool result = true;
     jerry_value_t returnValue = jerry_define_own_property(value_, propName, &prop);
+    jerry_type_t returnValueType = jerry_value_get_type(returnValue);
+    if (jerry_value_is_error(returnValueType)) {
+        result = false;
+    }
     jerry_release_value(returnValue);
     jerry_release_value(propName);
-
-    return true;
+    return result;
 }
 
 bool JerryScriptNativeObject::SetProperty(NativeValue* key, NativeValue* value)
@@ -168,9 +178,13 @@ bool JerryScriptNativeObject::DeleteProperty(NativeValue* key)
 
 bool JerryScriptNativeObject::SetProperty(const char* name, NativeValue* value)
 {
+    bool result = true;
     jerry_value_t returnValue = jerryx_set_property_str(value_, name, *value);
+    if (jerry_value_is_error(returnValue)) {
+        result = false;
+    }
     jerry_release_value(returnValue);
-    return true;
+    return result;
 }
 
 NativeValue* JerryScriptNativeObject::GetProperty(const char* name)
@@ -181,8 +195,7 @@ NativeValue* JerryScriptNativeObject::GetProperty(const char* name)
 
 bool JerryScriptNativeObject::HasProperty(const char* name)
 {
-    bool result = jerryx_has_property_str(value_, name);
-    return result;
+    return jerryx_has_property_str(value_, name);
 }
 
 bool JerryScriptNativeObject::DeleteProperty(const char* name)
@@ -195,37 +208,20 @@ bool JerryScriptNativeObject::DeleteProperty(const char* name)
 
 bool JerryScriptNativeObject::SetPrivateProperty(const char* name, NativeValue* value)
 {
-    bool result = false;
-    jerry_value_t key = jerry_create_string_from_utf8((const unsigned char*)name);
-    result = jerry_set_property(value_, key, *value);
-    jerry_release_value(key);
-    return result;
+    return SetProperty(name, value);
 }
 
 NativeValue* JerryScriptNativeObject::GetPrivateProperty(const char* name)
 {
-    jerry_value_t result = 0;
-    jerry_value_t key = jerry_create_string_from_utf8((const unsigned char*)name);
-    result = jerry_get_property(value_, key);
-    jerry_release_value(key);
-    return JerryScriptNativeEngine::JerryValueToNativeValue(engine_, result);
+    return GetProperty(name);
 }
 
 bool JerryScriptNativeObject::HasPrivateProperty(const char* name)
 {
-    jerry_value_t key = jerry_create_string_from_utf8((const unsigned char*)name);
-    jerry_value_t returnValue = jerry_has_property(value_, key);
-    bool result = jerry_value_to_boolean(returnValue);
-    jerry_release_value(returnValue);
-    jerry_release_value(key);
-    return result;
+    return HasProperty(name);
 }
 
 bool JerryScriptNativeObject::DeletePrivateProperty(const char* name)
 {
-    bool result = false;
-    jerry_value_t key = jerry_create_string_from_utf8((const unsigned char*)name);
-    result = jerry_delete_property(value_, key);
-    jerry_release_value(key);
-    return result;
+    return DeleteProperty(name);
 }
