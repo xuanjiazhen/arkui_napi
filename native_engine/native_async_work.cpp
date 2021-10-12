@@ -111,7 +111,9 @@ void NativeAsyncWork::AsyncWorkCallback(uv_work_t* req)
     }
 
     auto that = reinterpret_cast<NativeAsyncWork*>(req->data);
+    HILOG_ERROR("#zhb# AsyncWorkCallback begin");
     that->execute_(that->engine_, that->data_);
+    HILOG_ERROR("#zhb# AsyncWorkCallback end");
 }
 
 void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
