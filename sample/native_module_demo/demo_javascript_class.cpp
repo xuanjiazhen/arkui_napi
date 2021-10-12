@@ -171,7 +171,7 @@ static napi_value DemoJavascriptClassMul(napi_env env, napi_callback_info info)
 
     napi_value result = nullptr;
 
-    NAPI_ASSERT(env, argc >= requireArgc, "requires 2 parameters of number type");
+    NAPI_ASSERT(env, argc >= requireArgc, "requires 2 parameters of number type ");
 
     napi_valuetype valueType = napi_undefined;
     double param1 = 0;
