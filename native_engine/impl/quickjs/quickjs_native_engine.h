@@ -121,6 +121,9 @@ public:
     JSValue GetModuleFromName(
         const std::string& moduleName, bool isAppModule, const std::string& id, const std::string& param,
         const std::string& instanceName, void** instance);
+    JSValue LoadModuleByName(
+        const std::string& moduleName, bool isAppModule, const std::string& param,
+        const std::string& instanceName, void* instance);
 private:
     JSRuntime* runtime_;
     JSContext* context_;
