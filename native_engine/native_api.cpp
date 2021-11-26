@@ -864,7 +864,7 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     HILOG_INFO("engine: %{public}p, nativeRecv: %{public}p, nativeFunc: %{public}p, nativeArgv: %{public}p, "
         "resultValue: %{public}p", engine, nativeRecv, nativeFunc, nativeArgv, resultValue);
 
-    if (result != nullptr){
+    if (result != nullptr) {
         *result = reinterpret_cast<napi_value>(resultValue);
     }
     return napi_clear_last_error(env);
