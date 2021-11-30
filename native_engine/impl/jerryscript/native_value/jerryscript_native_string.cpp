@@ -38,6 +38,7 @@ void JerryScriptNativeString::GetCString(char* buffer, size_t size, size_t* leng
         *length = GetLength();
     } else {
         *length = jerry_string_to_utf8_char_buffer(value_, (jerry_char_t*)buffer, size);
+        buffer[*length] = '\0';
     }
 }
 

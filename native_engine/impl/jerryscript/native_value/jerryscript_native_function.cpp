@@ -69,13 +69,16 @@ jerry_value_t JerryScriptNativeFunction::NativeFunctionCallback(const jerry_valu
 
     if (argc > 0) {
         callbackInfo.argv = new NativeValue*[argc];
-        for (uint32_t i = 0; i < argc; i++) {
-            callbackInfo.argv[i] =
-                JerryScriptNativeEngine::JerryValueToNativeValue(engine, jerry_acquire_value(args[i]));
-        }
     }
-
-    NativeValue* result = functionInfo->callback(functionInfo->engine, &callbackInfo);
+    for (uint32_t i = 0; i < argc; i++) {
+        callbackInfo.argv[i] = JerryScriptNativeEngine::JerryValueToNativeValue(engine, args[i]);
+        jerry_acquire_value(args[i]);
+    }
+    
+    NativeValue* result = nullptr;
+    if (functionInfo->callback) {
+        functionInfo->callback(functionInfo->engine, &callbackInfo);
+    }
     
     if (callbackInfo.argv != nullptr) {
         delete[] callbackInfo.argv;

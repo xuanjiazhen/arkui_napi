@@ -35,14 +35,24 @@ void* JerryScriptNativeArray::GetInterface(int interfaceId)
 
 bool JerryScriptNativeArray::SetElement(uint32_t index, NativeValue* value)
 {
-    jerry_value_t returnValue = jerry_set_property_by_index(value_, index, value_);
+    bool result = true;
+    jerry_value_t returnValue = jerry_set_property_by_index(value_, index, *value);
+    if (jerry_value_is_error(returnValue)) {
+        result = false;
+    }
     jerry_release_value(returnValue);
-    return true;
+    return result;
 }
 
 NativeValue* JerryScriptNativeArray::GetElement(uint32_t index)
 {
+    bool result = true;
     jerry_value_t returnValue = jerry_get_property_by_index(value_, index);
+    if (jerry_value_is_error(returnValue)) {
+        result = false;
+        jerry_release_value(returnValue);
+        return nullptr;
+    }
     return JerryScriptNativeEngine::JerryValueToNativeValue(engine_, returnValue);
 }
 

@@ -32,7 +32,9 @@ JerryScriptNativeExternal::JerryScriptNativeExternal(JerryScriptNativeEngine* en
         [](void* data, void* hint) {
             auto info = reinterpret_cast<NativeObjectInfo*>(data);
             if (info != nullptr) {
-                info->callback(info->engine, info->nativeObject, info->hint);
+                if (info->callback != nullptr) {
+                    info->callback(info->engine, info->nativeObject, info->hint);
+                }
                 delete info;
             }
         },

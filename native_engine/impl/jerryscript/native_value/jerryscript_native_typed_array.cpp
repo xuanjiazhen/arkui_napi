@@ -42,21 +42,27 @@ JerryScriptNativeTypedArray::JerryScriptNativeTypedArray(JerryScriptNativeEngine
             break;
         case NATIVE_INT16_ARRAY:
             jtype = JERRY_TYPEDARRAY_INT16;
+            length = length / 2;
             break;
         case NATIVE_UINT16_ARRAY:
             jtype = JERRY_TYPEDARRAY_UINT16;
+            length = length / 2;
             break;
         case NATIVE_INT32_ARRAY:
             jtype = JERRY_TYPEDARRAY_INT32;
+            length = length / 4;
             break;
         case NATIVE_UINT32_ARRAY:
             jtype = JERRY_TYPEDARRAY_UINT32;
+            length = length / 4;
             break;
         case NATIVE_FLOAT32_ARRAY:
             jtype = JERRY_TYPEDARRAY_FLOAT32;
+            length = length / 4;
             break;
         case NATIVE_FLOAT64_ARRAY:
             jtype = JERRY_TYPEDARRAY_FLOAT64;
+            length = length / 8;
             break;
         default:;
     }
@@ -109,24 +115,30 @@ NativeTypedArrayType JerryScriptNativeTypedArray::GetTypedArrayType()
 
 size_t JerryScriptNativeTypedArray::GetLength()
 {
-    return jerry_get_typedarray_length(value_);
+    size_t byteLength = 0;
+    jerry_value_t arrayBuffer = jerry_get_typedarray_buffer(value_, nullptr, (jerry_length_t *)&byteLength);
+    jerry_release_value(arrayBuffer);
+    return byteLength;
 }
 
 NativeValue* JerryScriptNativeTypedArray::GetArrayBuffer()
 {
-    return new JerryScriptNativeArrayBuffer(engine_, jerry_get_typedarray_buffer(value_, nullptr, nullptr));
+    jerry_value_t arrayBuffer = jerry_get_typedarray_buffer(value_, nullptr, nullptr);
+    return new JerryScriptNativeArrayBuffer(engine_, arrayBuffer);
 }
 
 void* JerryScriptNativeTypedArray::GetData()
 {
     jerry_value_t arrayBuffer = jerry_get_typedarray_buffer(value_, nullptr, nullptr);
     uint8_t* pointer = jerry_get_arraybuffer_pointer(arrayBuffer);
+    jerry_release_value(arrayBuffer);
     return pointer;
 }
 
 size_t JerryScriptNativeTypedArray::GetOffset()
 {
     size_t offset = 0;
-    jerry_get_typedarray_buffer(value_, (unsigned int*)&offset, nullptr);
+    jerry_value_t arrayBuffer = jerry_get_typedarray_buffer(value_, (unsigned int*)&offset, nullptr);
+    jerry_release_value(arrayBuffer);
     return offset;
 }
