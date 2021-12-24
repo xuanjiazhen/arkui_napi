@@ -107,7 +107,7 @@ QuickJSNativeEngine::QuickJSNativeEngine(JSRuntime* runtime, JSContext* context,
             if (module != nullptr) {
                 if (module->jsCode != nullptr) {
                     HILOG_INFO("load js code");
-                    NativeValue* script = that->CreateString(module->jsCode, strlen(module->jsCode));
+                    NativeValue* script = that->CreateString(module->jsCode, module->jsCodeLen);
                     NativeValue* exportObject = that->LoadModule(script, "testjsnapi.js");
                     if (exportObject == nullptr) {
                         HILOG_ERROR("load module failed");
@@ -469,6 +469,8 @@ NativeValue* QuickJSNativeEngine::LoadModule(NativeValue* str, const std::string
     JSValue evalRes = JS_EvalFunction(context_, moduleVal);
     if (JS_IsException(evalRes)) {
         HILOG_ERROR("An exception occurred during Eval module");
+        JS_FreeCString(context_, moduleSource);
+        return nullptr;
     }
 
     JSValue ns = JS_GetNameSpace(context_, moduleVal);
