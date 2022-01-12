@@ -174,6 +174,11 @@ public:
     // Detect performance to obtain cpuprofiler file
     void StartCpuProfiler() override;
     void StopCpuProfiler() override;
+
+    void DumpHeapSnapShot(const std::string &path, bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON) override;
+    NativeValue* BuildEcmaStackTrace() override;
+    bool StartHeapTracking(double timeInterval, bool isVmMode = true) override;
+    bool StopHeapTracking(const std::string &filePath, DumpFormat dumpFormat = DumpFormat::JSON) override;
 private:
     EcmaVM* vm_ = nullptr;
     std::string exceptionStr_;
