@@ -37,30 +37,58 @@ if (defined(ohos_lite)) {
   }
 } else {
   import("//build/ohos.gni")
+  import("//foundation/aafwk/standard/aafwk.gni")
 
   ohos_shared_library("demo") {
     include_dirs = [
       "//third_party/node/src",
       "//foundation/ace/napi/interfaces/kits",
+      "//foundation/ace/ace_engine/frameworks/core/system_dialog/test/test_dialog_ability/include",
+      "//utils/system/safwk/native/include",
+      "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
+
+      # TODO: need remove
+      "//foundation/ace/ace_engine/interfaces/innerkits/ui_service_manager/include",
+      "//foundation/ace/ace_engine/services/uiservice/include",
+      "${innerkits_path}/want/include",
+      "${innerkits_path}/base/include",
+      "//foundation/aafwk/standard/interfaces/innerkits/want/include/ohos/aafwk/content",
+      "//foundation/appexecfwk/standard/interfaces/innerkits/appexecfwk_base/include",
+      "//foundation/windowmanager/interfaces/innerkits",
+      "//foundation/multimodalinput/input/interfaces/native/innerkits/event/include",
     ]
 
     sources = [
+      "//foundation/ace/ace_engine/frameworks/core/system_dialog/test/test_dialog_ability/src/test_dialog_ability_proxy.cpp",
       "demo_javascript_class.cpp",
       "native_module_demo.cpp",
     ]
 
-    deps = [ "//foundation/ace/napi:ace_napi" ]
+    deps = [
+      "//foundation/ace/napi:ace_napi",
+      "//foundation/distributedschedule/dmsfwk/interfaces/innerkits/uri:zuri",
+      "//foundation/distributedschedule/samgr/interfaces/innerkits/samgr_proxy:samgr_proxy",
+      "//utils/native/base:utils",
 
+      # TODO: need remove
+      "${innerkits_path}/want:want",
+      "//foundation/appexecfwk/standard/interfaces/innerkits/appexecfwk_base:appexecfwk_base",
+      "//foundation/windowmanager/wm:libwm",
+    ]
+
+    external_deps = []
     if ("${current_os}_${current_cpu}" != "mingw_x86_64" &&
         "${current_os}_${current_cpu}" != "mac_x64") {
       if (is_standard_system) {
-        external_deps = [ "hiviewdfx_hilog_native:libhilog" ]
+        external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
       } else {
-        external_deps = [ "hilog:libhilog" ]
+        external_deps += [ "hilog:libhilog" ]
       }
     }
 
     relative_install_dir = "module"
+
+    external_deps += [ "ipc:ipc_core" ]
 
     subsystem_name = "ace"
     part_name = "napi"
