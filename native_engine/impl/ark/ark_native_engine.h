@@ -20,6 +20,7 @@
 
 #include "ark_headers.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "native_engine/native_engine.h"
 
 using panda::ecmascript::EcmaVM;
@@ -27,6 +28,7 @@ using panda::Local;
 using panda::LocalScope;
 using panda::JSValueRef;
 using panda::JSNApi;
+using panda::DFXJSNApi;
 
 class SerializationData {
 public:

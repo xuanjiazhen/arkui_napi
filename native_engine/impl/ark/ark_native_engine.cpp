@@ -787,7 +787,7 @@ void ArkNativeEngine::DumpHeapSnapShot(const std::string &path, bool isVmMode, D
         DFXJSNApi::DumpHeapSnapShot(vm_, 1, pathStr, isVmMode);
     }
     if (dumpFormat == DumpFormat::OTHER) {
-        DFXJSNApi::DumpHeapSnapShot(vm_, 2, pathStr, isVmMode);
+        DFXJSNApi::DumpHeapSnapShot(vm_, 2, pathStr, isVmMode); // 2:enum is 2
     }
 }
 
@@ -812,7 +812,7 @@ bool ArkNativeEngine::StopHeapTracking(const std::string &filePath, DumpFormat d
         return DFXJSNApi::StopHeapTracking(vm_, 1, filepathStr);
     }
     if (dumpFormat == DumpFormat::OTHER) {
-        return DFXJSNApi::StopHeapTracking(vm_, 2, filepathStr);
+        return DFXJSNApi::StopHeapTracking(vm_, 2, filepathStr); // 2:enum is 2
     }
     return false;
 }

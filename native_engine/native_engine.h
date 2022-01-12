@@ -55,6 +55,10 @@ struct ExceptionInfo {
     }
 };
 
+enum DumpFormat {
+    JSON, BINARY, OTHER
+};
+
 enum LoopMode {
     LOOP_DEFAULT, LOOP_ONCE, LOOP_NOWAIT
 };
