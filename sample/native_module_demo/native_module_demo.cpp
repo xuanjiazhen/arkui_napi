@@ -17,6 +17,20 @@
 
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
+#include "utils/log.h"
+
+#include "itest_dialog_ability.h"
+#include "ipc_skeleton.h"
+#include "iservice_registry.h"
+#include "if_system_ability_manager.h"
+#include "system_ability_definition.h"
+
+#include "ui_service_mgr_interface.h"
+#include "test_dialog_ability_proxy.h"
+
+namespace {
+constexpr size_t VALUE_BUFFER_SIZE = 128;
+} // namespace
 
 /*
  * Sync callback
@@ -184,6 +198,72 @@ static napi_value TestPromiseOrAsyncCallback(napi_env env, napi_callback_info in
     }
 }
 
+static napi_value CheckPermission(napi_env env, napi_callback_info info)
+{
+    size_t requireArgc = 1;
+    size_t argc = 1;
+    napi_value argv[1] = { nullptr };
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+
+    NAPI_ASSERT(env, argc >= requireArgc, "Wrong number of arguments");
+
+    napi_valuetype valuetype0;
+    NAPI_CALL(env, napi_typeof(env, argv[0], &valuetype0));
+
+    NAPI_ASSERT(env, valuetype0 == napi_string, "Wrong argument type. string expected.");
+
+    size_t valueLen = 0;
+    char value[VALUE_BUFFER_SIZE] = { 0 };
+    napi_get_value_string_utf8(env, argv[0], value, VALUE_BUFFER_SIZE, &valueLen);
+    HILOG_INFO("#zhb# native_module_demo: CheckPermission: pinCode: %{public}s", value);
+
+    OHOS::sptr<OHOS::ISystemAbilityManager> systemManager = OHOS::SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemManager == nullptr) {
+        HILOG_ERROR("#zhb# native_module_demo: %{public}s:fail to get Registry", __func__);
+        return nullptr;
+    }
+    OHOS::sptr<OHOS::IRemoteObject> remoteObject = systemManager->GetSystemAbility(7001);
+    if (remoteObject == nullptr) {
+        HILOG_ERROR("#zhb# native_module_demo: %{public}s:fail to connect UIMgrService", __func__);
+        return nullptr;
+    }
+    HILOG_INFO("#zhb# native_module_demo: connect UIMgrService success");
+
+    OHOS::sptr<OHOS::Ace::IUIServiceMgr> doms = OHOS::iface_cast<OHOS::Ace::IUIServiceMgr>(remoteObject);
+    if (doms == nullptr) {
+        HILOG_INFO("#zhb# native_module_demo: doms is null");
+        return nullptr;
+    }
+    HILOG_INFO("#zhb# native_module_demo: get UIMgrService proxy");
+
+    OHOS::sptr<OHOS::IRemoteObject> remoteObject2 = systemManager->GetSystemAbility(1494);
+    if (remoteObject2 == nullptr) {
+        HILOG_ERROR("#zhb# native_module_demo: %{public}s:fail to connect TestDialogService", __func__);
+        return nullptr;
+    }
+    HILOG_INFO("#zhb# native_module_demo: connect TestDialogService success, IsProxyObject: %{public}d", remoteObject2->IsProxyObject());
+
+    OHOS::sptr<OHOS::ITestDialogAbility> doms2 = OHOS::iface_cast<OHOS::ITestDialogAbility>(remoteObject2);
+    if (doms2 == nullptr) {
+        HILOG_INFO("#zhb# native_module_demo: doms2 is null");
+        return nullptr;
+    }
+
+    auto itestDesc = OHOS::ITestDialogAbility::GetDescriptor();
+    HILOG_INFO("#zhb# native_module_demo: get TestDialogService proxy, empty: %{public}d, %{public}d", itestDesc.empty(), OHOS::TestDialogAbilityProxy::GetDescriptor().empty());
+
+    std::string pinCode = value;
+    HILOG_INFO("#zhb# native_module_demo: CheckPermission begin");
+    bool ret = doms2->CheckPermission(pinCode);
+    HILOG_INFO("#zhb# native_module_demo: CheckPermission result: %{public}d", ret);
+
+    napi_value retValue = nullptr;
+    napi_create_int32(env, ret, &retValue);
+
+    return retValue;
+    return nullptr;
+}
+
 EXTERN_C_START
 /*
  * function for module exports
@@ -197,6 +277,7 @@ static napi_value Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("add", Add),
         DECLARE_NAPI_FUNCTION("TestPromise", TestPromise),
         DECLARE_NAPI_FUNCTION("TestPromiseOrAsyncCallback", TestPromiseOrAsyncCallback),
+        DECLARE_NAPI_FUNCTION("checkPermission", CheckPermission),
     };
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
 
