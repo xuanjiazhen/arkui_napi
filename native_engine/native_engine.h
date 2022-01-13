@@ -55,6 +55,10 @@ struct ExceptionInfo {
     }
 };
 
+enum DumpFormat {
+    JSON, BINARY, OTHER
+};
+
 enum LoopMode {
     LOOP_DEFAULT, LOOP_ONCE, LOOP_NOWAIT
 };
@@ -194,6 +198,11 @@ public:
 
     virtual void StartCpuProfiler(const std::string fileName = "") = 0;
     virtual void StopCpuProfiler() = 0;
+
+    virtual void DumpHeapSnapShot(const std::string &path, bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON) = 0;
+    virtual NativeValue* BuildEcmaStackTrace() = 0;
+    virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true) = 0;
+    virtual bool StopHeapTracking(const std::string &filePath, DumpFormat dumpFormat = DumpFormat::JSON) = 0;
 
     NativeErrorExtendedInfo* GetLastError();
     void SetLastError(int errorCode, uint32_t engineErrorCode = 0, void* engineReserved = nullptr);
