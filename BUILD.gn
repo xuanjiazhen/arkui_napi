@@ -14,6 +14,7 @@
 config("ace_napi_config") {
   include_dirs = [
     "//foundation/ace/napi",
+    "//foundation/ace/napi/interfaces/innerkits",
     "//foundation/ace/napi/interfaces/kits",
     "//third_party/libuv/include",
     "//third_party/node/src",
@@ -42,6 +43,7 @@ if (defined(ohos_lite)) {
     include_dirs = [
       "//third_party/libuv/include",
       "//foundation/ace/napi",
+      "//foundation/ace/napi/interfaces/innerkits",
       "//foundation/ace/napi/interfaces/kits",
       "//third_party/node/src",
       "//third_party/bounds_checking_function/include",
@@ -137,6 +139,7 @@ if (defined(ohos_lite)) {
 
     include_dirs = [
       "//foundation/ace/napi",
+      "//foundation/ace/napi/interfaces/innerkits",
       "//foundation/ace/napi/interfaces/kits",
       "//third_party/libuv/include",
       "//third_party/node/src",
@@ -226,8 +229,6 @@ if (defined(ohos_lite)) {
   ohos_ndk_headers("napi_header") {
     dest_dir = "$ndk_headers_out_dir/napi"
     sources = [
-      "//foundation/ace/napi/interfaces/kits/napi/native_api.h",
-      "//foundation/ace/napi/interfaces/kits/napi/native_common.h",
       "//third_party/node/src/js_native_api.h",
       "//third_party/node/src/js_native_api_types.h",
       "//third_party/node/src/node_api.h",
@@ -240,6 +241,7 @@ if (defined(ohos_lite)) {
 
     include_dirs = [
       "//foundation/ace/napi",
+      "//foundation/ace/napi/interfaces/innerkits",
       "//foundation/ace/napi/interfaces/kits",
       "//third_party/libuv/include",
       "//third_party/node/src",

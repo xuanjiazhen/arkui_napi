@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "napi/native_node_api.h"
+#include "napi/native_api_private.h"
 #include "native_api_internal.h"
 #include "native_engine/native_engine.h"
 #include "utils/log.h"
@@ -49,7 +49,7 @@ NAPI_EXTERN NAPI_NO_RETURN void napi_fatal_error(const char* location,
     abort();
 }
 
-NAPI_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err)
+napi_status napi_fatal_exception(napi_env env, napi_value err)
 {
     HILOG_INFO("%{public}s, start.", __func__);
     CHECK_ENV(env);
@@ -308,7 +308,7 @@ NAPI_EXTERN napi_status napi_remove_async_cleanup_hook(napi_async_cleanup_hook_h
 }
 
 // Methods to manager threadsafe
-NAPI_EXTERN napi_status napi_create_threadsafe_function(napi_env env, napi_value func, napi_value async_resource,
+napi_status napi_create_threadsafe_function(napi_env env, napi_value func, napi_value async_resource,
     napi_value async_resource_name, size_t max_queue_size, size_t initial_thread_count, void* thread_finalize_data,
     napi_finalize thread_finalize_cb, void* context, napi_threadsafe_function_call_js call_js_cb,
     napi_threadsafe_function* result)
@@ -343,7 +343,7 @@ NAPI_EXTERN napi_status napi_create_threadsafe_function(napi_env env, napi_value
     return napi_status::napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_call_threadsafe_function(
+napi_status napi_call_threadsafe_function(
     napi_threadsafe_function func, void* data, napi_threadsafe_function_call_mode is_blocking)
 {
     CHECK_ENV(func);
@@ -374,7 +374,7 @@ NAPI_EXTERN napi_status napi_call_threadsafe_function(
     return status;
 }
 
-NAPI_EXTERN napi_status napi_acquire_threadsafe_function(napi_threadsafe_function func)
+napi_status napi_acquire_threadsafe_function(napi_threadsafe_function func)
 {
     CHECK_ENV(func);
 
@@ -388,7 +388,7 @@ NAPI_EXTERN napi_status napi_acquire_threadsafe_function(napi_threadsafe_functio
     return napi_status::napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_release_threadsafe_function(
+napi_status napi_release_threadsafe_function(
     napi_threadsafe_function func, napi_threadsafe_function_release_mode mode)
 {
     CHECK_ENV(func);
@@ -404,7 +404,7 @@ NAPI_EXTERN napi_status napi_release_threadsafe_function(
     return napi_status::napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_get_threadsafe_function_context(napi_threadsafe_function func, void** result)
+napi_status napi_get_threadsafe_function_context(napi_threadsafe_function func, void** result)
 {
     CHECK_ENV(func);
     CHECK_ENV(result);
@@ -415,7 +415,7 @@ NAPI_EXTERN napi_status napi_get_threadsafe_function_context(napi_threadsafe_fun
     return napi_status::napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_ref_threadsafe_function(napi_env env, napi_threadsafe_function func)
+napi_status napi_ref_threadsafe_function(napi_env env, napi_threadsafe_function func)
 {
     CHECK_ENV(env);
     CHECK_ARG(env, func);
@@ -429,7 +429,7 @@ NAPI_EXTERN napi_status napi_ref_threadsafe_function(napi_env env, napi_threadsa
     return napi_status::napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_unref_threadsafe_function(napi_env env, napi_threadsafe_function func)
+napi_status napi_unref_threadsafe_function(napi_env env, napi_threadsafe_function func)
 {
     CHECK_ENV(env);
     CHECK_ARG(env, func);

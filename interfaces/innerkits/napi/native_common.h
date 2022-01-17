@@ -18,14 +18,6 @@
 
 #define DEPRECATED __attribute__((__deprecated__))
 
-#ifndef NAPI_VERSION
-#define NAPI_VERSION 8
-#endif
-
-#ifndef NAPI_EXPERIMENTAL
-#define NAPI_EXPERIMENTAL
-#endif
-
 #define NAPI_RETVAL_NOTHING
 
 #define GET_AND_THROW_LAST_ERROR(env)                                                                   \
