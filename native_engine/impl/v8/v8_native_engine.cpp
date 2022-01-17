@@ -709,37 +709,45 @@ NativeValue* V8NativeEngine::V8ValueToNativeValue(V8NativeEngine* engine, v8::Lo
     return result;
 }
 
-void* V8NativeEngine::CreateRuntime()
+NativeEngine* V8NativeEngine::CreateRuntimeFunc(NativeEngine* engine, v8::Platform* platform, void* jsEngine)
 {
     v8::Isolate::CreateParams createParams;
-    createParams.array_buffer_allocator = isolate_->GetArrayBufferAllocator();
+    auto allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+    createParams.array_buffer_allocator = allocator;
     v8::Isolate* isolate = v8::Isolate::New(createParams);
-    v8::HandleScope handleScope(isolate);
-    v8::Isolate::Scope isolateScope(isolate);
-    v8::Local<v8::Context> context = v8::Context::New(isolate);
     v8::Persistent<v8::Context> persistContext;
-    persistContext.Reset(isolate, context);
-    if (context.IsEmpty()) {
-        return nullptr;
+    {
+        v8::HandleScope handleScope(isolate);
+        v8::Isolate::Scope isolateScope(isolate);
+        v8::Local<v8::Context> context = v8::Context::New(isolate);
+        if (context.IsEmpty()) {
+            return nullptr;
+        }
+        persistContext.Reset(isolate, context);
     }
 
-    V8NativeEngine* v8Engine = new V8NativeEngine(platform_, isolate, persistContext, jsEngine_);
+    V8NativeEngine* v8Engine = new V8NativeEngine(platform, isolate, persistContext, jsEngine);
 
     // init callback
-    v8Engine->SetInitWorkerFunc(initWorkerFunc_);
-    v8Engine->SetGetAssetFunc(getAssetFunc_);
-    v8Engine->SetOffWorkerFunc(offWorkerFunc_);
-    v8Engine->SetWorkerAsyncWorkFunc(nativeAsyncExecuteCallback_, nativeAsyncCompleteCallback_);
+    v8Engine->RegisterWorkerFunction(engine);
 
     v8Engine->MarkAutoDispose();
-    auto cleanEnv = [isolate]() {
+    auto cleanEnv = [isolate, allocator]() {
+        HILOG_INFO("worker:: cleanEnv is called");
+        if (allocator != nullptr) {
+            delete allocator;
+        }
         if (isolate != nullptr) {
-            HILOG_INFO("worker:: cleanEnv is called");
             isolate->Dispose();
         }
     };
     v8Engine->SetCleanEnv(cleanEnv);
-    return static_cast<void*>(v8Engine);
+    return v8Engine;
+}
+
+void* V8NativeEngine::CreateRuntime()
+{
+    return V8NativeEngine::CreateRuntimeFunc(this, platform_, jsEngine_);
 }
 
 class Serializer {
