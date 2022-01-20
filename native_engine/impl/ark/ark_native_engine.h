@@ -179,7 +179,7 @@ public:
 
     void ResumeVM() override;
     bool SuspendVM() override;
-    bool IsVMSuspended() override;
+    bool IsSuspended() override;
     bool CheckSafepoint() override;
 
     void DumpHeapSnapShot(const std::string &path, bool isVmMode = true,

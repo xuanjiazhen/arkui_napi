@@ -622,9 +622,9 @@ bool ArkNativeEngine::SuspendVM()
     return panda::JSNApi::SuspendVM(vm_);
 }
 
-bool ArkNativeEngine::IsVMSuspended()
+bool ArkNativeEngine::IsSuspended()
 {
-    return panda::JSNApi::IsVMSuspended(vm_);
+    return panda::JSNApi::IsSuspended(vm_);
 }
 
 bool ArkNativeEngine::CheckSafepoint()

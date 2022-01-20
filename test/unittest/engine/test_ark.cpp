@@ -38,6 +38,9 @@ void *NativeEngineTest::Run(void *arg)
     engine->ResumeVM();
     sleep(10);
     bool falgThread3 = engine->VMHasSuspended();
+    if (falgThread == 0 && falgThread2 == 1 && falgThread3 == 0) {
+        std::cout << "[OK]" << std::endl;
+    }
     return nullptr;
 }
 

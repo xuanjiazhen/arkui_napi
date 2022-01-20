@@ -201,7 +201,7 @@ public:
 
     virtual void ResumeVM() = 0;
     virtual bool SuspendVM() = 0;
-    virtual bool VMHasSuspended() = 0;
+    virtual bool IsSuspended() = 0;
     virtual bool CheckSafepoint() = 0;
 
     virtual void DumpHeapSnapShot(const std::string &path, bool isVmMode = true,
