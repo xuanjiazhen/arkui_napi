@@ -20,5 +20,6 @@
 #include "napi/native_node_api.h"
 
 void DemoJavascriptClassInit(napi_env env, napi_value exports);
+void SubDemoJavascriptClassInit(napi_env env, napi_value exports);
 
 #endif /* FOUNDATION_ACE_NAPI_TEST_NATIVE_MODULE_DEMO_DEMO_JAVASCRIPT_CLASS_H */

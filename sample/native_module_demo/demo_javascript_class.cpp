@@ -16,18 +16,43 @@
 #include "demo_javascript_class.h"
 
 static napi_value DemoJavascriptClassConstructor(napi_env env, napi_callback_info info);
+static napi_value SubDemoJavascriptClassConstructor(napi_env env, napi_callback_info info);
 static napi_value DemoJavascriptClassAdd(napi_env env, napi_callback_info info);
 static napi_value DemoJavascriptClassSub(napi_env env, napi_callback_info info);
 static napi_value DemoJavascriptClassMul(napi_env env, napi_callback_info info);
 static napi_value DemoJavascriptClassDiv(napi_env env, napi_callback_info info);
 
 enum TestEnum {
-    ONE = 0,
+    ZERO,
+    ONE,
     TWO,
     THREE,
     FOUR
 };
 
+static void Inherit(napi_env env, napi_value subClass, napi_value superClass)
+{
+    napi_value global, objectClass, setProto;
+    napi_value argv[2];
+    napi_value callbackResult = nullptr;
+
+    napi_get_global(env, &global);
+    napi_get_named_property(env, global, "Object", &objectClass);
+    napi_get_named_property(env, objectClass, "setPrototypeOf", &setProto);
+
+    napi_get_named_property(env, subClass, "prototype", &argv[0]);
+    napi_get_named_property(env, superClass, "prototype", &argv[1]);
+    napi_call_function(env, objectClass, setProto, 2, argv, &callbackResult);
+
+    argv[0] = subClass;
+    argv[1] = superClass;
+    napi_call_function(env, objectClass, setProto, 2, argv, &callbackResult);
+
+    return;
+}
+
+// g_superClass can only be used in one thread in this demo.
+static napi_value g_superClass = nullptr;
 /*
  * Class Init
  */
@@ -54,17 +79,48 @@ void DemoJavascriptClassInit(napi_env env, napi_value exports)
         DECLARE_NAPI_STATIC_PROPERTY("FOUR", four),
     };
 
-    napi_value result = nullptr;
     napi_define_class(env, "DemoClass", NAPI_AUTO_LENGTH, DemoJavascriptClassConstructor, nullptr,
+                      sizeof(descriptors) / sizeof(*descriptors), descriptors, &g_superClass);
+
+    napi_set_named_property(env, exports, "DemoClass", g_superClass);
+}
+
+void SubDemoJavascriptClassInit(napi_env env, napi_value exports)
+{
+    napi_value zero = nullptr;
+
+    napi_create_int32(env, TestEnum::ZERO, &zero);
+
+    napi_property_descriptor descriptors[] = {
+        DECLARE_NAPI_FUNCTION("subadd", DemoJavascriptClassAdd),
+        DECLARE_NAPI_STATIC_PROPERTY("ZERO", zero),
+    };
+
+    napi_value result = nullptr;
+    napi_define_class(env, "SubDemoClass", NAPI_AUTO_LENGTH, SubDemoJavascriptClassConstructor, nullptr,
                       sizeof(descriptors) / sizeof(*descriptors), descriptors, &result);
 
-    napi_set_named_property(env, exports, "DemoClass", result);
+    napi_set_named_property(env, exports, "SubDemoClass", result);
+    Inherit(env, result, g_superClass);
 }
 
 /*
  * Constructor
  */
 static napi_value DemoJavascriptClassConstructor(napi_env env, napi_callback_info info)
+{
+    napi_value thisArg = nullptr;
+    void* data = nullptr;
+
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisArg, &data);
+
+    napi_value global = nullptr;
+    napi_get_global(env, &global);
+
+    return thisArg;
+}
+
+static napi_value SubDemoJavascriptClassConstructor(napi_env env, napi_callback_info info)
 {
     napi_value thisArg = nullptr;
     void* data = nullptr;
