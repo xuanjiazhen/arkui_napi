@@ -29,14 +29,14 @@ NativeEngineTest::NativeEngineTest()
 NativeEngineTest::~NativeEngineTest()
 {}
 
-void *NativeEngineTest::Run(void *arg)
+void* NativeEngineTest::Run(void* arg)
 {
     NativeEngine* engine = reinterpret_cast<NativeEngine*>(arg);
     bool falgThread = engine->VMHasSuspended();
     engine->SuspendVM();
     bool falgThread2 = engine->VMHasSuspended();
     engine->ResumeVM();
-    sleep(10);
+    sleep(10); // 10:sleep 10 second to wait thread checkpoint again
     bool falgThread3 = engine->VMHasSuspended();
     if (falgThread == 0 && falgThread2 == 1 && falgThread3 == 0) {
         std::cout << "[OK]" << std::endl;
@@ -85,11 +85,11 @@ HWTEST_F(NativeEngineTest, suppend002, testing::ext::TestSize.Level0)
         return;
     }
     std::cout << "NativeEngineTest is start2"<<std::endl;
-    for(int i = 0; i < 10; ++i) {
-        sleep(10);
+    for (int i = 0; i < 10; ++i) { // 10:Loop 10 times
+        sleep(10); // 10:sleep 10 second to wait thread checkpoint again
         bool supportFlag = engine_->CheckSafepoint();
-        std::cout << "supportFlag "<< supportFlag ;
-        if(supportFlag) {
+        std::cout << "supportFlag " << supportFlag ;
+        if (supportFlag) {
             std::cout << "CheckSafepoint is ture";
         }
     }

@@ -102,9 +102,18 @@ public:
     void StopCpuProfiler() override {}
 
     void ResumeVM() override {}
-    bool SuspendVM() override {return false;}
-    bool IsSuspended() override {return false;}
-    bool CheckSafepoint() override {return false;}
+    bool SuspendVM() override
+    {
+        return false;
+    }
+    bool IsSuspended() override
+    {
+        return false;
+    }
+    bool CheckSafepoint() override
+    {
+        return false;
+    }
 
     void DumpHeapSnapShot(const std::string &path, bool isVmMode = true,
         DumpFormat dumpFormat = DumpFormat::JSON) override {}
