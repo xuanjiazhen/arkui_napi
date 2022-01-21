@@ -32,12 +32,12 @@ NativeEngineTest::~NativeEngineTest()
 void* NativeEngineTest::Run(void* arg)
 {
     NativeEngine* engine = reinterpret_cast<NativeEngine*>(arg);
-    bool falgThread = engine->VMHasSuspended();
+    bool falgThread = engine->IsSuspended();
     engine->SuspendVM();
-    bool falgThread2 = engine->VMHasSuspended();
+    bool falgThread2 = engine->IsSuspended();
     engine->ResumeVM();
     sleep(10); // 10:sleep 10 second to wait thread checkpoint again
-    bool falgThread3 = engine->VMHasSuspended();
+    bool falgThread3 = engine->IsSuspended();
     if (falgThread == 0 && falgThread2 == 1 && falgThread3 == 0) {
         std::cout << "[OK]" << std::endl;
     }
