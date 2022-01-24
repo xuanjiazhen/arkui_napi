@@ -409,7 +409,7 @@ NativeValue* ArkNativeEngine::CallFunction(NativeValue* thisVar,
     }
 
     Local<JSValueRef> value = funcObj->Call(vm_, thisObj.ToLocal(vm_), args.data(), argc);
-    Local<ObjectRef> excep = panda::JSNApi::GetUncaughtException(vm_);
+    Local<ObjectRef> excep = panda::JSNApi::GetAndClearUncaughtException(vm_);
     if (!excep.IsNull()) {
         Local<StringRef> exceptionMsg = excep->ToString(vm_);
         exceptionStr_ = exceptionMsg->ToString();
@@ -639,7 +639,7 @@ NativeValue* ArkNativeEngine::RunBufferScript(std::vector<uint8_t>& buffer)
     Local<StringRef> entryPoint = StringRef::NewFromUtf8(vm_, PANDA_MAIN_FUNCTION);
     bool ret = panda::JSNApi::Execute(vm_, buffer.data(), buffer.size(), entryPoint);
 
-    Local<ObjectRef> excep = panda::JSNApi::GetUncaughtException(vm_);
+    Local<ObjectRef> excep = panda::JSNApi::GetAndClearUncaughtException(vm_);
     if (!excep.IsNull()) {
         Local<StringRef> exceptionMsg = excep->ToString(vm_);
         exceptionStr_ = exceptionMsg->ToString();
