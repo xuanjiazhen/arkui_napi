@@ -91,6 +91,14 @@ void NativeEngine::Deinit()
     uv_loop_delete(loop_);
 }
 
+void NativeEngine::SetPackagePath(const std::string& packagePath)
+{
+    auto moduleManager = NativeModuleManager::GetInstance();
+    if (moduleManager) {
+        moduleManager->SetAppLibPath(packagePath.c_str());
+    }
+}
+
 NativeScopeManager* NativeEngine::GetScopeManager()
 {
     return scopeManager_;

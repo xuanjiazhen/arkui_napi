@@ -55,6 +55,16 @@ struct ExceptionInfo {
     }
 };
 
+struct ExceptionReportInfo {
+    bool Empty() const
+    {
+        return errorMessage.empty() && stackMessage.empty();
+    }
+
+    std::string errorMessage;
+    std::string stackMessage;
+};
+
 enum LoopMode {
     LOOP_DEFAULT, LOOP_ONCE, LOOP_NOWAIT
 };
@@ -102,6 +112,9 @@ public:
     NativeEngine(void* jsEngine);
     virtual ~NativeEngine();
 
+    // used for create native engine instance, should be implemented in subclasses(ark, qjs, v8 ...).
+    static NativeEngine* CreateNativeEngine(void* jsEngine, bool isDebugVersion);
+
     virtual NativeScopeManager* GetScopeManager();
     virtual NativeModuleManager* GetModuleManager();
     virtual NativeReferenceManager* GetReferenceManager();
@@ -137,6 +150,7 @@ public:
 
     virtual NativeValue* CreateObject() = 0;
     virtual NativeValue* CreateFunction(const char* name, size_t length, NativeCallback cb, void* value) = 0;
+    virtual NativeValue* CreateClassFunction(const char* name, NativeCallback cb, void* value) { return nullptr; }
     virtual NativeValue* CreateArray(size_t length) = 0;
     virtual NativeValue* CreateBuffer(void** value, size_t length) = 0;
     virtual NativeValue* CreateBufferCopy(void** value, size_t length, const void* data) = 0;
@@ -265,12 +279,12 @@ public:
     {
         return isStopping_.load();
     }
-    
+
     void SetStopping(bool value)
     {
         isStopping_.store(value);
     }
-    
+
     virtual void PrintStatisticResult() = 0;
     virtual void StartRuntimeStat() = 0;
     virtual void StopRuntimeStat() = 0;
@@ -282,6 +296,15 @@ public:
 
     // run script by path
     NativeValue* RunScript(const char* path);
+
+    virtual void EnableUserUncaughtErrorHandler() {}
+
+    virtual const ExceptionReportInfo&& GetUncaughtExceptionInfo() const
+    {
+        return std::move(ExceptionReportInfo());
+    }
+
+    void SetPackagePath(const std::string& packagePath);
 
 protected:
     void Init();

@@ -214,6 +214,11 @@ bool QuickJSNativeValue::IsWeakSet()
     return false;
 }
 
+bool QuickJSNativeValue:IsNull()
+{
+    return JS_IsNull(value_);
+}
+
 NativeValue* QuickJSNativeValue::ToBoolean()
 {
     bool cValue = JS_ToBool(engine_->GetContext(), value_);
@@ -241,4 +246,19 @@ NativeValue* QuickJSNativeValue::ToObject()
 bool QuickJSNativeValue::StrictEquals(NativeValue* value)
 {
     return JS_StrictEquals(engine_->GetContext(), value_, *value);
+}
+
+bool QuickJSNativeValue::IsEmpty()
+{
+    return JS_IsUndefined(value_) || JS_IsNull(value_);
+}
+
+bool QuickJSNativeValue::IsNull()
+{
+    return JS_IsNull(value_);
+}
+
+NativeValue* QuickJSNativeValue::Copy()
+{
+    return new QuickJSNativeValue(engine_, value_);
 }

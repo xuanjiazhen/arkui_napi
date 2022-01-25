@@ -47,6 +47,9 @@ public:
     virtual NativeValue* ToObject() override;
 
     virtual bool StrictEquals(NativeValue* value) override;
+    bool IsNull() override;
+    bool IsEmpty() override;
+    NativeValue* Copy() override;
 
 protected:
     V8NativeEngine* engine_;

@@ -135,6 +135,7 @@ public:
 
     virtual NativeValueType TypeOf() = 0;
     virtual bool InstanceOf(NativeValue* obj) = 0;
+    virtual NativeValue* Copy() = 0;
 
     virtual bool IsArray() = 0;
     virtual bool IsArrayBuffer() = 0;
@@ -162,11 +163,18 @@ public:
     virtual bool IsWeakMap() = 0;
     virtual bool IsWeakSet() = 0;
     virtual bool IsSet() = 0;
+    virtual bool IsNull() = 0;
+
+    virtual void SetWeak() {};
+    virtual bool IsEmpty() = 0;
+    virtual bool IsWeak() = 0;
 
     virtual NativeValue* ToBoolean() = 0;
     virtual NativeValue* ToNumber() = 0;
     virtual NativeValue* ToString() = 0;
     virtual NativeValue* ToObject() = 0;
+    virtual NativeValue* ToJsonString() { return nullptr; }
+    virtual NativeValue* ToJsonObject() { return nullptr; }
 
     virtual bool StrictEquals(NativeValue* value) = 0;
 
@@ -205,6 +213,8 @@ class NativeObject {
 public:
     static const int INTERFACE_ID = 3;
 
+    NativeObject() = default;
+    virtual ~NativeObject() = default;
     virtual void SetNativePointer(void* pointer, NativeFinalize cb, void* hint) = 0;
     virtual void* GetNativePointer() = 0;
 
@@ -238,6 +248,8 @@ public:
     virtual bool CheckTypeTag(NapiTypeTag* typeTag) = 0;
     virtual void Freeze() = 0;
     virtual void Seal() = 0;
+    virtual void SetInternalFieldCount(int32_t count) const = 0;
+    virtual bool SetAccessorProperty(const char* name, NativeValue* valGet, NativeValue* valSet) { return false; }
 };
 
 class NativeArray {
@@ -300,6 +312,7 @@ public:
 class NativeFunction {
 public:
     static const int INTERFACE_ID = 8;
+    virtual NativeValue* GetFunctionPrototype() { return nullptr; }
 };
 
 class NativeBigint {
@@ -339,6 +352,9 @@ enum NativeErrorType {
     NATIVE_COMMON_ERROR,
     NATIVE_TYPE_ERROR,
     NATIVE_RANGE_ERROR,
+    NATIVE_REFERENCE_ERROR,
+    NATIVE_SYNTAX_ERROR,
+    NATIVE_EVAL_ERROR
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_VALUE_H */

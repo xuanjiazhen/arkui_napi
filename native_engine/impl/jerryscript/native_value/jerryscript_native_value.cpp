@@ -168,3 +168,8 @@ bool JerryScriptNativeValue::StrictEquals(NativeValue* value)
     jerry_value_t op = jerry_binary_operation(JERRY_BIN_OP_STRICT_EQUAL, value_, *value);
     return jerry_get_boolean_value(op);
 }
+
+NativeValue* JerryScriptNativeValue::Copy()
+{
+    return new JerryScriptNativeValue(engine_, value);
+}

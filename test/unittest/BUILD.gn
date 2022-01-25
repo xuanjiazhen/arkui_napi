@@ -79,7 +79,8 @@ if (defined(ohos_lite)) {
       foreach(engine, support_engines) {
         if (engine.engine_name == "ark") {
           ark_support = true
-        } else if (engine.engine_name == "qjs") {
+        } else if (engine.engine_name == "qjs" ||
+                   engine.engine_name == "native") {
           qjs_support = true
         }
       }

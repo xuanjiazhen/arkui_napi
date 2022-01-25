@@ -53,13 +53,14 @@ ArkNativeFunction::ArkNativeFunction(ArkNativeEngine* engine,
                                                 }
                                              },
                                              reinterpret_cast<void*>(funcInfo));
-    Local<StringRef> fnName = StringRef::NewFromUtf8(vm, name);
-    fn->SetName(vm, fnName);
+    if (name != nullptr) {
+        Local<StringRef> fnName = StringRef::NewFromUtf8(vm, name);
+        fn->SetName(vm, fnName);
+    }
 
     Global<JSValueRef> globalFn(vm, fn);
     value_ = globalFn;
 }
-
 
 // class function
 ArkNativeFunction::ArkNativeFunction(ArkNativeEngine* engine,
@@ -88,8 +89,10 @@ ArkNativeFunction::ArkNativeFunction(ArkNativeEngine* engine,
                                                               }
                                                           },
                                                           reinterpret_cast<void*>(funcInfo));
-    Local<StringRef> fnName = StringRef::NewFromUtf8(vm, name);
-    fn->SetName(vm, fnName);
+    if (name != nullptr) {
+        Local<StringRef> fnName = StringRef::NewFromUtf8(vm, name);
+        fn->SetName(vm, fnName);
+    }
 
     Global<JSValueRef> globalFn(vm, fn);
     value_ = globalFn;

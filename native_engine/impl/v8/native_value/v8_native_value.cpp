@@ -143,8 +143,25 @@ NativeValue* V8NativeValue::ToObject()
     return V8NativeEngine::V8ValueToNativeValue(engine_, value->ToObject(engine_->GetContext()).ToLocalChecked());
 }
 
+NativeValue* V8NativeValue::Copy()
+{
+    v8::Local<v8::Value> value = value_;
+    return new V8NativeValue(engine_, value);
+}
+
 bool V8NativeValue::StrictEquals(NativeValue* value)
 {
     v8::Local<v8::Value> v8Value = value_;
     return v8Value->StrictEquals(*value);
+}
+
+bool V8NativeValue::IsNull()
+{
+    v8::Local<v8::Value> value = value_;
+    return value->IsNull();
+}
+
+bool V8NativeValue::IsEmpty()
+{
+    return value_.IsEmpty();
 }

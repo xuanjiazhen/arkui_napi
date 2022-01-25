@@ -242,6 +242,24 @@ bool ArkNativeValue::IsWeakSet()
     return value->IsWeakSet();
 }
 
+bool ArkNativeValue::IsNull()
+{
+    Global<JSValueRef> value = value_;
+    return value.IsEmpty() ? true : value->IsNull();
+}
+
+void ArkNativeValue::SetWeak()
+{
+    if (!value_.IsEmpty()) {
+        value_.SetWeak();
+    }
+}
+
+bool ArkNativeValue::IsEmpty()
+{
+    return value_.IsEmpty() ? true : (value_->IsUndefined() || value_->IsNull());
+}
+
 NativeValue* ArkNativeValue::ToBoolean()
 {
     auto vm = engine_->GetEcmaVm();
@@ -281,4 +299,36 @@ bool ArkNativeValue::StrictEquals(NativeValue* value)
     Global<JSValueRef> value1 = value_;
     Global<JSValueRef> value2 = *value;
     return value1->IsStrictEquals(vm, value2.ToLocal(vm));
+}
+
+NativeValue* ArkNativeValue::ToJsonString()
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<JSValueRef> value = value_;
+    Local<JSValueRef> res = panda::JSON::Stringify(vm, value.ToLocal(vm));
+    if (res.CheckException()) {
+        return nullptr;
+    }
+    return ArkNativeEngine::ArkValueToNativeValue(engine_, res->ToString(vm));
+}
+
+NativeValue* ArkNativeValue::ToJsonObject()
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<JSValueRef> value = value_;
+    if (value->IsString()) {
+        Local<JSValueRef> res = panda::JSON::Parse(vm, value->ToString(vm));
+        return ArkNativeEngine::ArkValueToNativeValue(engine_, res);
+    }
+    return nullptr;
+}
+
+NativeValue* ArkNativeValue::Copy()
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<JSValueRef> value = value_;
+    return new ArkNativeValue(engine_, value.ToLocal(vm));
 }

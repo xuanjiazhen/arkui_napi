@@ -173,6 +173,20 @@ bool ArkNativeObject::DefineProperty(NativePropertyDescriptor propertyDescriptor
     return result;
 }
 
+bool ArkNativeObject::SetAccessorProperty(const char* name, NativeValue* valGet, NativeValue* valSet)
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<ObjectRef> obj = value_;
+    bool result = false;
+    Local<StringRef> propertyName = StringRef::NewFromUtf8(vm, name);
+    Global<JSValueRef> localGetter =
+        *(reinterpret_cast<NativeFunction*>(valGet->GetInterface(NativeFunction::INTERFACE_ID)));
+    Global<JSValueRef> localSetter =
+        *(reinterpret_cast<NativeFunction*>(valSet->GetInterface(NativeFunction::INTERFACE_ID)));
+    result = obj->SetAccessorProperty(vm, propertyName, localGetter.ToLocal(vm), localSetter.ToLocal(vm));
+}
+
 bool ArkNativeObject::SetProperty(NativeValue* key, NativeValue* value)
 {
     auto vm = engine_->GetEcmaVm();
@@ -301,3 +315,10 @@ void ArkNativeObject::AddFinalizer(void* pointer, NativeFinalize cb, void* hint)
 void ArkNativeObject::Freeze() {}
 
 void ArkNativeObject::Seal() {}
+
+void ArkNativeObject::SetInternalFieldCount(int32_t count) const
+{
+    LocalScope scope(vm);
+    Global<ObjectRef> obj = value_;
+    obj->SetNativePointerFieldCount(count);
+}

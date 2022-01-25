@@ -201,7 +201,7 @@ if (defined(ohos_lite)) {
       engine_config = item.config
       support_engines = engine_config.js_engines
       foreach(engine, support_engines) {
-        if (engine.engine_name != "ark") {
+        if (engine.engine_name == "qjs") {
           ace_napi_lib("ace_napi_${engine.engine_path}") {
             engine_path = engine.engine_path
           }

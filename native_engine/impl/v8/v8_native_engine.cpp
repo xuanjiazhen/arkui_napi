@@ -33,8 +33,13 @@
 #include "v8_native_deferred.h"
 #include "v8_native_reference.h"
 
-
 static thread_local V8NativeEngine* g_env = nullptr;
+
+NativeEngine* NativeEngine::CreateNativeEngine(void* jsEngine, bool isDebugVersion)
+{
+    // TODO: create v8 native engine.
+    return nullptr;
+}
 
 V8NativeEngine::V8NativeEngine(v8::Platform* platform, v8::Isolate* isolate,
     v8::Persistent<v8::Context>& context, void* jsEngine)
@@ -916,14 +921,6 @@ void V8NativeEngine::DeleteSerializationData(NativeValue* value) const
 {
     SerializationData* data = reinterpret_cast<SerializationData*>(value);
     delete data;
-}
-
-void V8NativeEngine::SetPackagePath(const std::string& packagePath)
-{
-    auto moduleManager = NativeModuleManager::GetInstance();
-    if (moduleManager) {
-        moduleManager->SetAppLibPath(packagePath.c_str());
-    }
 }
 
 // Extracts a C string from a V8 Utf8Value.
