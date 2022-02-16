@@ -215,7 +215,7 @@ public:
     void ClearLastError();
     bool IsExceptionPending() const;
     NativeValue* GetAndClearLastException();
-    void EncodeToUtf8(NativeValue* nativeValue, char* buffer, int32_t* written, size_t bufferSize, int32_t* nchars);
+    void EncodeToUtf8(NativeValue* nativeValue, char* buffer, uint32_t* written, size_t bufferSize, int32_t* nchars);
     NativeEngine(NativeEngine&) = delete;
     virtual NativeEngine& operator=(NativeEngine&) = delete;
 
