@@ -231,7 +231,7 @@ NativeValue* NativeEngine::GetAndClearLastException()
 
 void NativeEngine::EncodeToUtf8(NativeValue* nativeValue,
                                 char* buffer,
-                                int32_t* written,
+                                uint32_t* written,
                                 size_t bufferSize,
                                 int32_t* nchars)
 {
