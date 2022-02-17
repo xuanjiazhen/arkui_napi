@@ -217,7 +217,7 @@ if (defined(ohos_lite)) {
   }
 
   group("napi_packages") {
-    deps = [ ":ace_napi" ]
+    deps = [ ":ace_napi", "sample/native_module_demo:demo", "sample/native_module_ability:ability" ]
     deps += napi_libs
   }
 
