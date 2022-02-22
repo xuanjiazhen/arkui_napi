@@ -90,12 +90,12 @@ foreach(item, ace_platforms) {
         }
         if (defined(engine.have_debug) && engine.have_debug) {
           ace_napi_impl("ace_napi_impl_quickjs_debug") {
-          defines = []
-          engine_defines = engine.engine_defines
-          use_js_debug = true
-          defines = engine_config.defines
+            defines = []
+            engine_defines = engine.engine_defines
+            use_js_debug = true
+            defines = engine_config.defines
+          }
         }
-       }
       }
     }
   }
