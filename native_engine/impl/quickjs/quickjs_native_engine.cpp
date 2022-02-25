@@ -40,6 +40,13 @@
 static const int JS_WRITE_OBJ = (1 << 2) | (1 << 3);
 static const int JS_ATOM_MESSAGE = 51;
 
+NativeEngine* NativeEngine::CreateNativeEngine(void* jsEngine, bool isDebugVersion)
+{
+    JSRuntime* runtime = JS_NewRuntime();
+    JSContext* context = JS_NewContext(runtime);
+    return new QuickJSNativeEngine(runtime, context, jsEngine);
+}
+
 QuickJSNativeEngine::QuickJSNativeEngine(JSRuntime* runtime, JSContext* context, void* jsEngine)
     : NativeEngine(jsEngine)
 {
@@ -462,14 +469,6 @@ NativeValue* QuickJSNativeEngine::RunScript(NativeValue* script)
     js_std_loop(context_);
 
     return JSValueToNativeValue(this, result);
-}
-
-void QuickJSNativeEngine::SetPackagePath(const std::string& packagePath)
-{
-    auto moduleManager = NativeModuleManager::GetInstance();
-    if (moduleManager) {
-        moduleManager->SetAppLibPath(packagePath.c_str());
-    }
 }
 
 NativeValue* QuickJSNativeEngine::RunBufferScript(std::vector<uint8_t>& buffer)

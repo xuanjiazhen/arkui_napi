@@ -345,4 +345,8 @@ bool JerryScriptNativeObject::CheckTypeTag(NapiTypeTag* typeTag)
 #else
     return true;
 #endif
+
+void JerryScriptNativeObject::SetInternalFieldCount(int32_t count) const
+{}
+
 }

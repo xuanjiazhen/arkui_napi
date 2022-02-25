@@ -188,7 +188,6 @@ public:
     virtual NativeValue* Deserialize(NativeEngine* context, NativeValue* recorder) override;
     virtual ExceptionInfo* GetExceptionForWorker() const override;
     virtual void DeleteSerializationData(NativeValue* value) const override;
-    void SetPackagePath(const std::string& packagePath);
 
     static NativeValue* V8ValueToNativeValue(V8NativeEngine* engine, v8::Local<v8::Value> value);
     virtual NativeValue* LoadModule(NativeValue* str, const std::string& fileName) override;

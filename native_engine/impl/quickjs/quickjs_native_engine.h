@@ -45,7 +45,7 @@ private:
     std::unique_ptr<uint8_t, Deleter> value_;
 };
 
-class QuickJSNativeEngine : public NativeEngine {
+class NAPI_EXPORT QuickJSNativeEngine : public NativeEngine {
 public:
     QuickJSNativeEngine(JSRuntime* runtime, JSContext* contex, void* jsEngine);
     virtual ~QuickJSNativeEngine();
@@ -101,8 +101,6 @@ public:
 
     virtual NativeValue* RunScript(NativeValue* script) override;
     virtual NativeValue* RunBufferScript(std::vector<uint8_t>& buffer) override;
-
-    void SetPackagePath(const std::string& packagePath);
 
     virtual bool Throw(NativeValue* error) override;
     virtual bool Throw(NativeErrorType type, const char* code, const char* message) override;
@@ -161,7 +159,6 @@ public:
     {
         return false;
     }
-    
     void PrintStatisticResult() override {}
     void StartRuntimeStat() override {}
     void StopRuntimeStat() override {}

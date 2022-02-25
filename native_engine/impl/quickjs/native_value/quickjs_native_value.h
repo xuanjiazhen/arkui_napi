@@ -57,6 +57,9 @@ public:
     virtual bool IsSymbolObject() override;
     virtual bool IsWeakMap() override;
     virtual bool IsWeakSet() override;
+    bool IsNull() override;
+    bool IsEmpty() override;
+    NativeValue* Copy() override;
 
     virtual NativeValue* ToBoolean() override;
     virtual NativeValue* ToNumber() override;

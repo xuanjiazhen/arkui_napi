@@ -270,3 +270,9 @@ bool V8NativeObject::DeletePrivateProperty(const char* name)
 
     return deleteMaybe.FromMaybe(false);
 }
+
+void  V8NativeObject::SetInternalFieldCount(int32_t count) const
+{
+    v8::Local<v8::Object> obj = value_;
+    obj->SetInternalFieldCount(count);
+}

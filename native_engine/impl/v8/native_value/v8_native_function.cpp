@@ -97,7 +97,7 @@ void V8NativeFunction::NativeFunctionCallback(const v8::FunctionCallbackInfo<v8:
 
     NativeCallbackInfo cbinfo = { 0 };
     cbinfo.thisVar = V8NativeEngine::V8ValueToNativeValue(engine, info.This());
-    cbinfo.function = V8NativeEngine::V8ValueToNativeValue(engine, info.NewTarget());
+    cbinfo.function = V8NativeEngine::V8ValueToNativeValue(engine, info.());
     cbinfo.argc = info.Length();
     cbinfo.argv = nullptr;
     cbinfo.functionInfo = funcinfo;

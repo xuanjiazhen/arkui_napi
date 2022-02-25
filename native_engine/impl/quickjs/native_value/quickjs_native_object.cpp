@@ -371,3 +371,7 @@ void QuickJSNativeObject::Seal()
 {
     JS_Seal(engine_->GetContext(), value_);
 }
+
+void QuickJSNativeObject::SetInternalFieldCount(int32_t count) const
+{
+}

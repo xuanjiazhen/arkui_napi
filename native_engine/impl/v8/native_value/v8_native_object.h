@@ -49,6 +49,7 @@ public:
     virtual NativeValue* GetPrivateProperty(const char* name) override;
     virtual bool HasPrivateProperty(const char* name) override;
     virtual bool DeletePrivateProperty(const char* name) override;
+    void SetInternalFieldCount(int32_t count) const override;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_V8_NATIVE_VALUE_V8_NATIVE_OBJECT_H */

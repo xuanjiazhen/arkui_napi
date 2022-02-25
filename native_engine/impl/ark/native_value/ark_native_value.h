@@ -59,11 +59,18 @@ public:
     bool IsSymbolObject() override;
     bool IsWeakMap() override;
     bool IsWeakSet() override;
+    bool IsNull() override;
+
+    void SetWeak() override;
+    bool IsEmpty() override;
 
     NativeValue* ToBoolean() override;
     NativeValue* ToNumber() override;
     NativeValue* ToString() override;
     NativeValue* ToObject() override;
+    NativeValue* ToJsonString() override;
+    NativeValue* ToJsonObject() override;
+    NativeValue* Copy() override;
 
     bool StrictEquals(NativeValue* value) override;
 

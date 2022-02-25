@@ -61,6 +61,7 @@ public:
 
     virtual void Freeze() override;
     virtual void Seal() override;
+    void SetInternalFieldCount(int32_t count) const override;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_JERRYSCRIPT_NATIVE_VALUE_JERRYSCRIPT_NATIVE_OBJECT_H */

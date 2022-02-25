@@ -27,7 +27,7 @@ public:
 
     void* GetInterface(int interfaceId) override;
 
-    NativeValue* GetFunctionPrototype();
+    NativeValue* GetFunctionPrototype() override;
 
 private:
     static Local<JSValueRef> NativeFunctionCallBack(EcmaVM* vm,

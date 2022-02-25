@@ -36,8 +36,8 @@ public:
     NativeValue* GetPrototype() override;
 
     bool DefineProperty(NativePropertyDescriptor propertyDescriptor) override;
-
     bool SetProperty(NativeValue* key, NativeValue* value) override;
+    bool SetAccessorProperty(const char* name, NativeValue* valGet, NativeValue* valSet) override;
     NativeValue* GetProperty(NativeValue* key) override;
     bool HasProperty(NativeValue* key) override;
     bool DeleteProperty(NativeValue* key) override;
@@ -56,6 +56,7 @@ public:
         napi_key_collection_mode keyMode, napi_key_filter keyFilter, napi_key_conversion keyConversion) override;
     virtual bool AssociateTypeTag(NapiTypeTag* typeTag) override;
     virtual bool CheckTypeTag(NapiTypeTag* typeTag) override;
+    void SetInternalFieldCount(int32_t count) const override;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_NATIVE_VALUE_ARK_NATIVE_OBJECT_H */

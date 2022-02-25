@@ -56,10 +56,11 @@ private:
     size_t size_;
 };
 
+// using HandleExceptionFunc = std::function<void(shared_ptr<JsValue>)>;
 class ArkNativeEngine : public NativeEngine {
 public:
     // ArkNativeEngine constructor
-    ArkNativeEngine(EcmaVM* vm, void* jsEngine);
+    ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isDebugVersion = false);
     // ArkNativeEngine destructor
     ~ArkNativeEngine() override;
 
@@ -102,6 +103,7 @@ public:
     NativeValue* CreateObject() override;
     // Create native function value
     NativeValue* CreateFunction(const char* name, size_t length, NativeCallback cb, void* value) override;
+    NativeValue* CreateClassFunction(const char* name, NativeCallback cb, void* value) override;
     // Create native array value
     NativeValue* CreateArray(size_t length) override;
     // Create native array buffer value
@@ -125,16 +127,16 @@ public:
     // Create native error value
     NativeValue* CreateError(NativeValue* code, NativeValue* message) override;
     // Call function
-    NativeValue* CallFunction(NativeValue* thisVar,
-                                      NativeValue* function,
-                                      NativeValue* const* argv,
-                                      size_t argc) override;
+    NativeValue* CallFunction(
+        NativeValue* thisVar,
+        NativeValue* function,
+        NativeValue* const* argv,
+        size_t argc) override;
     // Run script
     NativeValue* RunScript(NativeValue* script) override;
     // Run buffer script
     NativeValue* RunBufferScript(std::vector<uint8_t>& buffer) override;
-    // Set lib path
-    void SetPackagePath(const std::string& packagePath);
+
     // Define native class
     NativeValue* DefineClass(const char* name,
                                      NativeCallback callback,
@@ -164,7 +166,7 @@ public:
 
     NativeValue* ValueToNativeValue(JSValueWrapper& value) override;
 
-    bool ExecuteJsBin(const std::string& fileName);
+    bool ExecuteJsBin(const std::string& fileName, bool isDebugMode = false);
     panda::Global<panda::ObjectRef> LoadModuleByName(
         const std::string& moduleName, bool isAppModule, const std::string& param,
         const std::string& instanceName, void* instance);
@@ -177,6 +179,8 @@ public:
     // Detect performance to obtain cpuprofiler file
     void StartCpuProfiler(const std::string fileName = "") override;
     void StopCpuProfiler() override;
+    void EnableUserUncaughtErrorHandler() override;
+    const ExceptionReportInfo&& GetUncaughtExceptionInfo() const override;
 
     void ResumeVM() override;
     bool SuspendVM() override;
@@ -188,7 +192,7 @@ public:
     std::string BuildNativeAndJsBackStackTrace() override;
     bool StartHeapTracking(double timeInterval, bool isVmMode = true) override;
     bool StopHeapTracking(const std::string &filePath, DumpFormat dumpFormat = DumpFormat::JSON) override;
-    
+
     void PrintStatisticResult() override;
     void StartRuntimeStat() override;
     void StopRuntimeStat() override;
@@ -204,6 +208,8 @@ private:
     NativeReference* promiseRejectCallbackRef_ { nullptr };
     NativeReference* checkCallbackRef_ { nullptr };
     std::unordered_map<NativeModule*, panda::Global<panda::JSValueRef>> loadedModules_;
+
+    bool isDebugVersion_ = false;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */

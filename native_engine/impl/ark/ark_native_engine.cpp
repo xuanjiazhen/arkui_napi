@@ -15,6 +15,8 @@
 
 #include "ark_native_engine.h"
 
+#include <vector>
+
 #include "ark_native_deferred.h"
 #include "ark_native_reference.h"
 
@@ -50,7 +52,61 @@ using panda::IntegerRef;
 using panda::DateRef;
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 
-ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine) : NativeEngine(jsEngine), vm_(vm), topScope_(vm)
+#ifdef APP_USE_ARM
+static constexpr char ARK_DEBUGGER_LIB_PATH[] = "/system/lib/libark_debugger.z.so";
+#else
+static constexpr char ARK_DEBUGGER_LIB_PATH[] = "/system/lib64/libark_debugger.z.so";
+#endif
+
+enum class JsLogLevel : int32_t {
+    DEBUG = 0,
+    INFO,
+    WARNING,
+    ERROR,
+};
+
+int PrintLog(int id, int level, const char* tag, const char* fmt, const char* message)
+{
+    switch (level - 3) {
+        case 1: // info
+            HILOG_INFO("%{public}s::%{public}s", tag, message);
+            break;
+        case 2: // warning
+            HILOG_WARN("%{public}s::%{public}s", tag, message);
+            break;
+        case 3: // error
+            HILOG_ERROR("%{public}s::%{public}s", tag, message);
+            break;
+        case 0: // debug
+            HILOG_DEBUG("%{public}s::%{public}s", tag, message);
+            break;
+        default:
+            HILOG_FATAL("%{public}s::%{public}s", tag, message);
+            break;
+    }
+    return 0;
+}
+
+NativeEngine* NativeEngine::CreateNativeEngine(void* jsEngine, bool isDebugVersion)
+{
+    panda::RuntimeOption option;
+    option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
+    const int64_t poolSize = 0x1000000;
+    option.SetGcPoolSize(poolSize);
+    option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::ERROR);
+    option.SetLogBufPrint(PrintLog);
+    option.SetDebuggerLibraryPath(isDebugVersion ? ARK_DEBUGGER_LIB_PATH : "");
+    EcmaVM* vm = panda::JSNApi::CreateJSVM(option);
+    if (vm == nullptr) {
+        HILOG_ERROR("CreateArkNativeEngine failed: panda::JSNApi::CreateJSVM(option) is null!");
+        return nullptr;
+    }
+
+    return new ArkNativeEngine(vm, jsEngine, isDebugVersion);
+}
+
+ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isDebugVersion)
+    : NativeEngine(jsEngine), vm_(vm), topScope_(vm), isDebugVersion_(isDebugVersion)
 {
     Local<StringRef> requireName = StringRef::NewFromUtf8(vm, "requireNapi");
     Local<StringRef> requireInternalName = StringRef::NewFromUtf8(vm, "requireInternal");
@@ -293,6 +349,11 @@ NativeValue* ArkNativeEngine::CreateFunction(const char* name, size_t length, Na
     return new ArkNativeFunction(this, name, length, cb, value);
 }
 
+NativeValue* CreateClassFunction(const char* name, NativeCallback cb, void* value)
+{
+    return new ArkNativeFunction(this, name, cb, value);
+}
+
 NativeValue* ArkNativeEngine::CreateArray(size_t length)
 {
     return new ArkNativeArray(this, length);
@@ -423,14 +484,6 @@ NativeValue* ArkNativeEngine::RunScript(NativeValue* script)
     return nullptr;
 }
 
-void ArkNativeEngine::SetPackagePath(const std::string& packagePath)
-{
-    auto moduleManager = NativeModuleManager::GetInstance();
-    if (moduleManager) {
-        moduleManager->SetAppLibPath(packagePath.c_str());
-    }
-}
-
 NativeValue* ArkNativeEngine::DefineClass(const char* name,
                                           NativeCallback callback,
                                           void* data,
@@ -508,6 +561,15 @@ bool ArkNativeEngine::Throw(NativeErrorType type, const char* code, const char* 
             break;
         case NATIVE_RANGE_ERROR:
             error = panda::Exception::RangeError(vm_, StringRef::NewFromUtf8(vm_, message));
+            break;
+        case NATIVE_REFERENCE_ERROR:
+            error = panda::Exception::ReferenceError(vm_, StringRef::NewFromUtf8(vm_, message));
+            break;
+        case NATIVE_SYNTAX_ERROR:
+            error = panda::Exception::SyntaxError(vm_, StringRef::NewFromUtf8(vm_, message));
+            break;
+        case NATIVE_EVAL_ERROR:
+            error = panda::Exception::EvalError(vm_, StringRef::NewFromUtf8(vm_, message));
             break;
         default:
             return false;
@@ -715,9 +777,14 @@ NativeValue* ArkNativeEngine::ValueToNativeValue(JSValueWrapper& value)
     return ArkValueToNativeValue(this, arkValue.ToLocal(vm_));
 }
 
-bool ArkNativeEngine::ExecuteJsBin(const std::string& fileName)
+bool ArkNativeEngine::ExecuteJsBin(const std::string& fileName, bool isDebugMode)
 {
     panda::JSExecutionScope executionScope(vm_);
+    static bool debugFlag = true;
+    if (debugFlag && isDebugVersion_) {
+        JSNApi::StartDebugger(ARK_DEBUGGER_LIB_PATH, vm_, isDebugMode);
+        debugFlag = false;
+    }
     LocalScope scope(vm_);
     bool ret = JSNApi::Execute(vm_, fileName, PANDA_MAIN_FUNCTION);
     return ret;
@@ -873,4 +940,33 @@ size_t ArkNativeEngine::GetHeapTotalSize()
 size_t ArkNativeEngine::GetHeapUsedSize()
 {
     return DFXJSNApi::GetHeapUsedSize(vm_);
+}
+
+void ArkNativeEngine::EnableUserUncaughtErrorHandler()
+{
+    HILOG_INFO("ArkNativeEngine EnableUserUncaughtErrorHandler");
+    JSNApi::EnableUserUncaughtErrorHandler(vm_);
+}
+
+const ExceptionReportInfo&& ArkNativeEngine::GetUncaughtExceptionInfo() const
+{
+    HILOG_INFO("ArkNativeEngine GetUncaughtErrorInfo");
+    LocalScope scope(vm_);
+    Local<ObjectRef> exception = panda::JSNApi::GetUncaughtException(vm_);
+
+    if (exception.IsException()) {
+        std::string errorInfo;
+        Local<JSValueRef> message = exception->Get(vm_, StringRef::NewFromUtf8(vm_, "message"));
+        errorInfo = message->ToString(vm_)->ToString();
+
+        std::string stackInfo;
+        Local<JSValueRef> stack = exception->Get(vm_, StringRef::NewFromUtf8(vm_, "stack"));
+        stackInfo = stack->ToString(vm_)->ToString();
+
+        return std::move(ExceptionReportInfo { errorInfo, stackInfo });
+    }
+    if (!exception.IsNull()) {
+        return std::move(ExceptionReportInfo { exception->ToString(vm_)->ToString(), std::string() });
+    }
+    return std::move(ExceptionReportInfo { std::string("error uncaught: error is null"), std::string() });
 }
