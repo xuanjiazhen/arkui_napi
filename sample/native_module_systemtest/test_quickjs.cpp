@@ -28,7 +28,6 @@ NativeEngineTest::~NativeEngineTest() {}
 
 static void LoopNewThread(void* data)
 {
-    g_nativeEngine->Loop(LOOP_DEFAULT);
 }
 
 int main(int argc, char** argv)
