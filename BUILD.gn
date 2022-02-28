@@ -185,6 +185,7 @@ if (defined(ohos_lite)) {
 
     subsystem_name = "ace"
     part_name = "napi"
+    relative_install_dir = "ndk"
   }
 
   template("ace_napi_lib") {
