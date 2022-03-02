@@ -19,18 +19,27 @@
 #include "quickjs_native_reference.h"
 
 QuickJSNativeReference::QuickJSNativeReference(
-    QuickJSNativeEngine* engine, NativeValue* value, uint32_t initialRefcount,
+    QuickJSNativeEngine* engine, NativeValue* value, uint32_t initialRefcount, bool deleteSelf,
     NativeFinalize callback, void* data, void* hint)
-    : engine_(engine), value_(*value), refCount_(initialRefcount), callback_(callback), data_(data),
-    hint_(hint)
+    : engine_(engine), value_(*value), refCount_(initialRefcount), deleteSelf_(deleteSelf),
+      callback_(callback), data_(data), hint_(hint)
 {
     for (uint32_t i = 0; i < initialRefcount; i++) {
         JS_DupValue(engine_->GetContext(), value_);
+    }
+    if (deleteSelf) {
+        NativeReferenceManager* referenceManager = engine->GetReferenceManager();
+        if (referenceManager != nullptr) {
+            referenceManager->CreateHandler(this);
+        }
     }
 }
 
 QuickJSNativeReference::~QuickJSNativeReference()
 {
+    if (deleteSelf_ && engine_->GetReferenceManager()) {
+        engine_->GetReferenceManager()->ReleaseHandler(this);
+    }
     while (refCount_) {
         refCount_--;
         if (refCount_ == 0) {

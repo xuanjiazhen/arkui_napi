@@ -20,10 +20,10 @@
 #include "utils/log.h"
 
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine, NativeValue* value, uint32_t initialRefcount,
-    NativeFinalize callback, void* data, void* hint)
+    bool deleteSelf, NativeFinalize callback, void* data, void* hint)
     : engine_(engine),
       value_(Global<JSValueRef>(engine->GetEcmaVm(), JSValueRef::Undefined(engine->GetEcmaVm()))),
-      refCount_(initialRefcount), callback_(callback), data_(data), hint_(hint)
+      refCount_(initialRefcount), deleteSelf_(deleteSelf), callback_(callback), data_(data), hint_(hint)
 {
     Global<JSValueRef> oldValue = *value;
     auto vm = engine->GetEcmaVm();
@@ -32,10 +32,19 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine, NativeValue* val
     if (initialRefcount == 0) {
         value_.SetWeak();
     }
+    if (deleteSelf) {
+        NativeReferenceManager* referenceManager = engine->GetReferenceManager();
+        if (referenceManager != nullptr) {
+            referenceManager->CreateHandler(this);
+        }
+    }
 }
 
 ArkNativeReference::~ArkNativeReference()
 {
+    if (deleteSelf_ && engine_->GetReferenceManager()) {
+        engine_->GetReferenceManager()->ReleaseHandler(this);
+    }
     if (!value_.IsWeak()) {
         value_.SetWeak();
     }

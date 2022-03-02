@@ -91,7 +91,7 @@ public:
     virtual NativeValue* CreateError(NativeValue* code, NativeValue* Message) override;
     virtual NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc) override;
 
-    virtual NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount,
+    virtual NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount, bool deleteSelf = false,
         NativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) override;
     virtual NativeValue* CallFunction(
         NativeValue* thisVar, NativeValue* function, NativeValue* const* argv, size_t argc) override;

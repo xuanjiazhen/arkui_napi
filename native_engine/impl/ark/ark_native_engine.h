@@ -146,7 +146,7 @@ public:
     NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc) override;
 
     // Create native reference
-    NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount,
+    NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount, bool deleteSelf,
         NativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) override;
     // Throw exception
     bool Throw(NativeValue* error) override;
