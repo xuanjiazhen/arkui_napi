@@ -2321,7 +2321,7 @@ NAPI_INNER_EXTERN napi_status napi_add_finalizer(napi_env env, napi_value js_obj
     nativeObject->AddFinalizer(native_object, callback, finalize_hint);
     if (result != nullptr) {
         auto engine = reinterpret_cast<NativeEngine*>(env);
-        auto reference = engine->CreateReference(nativeValue, 1, callback, native_object, finalize_hint);
+        auto reference = engine->CreateReference(nativeValue, 1, false, callback, native_object, finalize_hint);
         *result = reinterpret_cast<napi_ref>(reference);
     }
     return napi_clear_last_error(env);

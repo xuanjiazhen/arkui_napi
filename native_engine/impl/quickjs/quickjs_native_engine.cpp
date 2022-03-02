@@ -399,9 +399,9 @@ NativeValue* QuickJSNativeEngine::CreateInstance(NativeValue* constructor, Nativ
 }
 
 NativeReference* QuickJSNativeEngine::CreateReference(NativeValue* value, uint32_t initialRefcount,
-    NativeFinalize callback, void* data, void* hint)
+    bool deleteSelf, NativeFinalize callback, void* data, void* hint)
 {
-    return new QuickJSNativeReference(this, value, initialRefcount, callback, data, hint);
+    return new QuickJSNativeReference(this, value, initialRefcount, deleteSelf, callback, data, hint);
 }
 
 NativeValue* QuickJSNativeEngine::CallFunction(NativeValue* thisVar,

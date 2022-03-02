@@ -170,7 +170,7 @@ public:
 
     virtual NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc) = 0;
 
-    virtual NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount,
+    virtual NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount, bool deleteSelf = false,
         NativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) = 0;
 
     virtual NativeAsyncWork* CreateAsyncWork(NativeValue* asyncResource,

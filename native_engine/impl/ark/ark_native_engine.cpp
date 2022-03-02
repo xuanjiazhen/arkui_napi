@@ -482,9 +482,9 @@ NativeValue* ArkNativeEngine::CreateInstance(NativeValue* constructor, NativeVal
 }
 
 NativeReference* ArkNativeEngine::CreateReference(NativeValue* value, uint32_t initialRefcount,
-    NativeFinalize callback, void* data, void* hint)
+    bool deleteSelf, NativeFinalize callback, void* data, void* hint)
 {
-    return new ArkNativeReference(this, value, initialRefcount);
+    return new ArkNativeReference(this, value, initialRefcount, deleteSelf, callback, data, hint);
 }
 
 bool ArkNativeEngine::Throw(NativeValue* error)
