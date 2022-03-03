@@ -29,6 +29,11 @@ public:
 
     NativeValue* GetFunctionPrototype();
 
+    inline int32_t GetScopeId()
+    {
+        return scopeId_;
+    }
+
 private:
     static Local<JSValueRef> NativeFunctionCallBack(EcmaVM* vm,
                                                     Local<JSValueRef> thisObj,
@@ -41,6 +46,7 @@ private:
                                                          const Local<JSValueRef> argv[],
                                                          int32_t length,
                                                          void* data);
+    int32_t scopeId_ = -1;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_NATIVE_VALUE_ARK_NATIVE_FUNCTION_H */
