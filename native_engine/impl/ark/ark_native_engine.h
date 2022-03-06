@@ -56,6 +56,26 @@ private:
     size_t size_;
 };
 
+class WorkerVMScope {
+public:
+    WorkerVMScope() {}
+    explicit WorkerVMScope(EcmaVM* vm) : vm_(vm) {}
+
+    void SetVM(EcmaVM* vm)
+    {
+        vm_ = vm;
+    }
+
+    ~WorkerVMScope()
+    {
+        if (vm_ != nullptr) {
+            JSNApi::TriggerGC(vm_, JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+        }
+    }
+private:
+    EcmaVM* vm_ { nullptr };
+};
+
 class ArkNativeEngine : public NativeEngine {
 public:
     // ArkNativeEngine constructor
@@ -66,6 +86,11 @@ public:
     const EcmaVM* GetEcmaVm() const
     {
         return vm_;
+    }
+
+    void MarkAutoDispose()
+    {
+        workerVMScope_.SetVM(vm_);
     }
 
     void Loop(LoopMode mode, bool needSync = false) override;
@@ -204,6 +229,7 @@ private:
     static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, void* jsEngine);
 
     EcmaVM* vm_ = nullptr;
+    WorkerVMScope workerVMScope_;
     std::string exceptionStr_;
     panda::LocalScope topScope_;
     NativeReference* promiseRejectCallbackRef_ { nullptr };

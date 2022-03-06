@@ -551,6 +551,7 @@ NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsE
     // init callback
     arkEngine->RegisterWorkerFunction(engine);
 
+    arkEngine->MarkAutoDispose();
     auto cleanEnv = [vm]() {
         if (vm != nullptr) {
             HILOG_INFO("cleanEnv is called");
