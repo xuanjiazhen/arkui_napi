@@ -36,6 +36,7 @@
 #include "native_value/ark_native_typed_array.h"
 #include "native_value/ark_native_date.h"
 
+#include "parameters.h"
 #include "securec.h"
 #include "utils/log.h"
 
@@ -536,6 +537,9 @@ bool ArkNativeEngine::Throw(NativeErrorType type, const char* code, const char* 
 NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsEngine)
 {
     panda::RuntimeOption option;
+    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    option.SetArkProperties(arkProperties);
+    HILOG_INFO("ArkNativeEngine::CreateRuntime ark properties = %{public}d", arkProperties);
     option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
     const int64_t poolSize = 0x1000000;
     option.SetGcPoolSize(poolSize);
@@ -612,32 +616,32 @@ void ArkNativeEngine::DeleteSerializationData(NativeValue* value) const
 
 void ArkNativeEngine::StartCpuProfiler(const std::string fileName)
 {
-    panda::JSNApi::StartCpuProfiler(vm_, fileName);
+    DFXJSNApi::StartCpuProfiler(vm_, fileName);
 }
 
 void ArkNativeEngine::StopCpuProfiler()
 {
-    panda::JSNApi::StopCpuProfiler();
+    DFXJSNApi::StopCpuProfiler();
 }
 
 void ArkNativeEngine::ResumeVM()
 {
-    panda::JSNApi::ResumeVM(vm_);
+    DFXJSNApi::ResumeVM(vm_);
 }
 
 bool ArkNativeEngine::SuspendVM()
 {
-    return panda::JSNApi::SuspendVM(vm_);
+    return DFXJSNApi::SuspendVM(vm_);
 }
 
 bool ArkNativeEngine::IsSuspended()
 {
-    return panda::JSNApi::IsSuspended(vm_);
+    return DFXJSNApi::IsSuspended(vm_);
 }
 
 bool ArkNativeEngine::CheckSafepoint()
 {
-    return panda::JSNApi::CheckSafepoint(vm_);
+    return DFXJSNApi::CheckSafepoint(vm_);
 }
 
 NativeValue* ArkNativeEngine::RunBufferScript(std::vector<uint8_t>& buffer)
@@ -842,10 +846,9 @@ void ArkNativeEngine::DumpHeapSnapShot(const std::string &path, bool isVmMode, D
     }
 }
 
-std::string ArkNativeEngine::BuildNativeAndJsBackStackTrace()
+bool ArkNativeEngine::BuildNativeAndJsBackStackTrace(std::string &stackTraceStr)
 {
-    std::string stackTraceStr = DFXJSNApi::BuildNativeAndJsBackStackTrace(vm_);
-    return stackTraceStr;
+    return DFXJSNApi::BuildNativeAndJsBackStackTrace(vm_, stackTraceStr);
 }
 
 bool ArkNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
