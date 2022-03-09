@@ -27,46 +27,16 @@ using panda::ecmascript::EcmaVM;
 using panda::Local;
 using panda::LocalScope;
 using panda::JSValueRef;
-using panda::JSNApi;
-using panda::DFXJSNApi;
-
-class SerializationData {
-public:
-    SerializationData() : data_(nullptr), size_(0) {}
-    ~SerializationData() = default;
-
-    uint8_t* GetData() const
-    {
-        return data_.get();
-    }
-    size_t GetSize() const
-    {
-        return size_;
-    }
-
-private:
-    struct DataDeleter {
-        void operator()(uint8_t* p) const
-        {
-            free(p);
-        }
-    };
-
-    std::unique_ptr<uint8_t, DataDeleter> data_;
-    size_t size_;
-};
 
 class ArkNativeEngine : public NativeEngine {
 public:
     // ArkNativeEngine constructor
     ArkNativeEngine(EcmaVM* vm, void* jsEngine);
+    ArkNativeEngine(NativeEngineInterface* engineImpl, void* jsEngine, bool isAppModule);
     // ArkNativeEngine destructor
     ~ArkNativeEngine() override;
 
-    const EcmaVM* GetEcmaVm() const
-    {
-        return vm_;
-    }
+    const EcmaVM* GetEcmaVm() const;
 
     void Loop(LoopMode mode, bool needSync = false) override;
 
@@ -127,7 +97,7 @@ public:
     // Call function
     NativeValue* CallFunction(NativeValue* thisVar,
                                       NativeValue* function,
-                                      NativeValue* const* argv,
+                                      NativeValue* const *argv,
                                       size_t argc) override;
     // Run script
     NativeValue* RunScript(NativeValue* script) override;
@@ -143,7 +113,7 @@ public:
                                      const NativePropertyDescriptor* properties,
                                      size_t length) override;
     // Create instance by defined class
-    NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc) override;
+    NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const *argv, size_t argc) override;
 
     // Create native reference
     NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount,
@@ -176,7 +146,7 @@ public:
     bool AdjustExternalMemory(int64_t ChangeInBytes, int64_t* AdjustedValue) override;
 
     // Detect performance to obtain cpuprofiler file
-    void StartCpuProfiler(const std::string fileName = "") override;
+    void StartCpuProfiler(const std::string &fileName = "") override;
     void StopCpuProfiler() override;
 
     void ResumeVM() override;
@@ -199,17 +169,6 @@ public:
 
     void RegisterUncaughtExceptionHandler(UncaughtExceptionCallback callback) override;
     void HandleUncaughtException() override;
-
-private:
-    static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, void* jsEngine);
-
-    EcmaVM* vm_ = nullptr;
-    std::string exceptionStr_;
-    panda::LocalScope topScope_;
-    NativeReference* promiseRejectCallbackRef_ { nullptr };
-    NativeReference* checkCallbackRef_ { nullptr };
-    std::unordered_map<NativeModule*, panda::Global<panda::JSValueRef>> loadedModules_;
-    UncaughtExceptionCallback uncaughtExceptionCallback_ { nullptr };
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */

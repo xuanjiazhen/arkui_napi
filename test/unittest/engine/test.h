@@ -25,6 +25,7 @@ public:
     static void *Run(void *arg);
 protected:
     NativeEngine* engine_;
+    NativeEngine* moduleNameEngine_;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_TEST_UNITTEST_TEST_H */

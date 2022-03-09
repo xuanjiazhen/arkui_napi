@@ -19,35 +19,10 @@
 #include "native_engine/native_engine.h"
 #include "quickjs_headers.h"
 
-class SerializeData {
-public:
-    SerializeData(size_t size, uint8_t* data) : dataSize_(size), value_(data) {}
-    ~SerializeData() = default;
-
-    uint8_t* GetData() const
-    {
-        return value_.get();
-    }
-    size_t GetSize() const
-    {
-        return dataSize_;
-    }
-
-private:
-    struct Deleter {
-        void operator()(uint8_t* ptr) const
-        {
-            free(ptr);
-        }
-    };
-
-    size_t dataSize_;
-    std::unique_ptr<uint8_t, Deleter> value_;
-};
-
 class QuickJSNativeEngine : public NativeEngine {
 public:
     QuickJSNativeEngine(JSRuntime* runtime, JSContext* contex, void* jsEngine);
+    QuickJSNativeEngine(NativeEngineInterface* engineImpl, void* jsEngine, bool isAppModule);
     virtual ~QuickJSNativeEngine();
 
     JSRuntime* GetRuntime();
@@ -89,12 +64,12 @@ public:
                                           NativeReference* checkCallbackRef) override;
 
     virtual NativeValue* CreateError(NativeValue* code, NativeValue* Message) override;
-    virtual NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc) override;
+    virtual NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const *argv, size_t argc) override;
 
     virtual NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount,
         NativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) override;
     virtual NativeValue* CallFunction(
-        NativeValue* thisVar, NativeValue* function, NativeValue* const* argv, size_t argc) override;
+        NativeValue* thisVar, NativeValue* function, NativeValue* const *argv, size_t argc) override;
 
     virtual NativeValue* DefineClass(const char* name, NativeCallback callback, void* data,
         const NativePropertyDescriptor* properties, size_t length) override;
@@ -131,61 +106,84 @@ public:
     virtual bool TriggerFatalException(NativeValue* error) override;
     virtual bool AdjustExternalMemory(int64_t ChangeInBytes, int64_t* AdjustedValue) override;
 
-    void StartCpuProfiler(const std::string fileName = "") override {}
-    void StopCpuProfiler() override {}
+    void StartCpuProfiler(const std::string &fileName = "") override
+    {
+        nativeEngineImpl_->StartCpuProfiler();
+    }
+    void StopCpuProfiler() override
+    {
+        nativeEngineImpl_->StopCpuProfiler();
+    }
 
-    void ResumeVM() override {}
+    void ResumeVM() override
+    {
+        nativeEngineImpl_->ResumeVM();
+    }
     bool SuspendVM() override
     {
-        return false;
+        return nativeEngineImpl_->SuspendVM();
     }
     bool IsSuspended() override
     {
-        return false;
+        return nativeEngineImpl_->IsSuspended();
     }
     bool CheckSafepoint() override
     {
-        return false;
+        return nativeEngineImpl_->CheckSafepoint();
     }
 
     void DumpHeapSnapShot(const std::string &path, bool isVmMode = true,
-        DumpFormat dumpFormat = DumpFormat::JSON) override {}
+        DumpFormat dumpFormat = DumpFormat::JSON) override 
+    {
+        nativeEngineImpl_->DumpHeapSnapShot(path, isVmMode, dumpFormat);
+    }
     bool BuildNativeAndJsBackStackTrace(std::string &stackTraceStr) override
     {
-        return false;
+        return nativeEngineImpl_->BuildNativeAndJsBackStackTrace(stackTraceStr);
     }
     bool StartHeapTracking(double timeInterval, bool isVmMode = true) override
     {
-        return false;
+        return nativeEngineImpl_->StartHeapTracking(timeInterval, isVmMode);
     }
     bool StopHeapTracking(const std::string &filePath, DumpFormat dumpFormat = DumpFormat::JSON) override
     {
-        return false;
+        return nativeEngineImpl_->StopHeapTracking(filePath, dumpFormat);
     }
     
-    void PrintStatisticResult() override {}
-    void StartRuntimeStat() override {}
-    void StopRuntimeStat() override {}
+    void PrintStatisticResult() override 
+    {
+        nativeEngineImpl_->PrintStatisticResult();
+    }
+    void StartRuntimeStat() override 
+    {
+        nativeEngineImpl_->StartRuntimeStat();
+    }
+    void StopRuntimeStat() override 
+    {
+        nativeEngineImpl_->StopRuntimeStat();
+    }
     size_t GetArrayBufferSize() override
     {
-        return 0;
+        return nativeEngineImpl_->GetArrayBufferSize();
     }
     size_t GetHeapTotalSize() override
     {
-        return 0;
+        return nativeEngineImpl_->GetHeapTotalSize();
     }
     size_t GetHeapUsedSize() override
     {
-        return 0;
+        return nativeEngineImpl_->GetHeapUsedSize();
     }
 
-    void RegisterUncaughtExceptionHandler(UncaughtExceptionCallback callback) override {}
-    void HandleUncaughtException() override {}
-private:
-    static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, void* jsEngine);
+    void RegisterUncaughtExceptionHandler(UncaughtExceptionCallback callback) override 
+    {
+        nativeEngineImpl_->RegisterUncaughtExceptionHandler(callback);
+    }
+    void HandleUncaughtException() override 
+    {
+        nativeEngineImpl_->HandleUncaughtException(this);
+    }
 
-    JSRuntime* runtime_;
-    JSContext* context_;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_QUICKJS_NATIVE_ENGINE_H */
