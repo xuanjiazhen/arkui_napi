@@ -13,7 +13,7 @@
         "name": "napi",
         "subsystem": "ace",
         "syscap": [],
-        "features": [],
+        "features": ["napi_graphics"],
         "adapted_system_type": [
             "standard"
         ],
