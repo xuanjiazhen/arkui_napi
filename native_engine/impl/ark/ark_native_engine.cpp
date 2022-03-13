@@ -26,6 +26,7 @@
 
 #include "native_value/ark_native_array.h"
 #include "native_value/ark_native_array_buffer.h"
+#include "native_value/ark_native_big_int.h"
 #include "native_value/ark_native_boolean.h"
 #include "native_value/ark_native_data_view.h"
 #include "native_value/ark_native_external.h"
@@ -36,6 +37,7 @@
 #include "native_value/ark_native_typed_array.h"
 #include "native_value/ark_native_date.h"
 
+#include "parameters.h"
 #include "securec.h"
 #include "utils/log.h"
 
@@ -52,6 +54,7 @@ using panda::NativePointerRef;
 using panda::SymbolRef;
 using panda::IntegerRef;
 using panda::DateRef;
+using panda::BigIntRef;
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 
 ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine) : NativeEngine(jsEngine), vm_(vm), topScope_(vm)
@@ -256,12 +259,12 @@ NativeValue* ArkNativeEngine::CreateNumber(double value)
 
 NativeValue* ArkNativeEngine::CreateBigInt(int64_t value)
 {
-    return nullptr;
+    return new ArkNativeBigInt(this, value);
 }
 
 NativeValue* ArkNativeEngine::CreateBigInt(uint64_t value)
 {
-    return nullptr;
+    return new ArkNativeBigInt(this, value, true);
 }
 
 NativeValue* ArkNativeEngine::CreateString(const char* value, size_t length)
@@ -540,10 +543,15 @@ bool ArkNativeEngine::Throw(NativeErrorType type, const char* code, const char* 
 NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsEngine)
 {
     panda::RuntimeOption option;
+    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    option.SetArkProperties(arkProperties);
+    HILOG_INFO("ArkNativeEngine::CreateRuntime ark properties = %{public}d", arkProperties);
     option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
     const int64_t poolSize = 0x1000000;
     option.SetGcPoolSize(poolSize);
+#ifndef WINDOWS_PLATFORM
     option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::ERROR);
+#endif
     option.SetDebuggerLibraryPath("");
     EcmaVM* vm = panda::JSNApi::CreateJSVM(option);
     if (vm == nullptr) {
@@ -614,34 +622,46 @@ void ArkNativeEngine::DeleteSerializationData(NativeValue* value) const
     panda::JSNApi::DeleteSerializationData(data);
 }
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 void ArkNativeEngine::StartCpuProfiler(const std::string fileName)
 {
-    panda::JSNApi::StartCpuProfiler(vm_, fileName);
+    DFXJSNApi::StartCpuProfiler(vm_, fileName);
 }
 
 void ArkNativeEngine::StopCpuProfiler()
 {
-    panda::JSNApi::StopCpuProfiler();
+    DFXJSNApi::StopCpuProfiler();
 }
+#else
+void ArkNativeEngine::StartCpuProfiler(const std::string fileName)
+{
+    HILOG_ERROR("ARKCpuProfiler is not supported on windows");
+}
+
+void ArkNativeEngine::StopCpuProfiler()
+{
+    HILOG_ERROR("ARKCpuProfiler is not supported on windows");
+}
+#endif
 
 void ArkNativeEngine::ResumeVM()
 {
-    panda::JSNApi::ResumeVM(vm_);
+    DFXJSNApi::ResumeVM(vm_);
 }
 
 bool ArkNativeEngine::SuspendVM()
 {
-    return panda::JSNApi::SuspendVM(vm_);
+    return DFXJSNApi::SuspendVM(vm_);
 }
 
 bool ArkNativeEngine::IsSuspended()
 {
-    return panda::JSNApi::IsSuspended(vm_);
+    return DFXJSNApi::IsSuspended(vm_);
 }
 
 bool ArkNativeEngine::CheckSafepoint()
 {
-    return panda::JSNApi::CheckSafepoint(vm_);
+    return DFXJSNApi::CheckSafepoint(vm_);
 }
 
 NativeValue* ArkNativeEngine::RunBufferScript(std::vector<uint8_t>& buffer)
@@ -727,6 +747,8 @@ NativeValue* ArkNativeEngine::ArkValueToNativeValue(ArkNativeEngine* engine, Loc
         result = new ArkNativeExternal(engine, value);
     } else if (value->IsDate()) {
         result = new ArkNativeDate(engine, value);
+    } else if (value->IsBigInt()) {
+        result = new ArkNativeBigInt(engine, value);
     } else if (value->IsObject()) {
         result = new ArkNativeObject(engine, value);
     } else if (value->IsBoolean()) {
@@ -771,7 +793,16 @@ NativeValue* ArkNativeEngine::CreateDate(double value)
 
 NativeValue* ArkNativeEngine::CreateBigWords(int sign_bit, size_t word_count, const uint64_t* words)
 {
-    return nullptr;
+    constexpr int bigintMod = 2; // 2 : used for even number judgment
+    bool sign = false;
+    if ((sign_bit % bigintMod) == 1) {
+        sign = true;
+    }
+    uint32_t size = (uint32_t)word_count;
+
+    Local<JSValueRef> value = BigIntRef::CreateBigWords(vm_, sign, size, words);
+
+    return new ArkNativeBigInt(this, value);
 }
 
 bool ArkNativeEngine::TriggerFatalException(NativeValue* error)
@@ -833,6 +864,7 @@ void ArkNativeEngine::PromiseRejectCallback(void* info)
     }
 }
 
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 void ArkNativeEngine::DumpHeapSnapShot(const std::string &path, bool isVmMode, DumpFormat dumpFormat)
 {
     if (dumpFormat == DumpFormat::JSON) {
@@ -845,18 +877,39 @@ void ArkNativeEngine::DumpHeapSnapShot(const std::string &path, bool isVmMode, D
         DFXJSNApi::DumpHeapSnapShot(vm_, 2, path, isVmMode); // 2:enum is 2
     }
 }
-
-std::string ArkNativeEngine::BuildNativeAndJsBackStackTrace()
+#else
+void ArkNativeEngine::DumpHeapSnapShot(const std::string &path, bool isVmMode, DumpFormat dumpFormat)
 {
-    std::string stackTraceStr = DFXJSNApi::BuildNativeAndJsBackStackTrace(vm_);
-    return stackTraceStr;
+    HILOG_FATAL("ARK does not support snapshot on windows");
 }
+#endif
 
+#ifndef WINDOWS_PLATFORM
+bool ArkNativeEngine::BuildNativeAndJsBackStackTrace(std::string &stackTraceStr)
+{
+    return DFXJSNApi::BuildNativeAndJsBackStackTrace(vm_, stackTraceStr);
+}
+#else
+bool ArkNativeEngine::BuildNativeAndJsBackStackTrace(std::string &stackTraceStr)
+{
+    HILOG_FATAL("ARK does not support dfx on windows");
+}
+#endif
+
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 bool ArkNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
 {
     return DFXJSNApi::StartHeapTracking(vm_, timeInterval, isVmMode);
 }
+#else
+bool ArkNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
+{
+    HILOG_FATAL("ARK does not support snapshot on windows");
+    return false;
+}
+#endif
 
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 bool ArkNativeEngine::StopHeapTracking(const std::string &filePath, DumpFormat dumpFormat)
 {
     if (dumpFormat == DumpFormat::JSON) {
@@ -870,7 +923,15 @@ bool ArkNativeEngine::StopHeapTracking(const std::string &filePath, DumpFormat d
     }
     return false;
 }
+#else
+bool ArkNativeEngine::StopHeapTracking(const std::string &filePath, DumpFormat dumpFormat)
+{
+    HILOG_FATAL("ARK does not support snapshot on windows");
+    return false;
+}
+#endif
 
+#ifndef WINDOWS_PLATFORM
 void ArkNativeEngine::PrintStatisticResult()
 {
     DFXJSNApi::PrintStatisticResult(vm_);
@@ -900,6 +961,40 @@ size_t ArkNativeEngine::GetHeapUsedSize()
 {
     return DFXJSNApi::GetHeapUsedSize(vm_);
 }
+#else
+void ArkNativeEngine::PrintStatisticResult()
+{
+    HILOG_FATAL("ARK does not support dfx on windows");
+}
+
+void ArkNativeEngine::StartRuntimeStat()
+{
+    HILOG_FATAL("ARK does not support dfx on windows");
+}
+
+void ArkNativeEngine::StopRuntimeStat()
+{
+    HILOG_FATAL("ARK does not support dfx on windows");
+}
+
+size_t ArkNativeEngine::GetArrayBufferSize()
+{
+    HILOG_FATAL("ARK does not support dfx on windows");
+    return 0;
+}
+
+size_t ArkNativeEngine::GetHeapTotalSize()
+{
+    HILOG_FATAL("ARK does not support dfx on windows");
+    return 0;
+}
+
+size_t ArkNativeEngine::GetHeapUsedSize()
+{
+    HILOG_FATAL("ARK does not support dfx on windows");
+    return 0;
+}
+#endif
 
 void ArkNativeEngine::RegisterUncaughtExceptionHandler(UncaughtExceptionCallback callback)
 {
