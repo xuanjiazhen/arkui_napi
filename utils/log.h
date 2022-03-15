@@ -33,7 +33,7 @@
 
 
 #define LOG_DOMAIN 0xD003900
-#define LOG_TAG "NAPI"
+#define LOG_TAG "NAPII"
 
 static constexpr OHOS::HiviewDFX::HiLogLabel LOG_LABEL = { LOG_CORE, LOG_DOMAIN, LOG_TAG };
 
