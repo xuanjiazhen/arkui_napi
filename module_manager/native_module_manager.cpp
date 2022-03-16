@@ -303,6 +303,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
     if (strcmp(lastNativeModule_->name, moduleName)) {
         HILOG_WARN("moduleName '%{public}s' does not match plugin's name '%{public}s'",
             moduleName, lastNativeModule_->name);
+        return nullptr;
     }
 
     if (!internal) {
@@ -347,11 +348,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleNam
 {
     NativeModule* result = nullptr;
     for (NativeModule* temp = firstNativeModule_; temp != nullptr; temp = temp->next) {
-        if (!strcasecmp(temp->name, moduleName)) {
-            if (strcmp(temp->name, moduleName)) {
-                HILOG_WARN("moduleName '%{public}s' does not match plugin's name '%{public}s'",
-                    moduleName, temp->name);
-            }
+        if (!strcmp(temp->name, moduleName)) {
             result = temp;
             break;
         }
