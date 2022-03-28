@@ -73,6 +73,9 @@ template("ace_napi_impl") {
     } else {
       external_deps += [ "startup:syspara" ]
     }
+
+    part_name = "napi"
+    subsystem_name = "ace"
   }
 }
 
