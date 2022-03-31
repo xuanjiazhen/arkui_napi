@@ -20,7 +20,8 @@
 
 #define __FILENAME__ strrchr(__FILE__, '/') + 1
 
-#if !defined(_WIN32) && !defined(__APPLE__) && !defined(ANDROID_PLATFORM) && !defined(WINDOWS_PLATFORM)
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(ANDROID_PLATFORM) && \
+    !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
 #include "hilog/log.h"
 
 #undef LOG_DOMAIN
