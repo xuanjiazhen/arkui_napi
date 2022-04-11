@@ -251,6 +251,7 @@ public:
 private:
     static void ExecuteWrap(NativeEngine* engine, void* data);
     static void CompleteWrap(NativeEngine* engine, int status, void* data);
+    static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, v8::Platform* platform, void* jsEngine);
 
     v8::Platform* platform_;
     v8::Isolate* isolate_;
