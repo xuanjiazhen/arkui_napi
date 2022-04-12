@@ -610,8 +610,18 @@ NativeValue* QuickJSNativeEngine::JSValueToNativeValue(QuickJSNativeEngine* engi
 void* QuickJSNativeEngine::CreateRuntime()
 {
     JSRuntime* runtime = JS_NewRuntime();
+    if (runtime == nullptr) {
+        return nullptr;
+    }
     JSContext* context = JS_NewContext(runtime);
-    return reinterpret_cast<void*>(new QuickJSNativeEngine(runtime, context, this));
+    if (context == nullptr) {
+        return nullptr;
+    }
+    QuickJSNativeEngine* qjsEngine = new QuickJSNativeEngine(runtime, context, this);
+    if (qjsEngine == nullptr) {
+        return nullptr;
+    }
+    return qjsEngine;
 }
 
 bool QuickJSNativeEngine::CheckTransferList(JSValue transferList)
