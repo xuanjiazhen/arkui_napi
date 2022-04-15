@@ -153,6 +153,7 @@ if (defined(ohos_lite)) {
       defines += [ "MAC_PLATFORM" ]
     } else if (is_cross_platform_build && defined(is_android) && is_android) {
       defines += [ "ANDROID_PLATFORM" ]
+      aosp_deps = [ "shared_library:liblog" ]
     } else {
       if (is_standard_system) {
         external_deps = [
@@ -263,6 +264,7 @@ if (defined(ohos_lite)) {
       deps = [
         "sample/native_module_calc:calc",
         "sample/native_module_calc:number",
+        "sample/native_module_callback:callback",
         "sample/native_module_demo:demo",
         "sample/native_module_netserver:netserver",
         "sample/native_module_storage:storage",
