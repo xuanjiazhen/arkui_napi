@@ -165,6 +165,8 @@ public:
 
     NativeValue* ValueToNativeValue(JSValueWrapper& value) override;
 
+    bool StartDebugger(const std::string &libraryPath, bool isDebugMode, int32_t instanceId);
+    bool StopDeugger();
     bool ExecuteJsBin(const std::string& fileName);
     panda::Global<panda::ObjectRef> LoadModuleByName(
         const std::string& moduleName, bool isAppModule, const std::string& param,
@@ -207,6 +209,7 @@ private:
     static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, void* jsEngine);
 
     EcmaVM* vm_ = nullptr;
+    bool debugFlag_ = false;
     std::string exceptionStr_;
     panda::LocalScope topScope_;
     NativeReference* promiseRejectCallbackRef_ { nullptr };
