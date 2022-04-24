@@ -121,6 +121,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine) : NativeEngine(jsEn
                         return scope.Escape(exports.ToLocal(ecmaVm));
                     }
                 }
+                HILOG_INFO("load module %{public}s success", module->name);
                 return scope.Escape(exports.ToLocal(ecmaVm));
             },
             nullptr,
