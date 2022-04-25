@@ -56,7 +56,8 @@ int main(int argc, char** argv)
     option.SetGcPoolSize(poolSize);
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     option.SetDebuggerLibraryPath("");
-    EcmaVM* vm = panda::JSNApi::CreateJSVM(option);
+    bool isSingleFwk = std::getenv("PANDA_RUNTIME") == nullptr && std::getenv("ARK_RUNTIME") == nullptr;
+    EcmaVM* vm = panda::JSNApi::CreateJSVM(option, isSingleFwk);
     if (vm == nullptr) {
         return 0;
     }
