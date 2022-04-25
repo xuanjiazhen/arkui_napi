@@ -602,7 +602,8 @@ NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsE
     option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::ERROR);
 #endif
     option.SetDebuggerLibraryPath("");
-    EcmaVM* vm = panda::JSNApi::CreateJSVM(option);
+    bool isSingleFwk = std::getenv("PANDA_RUNTIME") == nullptr && std::getenv("ARK_RUNTIME") == nullptr;
+    EcmaVM* vm = panda::JSNApi::CreateJSVM(option, isSingleFwk);
     if (vm == nullptr) {
         return nullptr;
     }
