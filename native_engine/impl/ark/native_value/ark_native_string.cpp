@@ -47,7 +47,8 @@ void ArkNativeString::GetCString(char* buffer, size_t size, size_t* length)
     if (buffer == nullptr) {
         *length = val->Utf8Length() - 1;
     } else if (size != 0) {
-        int copied = val->WriteUtf8(buffer, size) - 1;
+        // pass size-1 to reverse one space for '\0' at the end of buffer
+        int copied = val->WriteUtf8(buffer, size - 1) - 1;
         buffer[copied] = '\0';
         *length = copied;
     } else {
