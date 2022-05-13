@@ -217,7 +217,7 @@ if (defined(ohos_lite)) {
         if (napi_enable_memleak_debug) {
           defines += [ "ENABLE_MEMLEAK_DEBUG" ]
           deps += [ "//third_party/libunwind:libunwind" ]
-          external_deps += [ "startup_l2:syspara" ]
+          external_deps += [ "init:libbegetutil" ]
           include_dirs += [ "//third_party/libunwind/include" ]
         }
       }
