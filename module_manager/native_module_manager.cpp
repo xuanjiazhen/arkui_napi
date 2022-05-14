@@ -59,9 +59,9 @@ NativeModuleManager::~NativeModuleManager()
 
 NativeModuleManager* NativeModuleManager::GetInstance()
 {
-    if (NULL == instance_) {
+    if (instance_ == NULL) {
         instance_mutex_.lock();
-        if (NULL == instance_) {
+        if (instance_ == NULL) {
             instance_ = new NativeModuleManager();
         }
         instance_mutex_.unlock();
