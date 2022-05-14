@@ -57,9 +57,9 @@ if (target_os == "ios") {
   }
 } else {
   import("//build/ohos/ace/ace.gni")
-  
+
   base_output_path = get_label_info(":calc", "target_out_dir")
-  calc_obj_path = base_output_path + "/calc.o"  
+  calc_obj_path = base_output_path + "/calc.o"
   gen_js_obj("calc_js") {
     input = "calc.js"
     output = calc_obj_path
