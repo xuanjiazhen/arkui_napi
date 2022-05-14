@@ -16,8 +16,10 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
+#ifndef IOS_PLATFORM
 extern const char _binary_calc_js_start[];
 extern const char _binary_calc_js_end[];
+#endif
 
 /*
  * Sync callback
@@ -66,6 +68,7 @@ static napi_value Init(napi_env env, napi_value exports)
     return exports;
 }
 
+#ifndef IOS_PLATFORM
 extern "C" __attribute__((visibility("default"))) void NAPI_calc_GetJSCode(const char** buf, int* bufLen)
 {
     if (buf != nullptr) {
@@ -76,6 +79,7 @@ extern "C" __attribute__((visibility("default"))) void NAPI_calc_GetJSCode(const
         *bufLen = _binary_calc_js_end - _binary_calc_js_start;
     }
 }
+#endif
 
 /*
  * Module define
