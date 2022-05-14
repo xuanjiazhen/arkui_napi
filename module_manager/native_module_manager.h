@@ -80,7 +80,7 @@ private:
     NativeModule* lastNativeModule_ = nullptr;
     char* appLibPath_ = nullptr;
 
-    static NativeModuleManager instance_;
+    static NativeModuleManager *instance_;
     pthread_mutex_t mutex_;
 };
 
