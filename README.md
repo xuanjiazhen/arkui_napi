@@ -263,11 +263,11 @@ export default {
 
 ## Repositories Involved<a name="section3970193518214"></a>
 
-JS UI framework
+[JS UI framework](https://gitee.com/openharmony/JS UI framework/blob/master/README.md)
 
-arkui\_ace\_engine
+[arkui\_ace\_engine](https://gitee.com/openharmony/arkui_ace_engine_lite/blob/master/README.md)
 
-ace\_ace\_engine\_lite
+[ace\_ace\_engine\_lite](https://gitee.com/openharmony/ace_ace_engine_lite/blob/master/README.md)
 
 **arkui\_napi**
 
