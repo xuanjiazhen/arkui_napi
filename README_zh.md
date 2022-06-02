@@ -146,13 +146,13 @@ NAPI适合封装IO、CPU密集型、OS底层等能力并对外暴露JS接口，�
 
 我们要实现的JS接口原型是：
 
-```
+```js
 function getAppName(): string;
 ```
 
 以下是实现源码：
 
-```
+```cpp
 // app.cpp
 #include <stdio.h>
 #include <string.h>
@@ -250,7 +250,7 @@ ohos_shared_library("app") {
 
 应用中的JS测试代码：
 
-```
+```js
 import app from '@ohos.app'
 export default {
   testGetAppName() {
@@ -265,9 +265,9 @@ export default {
 
 JS UI框架子系统
 
-arkui\_ace\_engine
+[arkui\_ace\_engine](https://gitee.com/openharmony/arkui_ace_engine/blob/master/README_zh.md)
 
-arkui\_ace\_engine\_lite
+[arkui\_ace\_engine\_lite](https://gitee.com/openharmony/arkui_ace_engine_lite/blob/master/README_zh.md)
 
 **arkui\_napi**
 
