@@ -146,13 +146,13 @@ The following example describes how to use NAPI to develop a JS API for obtainin
 
 The prototype of the JS API is as follows:
 
-```
+```js
 function getAppName(): string;
 ```
 
 The implementation code of the JS API is as follows:
 
-```
+```cpp
 // app.cpp
 #include <stdio.h>
 #include <string.h>
@@ -250,7 +250,7 @@ ohos_shared_library("app") {
 
 Test code to run in your app is as follows:
 
-```
+```js
 import app from '@ohos.app'
 export default {
   testGetAppName() {
@@ -265,9 +265,9 @@ export default {
 
 JS UI framework
 
-arkui\_ace\_engine
+[arkui\_ace\_engine](https://gitee.com/openharmony/arkui_ace_engine/blob/master/README.md)
 
-ace\_ace\_engine\_lite
+[ace\_ace\_engine\_lite](https://gitee.com/openharmony/arkui_ace_engine_lite/blob/master/README.md)
 
 **arkui\_napi**
 
