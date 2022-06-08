@@ -115,6 +115,5 @@ group("systemtest") {
   testonly = true
   deps = [
     ":systemtestnapi",
-    ":test_quickjs_systemtest",
   ]
 }
