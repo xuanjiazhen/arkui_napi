@@ -17,6 +17,11 @@
 #include "native_api_internal.h"
 #include "native_engine/native_engine.h"
 #include "utils/log.h"
+#ifdef ENABLE_HITRACE
+#include "hitrace/trace.h"
+#include "hitrace_meter.h"
+#include <securec.h>
+#endif
 
 static constexpr int32_t MAX_THREAD_SAFE_COUNT = 128;
 
@@ -113,8 +118,19 @@ NAPI_EXTERN napi_status napi_queue_async_work(napi_env env, napi_async_work work
     CHECK_ARG(env, work);
 
     auto asyncWork = reinterpret_cast<NativeAsyncWork*>(work);
-
+#ifdef ENABLE_HITRACE
+	bool hasValidTraceId = false;
+	if (asyncWork->traceId_ && asyncWork->traceId_->IsValid()) {
+		StartTrace(HITRACE_TAG_ACE, "Napi queue, " + asyncWork->GetTraceDescription());
+		hasValidTraceId = true;
+	}
+#endif
     asyncWork->Queue();
+#ifdef ENABLE_HITRACE	
+	if (hasValidTraceId) {
+		FinishTrace(HITRACE_TAG_ACE);
+	}
+#endif
     return napi_status::napi_ok;
 }
 
@@ -309,7 +325,7 @@ NAPI_INNER_EXTERN napi_status napi_remove_async_cleanup_hook(napi_async_cleanup_
 }
 
 // Methods to manager threadsafe
-NAPI_INNER_EXTERN napi_status napi_create_threadsafe_function(napi_env env, napi_value func, napi_value async_resource,
+NAPI_EXTERN napi_status napi_create_threadsafe_function(napi_env env, napi_value func, napi_value async_resource,
     napi_value async_resource_name, size_t max_queue_size, size_t initial_thread_count, void* thread_finalize_data,
     napi_finalize thread_finalize_cb, void* context, napi_threadsafe_function_call_js call_js_cb,
     napi_threadsafe_function* result)
@@ -344,7 +360,7 @@ NAPI_INNER_EXTERN napi_status napi_create_threadsafe_function(napi_env env, napi
     return napi_status::napi_ok;
 }
 
-NAPI_INNER_EXTERN napi_status napi_call_threadsafe_function(
+NAPI_EXTERN napi_status napi_call_threadsafe_function(
     napi_threadsafe_function func, void* data, napi_threadsafe_function_call_mode is_blocking)
 {
     CHECK_ENV(func);
@@ -375,7 +391,7 @@ NAPI_INNER_EXTERN napi_status napi_call_threadsafe_function(
     return status;
 }
 
-NAPI_INNER_EXTERN napi_status napi_acquire_threadsafe_function(napi_threadsafe_function func)
+NAPI_EXTERN napi_status napi_acquire_threadsafe_function(napi_threadsafe_function func)
 {
     CHECK_ENV(func);
 
@@ -389,7 +405,7 @@ NAPI_INNER_EXTERN napi_status napi_acquire_threadsafe_function(napi_threadsafe_f
     return napi_status::napi_ok;
 }
 
-NAPI_INNER_EXTERN napi_status napi_release_threadsafe_function(
+NAPI_EXTERN napi_status napi_release_threadsafe_function(
     napi_threadsafe_function func, napi_threadsafe_function_release_mode mode)
 {
     CHECK_ENV(func);
@@ -405,7 +421,7 @@ NAPI_INNER_EXTERN napi_status napi_release_threadsafe_function(
     return napi_status::napi_ok;
 }
 
-NAPI_INNER_EXTERN napi_status napi_get_threadsafe_function_context(napi_threadsafe_function func, void** result)
+NAPI_EXTERN napi_status napi_get_threadsafe_function_context(napi_threadsafe_function func, void** result)
 {
     CHECK_ENV(func);
     CHECK_ENV(result);
@@ -416,7 +432,7 @@ NAPI_INNER_EXTERN napi_status napi_get_threadsafe_function_context(napi_threadsa
     return napi_status::napi_ok;
 }
 
-NAPI_INNER_EXTERN napi_status napi_ref_threadsafe_function(napi_env env, napi_threadsafe_function func)
+NAPI_EXTERN napi_status napi_ref_threadsafe_function(napi_env env, napi_threadsafe_function func)
 {
     CHECK_ENV(env);
     CHECK_ARG(env, func);
@@ -430,7 +446,7 @@ NAPI_INNER_EXTERN napi_status napi_ref_threadsafe_function(napi_env env, napi_th
     return napi_status::napi_ok;
 }
 
-NAPI_INNER_EXTERN napi_status napi_unref_threadsafe_function(napi_env env, napi_threadsafe_function func)
+NAPI_EXTERN napi_status napi_unref_threadsafe_function(napi_env env, napi_threadsafe_function func)
 {
     CHECK_ENV(env);
     CHECK_ARG(env, func);
