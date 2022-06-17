@@ -17,6 +17,11 @@
 #include "native_api_internal.h"
 #include "native_engine/native_engine.h"
 #include "utils/log.h"
+#ifdef ENABLE_HITRACE
+#include "hitrace/trace.h"
+#include "hitrace_meter.h"
+#include <securec.h>
+#endif
 
 static constexpr int32_t MAX_THREAD_SAFE_COUNT = 128;
 
@@ -113,8 +118,19 @@ NAPI_EXTERN napi_status napi_queue_async_work(napi_env env, napi_async_work work
     CHECK_ARG(env, work);
 
     auto asyncWork = reinterpret_cast<NativeAsyncWork*>(work);
-
+#ifdef ENABLE_HITRACE
+	bool hasValidTraceId = false;
+	if (asyncWork->traceId_ && asyncWork->traceId_->IsValid()) {
+		StartTrace(HITRACE_TAG_ACE, "Napi queue, " + asyncWork->GetTraceDescription());
+		hasValidTraceId = true;
+	}
+#endif
     asyncWork->Queue();
+#ifdef ENABLE_HITRACE	
+	if (hasValidTraceId) {
+		FinishTrace(HITRACE_TAG_ACE);
+	}
+#endif
     return napi_status::napi_ok;
 }
 

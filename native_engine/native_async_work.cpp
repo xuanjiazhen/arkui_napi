@@ -17,6 +17,8 @@
 
 #ifdef ENABLE_HITRACE
 #include "hitrace/trace.h"
+#include "hitrace_meter.h"
+#include <securec.h>
 #endif
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
@@ -25,20 +27,51 @@
 #include "napi/native_api.h"
 #include "native_engine.h"
 #include "utils/log.h"
+#include "dfx_dump_catcher.h"
 
 #ifdef ENABLE_CONTAINER_SCOPE
 using OHOS::Ace::ContainerScope;
 #endif
 
+#ifdef ENABLE_HITRACE
+constexpr size_t NAME_BUFFER_SIZE = 64;
+constexpr size_t TRACE_BUFFER_SIZE = 96;
+#endif
 NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
                                  NativeAsyncExecuteCallback execute,
                                  NativeAsyncCompleteCallback complete,
+								 NativeValue* asyncResourceName,
                                  void* data)
     : work_({ 0 }), engine_(engine), execute_(execute), complete_(complete), data_(data)
 {
     work_.data = this;
+	(void)asyncResourceName;
 #ifdef ENABLE_HITRACE
+	bool createdTraceId = false;
     traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(OHOS::HiviewDFX::HiTrace::GetId());
+	if (!traceId_ || !traceId_->IsValid()) {
+		traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(OHOS::HiviewDFX::HiTrace::Begin("New NativeAsyncWork", 0));
+		createdTraceId = true;
+	}
+	char name[NAME_BUFFER_SIZE] = {0};
+	if (asyncResourceName != nullptr) {
+	    auto nativeString = reinterpret_cast<NativeString*>(asyncResourceName->GetInterface(NativeString::INTERFACE_ID));
+        size_t strLength = 0;
+		nativeString->GetCString(name, NAME_BUFFER_SIZE, &strLength);
+	}
+	char traceStr[TRACE_BUFFER_SIZE] = {0};
+	(void)sprintf_s(traceStr, sizeof(traceStr), "name:%s, traceid:%lu, workid:%p", name, traceId_->GetChainId(), this);
+    traceDescription_.append(traceStr);
+	if (createdTraceId) {
+		OHOS::HiviewDFX::HiTrace::ClearId();
+	}
+
+	std::string stackTrace;
+	OHOS::HiviewDFX::DfxDumpCatcher dumplog;
+	if (!dumplog.DumpCatch(getpid(), gettid(), stackTrace)) {
+        HILOG_ERROR("HiChecker DumpStackTrace fail.");
+    }
+	HILOG_ERROR("Get loop failed zlxia %{public}s, %{public}p, stack%{public}s", name, asyncResourceName, stackTrace.c_str());
 #endif
 #ifdef ENABLE_CONTAINER_SCOPE
     containerScopeId_ = ContainerScope::CurrentId();
@@ -145,7 +178,9 @@ void NativeAsyncWork::AsyncWorkCallback(uv_work_t* req)
 #ifdef ENABLE_HITRACE
     if (that->traceId_ && that->traceId_->IsValid()) {
         OHOS::HiviewDFX::HiTrace::SetId(*(that->traceId_.get()));
+		StartTrace(HITRACE_TAG_ACE, "Napi execute, " + that->GetTraceDescription());
         that->execute_(that->engine_, that->data_);
+		FinishTrace(HITRACE_TAG_ACE);
         OHOS::HiviewDFX::HiTrace::ClearId();
         return;
     }
@@ -195,7 +230,10 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
 #ifdef ENABLE_HITRACE
     if (that->traceId_ && that->traceId_->IsValid()) {
         OHOS::HiviewDFX::HiTrace::SetId(*(that->traceId_.get()));
+	    StartTrace(HITRACE_TAG_ACE, "Napi complete, " + that->GetTraceDescription());
         that->complete_(that->engine_, nstatus, that->data_);
+		FinishTrace(HITRACE_TAG_ACE);
+		
         OHOS::HiviewDFX::HiTrace::ClearId();
         scopeManager->Close(scope);
         return;
@@ -203,4 +241,9 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
 #endif
     that->complete_(that->engine_, nstatus, that->data_);
     scopeManager->Close(scope);
+}
+
+std::string NativeAsyncWork::GetTraceDescription()
+{
+    return traceDescription_;
 }
