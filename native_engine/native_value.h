@@ -337,6 +337,16 @@ public:
     virtual size_t GetLength() = 0;
 };
 
+class NativeSet {
+public:
+    static const int INTERFACE_ID = 13;
+};
+
+class NativeMap {
+public:
+    static const int INTERFACE_ID = 14;
+};
+
 enum NativeErrorType {
     NATIVE_COMMON_ERROR,
     NATIVE_TYPE_ERROR,

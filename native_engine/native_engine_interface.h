@@ -279,6 +279,9 @@ public:
     // run script by path
     NativeValue* RunScript(const char* path);
     NativeEngine* GetRootNativeEngine(void);
+
+    virtual NativeValue* CreateSet(NativeEngine* engine) = 0;
+    virtual NativeValue* CreateMap(NativeEngine* engine) = 0;
 protected:
     void Init();
     void Deinit();
