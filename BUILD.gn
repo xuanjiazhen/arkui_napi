@@ -162,6 +162,7 @@ if (defined(ohos_lite)) {
       if (is_standard_system) {
         external_deps = [
           "hitrace_native:libhitrace",
+          "hitrace_native:hitrace_meter",
           "hiviewdfx_hilog_native:libhilog",
         ]
         defines += [ "ENABLE_HITRACE" ]
@@ -179,6 +180,7 @@ if (defined(ohos_lite)) {
     deps += [
       "//third_party/bounds_checking_function:libsec_static",
       "//third_party/libuv:uv",
+      "//base/hiviewdfx/faultloggerd/interfaces/innerkits/dump_catcher:lib_dfx_dump_catcher",
     ]
 
     # Use static libuv for cross build
