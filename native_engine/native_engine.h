@@ -125,6 +125,10 @@ public:
     virtual NativeAsyncWork* CreateAsyncWork(NativeAsyncExecuteCallback execute,
                                              NativeAsyncCompleteCallback complete,
                                              void* data);
+    virtual NativeAsyncWork* CreateAsyncWork(NativeValue* asyncResourceName,
+											 NativeAsyncExecuteCallback execute,
+                                             NativeAsyncCompleteCallback complete,
+                                             void* data);
     virtual NativeSafeAsyncWork* CreateSafeAsyncWork(NativeValue* func, NativeValue* asyncResource,
         NativeValue* asyncResourceName, size_t maxQueueSize, size_t threadCount, void* finalizeData,
         NativeFinalize finalizeCallback, void* context, NativeThreadSafeFunctionCallJs callJsCallback);
@@ -165,7 +169,6 @@ public:
     bool IsExceptionPending() const;
     NativeValue* GetAndClearLastException();
     void EncodeToUtf8(NativeValue* nativeValue, char* buffer, int32_t* written, size_t bufferSize, int32_t* nchars);
-    void EncodeToChinese(NativeValue* nativeValue, std::string& buffer, const std::string& encoding);
     NativeEngine(NativeEngine&) = delete;
     virtual NativeEngine& operator=(NativeEngine&) = delete;
 

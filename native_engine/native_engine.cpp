@@ -78,6 +78,14 @@ NativeAsyncWork* NativeEngine::CreateAsyncWork(NativeAsyncExecuteCallback execut
     return nativeEngineImpl_->CreateAsyncWork(this, execute, complete, data);
 }
 
+
+NativeAsyncWork* NativeEngine::CreateAsyncWork(NativeValue* asyncResourceName, NativeAsyncExecuteCallback execute,
+                                               NativeAsyncCompleteCallback complete,
+                                               void* data)
+{
+    return nativeEngineImpl_->CreateAsyncWork(this, asyncResourceName, execute, complete, data);
+}
+
 NativeSafeAsyncWork* NativeEngine::CreateSafeAsyncWork(NativeValue* func, NativeValue* asyncResource,
     NativeValue* asyncResourceName, size_t maxQueueSize, size_t threadCount, void* finalizeData,
     NativeFinalize finalizeCallback, void* context, NativeThreadSafeFunctionCallJs callJsCallback)
@@ -135,11 +143,6 @@ void NativeEngine::EncodeToUtf8(NativeValue* nativeValue,
                                 int32_t* nchars)
 {
     nativeEngineImpl_->EncodeToUtf8(nativeValue, buffer, written, bufferSize, nchars);
-}
-
-void NativeEngine::EncodeToChinese(NativeValue* nativeValue, std::string& buffer, const std::string& encoding)
-{
-    nativeEngineImpl_->EncodeToChinese(nativeValue, buffer, encoding);
 }
 
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
