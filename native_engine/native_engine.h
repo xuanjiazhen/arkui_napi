@@ -125,6 +125,10 @@ public:
     virtual NativeAsyncWork* CreateAsyncWork(NativeAsyncExecuteCallback execute,
                                              NativeAsyncCompleteCallback complete,
                                              void* data);
+    virtual NativeAsyncWork* CreateAsyncWork(NativeValue* asyncResourceName,
+											 NativeAsyncExecuteCallback execute,
+                                             NativeAsyncCompleteCallback complete,
+                                             void* data);
     virtual NativeSafeAsyncWork* CreateSafeAsyncWork(NativeValue* func, NativeValue* asyncResource,
         NativeValue* asyncResourceName, size_t maxQueueSize, size_t threadCount, void* finalizeData,
         NativeFinalize finalizeCallback, void* context, NativeThreadSafeFunctionCallJs callJsCallback);
