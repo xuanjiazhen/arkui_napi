@@ -22,6 +22,10 @@
 
 #include "utils/log.h"
 
+#ifdef ENABLE_HITRACE
+constexpr size_t NAME_BUFFER_SIZE = 64;
+#endif
+
 namespace {
 const char* g_errorMessages[] = {
     nullptr,
@@ -159,10 +163,17 @@ NativeAsyncWork* NativeEngineInterface::CreateAsyncWork(NativeEngine* engine, Na
 {
     (void)asyncResource;
     (void)asyncResourceName;
-    return new NativeAsyncWork(engine, execute, complete, asyncResourceName, data);
+    char name[NAME_BUFFER_SIZE] = {0};
+    if (asyncResourceName != nullptr) {
+        auto nativeString = reinterpret_cast<NativeString*>(
+            asyncResourceName->GetInterface(NativeString::INTERFACE_ID));
+        size_t strLength = 0;
+        nativeString->GetCString(name, NAME_BUFFER_SIZE, &strLength);
+    }
+    return new NativeAsyncWork(engine, execute, complete, name, data);
 }
 
-NativeAsyncWork* NativeEngineInterface::CreateAsyncWork(NativeEngine* engine, NativeValue* asyncResourceName,
+NativeAsyncWork* NativeEngineInterface::CreateAsyncWork(NativeEngine* engine, const std::string &asyncResourceName,
     NativeAsyncExecuteCallback execute, NativeAsyncCompleteCallback complete, void* data)
 {
     return new NativeAsyncWork(engine, execute, complete, asyncResourceName, data);
@@ -179,11 +190,7 @@ NativeSafeAsyncWork* NativeEngineInterface::CreateSafeAsyncWork(NativeEngine* en
 void NativeEngineInterface::InitAsyncWork(
     NativeEngine* engine, NativeAsyncExecuteCallback execute, NativeAsyncCompleteCallback complete, void* data)
 {
-    napi_value name = nullptr;
-    auto env = reinterpret_cast<napi_env>(engine);
-    napi_create_string_utf8(env, "InitAsyncWork", NAPI_AUTO_LENGTH, &name);
-    auto asyncResourceName = reinterpret_cast<NativeValue*>(name);
-    asyncWorker_ = std::make_unique<NativeAsyncWork>(engine, execute, complete, asyncResourceName, data);
+    asyncWorker_ = std::make_unique<NativeAsyncWork>(engine, execute, complete, "InitAsyncWork", data);
     asyncWorker_->Init();
 }
 
