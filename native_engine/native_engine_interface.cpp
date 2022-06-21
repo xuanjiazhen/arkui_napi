@@ -22,9 +22,7 @@
 
 #include "utils/log.h"
 
-#ifdef ENABLE_HITRACE
 constexpr size_t NAME_BUFFER_SIZE = 64;
-#endif
 
 namespace {
 const char* g_errorMessages[] = {
