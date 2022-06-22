@@ -123,6 +123,9 @@ if (defined(ohos_lite)) {
       sources += napi_sources
 
       defines = [ "NAPI_TEST" ]
+      if (target_cpu == "arm64") {
+        defines += [ "_ARM64_" ]
+      }
 
       deps = quickjs_deps
 
@@ -210,6 +213,7 @@ if (defined(ohos_lite)) {
     if (qjs_support) {
       deps += [
         ":test_quickjs_unittest",
+        ":test_quickjs_unittest_ext",
         ":test_quickjs_unittest_threadsafe",
       ]
     }

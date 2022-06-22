@@ -85,18 +85,13 @@ void NativeModuleManager::SetNativeEngine(std::string moduleName, NativeEngine* 
 const char* NativeModuleManager::GetModuleFileName(const char* moduleName, bool isAppModule)
 {
     HILOG_INFO("%{public}s, start. moduleName:%{public}s", __func__, moduleName);
-    NativeModule* module = FindNativeModuleByCache(moduleName);
-    if (module != nullptr) {
-        char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
-        if (!GetNativeModulePath(moduleName, isAppModule, nativeModulePath, NAPI_PATH_MAX)) {
-            HILOG_ERROR("%{public}s, get module filed", __func__);
-            return nullptr;
-        }
-        const char* loadPath = nativeModulePath[0];
-        return loadPath;
+    static char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
+    if (!GetNativeModulePath(moduleName, isAppModule, nativeModulePath, NAPI_PATH_MAX)) {
+        HILOG_ERROR("%{public}s, get module filed", __func__);
+        return nullptr;
     }
-    HILOG_ERROR("%{public}s, module is nullptr", __func__);
-    return nullptr;
+    const char* loadPath = nativeModulePath[0];
+    return loadPath;
 }
 
 void NativeModuleManager::Register(NativeModule* nativeModule)
