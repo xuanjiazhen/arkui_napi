@@ -36,6 +36,10 @@ public:
     NativeValue* GetPrototype() override;
 
     bool DefineProperty(NativePropertyDescriptor propertyDescriptor) override;
+    bool DefinePrimitiveProperty(NativePropertyDescriptor propertyDescriptor) override
+    {
+        return false;
+    }
 
     bool SetProperty(NativeValue* key, NativeValue* value) override;
     NativeValue* GetProperty(NativeValue* key) override;

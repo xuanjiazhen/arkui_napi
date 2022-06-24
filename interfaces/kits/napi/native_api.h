@@ -106,6 +106,11 @@ NAPI_INNER_EXTERN napi_status napi_create_string_utf16(napi_env env,
                                                        size_t length,
                                                        napi_value* result);
 
+NAPI_EXTERN napi_status napi_define_primitivate_properties(napi_env env,
+                                                           napi_value object,
+                                                           size_t property_count,
+                                                           const napi_property_descriptor* properties);
+
 NAPI_INNER_EXTERN napi_status napi_get_buffer_info(napi_env env,
                                                    napi_value value,
                                                    void** data,

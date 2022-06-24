@@ -167,6 +167,30 @@ bool ArkNativeObject::DefineProperty(NativePropertyDescriptor propertyDescriptor
     return result;
 }
 
+bool ArkNativeObject::DefinePrimitiveProperty(NativePropertyDescriptor propertyDescriptor)
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<ObjectRef> obj = value_;
+    bool result = false;
+    Local<StringRef> propertyName = StringRef::NewFromUtf8(vm, propertyDescriptor.utf8name);
+
+    NativeScopeManager* scopeManager = engine_->GetScopeManager();
+    if (scopeManager == nullptr) {
+        HILOG_ERROR("scope manager is null");
+        return false;
+    }
+    NativeScope* nativeScope = scopeManager->Open();
+
+    Global<JSValueRef> value = *(propertyDescriptor.value);
+
+    PropertyAttribute attr(value.ToLocal(vm), false, false, false);
+    result = obj->DefineProperty(vm, propertyName, attr);
+
+    scopeManager->Close(nativeScope);
+    return result;
+}
+
 bool ArkNativeObject::SetProperty(NativeValue* key, NativeValue* value)
 {
     auto vm = engine_->GetEcmaVm();
