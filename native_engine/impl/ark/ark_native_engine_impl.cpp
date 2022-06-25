@@ -37,6 +37,7 @@
 #include "native_value/ark_native_string.h"
 #include "native_value/ark_native_typed_array.h"
 #include "native_value/ark_native_date.h"
+#include "native_value/ark_native_set.h"
 
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #include "parameters.h"
@@ -59,6 +60,7 @@ using panda::SymbolRef;
 using panda::IntegerRef;
 using panda::DateRef;
 using panda::BigIntRef;
+using panda::SetRef;
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 
 ArkNativeEngineImpl::ArkNativeEngineImpl(
@@ -857,6 +859,8 @@ NativeValue* ArkNativeEngineImpl::ArkValueToNativeValue(ArkNativeEngine* engine,
         result = new ArkNativeObject(engine, value);
     } else if (value->IsBoolean()) {
         result = new ArkNativeBoolean(engine, value);
+    } else if (value->IsSet()) {
+        result = new ArkNativeSet(engine, value);
     }
     return result;
 }
@@ -909,6 +913,11 @@ NativeValue* ArkNativeEngineImpl::CreateBigWords(
     Local<JSValueRef> value = BigIntRef::CreateBigWords(vm_, sign, size, words);
 
     return new ArkNativeBigInt(static_cast<ArkNativeEngine*>(engine), value);
+}
+
+NativeValue* ArkNativeEngineImpl::CreateSet(NativeEngine* engine)
+{
+    return ArkValueToNativeValue(static_cast<ArkNativeEngine*>(engine), SetRef::New(vm_));
 }
 
 bool ArkNativeEngineImpl::TriggerFatalException(NativeValue* error)

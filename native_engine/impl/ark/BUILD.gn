@@ -56,6 +56,7 @@ template("ace_napi_impl") {
       "native_value/ark_native_function.cpp",
       "native_value/ark_native_number.cpp",
       "native_value/ark_native_object.cpp",
+      "native_value/ark_native_set.cpp",
       "native_value/ark_native_string.cpp",
       "native_value/ark_native_typed_array.cpp",
       "native_value/ark_native_value.cpp",

@@ -337,6 +337,11 @@ public:
     virtual size_t GetLength() = 0;
 };
 
+class NativeSet {
+public:
+    static const int INTERFACE_ID = 13;
+};
+
 enum NativeErrorType {
     NATIVE_COMMON_ERROR,
     NATIVE_TYPE_ERROR,
