@@ -106,6 +106,14 @@ NAPI_INNER_EXTERN napi_status napi_create_string_utf16(napi_env env,
                                                        size_t length,
                                                        napi_value* result);
 
+NAPI_EXTERN napi_status napi_create_set(napi_env env, napi_value* result);
+
+NAPI_EXTERN napi_status napi_add_set(napi_env env, napi_value object, napi_value value);
+
+NAPI_EXTERN napi_status napi_delete_set(napi_env env, napi_value object, napi_value value, bool* result);
+
+NAPI_EXTERN napi_status napi_get_value_set(napi_env env, napi_value object, int entry, napi_value* result);
+
 NAPI_INNER_EXTERN napi_status napi_get_buffer_info(napi_env env,
                                                    napi_value value,
                                                    void** data,
