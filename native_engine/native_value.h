@@ -72,6 +72,7 @@ enum NativeValueType {
     NATIVE_FUNCTION,
     NATIVE_EXTERNAL,
     NATIVE_BIGINT,
+    NATIVE_SET,
 };
 
 enum NativeThreadSafeFunctionCallMode {
@@ -340,6 +341,10 @@ public:
 class NativeSet {
 public:
     static const int INTERFACE_ID = 13;
+
+    virtual void Add(NativeValue* value) = 0;
+    virtual bool Delete(NativeValue* value) = 0;
+    virtual NativeValue* GetValue(int entry) = 0;
 };
 
 enum NativeErrorType {

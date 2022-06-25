@@ -45,3 +45,11 @@ bool ArkNativeSet::Delete(NativeValue* value)
     Global<JSValueRef> val = *value;
     return obj->Delete(vm, val.ToLocal(vm));
 }
+
+NativeValue* ArkNativeSet::GetValue(int entry)
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<SetRef> obj = value_;
+    return ArkNativeEngine::ArkValueToNativeValue(engine_, obj->GetValue(vm, entry));
+}

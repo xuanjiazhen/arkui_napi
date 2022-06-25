@@ -411,6 +411,8 @@ NativeValue* ArkNativeEngine::ArkValueToNativeValue(ArkNativeEngine* engine, Loc
         result = new ArkNativeObject(engine, value);
     } else if (value->IsBoolean()) {
         result = new ArkNativeBoolean(engine, value);
+    } else if (value->IsSet()) {
+        result = new ArkNativeSet(engine, value);
     }
     return result;
 }

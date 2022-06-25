@@ -24,8 +24,9 @@ public:
     ~ArkNativeSet() override;
 
     void* GetInterface(int interfaceId) override;
-    void Add(NativeValue* value);
-    bool Delete(NativeValue* value);
+    void Add(NativeValue* value) override;
+    bool Delete(NativeValue* value) override;
+    NativeValue* GetValue(int entry) override;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_NATIVE_VALUE_ARK_NATIVE_SET_H */
