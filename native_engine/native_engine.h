@@ -248,6 +248,7 @@ public:
     void SetInstanceData(void* data, NativeFinalize finalize_cb, void* hint);
     void GetInstanceData(void** data);
 
+    virtual NativeValue* CreateSet() = 0;
 protected:
     void *jsEngine_;
 

@@ -144,6 +144,7 @@ public:
     bool TriggerFatalException(NativeValue* error) override;
     NativeValue* CreateDate(double value) override;
     NativeValue* CreateBigWords(int sign_bit, size_t word_count, const uint64_t* words) override;
+    NativeValue* CreateSet() override;
     bool AdjustExternalMemory(int64_t ChangeInBytes, int64_t* AdjustedValue) override;
 
     // Detect performance to obtain cpuprofiler file

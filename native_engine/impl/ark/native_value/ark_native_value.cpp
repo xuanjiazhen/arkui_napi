@@ -74,6 +74,8 @@ NativeValueType ArkNativeValue::TypeOf()
         result = NATIVE_BIGINT;
     } else if (value->IsObject()) {
         result = NATIVE_OBJECT;
+    } else if (value->IsSet()) {
+        result = NATIVE_SET;
     } else {
         result = NATIVE_UNDEFINED;
     }

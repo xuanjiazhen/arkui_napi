@@ -411,6 +411,8 @@ NativeValue* ArkNativeEngine::ArkValueToNativeValue(ArkNativeEngine* engine, Loc
         result = new ArkNativeObject(engine, value);
     } else if (value->IsBoolean()) {
         result = new ArkNativeBoolean(engine, value);
+    } else if (value->IsSet()) {
+        result = new ArkNativeSet(engine, value);
     }
     return result;
 }
@@ -455,6 +457,12 @@ NativeValue* ArkNativeEngine::CreateBigWords(int sign_bit, size_t word_count, co
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->CreateBigWords(this, sign_bit, word_count, words);
+}
+
+NativeValue* ArkNativeEngine::CreateSet()
+{
+    auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
+    return arkNativeEngineImpl->CreateSet(this);
 }
 
 bool ArkNativeEngine::TriggerFatalException(NativeValue* error)

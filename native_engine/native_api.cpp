@@ -2367,6 +2367,70 @@ NAPI_INNER_EXTERN napi_status napi_get_value_bigint_words(
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_create_set(napi_env env, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, result);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto resultValue = engine->CreateSet();
+
+    *result = reinterpret_cast<napi_value>(resultValue);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_add_set(napi_env env, napi_value object, napi_value value)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, object);
+    CHECK_ARG(env, value);
+
+    auto nativeValue = reinterpret_cast<NativeValue*>(object);
+    auto setValue = reinterpret_cast<NativeValue*>(value);
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->TypeOf() == NATIVE_SET, napi_object_expected);
+
+    auto nativeSet = reinterpret_cast<NativeSet*>(nativeValue->GetInterface(NativeSet::INTERFACE_ID));
+    nativeSet->Add(setValue);
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_delete_set(napi_env env, napi_value object, napi_value value, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, object);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = reinterpret_cast<NativeValue*>(object);
+    auto setValue = reinterpret_cast<NativeValue*>(value);
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->TypeOf() == NATIVE_SET, napi_object_expected);
+
+    auto nativeSet = reinterpret_cast<NativeSet*>(nativeValue->GetInterface(NativeSet::INTERFACE_ID));
+    *result = nativeSet->Delete(setValue);
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_value_set(napi_env env, napi_value object, int entry, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, object);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = reinterpret_cast<NativeValue*>(object);
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->TypeOf() == NATIVE_SET, napi_object_expected);
+
+    auto nativeSet = reinterpret_cast<NativeSet*>(nativeValue->GetInterface(NativeSet::INTERFACE_ID));
+    auto resultValue = nativeArray->GetValue(entry);
+    *result = reinterpret_cast<napi_value>(resultValue);
+
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_run_script_path(napi_env env, const char* path, napi_value* result)
 {
     CHECK_ENV(env);
