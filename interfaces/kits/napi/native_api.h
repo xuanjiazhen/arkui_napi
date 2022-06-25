@@ -106,6 +106,11 @@ NAPI_INNER_EXTERN napi_status napi_create_string_utf16(napi_env env,
                                                        size_t length,
                                                        napi_value* result);
 
+NAPI_EXTERN napi_status napi_define_primitivate_properties(napi_env env,
+                                                           napi_value object,
+                                                           size_t property_count,
+                                                           const napi_property_descriptor* properties);
+
 NAPI_INNER_EXTERN napi_status napi_get_buffer_info(napi_env env,
                                                    napi_value value,
                                                    void** data,
@@ -200,34 +205,6 @@ NAPI_INNER_EXTERN napi_status napi_close_callback_scope(napi_env env,
 NAPI_INNER_EXTERN napi_status napi_adjust_external_memory(napi_env env,
                                                           int64_t change_in_bytes,
                                                           int64_t* adjusted_value);
-
-NAPI_INNER_EXTERN napi_status napi_create_threadsafe_function(napi_env env,
-                                                              napi_value func,
-                                                              napi_value async_resource,
-                                                              napi_value async_resource_name,
-                                                              size_t max_queue_size,
-                                                              size_t initial_thread_count,
-                                                              void* thread_finalize_data,
-                                                              napi_finalize thread_finalize_cb,
-                                                              void* context,
-                                                              napi_threadsafe_function_call_js call_js_cb,
-                                                              napi_threadsafe_function* result);
-
-NAPI_INNER_EXTERN napi_status napi_get_threadsafe_function_context(napi_threadsafe_function func,
-                                                                   void** result);
-
-NAPI_INNER_EXTERN napi_status napi_call_threadsafe_function(napi_threadsafe_function func,
-                                                            void* data,
-                                                            napi_threadsafe_function_call_mode is_blocking);
-
-NAPI_INNER_EXTERN napi_status napi_acquire_threadsafe_function(napi_threadsafe_function func);
-
-NAPI_INNER_EXTERN napi_status napi_release_threadsafe_function(napi_threadsafe_function func,
-                                                               napi_threadsafe_function_release_mode mode);
-
-NAPI_INNER_EXTERN napi_status napi_unref_threadsafe_function(napi_env env, napi_threadsafe_function func);
-
-NAPI_INNER_EXTERN napi_status napi_ref_threadsafe_function(napi_env env, napi_threadsafe_function func);
 
 NAPI_INNER_EXTERN napi_status node_api_get_module_file_name(napi_env env, const char** result);
 

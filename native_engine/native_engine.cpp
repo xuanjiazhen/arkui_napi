@@ -71,11 +71,11 @@ NativeAsyncWork* NativeEngine::CreateAsyncWork(NativeValue* asyncResource, Nativ
     return nativeEngineImpl_->CreateAsyncWork(this, asyncResource, asyncResourceName, execute, complete, data);
 }
 
-NativeAsyncWork* NativeEngine::CreateAsyncWork(NativeAsyncExecuteCallback execute,
+NativeAsyncWork* NativeEngine::CreateAsyncWork(const std::string &asyncResourceName, NativeAsyncExecuteCallback execute,
                                                NativeAsyncCompleteCallback complete,
                                                void* data)
 {
-    return nativeEngineImpl_->CreateAsyncWork(this, execute, complete, data);
+    return nativeEngineImpl_->CreateAsyncWork(this, asyncResourceName, execute, complete, data);
 }
 
 NativeSafeAsyncWork* NativeEngine::CreateSafeAsyncWork(NativeValue* func, NativeValue* asyncResource,
@@ -135,6 +135,11 @@ void NativeEngine::EncodeToUtf8(NativeValue* nativeValue,
                                 int32_t* nchars)
 {
     nativeEngineImpl_->EncodeToUtf8(nativeValue, buffer, written, bufferSize, nchars);
+}
+
+void NativeEngine::EncodeToChinese(NativeValue* nativeValue, std::string& buffer, const std::string& encoding)
+{
+    nativeEngineImpl_->EncodeToChinese(nativeValue, buffer, encoding);
 }
 
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
