@@ -554,6 +554,7 @@ bool ArkNativeEngine::Throw(NativeValue* error)
 
 bool ArkNativeEngine::Throw(NativeErrorType type, const char* code, const char* message)
 {
+    HILOG_ERROR("hzq ArkNativeEngine::Throw 111 %{public}s", message);
     LocalScope scope(vm_);
     Local<JSValueRef> error(JSValueRef::Undefined(vm_));
     switch (type) {
@@ -575,7 +576,7 @@ bool ArkNativeEngine::Throw(NativeErrorType type, const char* code, const char* 
         Local<ObjectRef> errorObj(error);
         errorObj->Set(vm_, codeKey, codeValue);
     }
-
+    HILOG_ERROR("hzq ArkNativeEngine::Throw 222 %{public}s", message);
     panda::JSNApi::ThrowException(vm_, error);
     lastException_ = ArkValueToNativeValue(this, error);
     return true;
