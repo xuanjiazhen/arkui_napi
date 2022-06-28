@@ -45,6 +45,8 @@
 #include "securec.h"
 #include "utils/log.h"
 
+#include "hitrace_meter.h"
+
 using panda::JsiRuntimeCallInfo;
 using panda::BooleanRef;
 using panda::ObjectRef;
@@ -125,7 +127,9 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                             HILOG_ERROR("init module failed");
                             return scope.Escape(exports.ToLocal(ecmaVm));
                         }
+                        StartTrace(HITRACE_TAG_ACE, "NAPI module registerCallback " + std::string(module->name));
                         module->registerCallback(arkNativeEngine, exportObject);
+                        FinishTrace(HITRACE_TAG_ACE);
                         exports = *exportObject;
                         engineImpl->loadedModules_[module] = Global<JSValueRef>(ecmaVm, exports.ToLocal(ecmaVm));
                         HILOG_INFO("load module %{public}s success", module->name);
