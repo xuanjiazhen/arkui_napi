@@ -451,6 +451,18 @@ NativeValue* ArkNativeEngine::CreateDate(double value)
     return arkNativeEngineImpl->CreateDate(this, value);
 }
 
+NativeValue* ArkNativeEngine::CreateSet()
+{
+    auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
+    return arkNativeEngineImpl->CreateSet(this);
+}
+
+NativeValue* ArkNativeEngine::CreateMap()
+{
+    auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
+    return arkNativeEngineImpl->CreateMap(this);
+}
+
 NativeValue* ArkNativeEngine::CreateBigWords(int sign_bit, size_t word_count, const uint64_t* words)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);

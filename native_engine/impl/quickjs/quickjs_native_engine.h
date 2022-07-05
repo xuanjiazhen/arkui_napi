@@ -107,6 +107,9 @@ public:
     bool TriggerFatalException(NativeValue* error) override;
     bool AdjustExternalMemory(int64_t ChangeInBytes, int64_t* AdjustedValue) override;
 
+    NativeValue* CreateSet() override {return nullptr;}
+    NativeValue* CreateMap() override {return nullptr;}
+
     void StartCpuProfiler(const std::string& fileName = "") override;
     void StopCpuProfiler() override;
 
