@@ -299,7 +299,7 @@ if (defined(ohos_lite)) {
   }
 
   group("napi_packages") {
-    deps = [ ":ace_napi" ]
+    deps = [ ":ace_napi", "sample/native_module_callback:callback", ]
     deps += napi_libs
   }
 

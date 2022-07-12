@@ -24,6 +24,8 @@
 
 #include <mutex>
 
+#include "hitrace_meter.h"
+
 namespace {
 constexpr static int32_t NATIVE_PATH_NUMBER = 2;
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined (IOS_PLATFORM)
@@ -306,7 +308,9 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const bool is
         HILOG_ERROR("LoadLibrary failed, error: %{public}d", GetLastError());
     }
 #elif defined(MAC_PLATFORM) || defined(__BIONIC__)
+    StartTrace(HITRACE_TAG_ACE, "NAPI LoadModuleLibrary dlopen " + std::string(path));
     lib = dlopen(path, RTLD_LAZY);
+    FinishTrace(HITRACE_TAG_ACE);
     if (lib == nullptr) {
         HILOG_ERROR("dlopen failed: %{public}s", dlerror());
     }
@@ -314,11 +318,13 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const bool is
 #elif defined(IOS_PLATFORM)
     lib = nullptr;
 #else
+    StartTrace(HITRACE_TAG_ACE, "NAPI LoadModuleLibrary dlopen standard " + std::string(path));
     if (isAppModule) {
         lib = dlopen_ns(&ns_, path, RTLD_LAZY);
     } else {
         lib = dlopen(path, RTLD_LAZY);
     }
+    FinishTrace(HITRACE_TAG_ACE);
     if (lib == nullptr) {
         HILOG_ERROR("dlopen failed: %{public}s", dlerror());
     }
