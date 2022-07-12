@@ -801,6 +801,35 @@ NAPI_EXTERN napi_status napi_define_properties(napi_env env,
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_define_primitivate_properties(napi_env env,
+                                                           napi_value object,
+                                                           size_t property_count,
+                                                           const napi_property_descriptor* properties)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, object);
+    CHECK_ARG(env, properties);
+
+    auto nativeValue = reinterpret_cast<NativeValue*>(object);
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->TypeOf() == NATIVE_OBJECT || nativeValue->TypeOf() == NATIVE_FUNCTION,
+        napi_object_expected);
+
+    NativeObject* nativeObject = reinterpret_cast<NativeObject*>(nativeValue->GetInterface(NativeObject::INTERFACE_ID));
+
+    for (size_t i = 0; i < property_count; i++) {
+        NativePropertyDescriptor property;
+
+        property.utf8name = properties[i].utf8name;
+        property.value = reinterpret_cast<NativeValue*>(properties[i].value);
+        property.attributes = (uint32_t)properties[i].attributes;
+
+        nativeObject->DefinePrimitiveProperty(property);
+    }
+
+    return napi_clear_last_error(env);
+}
+
 // Methods to work with Arrays
 NAPI_EXTERN napi_status napi_is_array(napi_env env, napi_value value, bool* result)
 {

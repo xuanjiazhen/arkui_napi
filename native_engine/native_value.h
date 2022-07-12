@@ -226,6 +226,8 @@ public:
 
     virtual bool DefineProperty(NativePropertyDescriptor propertyDescriptor) = 0;
 
+    virtual bool DefinePrimitiveProperty(NativePropertyDescriptor propertyDescriptor) = 0;
+
     virtual bool SetProperty(NativeValue* key, NativeValue* value) = 0;
     virtual NativeValue* GetProperty(NativeValue* key) = 0;
     virtual bool HasProperty(NativeValue* key) = 0;
