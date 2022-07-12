@@ -29,6 +29,22 @@ constexpr static int32_t NATIVE_PATH_NUMBER = 2;
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined (IOS_PLATFORM)
 constexpr static char DL_NAMESPACE[] = "ace";
 #endif
+#ifdef __BIONIC__
+enum {
+    ANDROID_NAMESPACE_TYPE_ISOLATED = 1,
+};
+
+using ANDROID_CREATE_NAMESPACE = android_namespace_t* (*)(const char* name,
+                                                          const char* ldLibraryPath,
+                                                          const char* defaultLibraryPath,
+                                                          uint64_t type,
+                                                          const char* permittedWhenIsolatedPath,
+                                                          struct android_namespace_t* parent);
+using ANDROID_LINK_NAMESPACE = bool (*)(struct android_namespace_t* from,
+                                        struct android_namespace_t* to,
+                                        const char* sharedLibsSonames);
+using ANDROID_GET_EXPORTED_NAMESPACE = struct android_namespace_t* (*)(const char* name);
+#endif
 } // namespace
 
 NativeModuleManager* NativeModuleManager::instance_ = NULL;
@@ -135,11 +151,97 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
 #endif
 }
 
+#ifdef __BIONIC__
+char* NativeModuleManager::FormatString(const char* allowList[], int32_t allowListLength)
+{
+    int32_t sharedLibsSonamesLength = 1;
+    for (int32_t i = 0; i < allowListLength; i++) {
+        sharedLibsSonamesLength += strlen(allowList[i]) + 1;
+    }
+    char* sharedLibsSonames = new char[sharedLibsSonamesLength];
+    int32_t cursor = 0;
+    for (int32_t i = 0; i < allowListLength; i++) {
+        if (sprintf_s(sharedLibsSonames + cursor, sharedLibsSonamesLength - cursor, "%s:", allowList[i]) == -1) {
+            delete[] sharedLibsSonames;
+            return nullptr;
+        }
+        cursor += strlen(allowList[i]) + 1;
+    }
+    sharedLibsSonames[cursor] = '\0';
+    return sharedLibsSonames;
+}
+#endif
+
 void NativeModuleManager::CreateLdNamespace(const char* lib_ld_path)
 {
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM)
     dlns_init(&ns_, DL_NAMESPACE);
     dlns_create(&ns_, lib_ld_path);
+#endif
+#ifdef __BIONIC__
+    HILOG_INFO("create ld namespace, path: %{public}s", lib_ld_path);
+    auto sym_android_create_namespace =
+        reinterpret_cast<ANDROID_CREATE_NAMESPACE>(dlsym(RTLD_DEFAULT, "android_create_namespace"));
+    if (sym_android_create_namespace == nullptr) {
+        HILOG_ERROR("android_create_namespace not found");
+        return;
+    }
+
+    auto sym_android_link_namespaces =
+        reinterpret_cast<ANDROID_LINK_NAMESPACE>(dlsym(RTLD_DEFAULT, "android_link_namespaces"));
+    if (sym_android_link_namespaces == nullptr) {
+        HILOG_ERROR("sym_android_link_namespaces not found");
+        return;
+    }
+
+    auto sym_android_get_exported_namespace =
+        reinterpret_cast<ANDROID_GET_EXPORTED_NAMESPACE>(dlsym(RTLD_DEFAULT, "android_get_exported_namespace"));
+    if (sym_android_get_exported_namespace == nullptr) {
+        HILOG_ERROR("sym_android_get_exported_namespace not found");
+        return;
+    }
+
+    ldns_ = sym_android_create_namespace("napi ld", lib_ld_path, lib_ld_path, ANDROID_NAMESPACE_TYPE_ISOLATED,
+                                         lib_ld_path, nullptr);
+    if (ldns_ == nullptr) {
+        HILOG_ERROR("android_create_namespace failed");
+        return;
+    }
+
+    const char* allowList[] = {
+        // bionic library
+        "libc.so",
+        "libdl.so",
+        "libm.so",
+        "libz.so",
+        // z library
+        "libace_napi.z.so",
+        "libace_ndk.z.so",
+        "libdeviceinfo_ndk.z.so",
+        "libEGL.so",
+        "libGLESv3.so",
+        "libhiappevent_ndk.z.so",
+        "libhilog_ndk.z.so",
+        "libnative_drawing.so",
+        "libnative_window.so",
+        "libOpenSLES.so",
+        "libpixelmap_ndk.z.so",
+        "librawfile.z.so",
+        "libuv.so",
+        // adaptor library
+        "libohosadaptor.so",
+    };
+
+    size_t allowListLength = sizeof(allowList) / sizeof(char*);
+    char* sharedLibsSonames = FormatString(allowList, allowListLength);
+    // use default namespace when second parameter is null
+    bool linkResult = sym_android_link_namespaces(ldns_, nullptr, sharedLibsSonames);
+    if (!linkResult) {
+        HILOG_ERROR("android_link_namespaces failed");
+        return;
+    }
+    delete[] sharedLibsSonames;
+    HILOG_INFO("create ld namespace success");
 #endif
 }
 
@@ -306,9 +408,23 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const bool is
         HILOG_ERROR("LoadLibrary failed, error: %{public}d", GetLastError());
     }
 #elif defined(MAC_PLATFORM) || defined(__BIONIC__)
-    lib = dlopen(path, RTLD_LAZY);
+#if defined(__BIONIC__)
+    if (isAppModule) {
+        const android_dlextinfo dlextinfo = {
+            .flags = ANDROID_DLEXT_USE_NAMESPACE,
+            .library_namespace = ldns_,
+        };
+        lib = android_dlopen_ext(path, RTLD_LAZY, &dlextinfo);
+        if (lib == nullptr) {
+            HILOG_ERROR("android_dlopen_ext failed: %{public}s", dlerror());
+        }
+    }
+#endif
     if (lib == nullptr) {
-        HILOG_ERROR("dlopen failed: %{public}s", dlerror());
+        lib = dlopen(path, RTLD_LAZY);
+        if (lib == nullptr) {
+            HILOG_ERROR("dlopen failed: %{public}s", dlerror());
+        }
     }
 
 #elif defined(IOS_PLATFORM)

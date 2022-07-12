@@ -28,6 +28,9 @@ using LIBHANDLE = HMODULE;
 #define LIBFREE FreeLibrary
 #define LIBSYM GetProcAddress
 #else
+#ifdef __BIONIC__
+#include <android/dlext.h>
+#endif
 #include <dlfcn.h>
 using LIBHANDLE = void*;
 #define LIBFREE dlclose
@@ -78,6 +81,10 @@ private:
     void CreateLdNamespace(const char* lib_ld_path);
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM)
     Dl_namespace ns_;
+#endif
+#ifdef __BIONIC__
+    char* FormatString(const char* allowList[], int32_t allowListLength);
+    android_namespace_t* ldns_ = nullptr;
 #endif
     NativeModule* firstNativeModule_ = nullptr;
     NativeModule* lastNativeModule_ = nullptr;
