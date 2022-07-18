@@ -15,10 +15,13 @@
 
 #include "quickjs_native_external.h"
 
-QuickJSNativeExternal::QuickJSNativeExternal(QuickJSNativeEngine* engine,
-                                             void* value,
-                                             NativeFinalize callback,
-                                             void* hint)
+#include <new>
+
+#include "native_value/quickjs_native_value.h"
+#include "quickjs_headers.h"
+
+QuickJSNativeExternal::QuickJSNativeExternal(
+    QuickJSNativeEngine* engine, void* value, NativeFinalize callback, void* hint)
     : QuickJSNativeValue(engine, JS_UNDEFINED)
 {
     NativeObjectInfo* info = NativeObjectInfo::CreateNewInstance();
@@ -43,8 +46,7 @@ QuickJSNativeExternal::QuickJSNativeExternal(QuickJSNativeEngine* engine,
 
 QuickJSNativeExternal::QuickJSNativeExternal(QuickJSNativeEngine* engine, JSValue value)
     : QuickJSNativeValue(engine, value)
-{
-}
+{}
 
 QuickJSNativeExternal::~QuickJSNativeExternal() {}
 

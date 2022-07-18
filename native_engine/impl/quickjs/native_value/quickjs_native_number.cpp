@@ -15,29 +15,26 @@
 
 #include "quickjs_native_number.h"
 
+#include "native_value/quickjs_native_value.h"
+
 QuickJSNativeNumber::QuickJSNativeNumber(QuickJSNativeEngine* engine, JSValue value) : QuickJSNativeValue(engine, value)
-{
-}
+{}
 
 QuickJSNativeNumber::QuickJSNativeNumber(QuickJSNativeEngine* engine, int32_t value)
     : QuickJSNativeNumber(engine, JS_NewInt32(engine->GetContext(), value))
-{
-}
+{}
 
 QuickJSNativeNumber::QuickJSNativeNumber(QuickJSNativeEngine* engine, uint32_t value)
     : QuickJSNativeNumber(engine, JS_NewInt32(engine->GetContext(), value))
-{
-}
+{}
 
 QuickJSNativeNumber::QuickJSNativeNumber(QuickJSNativeEngine* engine, int64_t value)
     : QuickJSNativeNumber(engine, JS_NewInt64(engine->GetContext(), value))
-{
-}
+{}
 
 QuickJSNativeNumber::QuickJSNativeNumber(QuickJSNativeEngine* engine, double value)
     : QuickJSNativeNumber(engine, JS_NewFloat64(engine->GetContext(), value))
-{
-}
+{}
 
 QuickJSNativeNumber::~QuickJSNativeNumber() {}
 

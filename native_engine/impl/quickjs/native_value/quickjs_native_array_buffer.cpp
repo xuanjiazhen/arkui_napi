@@ -13,11 +13,18 @@
  * limitations under the License.
  */
 
-#include "native_engine/native_engine.h"
 #include "quickjs_native_array_buffer.h"
 
+#include <new>
+
+#include "native_engine/native_engine.h"
+#include "native_value/quickjs_native_object.h"
+
 struct QuickJsArrayCallback {
-    static QuickJsArrayCallback* CreateNewInstance() { return new QuickJsArrayCallback(); }
+    static QuickJsArrayCallback* CreateNewInstance()
+    {
+        return new QuickJsArrayCallback();
+    }
     NativeEngine* engine = nullptr;
     NativeFinalize cb = nullptr;
     void* hint = nullptr;
@@ -25,8 +32,7 @@ struct QuickJsArrayCallback {
 
 QuickJSNativeArrayBuffer::QuickJSNativeArrayBuffer(QuickJSNativeEngine* engine, JSValue value)
     : QuickJSNativeObject(engine, value)
-{
-}
+{}
 
 QuickJSNativeArrayBuffer::QuickJSNativeArrayBuffer(QuickJSNativeEngine* engine, uint8_t** data, size_t length)
     : QuickJSNativeArrayBuffer(engine, JS_NULL)
@@ -36,11 +42,8 @@ QuickJSNativeArrayBuffer::QuickJSNativeArrayBuffer(QuickJSNativeEngine* engine, 
     *data = JS_GetArrayBuffer(engine_->GetContext(), &size, value_);
 }
 
-QuickJSNativeArrayBuffer::QuickJSNativeArrayBuffer(QuickJSNativeEngine* engine,
-                                                   uint8_t* data,
-                                                   size_t length,
-                                                   NativeFinalize cb,
-                                                   void* hint)
+QuickJSNativeArrayBuffer::QuickJSNativeArrayBuffer(
+    QuickJSNativeEngine* engine, uint8_t* data, size_t length, NativeFinalize cb, void* hint)
     : QuickJSNativeObject(engine, JS_NULL)
 {
     auto cbinfo = QuickJsArrayCallback::CreateNewInstance();

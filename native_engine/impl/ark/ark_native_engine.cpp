@@ -15,33 +15,31 @@
 
 #include "ark_native_engine.h"
 
-#include "ark_native_deferred.h"
-#include "ark_native_engine_impl.h"
-#include "ark_native_reference.h"
+#include <new>
 
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
 #endif
 
+#include "ark_native_engine_impl.h"
 #include "native_engine/native_property.h"
-
 #include "native_value/ark_native_array.h"
 #include "native_value/ark_native_array_buffer.h"
 #include "native_value/ark_native_big_int.h"
 #include "native_value/ark_native_boolean.h"
 #include "native_value/ark_native_data_view.h"
+#include "native_value/ark_native_date.h"
 #include "native_value/ark_native_external.h"
 #include "native_value/ark_native_function.h"
 #include "native_value/ark_native_number.h"
 #include "native_value/ark_native_object.h"
 #include "native_value/ark_native_string.h"
 #include "native_value/ark_native_typed_array.h"
-#include "native_value/ark_native_date.h"
+#include "native_value/ark_native_value.h"
 
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #include "parameters.h"
 #endif
-#include "securec.h"
 #include "utils/log.h"
 
 ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine) : NativeEngine(jsEngine)
@@ -69,17 +67,15 @@ const EcmaVM* ArkNativeEngine::GetEcmaVm() const
     return arkNativeEngineImpl->GetEcmaVm();
 }
 
-panda::Global<panda::ObjectRef> ArkNativeEngine::GetModuleFromName(
-    const std::string& moduleName, bool isAppModule, const std::string& id, const std::string& param,
-    const std::string& instanceName, void** instance)
+panda::Global<panda::ObjectRef> ArkNativeEngine::GetModuleFromName(const std::string& moduleName, bool isAppModule,
+    const std::string& id, const std::string& param, const std::string& instanceName, void** instance)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->GetModuleFromName(this, moduleName, isAppModule, id, param, instanceName, instance);
 }
 
-panda::Global<panda::ObjectRef> ArkNativeEngine::LoadModuleByName(
-    const std::string& moduleName, bool isAppModule, const std::string& param,
-    const std::string& instanceName, void* instance)
+panda::Global<panda::ObjectRef> ArkNativeEngine::LoadModuleByName(const std::string& moduleName, bool isAppModule,
+    const std::string& param, const std::string& instanceName, void* instance)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->LoadModuleByName(this, moduleName, isAppModule, param, instanceName, instance);
@@ -217,10 +213,8 @@ NativeValue* ArkNativeEngine::CreateArrayBufferExternal(void* value, size_t leng
     return arkNativeEngineImpl->CreateArrayBufferExternal(this, value, length, cb, hint);
 }
 
-NativeValue* ArkNativeEngine::CreateTypedArray(NativeTypedArrayType type,
-                                               NativeValue* value,
-                                               size_t length,
-                                               size_t offset)
+NativeValue* ArkNativeEngine::CreateTypedArray(
+    NativeTypedArrayType type, NativeValue* value, size_t length, size_t offset)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->CreateTypedArray(this, type, value, length, offset);
@@ -269,24 +263,21 @@ void ArkNativeEngine::SetPackagePath(const std::string& packagePath)
     return arkNativeEngineImpl->SetPackagePath(packagePath);
 }
 
-NativeValue* ArkNativeEngine::DefineClass(const char* name,
-                                          NativeCallback callback,
-                                          void* data,
-                                          const NativePropertyDescriptor* properties,
-                                          size_t length)
+NativeValue* ArkNativeEngine::DefineClass(
+    const char* name, NativeCallback callback, void* data, const NativePropertyDescriptor* properties, size_t length)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->DefineClass(this, name, callback, data, properties, length);
 }
 
-NativeValue* ArkNativeEngine::CreateInstance(NativeValue* constructor, NativeValue* const *argv, size_t argc)
+NativeValue* ArkNativeEngine::CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->CreateInstance(this, constructor, argv, argc);
 }
 
-NativeReference* ArkNativeEngine::CreateReference(NativeValue* value, uint32_t initialRefcount,
-    NativeFinalize callback, void* data, void* hint)
+NativeReference* ArkNativeEngine::CreateReference(
+    NativeValue* value, uint32_t initialRefcount, NativeFinalize callback, void* data, void* hint)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->CreateReference(this, value, initialRefcount, callback, data, hint);
@@ -517,7 +508,7 @@ bool ArkNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
     return arkNativeEngineImpl->StartHeapTracking(timeInterval, isVmMode);
 }
 
-bool ArkNativeEngine::StopHeapTracking(const std::string &filePath)
+bool ArkNativeEngine::StopHeapTracking(const std::string& filePath)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->StopHeapTracking(filePath);

@@ -16,6 +16,13 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_STRING_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_STRING_H
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
+
+#include "native_value.h"
+#include "quickjs.h"
+#include "quickjs_native_engine.h"
 #include "quickjs_native_value.h"
 
 class QuickJSNativeString : public QuickJSNativeValue, public NativeString {
@@ -32,7 +39,10 @@ public:
     void GetCString16(char16_t* buffer, size_t size, size_t* length) override;
     size_t GetLength() override;
     size_t EncodeWriteUtf8(char* buffer, size_t bufferSize, int32_t* nchars) override;
-    void EncodeWriteChinese(std::string& buffer, const char* encoding) override { return; }
+    void EncodeWriteChinese(std::string& buffer, const char* encoding) override
+    {
+        return;
+    }
 
 private:
     char16_t* Utf8ToUtf16(const char* utf8Str, size_t u8len, char16_t* u16str, size_t u16len);

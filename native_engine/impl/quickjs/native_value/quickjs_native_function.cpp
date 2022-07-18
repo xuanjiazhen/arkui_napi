@@ -14,22 +14,23 @@
  */
 
 #include "quickjs_native_function.h"
-#include "native_engine/native_value.h"
-#include "quickjs_native_engine.h"
-#include "quickjs_native_number.h"
-#include "quickjs_native_object.h"
 
+#include <new>
+
+#include "native_engine.h"
+#include "native_engine/native_value.h"
+#include "quickjs_headers.h"
+#include "quickjs_native_engine.h"
+#include "quickjs_native_object.h"
+#include "scope_manager/native_scope_manager.h"
 #include "utils/log.h"
 
 QuickJSNativeFunction::QuickJSNativeFunction(QuickJSNativeEngine* engine, JSValue value)
     : QuickJSNativeObject(engine, value)
-{
-}
+{}
 
-QuickJSNativeFunction::QuickJSNativeFunction(QuickJSNativeEngine* engine,
-                                             const char* name,
-                                             NativeCallback cb,
-                                             void* value)
+QuickJSNativeFunction::QuickJSNativeFunction(
+    QuickJSNativeEngine* engine, const char* name, NativeCallback cb, void* value)
     : QuickJSNativeObject(engine, JS_UNDEFINED)
 {
     NativeFunctionInfo* info = NativeFunctionInfo::CreateNewInstance();
@@ -39,14 +40,15 @@ QuickJSNativeFunction::QuickJSNativeFunction(QuickJSNativeEngine* engine,
         info->data = value;
     }
 
-    JSValue functionContext = JS_NewExternal(engine_->GetContext(), info,
-                                             [](JSContext* ctx, void* data, void* hint) {
-                                                 auto info = (NativeFunctionInfo*)data;
-                                                 if (info != nullptr) {
-                                                     delete info;
-                                                 }
-                                             },
-                                             nullptr);
+    JSValue functionContext = JS_NewExternal(
+        engine_->GetContext(), info,
+        [](JSContext* ctx, void* data, void* hint) {
+            auto info = (NativeFunctionInfo*)data;
+            if (info != nullptr) {
+                delete info;
+            }
+        },
+        nullptr);
 
     value_ = JS_NewCFunctionData(engine_->GetContext(), JSCFunctionData, 0, 0, 1, &functionContext);
     JS_DefinePropertyValueStr(engine_->GetContext(), value_, "_functionContext", functionContext, 0);
@@ -56,16 +58,12 @@ QuickJSNativeFunction::~QuickJSNativeFunction() {}
 
 void* QuickJSNativeFunction::GetInterface(int interfaceId)
 {
-    return (NativeFunction::INTERFACE_ID == interfaceId) ? (NativeFunction *)this
+    return (NativeFunction::INTERFACE_ID == interfaceId) ? (NativeFunction*)this
                                                          : QuickJSNativeObject::GetInterface(interfaceId);
 }
 
-JSValue QuickJSNativeFunction::JSCFunctionData(JSContext* ctx,
-                                               JSValueConst thisVal,
-                                               int argc,
-                                               JSValueConst* argv,
-                                               int magic,
-                                               JSValue* funcData)
+JSValue QuickJSNativeFunction::JSCFunctionData(
+    JSContext* ctx, JSValueConst thisVal, int argc, JSValueConst* argv, int magic, JSValue* funcData)
 {
     auto info = (NativeFunctionInfo*)JS_ExternalToNativeObject(ctx, *funcData);
     if (info == nullptr) {
@@ -74,7 +72,7 @@ JSValue QuickJSNativeFunction::JSCFunctionData(JSContext* ctx,
     }
 
     NativeValue* value = nullptr;
-    NativeCallbackInfo callbackInfo = {0};
+    NativeCallbackInfo callbackInfo = { 0 };
 
     QuickJSNativeEngine* engine = (QuickJSNativeEngine*)info->engine;
     if (engine == nullptr) {
@@ -103,7 +101,7 @@ JSValue QuickJSNativeFunction::JSCFunctionData(JSContext* ctx,
     value = info->callback(info->engine, &callbackInfo);
 
     if (callbackInfo.argv != nullptr) {
-        delete []callbackInfo.argv;
+        delete[] callbackInfo.argv;
     }
 
     JSValue result = JS_UNDEFINED;
