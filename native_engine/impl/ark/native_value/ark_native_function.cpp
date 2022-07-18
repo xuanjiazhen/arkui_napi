@@ -113,6 +113,13 @@ void* ArkNativeFunction::GetInterface(int interfaceId)
                                                          : ArkNativeObject::GetInterface(interfaceId);
 }
 
+void* ArkNativeFunction::GetNativePtrCallBack(void* data)
+{
+    auto info = reinterpret_cast<NativeFunctionInfo*>(data);
+    auto cb = reinterpret_cast<void*>(info->callback);
+    return cb;
+}
+
 Local<JSValueRef> ArkNativeFunction::NativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
 {
     EcmaVM *vm = runtimeInfo->GetVM();
