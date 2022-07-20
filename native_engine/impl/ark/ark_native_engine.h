@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "ark_headers.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_engine/native_deferred.h"

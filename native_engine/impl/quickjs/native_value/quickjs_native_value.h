@@ -18,6 +18,7 @@
 
 #include "native_engine/native_value.h"
 #include "quickjs.h"
+#include "quickjs_headers.h"
 #include "quickjs_native_engine.h"
 
 class QuickJSNativeValue : public NativeValue {

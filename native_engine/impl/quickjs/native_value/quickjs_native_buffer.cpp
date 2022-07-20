@@ -15,8 +15,6 @@
 
 #include "quickjs_native_buffer.h"
 
-#include <new>
-
 #include "native_engine.h"
 #include "native_value/quickjs_native_object.h"
 

@@ -17,13 +17,15 @@
 #define FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H
 
 #include <cstdint>
+#include <dirent.h>
+#include <functional>
 #include <map>
-#include <pthread.h>
-#include "utils/macros.h"
+#include <string>
 
+#include "utils/macros.h"
 #ifdef WINDOWS_PLATFORM
-#include <winsock2.h>
 #include <windows.h>
+#include <winsock2.h>
 using LIBHANDLE = HMODULE;
 #define LIBFREE FreeLibrary
 #define LIBSYM GetProcAddress
@@ -61,8 +63,8 @@ public:
 
     void Register(NativeModule* nativeModule);
     void SetAppLibPath(const char* appLibPath);
-    NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule, bool internal = false,
-                                   bool isArk = false);
+    NativeModule* LoadNativeModule(
+        const char* moduleName, const char* path, bool isAppModule, bool internal = false, bool isArk = false);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     const char* GetModuleFileName(const char* moduleName, bool isAppModule);
 
@@ -70,8 +72,8 @@ private:
     NativeModuleManager();
     virtual ~NativeModuleManager();
 
-    bool GetNativeModulePath(const char* moduleName, bool isAppModule, char nativeModulePath[][NAPI_PATH_MAX],
-        int32_t pathLength) const;
+    bool GetNativeModulePath(
+        const char* moduleName, bool isAppModule, char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength) const;
     NativeModule* FindNativeModuleByDisk(const char* moduleName, bool internal, const bool isAppModule, bool isArk);
     NativeModule* FindNativeModuleByCache(const char* moduleName);
     LIBHANDLE LoadModuleLibrary(const char* path, const bool isAppModule);
@@ -83,7 +85,7 @@ private:
     NativeModule* lastNativeModule_ = nullptr;
     char* appLibPath_ = nullptr;
 
-    static NativeModuleManager *instance_;
+    static NativeModuleManager* instance_;
     pthread_mutex_t mutex_;
 
     std::map<std::string, NativeEngine*> nativeEngineList_;
