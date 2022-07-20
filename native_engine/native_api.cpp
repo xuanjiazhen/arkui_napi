@@ -1292,7 +1292,7 @@ NAPI_EXTERN napi_status napi_throw_error(napi_env env, const char* code, const c
     CHECK_ARG(env, msg);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
-
+    HILOG_ERROR("hzq napi_throw_error %{public}s", msg);
     engine->Throw(NativeErrorType::NATIVE_COMMON_ERROR, code, msg);
     return napi_clear_last_error(env);
 }
