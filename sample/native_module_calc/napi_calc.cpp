@@ -13,8 +13,13 @@
  * limitations under the License.
  */
 
-#include "napi/native_api.h"
+#include <cstddef>
+
+#include "js_native_api.h"
+#include "js_native_api_types.h"
+#include "napi/native_common.h"
 #include "napi/native_node_api.h"
+#include "node_api.h"
 
 extern const char _binary_calc_js_start[];
 extern const char _binary_calc_js_end[];

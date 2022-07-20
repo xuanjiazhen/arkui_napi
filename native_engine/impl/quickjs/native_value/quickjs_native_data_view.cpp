@@ -14,17 +14,19 @@
  */
 
 #include "quickjs_native_data_view.h"
-
-#include <cstdint>
-
-#include "native_value/quickjs_native_object.h"
+#include "native_engine/native_engine.h"
+#include "quickjs_headers.h"
+#include "quickjs_native_array_buffer.h"
 
 QuickJSNativeDataView::QuickJSNativeDataView(QuickJSNativeEngine* engine, JSValue value)
     : QuickJSNativeObject(engine, value)
-{}
+{
+}
 
-QuickJSNativeDataView::QuickJSNativeDataView(
-    QuickJSNativeEngine* engine, NativeValue* value, size_t length, size_t offset)
+QuickJSNativeDataView::QuickJSNativeDataView(QuickJSNativeEngine* engine,
+                                             NativeValue* value,
+                                             size_t length,
+                                             size_t offset)
     : QuickJSNativeDataView(engine, JS_NULL)
 {
     JSValue global = JS_GetGlobalObject(engine_->GetContext());

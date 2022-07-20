@@ -15,15 +15,15 @@
 
 #include "quickjs_native_boolean.h"
 
-#include "native_value/quickjs_native_value.h"
-
 QuickJSNativeBoolean::QuickJSNativeBoolean(QuickJSNativeEngine* engine, JSValue value)
     : QuickJSNativeValue(engine, value)
-{}
+{
+}
 
 QuickJSNativeBoolean::QuickJSNativeBoolean(QuickJSNativeEngine* engine, bool value)
     : QuickJSNativeBoolean(engine, value ? JS_TRUE : JS_FALSE)
-{}
+{
+}
 
 QuickJSNativeBoolean::~QuickJSNativeBoolean() {}
 

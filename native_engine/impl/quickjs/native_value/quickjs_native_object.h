@@ -16,13 +16,6 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_OBJECT_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_OBJECT_H
 
-#include <cstdint>
-
-#include "js_native_api_types.h"
-#include "native_property.h"
-#include "native_value.h"
-#include "quickjs.h"
-#include "quickjs_native_engine.h"
 #include "quickjs_native_value.h"
 
 class QuickJSNativeObject : public QuickJSNativeValue, public NativeObject {
@@ -33,7 +26,7 @@ public:
 
     void* GetInterface(int interfaceId) override;
     bool ConvertToNativeBindingObject(
-        void* engine, DetachCallback detach, AttachCallback attach, void* object, void* hint) override;
+        void* engine, DetachCallback detach, AttachCallback attach, void *object, void *hint) override;
     void SetNativePointer(void* pointer, NativeFinalize cb, void* hint) override;
     void SetNativeBindingPointer(
         void* enginePointer, void* objPointer, void* hint, void* detachData, void* attachData) override;
@@ -43,6 +36,7 @@ public:
     void* GetNativePointer() override;
 
     NativeValue* GetPropertyNames() override;
+    NativeValue* GetEnumerablePropertyNames() override;
 
     NativeValue* GetPrototype() override;
 

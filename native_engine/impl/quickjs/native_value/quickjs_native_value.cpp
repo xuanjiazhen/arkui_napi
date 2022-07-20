@@ -15,13 +15,10 @@
 
 #include "native_value/quickjs_native_value.h"
 
-#include <new>
-
-#include "native_value.h"
-#include "quickjs_headers.h"
 #include "quickjs_native_boolean.h"
 #include "quickjs_native_number.h"
-#include "scope_manager/native_scope_manager.h"
+#include "quickjs_native_object.h"
+#include "quickjs_native_string.h"
 
 QuickJSNativeValue::QuickJSNativeValue(QuickJSNativeEngine* engine, JSValue value)
 {

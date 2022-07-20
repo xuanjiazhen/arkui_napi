@@ -12,14 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "quickjs_native_buffer.h"
 
-#include <new>
-
+<<<<<<< HEAD
 #include "native_engine.h"
 #include "native_value/quickjs_native_object.h"
 
+=======
+>>>>>>> parent of 6ccd14f... iwyu head file
 struct QuickJSBufferCallback {
     static QuickJSBufferCallback* CreateNewInstance()
     {

@@ -15,27 +15,28 @@
 
 #include "quickjs_native_string.h"
 
-#include <cstring>
-
-#include "native_value/quickjs_native_value.h"
 #include "securec.h"
 #include "utils/log.h"
 
 QuickJSNativeString::QuickJSNativeString(QuickJSNativeEngine* engine, JSValue value) : QuickJSNativeValue(engine, value)
-{}
+{
+}
 
 QuickJSNativeString::QuickJSNativeString(QuickJSNativeEngine* engine, JSAtom value)
     : QuickJSNativeString(engine, JS_AtomToString(engine->GetContext(), value))
-{}
+{
+}
 
 QuickJSNativeString::QuickJSNativeString(QuickJSNativeEngine* engine, const char* value, size_t length)
     : QuickJSNativeString(engine, JS_NewStringLen(engine->GetContext(), value, length))
-{}
+{
+}
 
 QuickJSNativeString::QuickJSNativeString(QuickJSNativeEngine* engine, const char16_t* value, size_t length)
     : QuickJSNativeString(
           engine, JS_NewString16(engine->GetContext(), reinterpret_cast<const uint16_t*>(value), length))
-{}
+{
+}
 
 QuickJSNativeString::~QuickJSNativeString() {}
 
@@ -149,7 +150,7 @@ char16_t* QuickJSNativeString::Utf8ToUtf16(const char* utf8Str, size_t u8len, ch
     const char* u8end = utf8Str + u8len;
     const char* u8cur = utf8Str;
     const char16_t* u16end = u16str + u16len - 1;
-    constexpr uint8_t offset = 10;
+    constexpr uint8_t  offset = 10;
     char16_t* u16cur = u16str;
 
     while ((u8cur < u8end) && (u16cur < u16end)) {

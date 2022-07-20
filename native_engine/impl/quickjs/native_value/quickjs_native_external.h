@@ -16,9 +16,6 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_EXTERNAL_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_EXTERNAL_H
 
-#include "native_value.h"
-#include "quickjs.h"
-#include "quickjs_native_engine.h"
 #include "quickjs_native_value.h"
 
 class QuickJSNativeExternal : public QuickJSNativeValue, public NativeExternal {

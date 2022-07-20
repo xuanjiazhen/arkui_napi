@@ -16,18 +16,16 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_TYPED_ARRAY_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_TYPED_ARRAY_H
 
-#include <cstddef>
-
-#include "native_value.h"
-#include "quickjs.h"
-#include "quickjs_native_engine.h"
 #include "quickjs_native_object.h"
 
 class QuickJSNativeTypedArray : public QuickJSNativeObject, public NativeTypedArray {
 public:
     explicit QuickJSNativeTypedArray(QuickJSNativeEngine* engine, JSValue value);
-    QuickJSNativeTypedArray(
-        QuickJSNativeEngine* engine, NativeTypedArrayType type, NativeValue* value, size_t length, size_t offset);
+    QuickJSNativeTypedArray(QuickJSNativeEngine* engine,
+                            NativeTypedArrayType type,
+                            NativeValue* value,
+                            size_t length,
+                            size_t offset);
     ~QuickJSNativeTypedArray() override;
 
     void* GetInterface(int interfaceId) override;

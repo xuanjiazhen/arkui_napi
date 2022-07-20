@@ -16,19 +16,12 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 
-#include <cstddef>
-#include <cstdint>
-#include <string>
-#include <vector>
+#include <unordered_map>
 
+#include "ark_headers.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "native_engine/native_deferred.h"
 #include "native_engine/native_engine.h"
-#include "native_engine/native_engine_interface.h"
-#include "native_engine/native_property.h"
-#include "native_engine/native_reference.h"
-#include "native_engine/native_value.h"
 
 using panda::JSValueRef;
 using panda::Local;

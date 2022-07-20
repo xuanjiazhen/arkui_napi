@@ -17,8 +17,7 @@
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_QUICKJS_NATIVE_DEFERRED_H
 
 #include "native_engine/native_deferred.h"
-#include "native_value.h"
-#include "quickjs.h"
+#include "quickjs_headers.h"
 #include "quickjs_native_engine.h"
 
 class QuickJSNativeDeferred : public NativeDeferred {

@@ -13,13 +13,16 @@
  * limitations under the License.
  */
 
-#include <cstdint>
 #include <cstring>
-#include <new>
 
+<<<<<<< HEAD
 #include "libbf.h"
+#include "native_engine/native_value.h"
 #include "quickjs-libc.h"
 #include "quickjs.h"
+=======
+#include "native_engine/native_value.h"
+>>>>>>> parent of 6ccd14f... iwyu head file
 #include "quickjs_headers.h"
 #include "utils/log.h"
 

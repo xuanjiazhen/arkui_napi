@@ -15,17 +15,18 @@
 
 #include "quickjs_native_typed_array.h"
 
-#include <cstdint>
-#include <cstring>
-
-#include "native_value/quickjs_native_object.h"
+#include <string.h>
 
 QuickJSNativeTypedArray::QuickJSNativeTypedArray(QuickJSNativeEngine* engine, JSValue value)
     : QuickJSNativeObject(engine, value)
-{}
+{
+}
 
-QuickJSNativeTypedArray::QuickJSNativeTypedArray(
-    QuickJSNativeEngine* engine, NativeTypedArrayType type, NativeValue* value, size_t length, size_t offset)
+QuickJSNativeTypedArray::QuickJSNativeTypedArray(QuickJSNativeEngine* engine,
+                                                 NativeTypedArrayType type,
+                                                 NativeValue* value,
+                                                 size_t length,
+                                                 size_t offset)
     : QuickJSNativeTypedArray(engine, JS_NULL)
 {
     JSValue jsGlobal = JS_GetGlobalObject(engine_->GetContext());

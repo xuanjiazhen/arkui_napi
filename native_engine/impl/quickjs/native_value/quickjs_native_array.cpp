@@ -14,11 +14,12 @@
  */
 
 #include "quickjs_native_array.h"
-
-#include "native_value/quickjs_native_object.h"
+#include "native_engine/native_engine.h"
+#include "quickjs_headers.h"
 
 QuickJSNativeArray::QuickJSNativeArray(QuickJSNativeEngine* engine, JSValue value) : QuickJSNativeObject(engine, value)
-{}
+{
+}
 
 QuickJSNativeArray::QuickJSNativeArray(QuickJSNativeEngine* engine, uint32_t length)
     : QuickJSNativeArray(engine, JS_NULL)
