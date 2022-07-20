@@ -15,15 +15,16 @@
 
 #include "quickjs_native_date.h"
 
-QuickJSNativeDate::QuickJSNativeDate(QuickJSNativeEngine* engine, JSValue value)
-    : QuickJSNativeObject(engine, value) {}
+#include "native_value/quickjs_native_object.h"
+
+QuickJSNativeDate::QuickJSNativeDate(QuickJSNativeEngine* engine, JSValue value) : QuickJSNativeObject(engine, value) {}
 
 QuickJSNativeDate::~QuickJSNativeDate() {}
 
 void* QuickJSNativeDate::GetInterface(int interfaceId)
 {
     return (NativeDate::INTERFACE_ID == interfaceId) ? (NativeDate*)this
-        : QuickJSNativeObject::GetInterface(interfaceId);
+                                                     : QuickJSNativeObject::GetInterface(interfaceId);
 }
 
 double QuickJSNativeDate::GetTime()

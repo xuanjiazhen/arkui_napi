@@ -16,8 +16,12 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ENGINE_H
 
+#include <cstdarg>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
-#include <unordered_set>
+#include <mutex>
+#include <string>
 #include <vector>
 
 #include "callback_scope_manager/native_callback_scope_manager.h"
@@ -27,11 +31,11 @@
 #include "native_engine/native_reference.h"
 #include "native_engine/native_safe_async_work.h"
 #include "native_engine/native_value.h"
+#include "native_engine_interface.h"
 #include "native_property.h"
 #include "reference_manager/native_reference_manager.h"
 #include "scope_manager/native_scope_manager.h"
 #include "utils/macros.h"
-#include "native_engine_interface.h"
 
 using PostTask = std::function<void(bool needSync)>;
 using CleanEnv = std::function<void()>;
@@ -91,44 +95,32 @@ public:
     virtual NativeValue* CreateArrayBuffer(void** value, size_t length) = 0;
     virtual NativeValue* CreateArrayBufferExternal(void* value, size_t length, NativeFinalize cb, void* hint) = 0;
 
-    virtual NativeValue* CreateTypedArray(NativeTypedArrayType type,
-                                          NativeValue* value,
-                                          size_t length,
-                                          size_t offset) = 0;
+    virtual NativeValue* CreateTypedArray(
+        NativeTypedArrayType type, NativeValue* value, size_t length, size_t offset) = 0;
     virtual NativeValue* CreateDataView(NativeValue* value, size_t length, size_t offset) = 0;
     virtual NativeValue* CreatePromise(NativeDeferred** deferred) = 0;
     virtual void SetPromiseRejectCallback(NativeReference* rejectCallbackRef, NativeReference* checkCallbackRef) = 0;
     virtual NativeValue* CreateError(NativeValue* code, NativeValue* message) = 0;
 
-    virtual NativeValue* CallFunction(NativeValue* thisVar,
-                                      NativeValue* function,
-                                      NativeValue* const *argv,
-                                      size_t argc) = 0;
+    virtual NativeValue* CallFunction(
+        NativeValue* thisVar, NativeValue* function, NativeValue* const* argv, size_t argc) = 0;
     virtual NativeValue* RunScript(NativeValue* script) = 0;
     virtual NativeValue* RunScriptPath(const char* path) = 0;
     virtual NativeValue* RunBufferScript(std::vector<uint8_t>& buffer) = 0;
     virtual NativeValue* RunActor(std::vector<uint8_t>& buffer, const char* descriptor) = 0;
-    virtual NativeValue* DefineClass(const char* name,
-                                     NativeCallback callback,
-                                     void* data,
-                                     const NativePropertyDescriptor* properties,
-                                     size_t length) = 0;
+    virtual NativeValue* DefineClass(const char* name, NativeCallback callback, void* data,
+        const NativePropertyDescriptor* properties, size_t length) = 0;
 
-    virtual NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const *argv, size_t argc) = 0;
+    virtual NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc) = 0;
 
     virtual NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount,
         NativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) = 0;
 
-    virtual NativeAsyncWork* CreateAsyncWork(NativeValue* asyncResource,
-                                             NativeValue* asyncResourceName,
-                                             NativeAsyncExecuteCallback execute,
-                                             NativeAsyncCompleteCallback complete,
-                                             void* data);
+    virtual NativeAsyncWork* CreateAsyncWork(NativeValue* asyncResource, NativeValue* asyncResourceName,
+        NativeAsyncExecuteCallback execute, NativeAsyncCompleteCallback complete, void* data);
 
-    virtual NativeAsyncWork* CreateAsyncWork(const std::string &asyncResourceName,
-                                             NativeAsyncExecuteCallback execute,
-                                             NativeAsyncCompleteCallback complete,
-                                             void* data);
+    virtual NativeAsyncWork* CreateAsyncWork(const std::string& asyncResourceName, NativeAsyncExecuteCallback execute,
+        NativeAsyncCompleteCallback complete, void* data);
     virtual NativeSafeAsyncWork* CreateSafeAsyncWork(NativeValue* func, NativeValue* asyncResource,
         NativeValue* asyncResourceName, size_t maxQueueSize, size_t threadCount, void* finalizeData,
         NativeFinalize finalizeCallback, void* context, NativeThreadSafeFunctionCallJs callJsCallback);
@@ -154,14 +146,14 @@ public:
     virtual bool IsSuspended() = 0;
     virtual bool CheckSafepoint() = 0;
 
-    virtual void DumpHeapSnapshot(const std::string &path, bool isVmMode = true,
-        DumpFormat dumpFormat = DumpFormat::JSON) = 0;
-    virtual void DumpHeapSnapshot(bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
-        bool isPrivate = false) = 0;
-    virtual bool BuildNativeAndJsStackTrace(std::string &stackTraceStr) = 0;
-    virtual bool BuildJsStackTrace(std::string &stackTraceStr) = 0;
+    virtual void DumpHeapSnapshot(
+        const std::string& path, bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON) = 0;
+    virtual void DumpHeapSnapshot(
+        bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON, bool isPrivate = false) = 0;
+    virtual bool BuildNativeAndJsStackTrace(std::string& stackTraceStr) = 0;
+    virtual bool BuildJsStackTrace(std::string& stackTraceStr) = 0;
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true) = 0;
-    virtual bool StopHeapTracking(const std::string &filePath) = 0;
+    virtual bool StopHeapTracking(const std::string& filePath) = 0;
 
     NativeErrorExtendedInfo* GetLastError();
     void SetLastError(int errorCode, uint32_t engineErrorCode = 0, void* engineReserved = nullptr);
@@ -196,8 +188,8 @@ public:
     virtual void SetInitWorkerFunc(InitWorkerFunc func);
     virtual void SetGetAssetFunc(GetAssetFunc func);
     virtual void SetOffWorkerFunc(OffWorkerFunc func);
-    virtual void SetWorkerAsyncWorkFunc(NativeAsyncExecuteCallback executeCallback,
-                                        NativeAsyncCompleteCallback completeCallback);
+    virtual void SetWorkerAsyncWorkFunc(
+        NativeAsyncExecuteCallback executeCallback, NativeAsyncCompleteCallback completeCallback);
     // call init worker func
     virtual bool CallInitWorkerFunc(NativeEngine* engine);
     virtual bool CallGetAssetFunc(const std::string& uri, std::vector<uint8_t>& content, std::string& ami);
@@ -249,26 +241,26 @@ public:
 
     const char* GetModuleFileName();
 
-    void SetModuleFileName(std::string &moduleName);
+    void SetModuleFileName(std::string& moduleName);
 
     void SetInstanceData(void* data, NativeFinalize finalize_cb, void* hint);
     void GetInstanceData(void** data);
 
 protected:
-    void *jsEngine_;
+    void* jsEngine_;
 
     NativeEngineInterface* nativeEngineImpl_ = nullptr;
     bool isAppModule_ = false;
 
     // register for worker
-    InitWorkerFunc initWorkerFunc_ {nullptr};
-    GetAssetFunc getAssetFunc_ {nullptr};
-    OffWorkerFunc offWorkerFunc_ {nullptr};
+    InitWorkerFunc initWorkerFunc_ { nullptr };
+    GetAssetFunc getAssetFunc_ { nullptr };
+    OffWorkerFunc offWorkerFunc_ { nullptr };
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
-    DebuggerPostTask debuggerPostTaskFunc_ {nullptr};
+    DebuggerPostTask debuggerPostTaskFunc_ { nullptr };
 #endif
-    NativeAsyncExecuteCallback nativeAsyncExecuteCallback_ {nullptr};
-    NativeAsyncCompleteCallback nativeAsyncCompleteCallback_ {nullptr};
+    NativeAsyncExecuteCallback nativeAsyncExecuteCallback_ { nullptr };
+    NativeAsyncCompleteCallback nativeAsyncCompleteCallback_ { nullptr };
 
 private:
     std::string moduleName_;

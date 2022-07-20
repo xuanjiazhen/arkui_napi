@@ -12,7 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "quickjs_native_buffer.h"
+
+#include "native_engine.h"
+#include "native_value/quickjs_native_object.h"
 
 struct QuickJSBufferCallback {
     static QuickJSBufferCallback* CreateNewInstance()

@@ -13,9 +13,14 @@
  * limitations under the License.
  */
 
+#include <cstdint>
 #include <cstring>
+#include <new>
 
+#include "libbf.h"
 #include "native_engine/native_value.h"
+#include "quickjs-libc.h"
+#include "quickjs.h"
 #include "quickjs_headers.h"
 #include "utils/log.h"
 

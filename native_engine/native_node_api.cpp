@@ -14,8 +14,26 @@
  */
 
 #include "napi/native_node_api.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <memory>
+#include <new>
+#include <type_traits>
+
+#include "callback_scope_manager/native_callback_scope_manager.h"
+#include "js_native_api.h"
+#include "js_native_api_types.h"
+#include "module_manager/native_module_manager.h"
+#include "napi/native_api.h"
 #include "native_api_internal.h"
+#include "native_engine/native_async_context.h"
+#include "native_engine/native_async_work.h"
 #include "native_engine/native_engine.h"
+#include "native_engine/native_safe_async_work.h"
+#include "native_engine/native_value.h"
+#include "node_api_types.h"
 #include "utils/log.h"
 
 static constexpr int32_t MAX_THREAD_SAFE_COUNT = 128;
@@ -38,10 +56,8 @@ NAPI_EXTERN void napi_module_register(napi_module* mod)
     moduleManager->Register(&module);
 }
 
-NAPI_EXTERN NAPI_NO_RETURN void napi_fatal_error(const char* location,
-                                                 size_t location_len,
-                                                 const char* message,
-                                                 size_t message_len)
+NAPI_EXTERN NAPI_NO_RETURN void napi_fatal_error(
+    const char* location, size_t location_len, const char* message, size_t message_len)
 {
     (void)location_len;
     (void)message_len;
@@ -68,13 +84,8 @@ NAPI_INNER_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err)
 }
 
 // Methods to manage simple async operations
-NAPI_EXTERN napi_status napi_create_async_work(napi_env env,
-                                               napi_value async_resource,
-                                               napi_value async_resource_name,
-                                               napi_async_execute_callback execute,
-                                               napi_async_complete_callback complete,
-                                               void* data,
-                                               napi_async_work* result)
+NAPI_EXTERN napi_status napi_create_async_work(napi_env env, napi_value async_resource, napi_value async_resource_name,
+    napi_async_execute_callback execute, napi_async_complete_callback complete, void* data, napi_async_work* result)
 {
     CHECK_ENV(env);
     CHECK_ARG(env, async_resource_name);

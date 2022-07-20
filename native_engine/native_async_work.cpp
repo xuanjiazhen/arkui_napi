@@ -16,17 +16,22 @@
 #include "native_async_work.h"
 
 #ifdef ENABLE_HITRACE
+#include <securec.h>
+
 #include "hitrace/trace.h"
 #include "hitrace_meter.h"
 #include "parameter.h"
-#include <securec.h>
 #endif
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
 #endif
 
-#include "napi/native_api.h"
+#include <cstdint>
+#include <pthread.h>
+
 #include "native_engine.h"
+#include "native_engine/native_async_context.h"    // for NativeAsyncContext
+#include "native_engine/native_engine_interface.h" // for uv_loop_t
 #include "utils/log.h"
 
 #ifdef ENABLE_CONTAINER_SCOPE
@@ -40,20 +45,17 @@ constexpr size_t TRACE_BUFFER_SIZE = 120;
 constexpr size_t TRACEID_PARAM_SIZE = 10;
 #endif
 
-NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
-                                 NativeAsyncExecuteCallback execute,
-                                 NativeAsyncCompleteCallback complete,
-                                 const std::string &asyncResourceName,
-                                 void* data)
+NativeAsyncWork::NativeAsyncWork(NativeEngine* engine, NativeAsyncExecuteCallback execute,
+    NativeAsyncCompleteCallback complete, const std::string& asyncResourceName, void* data)
     : work_({ 0 }), engine_(engine), execute_(execute), complete_(complete), data_(data)
 {
     work_.data = this;
     (void)asyncResourceName;
 #ifdef ENABLE_HITRACE
     if (!g_ParamUpdated) {
-        char napiTraceIdEnabled[TRACEID_PARAM_SIZE] = {0};
-        int ret = GetParameter("persist.hiviewdfx.napitraceid.enabled", "false",
-            napiTraceIdEnabled, sizeof(napiTraceIdEnabled));
+        char napiTraceIdEnabled[TRACEID_PARAM_SIZE] = { 0 };
+        int ret = GetParameter(
+            "persist.hiviewdfx.napitraceid.enabled", "false", napiTraceIdEnabled, sizeof(napiTraceIdEnabled));
         if (ret > 0 && strcmp(napiTraceIdEnabled, "true") == 0) {
             g_napiTraceIdEnabled = true;
         }
@@ -62,13 +64,13 @@ NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
     bool createdTraceId = false;
     traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(OHOS::HiviewDFX::HiTrace::GetId());
     if (g_napiTraceIdEnabled && (!traceId_ || !traceId_->IsValid())) {
-        traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(
-            OHOS::HiviewDFX::HiTrace::Begin("New NativeAsyncWork", 0));
+        traceId_ =
+            std::make_unique<OHOS::HiviewDFX::HiTraceId>(OHOS::HiviewDFX::HiTrace::Begin("New NativeAsyncWork", 0));
         createdTraceId = true;
     }
-    char traceStr[TRACE_BUFFER_SIZE] = {0};
-    if (sprintf_s(traceStr, sizeof(traceStr),
-        "name:%s, traceid:0x%x, workid:%p", asyncResourceName.c_str(), traceId_->GetChainId(), this) < 0) {
+    char traceStr[TRACE_BUFFER_SIZE] = { 0 };
+    if (sprintf_s(traceStr, sizeof(traceStr), "name:%s, traceid:0x%x, workid:%p", asyncResourceName.c_str(),
+            traceId_->GetChainId(), this) < 0) {
         HILOG_ERROR("Get traceStr fail");
     }
     traceDescription_ = traceStr;

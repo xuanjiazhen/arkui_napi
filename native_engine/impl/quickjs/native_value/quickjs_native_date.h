@@ -16,6 +16,9 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_DATE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_DATE_H
 
+#include "native_value.h"
+#include "quickjs.h"
+#include "quickjs_native_engine.h"
 #include "quickjs_native_object.h"
 
 class QuickJSNativeDate : public QuickJSNativeObject, public NativeDate {

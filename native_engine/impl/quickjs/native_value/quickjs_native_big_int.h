@@ -16,6 +16,11 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_BIG_INT_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_BIG_INT_H
 
+#include <cstddef>
+#include <cstdint>
+#include "native_value.h"
+#include "quickjs.h"
+#include "quickjs_native_engine.h"
 #include "quickjs_native_value.h"
 
 class QuickJSNativeBigInt : public QuickJSNativeValue, public NativeBigint {

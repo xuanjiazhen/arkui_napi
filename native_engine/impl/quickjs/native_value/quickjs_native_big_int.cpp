@@ -15,6 +15,9 @@
 
 #include "quickjs_native_big_int.h"
 
+#include "native_value/quickjs_native_value.h"
+#include "quickjs_headers.h"
+
 QuickJSNativeBigInt::QuickJSNativeBigInt(QuickJSNativeEngine* engine, JSValue value) : QuickJSNativeValue(engine, value)
 {}
 

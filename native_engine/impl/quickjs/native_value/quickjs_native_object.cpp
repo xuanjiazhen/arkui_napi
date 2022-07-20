@@ -14,11 +14,14 @@
  */
 
 #include "quickjs_native_object.h"
-#include "native_engine/native_engine.h"
+
+#include <cstddef>
+#include <new>
+
 #include "native_engine/native_property.h"
+#include "native_value/quickjs_native_value.h"
 #include "quickjs_headers.h"
 #include "quickjs_native_array.h"
-#include "quickjs_native_big_int.h"
 #include "quickjs_native_engine.h"
 #include "quickjs_native_function.h"
 #include "quickjs_native_string.h"
@@ -26,17 +29,15 @@
 
 QuickJSNativeObject::QuickJSNativeObject(QuickJSNativeEngine* engine)
     : QuickJSNativeObject(engine, JS_NewObject(engine->GetContext()))
-{
-}
+{}
 
 QuickJSNativeObject::QuickJSNativeObject(QuickJSNativeEngine* engine, JSValue value) : QuickJSNativeValue(engine, value)
-{
-}
+{}
 
 QuickJSNativeObject::~QuickJSNativeObject() {}
 
 bool QuickJSNativeObject::ConvertToNativeBindingObject(
-    void* engine, DetachCallback detach, AttachCallback attach, void *object, void *hint)
+    void* engine, DetachCallback detach, AttachCallback attach, void* object, void* hint)
 {
     return false;
 }
@@ -76,8 +77,7 @@ void* QuickJSNativeObject::GetNativePointer()
 
 void QuickJSNativeObject::SetNativeBindingPointer(
     void* enginePointer, void* objPointer, void* hint, void* detachData, void* attachData)
-{
-}
+{}
 
 void* QuickJSNativeObject::GetNativeBindingPointer(uint32_t index)
 {
@@ -159,12 +159,11 @@ bool QuickJSNativeObject::DefineProperty(NativePropertyDescriptor propertyDescri
         result = JS_DefinePropertyValue(engine_->GetContext(), value_, jKey,
             JS_DupValue(engine_->GetContext(), *propertyDescriptor.value), JS_PROP_C_W_E);
     } else if (propertyDescriptor.method) {
-        NativeValue* function = new QuickJSNativeFunction(engine_, propertyDescriptor.utf8name,
-                                                          propertyDescriptor.method, propertyDescriptor.data);
+        NativeValue* function = new QuickJSNativeFunction(
+            engine_, propertyDescriptor.utf8name, propertyDescriptor.method, propertyDescriptor.data);
         if (function != nullptr) {
             result = JS_DefinePropertyValue(engine_->GetContext(), value_, jKey,
-                                            JS_DupValue(engine_->GetContext(), *function),
-                                            JS_PROP_CONFIGURABLE | JS_PROP_WRITABLE);
+                JS_DupValue(engine_->GetContext(), *function), JS_PROP_CONFIGURABLE | JS_PROP_WRITABLE);
         }
     } else if (propertyDescriptor.getter || propertyDescriptor.setter) {
         NativeValue* getter =
@@ -173,9 +172,8 @@ bool QuickJSNativeObject::DefineProperty(NativePropertyDescriptor propertyDescri
             new QuickJSNativeFunction(engine_, nullptr, propertyDescriptor.setter, propertyDescriptor.data);
         if (getter != nullptr && setter != nullptr) {
             result = JS_DefinePropertyGetSet(engine_->GetContext(), value_, jKey,
-                                             JS_DupValue(engine_->GetContext(), *getter),
-                                             JS_DupValue(engine_->GetContext(), *setter),
-                                             JS_PROP_C_W_E);
+                JS_DupValue(engine_->GetContext(), *getter), JS_DupValue(engine_->GetContext(), *setter),
+                JS_PROP_C_W_E);
         }
     }
 
@@ -255,8 +253,8 @@ bool QuickJSNativeObject::SetPrivateProperty(const char* name, NativeValue* valu
 {
     bool result = false;
     JSAtom key = JS_NewAtom(engine_->GetContext(), name);
-    result = JS_SetPropertyInternal(engine_->GetContext(), value_, key, JS_DupValue(engine_->GetContext(), *value),
-                                    JS_PROP_C_W_E | JS_PROP_THROW);
+    result = JS_SetPropertyInternal(
+        engine_->GetContext(), value_, key, JS_DupValue(engine_->GetContext(), *value), JS_PROP_C_W_E | JS_PROP_THROW);
     JS_FreeAtom(engine_->GetContext(), key);
     return result;
 }
@@ -336,13 +334,13 @@ bool QuickJSNativeObject::AssociateTypeTag(NapiTypeTag* typeTag)
     if (typeTag == nullptr) {
         return false;
     }
-    uint64_t words[size] = {typeTag->lower, typeTag->upper};
+    uint64_t words[size] = { typeTag->lower, typeTag->upper };
     hasPribate = HasPrivateProperty(name);
     if (!hasPribate) {
         JSAtom key = JS_NewAtom(engine_->GetContext(), name);
         JSValue value = JS_CreateBigIntWords(engine_->GetContext(), 0, size, words);
-        result = JS_SetPropertyInternal(engine_->GetContext(), value_, key,
-            JS_DupValue(engine_->GetContext(), value), JS_PROP_C_W_E | JS_PROP_THROW);
+        result = JS_SetPropertyInternal(engine_->GetContext(), value_, key, JS_DupValue(engine_->GetContext(), value),
+            JS_PROP_C_W_E | JS_PROP_THROW);
         JS_FreeAtom(engine_->GetContext(), key);
     }
     return result;
@@ -365,7 +363,7 @@ bool QuickJSNativeObject::CheckTypeTag(NapiTypeTag* typeTag)
 
         int sign = 0;
         size_t wordCount = size;
-        uint64_t words[size] = {0};
+        uint64_t words[size] = { 0 };
         result = JS_GetBigIntWords(engine_->GetContext(), value, &sign, &wordCount, words);
         if (result && wordCount >= size) {
             if ((words[0] == typeTag->lower) && (words[1] == typeTag->upper)) {
