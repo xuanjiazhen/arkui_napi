@@ -26,8 +26,9 @@
 
 namespace {
 constexpr static int32_t NATIVE_PATH_NUMBER = 2;
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined (IOS_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM)
 constexpr static char DL_NAMESPACE[] = "ace";
+constexpr static char NWEB_DIR[] = ":/data/storage/el1/bundle/nweb/libs/arm64";
 #endif
 } // namespace
 
@@ -135,11 +136,75 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
 #endif
 }
 
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM)
+char* NativeModuleManager::FormatString()
+{
+    const char* allowList[] = {
+        // bionic library
+        "libc.so",
+        "libdl.so",
+        "libm.so",
+        "libz.so",
+        // z library
+        "libace_napi.z.so",
+        "libace_ndk.z.so",
+        "libdeviceinfo_ndk.z.so",
+        "libEGL.so",
+        "libGLESv3.so",
+        "libhiappevent_ndk.z.so",
+        "libhilog_ndk.z.so",
+        "libnative_drawing.so",
+        "libnative_window.so",
+        "libOpenSLES.so",
+        "libpixelmap_ndk.z.so",
+        "librawfile.z.so",
+        "libuv.so",
+        // adaptor library
+        "libohosadaptor.so",
+
+        "libnweb_adapter.so",
+        "libweb_engine.so",
+        "libsurface.z.so",
+        "libinputmethod_client.z.so",
+        "libipc_core.z.so",
+        "libaccesstoken_sdk.z.so",
+        "libutils.z.so",
+        "libmedia_client.z.so",
+        "liblocator_sdk.z.so",
+        "libnweb_ohos_adapter.z.so",
+        "liblbsservice_common.z.so",
+        "libeventhandler.z.so",
+        "libhilog.so"
+    };
+
+    size_t allowListLength = sizeof(allowList) / sizeof(char*);
+    int32_t sharedLibsSonamesLength = 1;
+    for (int32_t i = 0; i < allowListLength; i++) {
+        sharedLibsSonamesLength += strlen(allowList[i]) + 1;
+    }
+    char* sharedLibsSonames = new char[sharedLibsSonamesLength];
+    int32_t cursor = 0;
+    for (int32_t i = 0; i < allowListLength; i++) {
+        if (sprintf_s(sharedLibsSonames + cursor, sharedLibsSonamesLength - cursor, "%s:", allowList[i]) == -1) {
+            delete[] sharedLibsSonames;
+            return nullptr;
+        }
+        cursor += strlen(allowList[i]) + 1;
+    }
+    sharedLibsSonames[cursor] = '\0';
+    return sharedLibsSonames;
+}
+#endif
+
 void NativeModuleManager::CreateLdNamespace(const char* lib_ld_path)
 {
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM)
+    Dl_namespace current_ns;
     dlns_init(&ns_, DL_NAMESPACE);
-    dlns_create(&ns_, lib_ld_path);
+    dlns_get(nullptr, &current_ns);
+    dlns_create2(&ns_, lib_ld_path, CREATE_INHERIT_CURRENT);
+    dlns_inherit(&ns_, &current_ns, FormatString());
+    HILOG_INFO("CreateLdNamespace success, path: %{private}s", lib_ld_path);
 #endif
 }
 
@@ -161,8 +226,16 @@ void NativeModuleManager::SetAppLibPath(const char* appLibPath)
     if (appLibPath_ != nullptr) {
         delete[] appLibPath_;
     }
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM)
+    appLibPath_ = new char[NAPI_PATH_MAX];
+    strcpy_s(appLibPath_, NAPI_PATH_MAX, appLibPath);
+
+    strncat_s(tmp, NAPI_PATH_MAX, NWEB_DIR, NAPI_PATH_MAX);
+    CreateLdNamespace(tmp);
+#else
     appLibPath_ = tmp;
     CreateLdNamespace(appLibPath_);
+#endif
 }
 
 NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName,
