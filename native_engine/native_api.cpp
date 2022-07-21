@@ -877,10 +877,6 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
         "resultValue: %{public}p", engine, nativeRecv, nativeFunc, nativeArgv, resultValue);
 
     *result = reinterpret_cast<napi_value>(resultValue);
-
-    if (engine->IsExceptionPending()) {
-        return napi_set_last_error(env, napi_pending_exception);
-    }
     return napi_clear_last_error(env);
 }
 
