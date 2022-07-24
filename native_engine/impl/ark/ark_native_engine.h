@@ -19,14 +19,14 @@
 #include <unordered_map>
 
 #include "ark_headers.h"
-#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
+#include "ecmascript/napi/include/jsnapi.h"
 #include "native_engine/native_engine.h"
 
-using panda::ecmascript::EcmaVM;
+using panda::JSValueRef;
 using panda::Local;
 using panda::LocalScope;
-using panda::JSValueRef;
+using panda::ecmascript::EcmaVM;
 
 class ArkNativeEngine : public NativeEngine {
 public:
@@ -85,10 +85,7 @@ public:
     NativeValue* CreateBufferCopy(void** value, size_t length, const void* data) override;
     NativeValue* CreateBufferExternal(void* value, size_t length, NativeFinalize cb, void* hint) override;
     // Create native typed array value
-    NativeValue* CreateTypedArray(NativeTypedArrayType type,
-                                  NativeValue* value,
-                                  size_t length,
-                                  size_t offset) override;
+    NativeValue* CreateTypedArray(NativeTypedArrayType type, NativeValue* value, size_t length, size_t offset) override;
     // Create native data view value
     NativeValue* CreateDataView(NativeValue* value, size_t length, size_t offset) override;
     // Create native promise value
@@ -97,10 +94,8 @@ public:
     // Create native error value
     NativeValue* CreateError(NativeValue* code, NativeValue* message) override;
     // Call function
-    NativeValue* CallFunction(NativeValue* thisVar,
-                                      NativeValue* function,
-                                      NativeValue* const* argv,
-                                      size_t argc) override;
+    NativeValue* CallFunction(
+        NativeValue* thisVar, NativeValue* function, NativeValue* const* argv, size_t argc) override;
     // Run script
     NativeValue* RunScript(NativeValue* script) override;
     NativeValue* RunScriptPath(const char* path) override;
@@ -110,17 +105,14 @@ public:
     // Set lib path
     void SetPackagePath(const std::string& packagePath);
     // Define native class
-    NativeValue* DefineClass(const char* name,
-                                     NativeCallback callback,
-                                     void* data,
-                                     const NativePropertyDescriptor* properties,
-                                     size_t length) override;
+    NativeValue* DefineClass(const char* name, NativeCallback callback, void* data,
+        const NativePropertyDescriptor* properties, size_t length) override;
     // Create instance by defined class
     NativeValue* CreateInstance(NativeValue* constructor, NativeValue* const* argv, size_t argc) override;
 
     // Create native reference
-    NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount,
-        NativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) override;
+    NativeReference* CreateReference(NativeValue* value, uint32_t initialRefcount, NativeFinalize callback = nullptr,
+        void* data = nullptr, void* hint = nullptr) override;
     // Throw exception
     bool Throw(NativeValue* error) override;
     // Throw exception
@@ -139,9 +131,8 @@ public:
     NativeValue* ValueToNativeValue(JSValueWrapper& value) override;
 
     bool ExecuteJsBin(const std::string& fileName);
-    panda::Global<panda::ObjectRef> LoadModuleByName(
-        const std::string& moduleName, bool isAppModule, const std::string& param,
-        const std::string& instanceName, void* instance);
+    panda::Global<panda::ObjectRef> LoadModuleByName(const std::string& moduleName, bool isAppModule,
+        const std::string& param, const std::string& instanceName, void* instance);
 
     bool TriggerFatalException(NativeValue* error) override;
     NativeValue* CreateDate(double value) override;
@@ -159,11 +150,11 @@ public:
 
     // isVmMode means the internal class in vm is visible.
     // isPrivate means the number and string is not visible.
-    void DumpHeapSnapshot(const std::string& path, bool isVmMode = true,
-        DumpFormat dumpFormat = DumpFormat::JSON) override;
+    void DumpHeapSnapshot(
+        const std::string& path, bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON) override;
     // Dump the file into faultlog for heap leak.
-    void DumpHeapSnapshot(bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
-        bool isPrivate = false) override;
+    void DumpHeapSnapshot(
+        bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON, bool isPrivate = false) override;
     bool BuildNativeAndJsStackTrace(std::string& stackTraceStr) override;
     bool BuildJsStackTrace(std::string& stackTraceStr) override;
     bool StartHeapTracking(double timeInterval, bool isVmMode = true) override;
@@ -180,8 +171,7 @@ public:
 
     void RegisterUncaughtExceptionHandler(UncaughtExceptionCallback callback) override;
     void HandleUncaughtException() override;
-    panda::Global<panda::ObjectRef> GetModuleFromName(
-        const std::string& moduleName, bool isAppModule, const std::string& id, const std::string& param,
-        const std::string& instanceName, void** instance);
+    panda::Global<panda::ObjectRef> GetModuleFromName(const std::string& moduleName, bool isAppModule,
+        const std::string& id, const std::string& param, const std::string& instanceName, void** instance);
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */

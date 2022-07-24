@@ -14,8 +14,10 @@
  */
 
 #include "native_callback_scope_manager.h"
-#include "native_engine/native_engine.h"
 
+#include <new>
+
+#include "native_engine/native_engine.h"
 NativeCallbackScope::NativeCallbackScope(NativeEngine* env)
 {
     env_ = env;
@@ -42,7 +44,7 @@ NativeCallbackScopeManager::~NativeCallbackScopeManager() {}
 
 NativeCallbackScope* NativeCallbackScopeManager::Open(NativeEngine* env)
 {
-    NativeCallbackScope* scope = new (std::nothrow)NativeCallbackScope(env);
+    NativeCallbackScope* scope = new (std::nothrow) NativeCallbackScope(env);
 
     if (scope) {
         asyncCallbackScopeDepth_++;

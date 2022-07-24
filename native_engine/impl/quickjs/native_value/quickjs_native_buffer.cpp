@@ -14,6 +14,12 @@
  */
 #include "quickjs_native_buffer.h"
 
+<<<<<<< HEAD
+#include "native_engine.h"
+#include "native_value/quickjs_native_object.h"
+
+=======
+>>>>>>> parent of 6ccd14f... iwyu head file
 struct QuickJSBufferCallback {
     static QuickJSBufferCallback* CreateNewInstance()
     {

@@ -16,11 +16,13 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ASYNC_WORK_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ASYNC_WORK_H
 
-#include "native_value.h"
-
+#include <cstddef>
 #include <mutex>
 #include <queue>
 #include <uv.h>
+
+#include "native_async_context.h"
+#include "native_value.h"
 
 struct NativeAsyncWorkDataPointer {
     NativeAsyncWorkDataPointer()
@@ -45,11 +47,8 @@ class HiTraceId;
 
 class NativeAsyncWork {
 public:
-    NativeAsyncWork(NativeEngine* engine,
-                    NativeAsyncExecuteCallback execute,
-                    NativeAsyncCompleteCallback complete,
-                    const std::string &asyncResourceName,
-                    void* data);
+    NativeAsyncWork(NativeEngine* engine, NativeAsyncExecuteCallback execute, NativeAsyncCompleteCallback complete,
+        const std::string& asyncResourceName, void* data);
 
     virtual ~NativeAsyncWork();
     virtual bool Queue();

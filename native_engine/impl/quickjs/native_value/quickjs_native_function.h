@@ -17,7 +17,13 @@
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_QUICKJS_NATIVE_VALUE_QUICKJS_NATIVE_FUNCTION_H
 
 #include "native_engine/native_value.h"
+<<<<<<< HEAD
+#include "quickjs.h"
 #include "quickjs_headers.h"
+#include "quickjs_native_engine.h"
+=======
+#include "quickjs_headers.h"
+>>>>>>> parent of 6ccd14f... iwyu head file
 #include "quickjs_native_object.h"
 
 class QuickJSNativeFunction : public QuickJSNativeObject, public NativeFunction {

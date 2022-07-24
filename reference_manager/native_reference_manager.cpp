@@ -15,6 +15,7 @@
 
 #include "native_reference_manager.h"
 
+#include <new>
 struct NativeReferenceHandler {
     NativeReference* reference = nullptr;
     NativeReferenceHandler* next = nullptr;

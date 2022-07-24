@@ -19,7 +19,6 @@
 #ifdef ENABLE_MEMLEAK_DEBUG
 #include <atomic>
 #endif
-#include <stddef.h>
 #ifdef ENABLE_MEMLEAK_DEBUG
 #include <string>
 #include <vector>
