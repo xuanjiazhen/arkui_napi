@@ -859,7 +859,6 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     if (argc > 0) {
         CHECK_ARG(env, argv);
     }
-    CHECK_ARG(env, result);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto nativeRecv = reinterpret_cast<NativeValue*>(recv);
@@ -876,7 +875,9 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     HILOG_INFO("engine: %{public}p, nativeRecv: %{public}p, nativeFunc: %{public}p, nativeArgv: %{public}p, "
         "resultValue: %{public}p", engine, nativeRecv, nativeFunc, nativeArgv, resultValue);
 
-    *result = reinterpret_cast<napi_value>(resultValue);
+    if (result != nullptr) {
+        *result = reinterpret_cast<napi_value>(resultValue);
+    }
     return napi_clear_last_error(env);
 }
 
