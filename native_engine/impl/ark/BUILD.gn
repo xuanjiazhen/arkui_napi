@@ -30,6 +30,8 @@ config("ace_napi_ark_config") {
     cflags_cc += [ "-std=c++17" ]
   } else if (is_mac) {
     defines += [ "MAC_PLATFORM" ]
+  } else if (is_android) {
+    defines += [ "ANDROID_PLATFORM" ]
   }
 }
 
@@ -37,9 +39,16 @@ template("ace_napi_impl") {
   ohos_source_set(target_name) {
     public_configs = [ ":ace_napi_ark_config" ]
     defines = invoker.engine_defines
-    configs = [ "//arkcompiler/ets_runtime:ark_jsruntime_public_config" ]
 
-    include_dirs = [ "//foundation/arkui/napi/native_engine/impl/ark" ]
+    include_dirs = [
+      "//foundation/arkui/napi/native_engine/impl/ark",
+
+      #"//third_party/icu/icu4c/source",
+      "//third_party/icu/icu4c/source/common",
+      "//arkcompiler/ets_runtime",
+      "//arkcompiler/runtime_core",
+      "//arkcompiler/runtime_core/libpandabase",
+    ]
 
     sources = [
       "ark_native_deferred.cpp",
@@ -70,6 +79,7 @@ template("ace_napi_impl") {
     deps = [
       "//arkcompiler/ets_runtime:libark_jsruntime",
       "//foundation/arkui/napi:ace_napi",
+      "//third_party/icu/icu4c:shared_icuuc",
     ]
 
     if (product_name != "ohos-sdk") {
@@ -95,7 +105,7 @@ template("ace_napi_impl") {
 }
 
 foreach(item, ace_platforms) {
-  if (item.name == "ohos") {
+  if (item.name == "ohos" || item.name == "android") {
     engine_config = item.config
     support_engines = engine_config.js_engines
     foreach(engine, support_engines) {
