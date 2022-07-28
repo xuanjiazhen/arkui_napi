@@ -741,11 +741,13 @@ void ArkNativeEngineImpl::DeleteSerializationData(NativeValue* value) const
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 void ArkNativeEngineImpl::StartCpuProfiler(const std::string& fileName)
 {
+    JSNApi::SetNativePtrGetter(vm_, reinterpret_cast<void*>(ArkNativeFunction::GetNativePtrCallBack));
     DFXJSNApi::StartCpuProfilerForFile(vm_, fileName);
 }
 
 void ArkNativeEngineImpl::StopCpuProfiler()
 {
+    JSNApi::SetNativePtrGetter(vm_, reinterpret_cast<void*>(ArkNativeFunction::GetNativePtrCallBack));
     DFXJSNApi::StopCpuProfilerForFile();
 }
 #else
@@ -1060,6 +1062,7 @@ void ArkNativeEngineImpl::DumpHeapSnapshotExt(bool isVmMode, DumpFormat dumpForm
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
 bool ArkNativeEngineImpl::BuildNativeAndJsStackTrace(std::string& stackTraceStr)
 {
+    JSNApi::SetNativePtrGetter(vm_, reinterpret_cast<void*>(ArkNativeFunction::GetNativePtrCallBack));
     return DFXJSNApi::BuildNativeAndJsStackTrace(vm_, stackTraceStr);
 }
 #else
