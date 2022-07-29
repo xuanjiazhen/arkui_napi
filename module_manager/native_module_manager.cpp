@@ -202,7 +202,7 @@ void NativeModuleManager::CreateLdNamespace(const char* lib_ld_path)
     Dl_namespace current_ns;
     dlns_init(&ns_, DL_NAMESPACE);
     dlns_get(nullptr, &current_ns);
-    dlns_create2(&ns_, lib_ld_path, CREATE_INHERIT_CURRENT);
+    dlns_create2(&ns_, lib_ld_path, nullptr);
     dlns_inherit(&ns_, &current_ns, FormatString());
     HILOG_INFO("CreateLdNamespace success, path: %{private}s", lib_ld_path);
 #endif
