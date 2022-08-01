@@ -887,20 +887,24 @@ NAPI_EXTERN napi_status napi_new_instance(
     napi_env env, napi_value constructor, size_t argc, const napi_value* argv, napi_value* result)
 {
     CHECK_ENV(env);
+    HILOG_INFO("napi_new_instance 111");
     CHECK_ARG(env, constructor);
+    HILOG_INFO("napi_new_instance 222");
     if (argc > 0) {
         CHECK_ARG(env, argv);
     }
+    HILOG_INFO("napi_new_instance 333");
     CHECK_ARG(env, result);
+    HILOG_INFO("napi_new_instance 444");
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto nativeConstructor = reinterpret_cast<NativeValue*>(constructor);
     auto nativeArgv = reinterpret_cast<NativeValue* const*>(argv);
 
     RETURN_STATUS_IF_FALSE(env, nativeConstructor->TypeOf() == NATIVE_FUNCTION, napi_function_expected);
-
+HILOG_INFO("napi_new_instance 555");
     auto resultValue = engine->CreateInstance(nativeConstructor, nativeArgv, argc);
-
+HILOG_INFO("napi_new_instance 666");
     *result = reinterpret_cast<napi_value>(resultValue);
     return napi_clear_last_error(env);
 }
