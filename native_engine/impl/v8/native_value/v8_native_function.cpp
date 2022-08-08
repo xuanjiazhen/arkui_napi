@@ -15,6 +15,10 @@
 
 #include "v8_native_function.h"
 
+#ifdef ENABLE_HITRACE
+#include "hitrace_meter.h"
+#endif
+
 #include "utils/log.h"
 
 V8NativeFunction::V8NativeFunction(V8NativeEngine* engine, v8::Local<v8::Value> value) : V8NativeObject(engine, value)
@@ -57,6 +61,12 @@ void* V8NativeFunction::GetInterface(int interfaceId)
 
 void V8NativeFunction::NativeFunctionCallback(const v8::FunctionCallbackInfo<v8::Value>& info)
 {
+#ifdef ENABLE_HITRACE
+    Global<FunctionRef> func = value_;
+	
+    HILOG_ERROR("zlxia NativeFunctionCallBack %s", func.GetName().ToString());
+    HitraceMeterFmtScoped hitrace(HITRACE_TAG_ACE, "NativeFunctionCallBack, %s" , func.GetName().ToString());
+#endif
     v8::Isolate::Scope isolateScope(info.GetIsolate());
     v8::HandleScope handleScope(info.GetIsolate());
     v8::Local<v8::Context> context = info.GetIsolate()->GetCurrentContext();
