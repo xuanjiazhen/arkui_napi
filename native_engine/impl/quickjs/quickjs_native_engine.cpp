@@ -512,6 +512,10 @@ bool QuickJSNativeEngine::BuildJsStackTrace(std::string& stackTraceStr)
 {
     return nativeEngineImpl_->BuildJsStackTrace(stackTraceStr);
 }
+void QuickJSNativeEngine::BuildJsStackInfoList(std::vector<JsFrameInfo>& jsFrames)
+{
+    nativeEngineImpl_->BuildJsStackInfoList(jsFrames);
+}
 bool QuickJSNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
 {
     return nativeEngineImpl_->StartHeapTracking(timeInterval, isVmMode);
