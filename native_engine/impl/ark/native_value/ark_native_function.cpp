@@ -19,6 +19,10 @@
 #include "core/common/container_scope.h"
 #endif
 
+#ifdef ENABLE_HITRACE
+#include "hitrace_meter.h"
+#endif
+
 #include "utils/log.h"
 
 using panda::ArrayRef;
@@ -115,6 +119,12 @@ void* ArkNativeFunction::GetInterface(int interfaceId)
 
 Local<JSValueRef> ArkNativeFunction::NativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
 {
+#ifdef ENABLE_HITRACE
+    Global<FunctionRef> func = value_;
+	
+    HILOG_ERROR("zlxia NativeFunctionCallBack %s", func.GetName().ToString());
+    HitraceMeterFmtScoped hitrace(HITRACE_TAG_ACE, "NativeFunctionCallBack, %s" , func.GetName().ToString());
+#endif
     EcmaVM *vm = runtimeInfo->GetVM();
     panda::EscapeLocalScope scope(vm);
     auto info = reinterpret_cast<NativeFunctionInfo*>(runtimeInfo->GetData());

@@ -504,6 +504,10 @@ NativeValue* ArkNativeEngineImpl::CallFunction(
     NativeScope* nativeScope = scopeManager->OpenEscape();
     Global<JSValueRef> thisObj = (thisVar != nullptr) ? *thisVar : Global<JSValueRef>(vm_, JSValueRef::Undefined(vm_));
     Global<FunctionRef> funcObj = *function;
+#ifdef ENABLE_HITRACE	
+    HILOG_ERROR("zlxia NativeFunctionCallBack %s", funcObj.GetName().ToString());
+    HitraceMeterFmtScoped hitrace(HITRACE_TAG_ACE, "NativeFunctionCallBack, %s" , funcObj.GetName().ToString());
+#endif
 #ifdef ENABLE_CONTAINER_SCOPE
     auto nativeFunction = static_cast<NativeFunction*>(function->GetInterface(NativeFunction::INTERFACE_ID));
     if (nativeFunction == nullptr) {
