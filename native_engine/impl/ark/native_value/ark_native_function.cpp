@@ -20,6 +20,9 @@
 #endif
 
 #include "utils/log.h"
+#ifdef ENABLE_HITRACE
+#include "hitrace_meter.h"
+#endif
 
 using panda::ArrayRef;
 using panda::NativePointerRef;
@@ -131,6 +134,15 @@ Local<JSValueRef> ArkNativeFunction::NativeFunctionCallBack(JsiRuntimeCallInfo *
         HILOG_ERROR("scope manager is null");
         return JSValueRef::Undefined(vm);
     }
+
+#ifdef ENABLE_HITRACE
+    if (ArkNativeEngine::setModeNameEnabled) {
+        Local<FunctionRef> fn = runtimeInfo->GetFunctionRef();
+        Local<StringRef> nameRef = fn->GetName(vm);
+        HitraceMeterFmtScoped fs(HITRACE_TAG_ACE, "Napi called:%s", nameRef->ToString().c_str());
+    }
+#endif
+
     NativeScope* nativeScope = scopeManager->Open();
     cbInfo.thisVar = ArkNativeEngine::ArkValueToNativeValue(engine, runtimeInfo->GetThisRef());
     cbInfo.function = ArkNativeEngine::ArkValueToNativeValue(engine, runtimeInfo->GetNewTargetRef());
