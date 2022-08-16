@@ -43,10 +43,27 @@
 #endif
 #include "securec.h"
 #include "utils/log.h"
+#ifdef ENABLE_HITRACE
+#include "parameter.h"
+#endif
+
+#ifdef ENABLE_HITRACE
+constexpr auto NAPI_PROFILER_PARAM_SIZE = 10;
+#endif
+
+bool ArkNativeEngine::setModeNameEnabled {false};
 
 ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine) : NativeEngine(jsEngine)
 {
     HILOG_DEBUG("ArkNativeEngine::ArkNativeEngine");
+#ifdef ENABLE_HITRACE
+    char setModeNameEnabled[NAPI_PROFILER_PARAM_SIZE] = {0};
+    int ret = GetParameter("persist.hiviewdfx.napiprofiler.enabled", "false",
+        setModeNameEnabled, sizeof(setModeNameEnabled));
+    if (ret > 0 && strcmp(setModeNameEnabled, "true") == 0) {
+        ArkNativeEngine::setModeNameEnabled = true;
+    }
+#endif
     nativeEngineImpl_ = new ArkNativeEngineImpl(vm, this, jsEngine);
 }
 
