@@ -113,7 +113,7 @@ void* ArkNativeObject::GetInterface(int interfaceId)
     return (NativeObject::INTERFACE_ID == interfaceId) ? (NativeObject*)this : nullptr;
 }
 
-void ArkNativeObject::SetNativePointer(void* pointer, NativeFinalize cb, void* hint)
+NativeReference* ArkNativeObject::SetNativePointer(void* pointer, NativeFinalize cb, void* hint)
 {
     auto vm = engine_->GetEcmaVm();
     LocalScope scope(vm);
@@ -134,7 +134,9 @@ void ArkNativeObject::SetNativePointer(void* pointer, NativeFinalize cb, void* h
         object->SetNativePointerField(0, ref, nullptr, nullptr);
         PropertyAttribute attr(object, true, false, true);
         value->DefineProperty(vm, key, attr);
+        return ref;
     }
+    return nullptr;
 }
 
 void* ArkNativeObject::GetNativePointer()
