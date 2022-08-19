@@ -523,7 +523,7 @@ bool ArkNativeEngine::StopHeapTracking(const std::string &filePath)
     return arkNativeEngineImpl->StopHeapTracking(filePath);
 }
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
 void ArkNativeEngine::PrintStatisticResult()
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);

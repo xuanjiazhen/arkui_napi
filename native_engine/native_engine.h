@@ -58,7 +58,7 @@ public:
     virtual void Loop(LoopMode mode, bool needSync = false);
     virtual void SetPostTask(PostTask postTask);
     virtual void TriggerPostTask();
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
     virtual void CheckUVLoop();
     virtual void CancelCheckUVLoop();
 #endif
@@ -205,7 +205,7 @@ public:
     virtual bool CallGetAssetFunc(const std::string& uri, std::vector<uint8_t>& content, std::string& ami);
     virtual bool CallOffWorkerFunc(NativeEngine* engine);
     virtual bool CallWorkerAsyncWorkFunc(NativeEngine* engine);
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
     virtual void SetDebuggerPostTaskFunc(DebuggerPostTask func);
     virtual void CallDebuggerPostTaskFunc(std::function<void()>&& task);
 #endif
@@ -266,7 +266,7 @@ protected:
     InitWorkerFunc initWorkerFunc_ {nullptr};
     GetAssetFunc getAssetFunc_ {nullptr};
     OffWorkerFunc offWorkerFunc_ {nullptr};
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
     DebuggerPostTask debuggerPostTaskFunc_ {nullptr};
 #endif
     NativeAsyncExecuteCallback nativeAsyncExecuteCallback_ {nullptr};
