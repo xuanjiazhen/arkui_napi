@@ -41,7 +41,7 @@ bool QuickJSNativeObject::ConvertToNativeBindingObject(
     return false;
 }
 
-void QuickJSNativeObject::SetNativePointer(void* pointer, NativeFinalize cb, void* hint)
+NativeReference* QuickJSNativeObject::SetNativePointer(void* pointer, NativeFinalize cb, void* hint)
 {
     NativeObjectInfo* info = (NativeObjectInfo*)JS_GetNativePointer(engine_->GetContext(), value_);
     if (info == nullptr) {
@@ -66,6 +66,7 @@ void QuickJSNativeObject::SetNativePointer(void* pointer, NativeFinalize cb, voi
         JS_SetNativePointer(engine_->GetContext(), value_, nullptr, nullptr, nullptr);
         delete info;
     }
+    return nullptr;
 }
 
 void* QuickJSNativeObject::GetNativePointer()
