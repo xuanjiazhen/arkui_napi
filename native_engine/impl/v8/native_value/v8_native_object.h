@@ -27,7 +27,7 @@ public:
     void* GetInterface(int interfaceId) override;
     bool ConvertToNativeBindingObject(
         void* engine, DetachCallback detach, AttachCallback attach, void *object, void *hint) override;
-    void SetNativePointer(void* pointer, NativeFinalize cb, void* hint) override;
+    NativeReference* SetNativePointer(void* pointer, NativeFinalize cb, void* hint) override;
     void* GetNativePointer() override;
     void SetNativeBindingPointer(
         void* enginePointer, void* objPointer, void* hint, void* detachData, void* attachData) override;

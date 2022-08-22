@@ -1027,7 +1027,11 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
 
     auto nativeObject = reinterpret_cast<NativeObject*>(nativeValue->GetInterface(NativeObject::INTERFACE_ID));
 
-    nativeObject->SetNativePointer(native_object, callback, finalize_hint);
+    NativeReference* reference = nativeObject->SetNativePointer(native_object, callback, finalize_hint);
+    if (result != nullptr && reference != nullptr) {
+        HILOG_ERROR("hzq result != nullptr && reference != nullptr");
+        *result = reinterpret_cast<napi_ref>(reference);
+    }
     return napi_clear_last_error(env);
 }
 
@@ -1128,8 +1132,10 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
 
     auto reference = reinterpret_cast<NativeReference*>(ref);
 
-    delete reference;
-    reference = nullptr;
+    if (reference && reference->GetData()) {
+        delete reference;
+        reference = nullptr;
+    }
 
     return napi_clear_last_error(env);
 }
