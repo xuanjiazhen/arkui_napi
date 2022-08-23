@@ -63,7 +63,9 @@ template("ace_napi_impl") {
       defines += [ "WINDOWS_PLATFORM" ]
     } else if (use_mac) {
       defines += [ "MAC_PLATFORM" ]
-    } else if (is_cross_platform_build && target_os == "ios") {
+    } else if (use_linux) {
+      defines += [ "LINUX_PLATFORM" ]
+    }else if (is_cross_platform_build && target_os == "ios") {
       defines += [ "IOS_PLATFORM" ]
     } else if (is_cross_platform_build && target_os == "android") {
       defines += [ "ANDROID_PLATFORM" ]

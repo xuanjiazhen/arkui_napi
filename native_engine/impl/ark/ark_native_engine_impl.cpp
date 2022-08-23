@@ -187,7 +187,7 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
             requireData);
 
     Local<ObjectRef> global = panda::JSNApi::GetGlobalObject(vm);
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
     Local<StringRef> requireName = StringRef::NewFromUtf8(vm, "requireNapi");
     global->Set(vm, requireName, requireNapi);
 #else
@@ -667,7 +667,7 @@ bool ArkNativeEngineImpl::Throw(NativeEngine* engine, NativeErrorType type, cons
 NativeEngine* ArkNativeEngineImpl::CreateRuntimeFunc(NativeEngine* engine, void* jsEngine)
 {
     panda::RuntimeOption option;
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     size_t gcThreadNum = OHOS::system::GetUintParameter<size_t>("persist.ark.gcthreads", 7);
     size_t longPauseTime = OHOS::system::GetUintParameter<size_t>("persist.ark.longpausetime", 40);
@@ -680,7 +680,7 @@ NativeEngine* ArkNativeEngineImpl::CreateRuntimeFunc(NativeEngine* engine, void*
     option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
     const int64_t poolSize = 0x1000000;
     option.SetGcPoolSize(poolSize);
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
     option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::INFO);
 #endif
     option.SetDebuggerLibraryPath("");
@@ -1074,7 +1074,7 @@ void ArkNativeEngineImpl::DumpHeapSnapshotExt(bool isVmMode, DumpFormat dumpForm
 }
 #endif
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
 bool ArkNativeEngineImpl::BuildNativeAndJsStackTrace(std::string& stackTraceStr)
 {
     return DFXJSNApi::BuildNativeAndJsStackTrace(vm_, stackTraceStr);
@@ -1087,7 +1087,7 @@ bool ArkNativeEngineImpl::BuildNativeAndJsStackTrace(std::string& stackTraceStr)
 }
 #endif
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
 bool ArkNativeEngineImpl::BuildJsStackTrace(std::string& stackTraceStr)
 {
     return DFXJSNApi::BuildJsStackTrace(vm_, stackTraceStr);
@@ -1149,7 +1149,7 @@ bool ArkNativeEngineImpl::StopHeapTracking(const std::string& filePath)
 }
 #endif
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(LINUX_PLATFORM)
 void ArkNativeEngineImpl::PrintStatisticResult()
 {
     DFXJSNApi::PrintStatisticResult(vm_);
