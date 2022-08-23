@@ -35,6 +35,16 @@ struct JsFrameInfo {
 }
 using ArkJsFrameInfo = panda::ecmascript::JsFrameInfo;
 
+namespace panda::ecmascript {
+struct JsFrameInfo {
+    std::string functionName;
+    std::string fileName;
+    std::string pos;
+    uintptr_t *nativePointer = nullptr;
+};
+}
+using ArkJsFrameInfo = panda::ecmascript::JsFrameInfo;
+
 using panda::ecmascript::EcmaVM;
 using panda::Local;
 using panda::LocalScope;
