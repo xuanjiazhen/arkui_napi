@@ -16,13 +16,19 @@
 #ifndef FOUNDATION_ACE_NAPI_UTILS_LOG_H
 #define FOUNDATION_ACE_NAPI_UTILS_LOG_H
 
+#ifdef LINUX_PLATFORM
+#include <string.h>
+#include <stdint.h>
+#include <iostream>
+#else 
 #include <string>
+#endif
 
 #include "utils/macros.h"
 
 #define __FILENAME__ strrchr(__FILE__, '/') + 1
 
-#if defined(MAC_PLATFORM) || defined(WINDOWS_PLATFORM) || defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
+#if defined(PREVIEW) || defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
 enum class LogLevel : uint32_t {
     Debug = 0,
     Info,

@@ -15,7 +15,7 @@
 
 #include "native_engine_interface.h"
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
+#if !defined(PREVIEW) && !defined(IOS_PLATFORM)
 #include <sys/epoll.h>
 #endif
 
@@ -299,7 +299,7 @@ void NativeEngineInterface::EncodeToChinese(NativeValue* nativeValue, std::strin
     nativeString->EncodeWriteChinese(buffer, encoding.c_str());
 }
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+#if !defined(PREVIEW)
 void NativeEngineInterface::CheckUVLoop()
 {
     checkUVLoop_ = true;
