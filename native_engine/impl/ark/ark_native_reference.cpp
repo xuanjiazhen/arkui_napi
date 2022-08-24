@@ -44,11 +44,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
     Global<JSValueRef> newValue(vm, oldValue.ToLocal(vm));
     value_ = newValue;
     if (initialRefcount == 0) {
-        value_.SetWeakCallback(reinterpret_cast<void*>(this), [](void *ref) {
-            auto that = reinterpret_cast<ArkNativeReference*>(ref);
-            that->FinalizeCallback();
-            that->value_.FreeGlobalHandleAddr();
-        });
+        value_.SetWeak();
     }
 
 #ifdef ENABLE_CONTAINER_SCOPE
@@ -68,13 +64,9 @@ ArkNativeReference::~ArkNativeReference()
     if (deleteSelf_ && engine_->GetReferenceManager()) {
         engine_->GetReferenceManager()->ReleaseHandler(this);
     }
-    if (value_.IsEmpty()) {
-        return;
-    }
+
     if (!value_.IsWeak()) {
         value_.SetWeak();
-    } else {
-        value_.FreeGlobalHandleAddr();
     }
     refCount_ = 0;
     FinalizeCallback();
@@ -95,9 +87,6 @@ uint32_t ArkNativeReference::Unref()
         return refCount_;
     }
     --refCount_;
-    if (value_.IsEmpty()) {
-        return refCount_;
-    }
     if (refCount_ == 0) {
         value_.SetWeak();
         FinalizeCallback();
