@@ -259,7 +259,6 @@ bool ArkNativeObject::DefineProperty(NativePropertyDescriptor propertyDescriptor
         PropertyAttribute attr(value.ToLocal(vm), writable, enumable, configable);
         result = obj->DefineProperty(vm, propertyName, attr);
     }
-    panda::JSNApi::GetAndClearUncaughtException(vm);
     scopeManager->Close(nativeScope);
     return result;
 }
