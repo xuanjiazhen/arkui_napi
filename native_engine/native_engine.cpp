@@ -160,7 +160,6 @@ void NativeEngine::CancelCheckUVLoop()
 
 void NativeEngine::SetPostTask(PostTask postTask)
 {
-    HILOG_INFO("SetPostTask in");
     nativeEngineImpl_->SetPostTask(postTask);
 }
 
