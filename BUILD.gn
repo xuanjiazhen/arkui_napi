@@ -186,7 +186,7 @@ if (defined(ohos_lite)) {
     # Use static libuv for cross build
     if (is_cross_platform_build) {
       deps -= [ "//third_party/libuv:uv" ]
-      deps += [ "//third_party/libuv:uv_static" ]
+      deps += [ "//third_party/libuv:uv" ]
     }
 
     cflags_cc = [ "-Wno-missing-braces" ]
