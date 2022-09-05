@@ -40,6 +40,7 @@ using GetAssetFunc = std::function<void(const std::string& uri, std::vector<uint
 using OffWorkerFunc = std::function<void(NativeEngine* engine)>;
 using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
 using UncaughtExceptionCallback = std::function<void(NativeValue* value)>;
+// using HookFunc = std::function<void(NativeEngine* engine)>;
 
 class NAPI_EXPORT NativeEngine {
 public:
@@ -202,11 +203,19 @@ public:
     virtual void SetOffWorkerFunc(OffWorkerFunc func);
     virtual void SetWorkerAsyncWorkFunc(NativeAsyncExecuteCallback executeCallback,
                                         NativeAsyncCompleteCallback completeCallback);
+    virtual void BindOnMessageToContainer(void* onMessageFunc);
+    virtual void BindOnErrorToContainer(void* onErrorFunc);
     // call init worker func
     virtual bool CallInitWorkerFunc(NativeEngine* engine);
     virtual bool CallGetAssetFunc(const std::string& uri, std::vector<uint8_t>& content, std::string& ami);
     virtual bool CallOffWorkerFunc(NativeEngine* engine);
     virtual bool CallWorkerAsyncWorkFunc(NativeEngine* engine);
+    virtual bool SetOnMessageHandle();
+    virtual bool SetOnErrorHandle();
+    virtual bool BeforeCallOnMessageFunc();
+    virtual bool AfterCallOnMessageFunc();
+    virtual bool BeforeCallOnErrorFunc();
+    virtual bool AfterCallOnErrorFunc();
 #if !defined(PREVIEW)
     virtual void SetDebuggerPostTaskFunc(DebuggerPostTask func);
     virtual void CallDebuggerPostTaskFunc(std::function<void()>&& task);

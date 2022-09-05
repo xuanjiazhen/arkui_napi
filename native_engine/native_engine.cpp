@@ -17,6 +17,10 @@
 #include "native_engine/native_engine_interface.h"
 #include "utils/log.h"
 
+namespace {
+static void* onMessageFunc_;
+static void* onErrorFunc_;
+}
 NativeEngine::NativeEngine(void* jsEngine) : jsEngine_(jsEngine) {}
 
 NativeEngine::~NativeEngine()
@@ -182,6 +186,14 @@ void NativeEngine::SetWorkerAsyncWorkFunc(
     nativeAsyncExecuteCallback_ = executeCallback;
     nativeAsyncCompleteCallback_ = completeCallback;
 }
+void NativeEngine::BindOnMessageToContainer(void* func)
+{
+    onMessageFunc_ = func;
+}
+void NativeEngine::BindOnErrorToContainer(void* func)
+{
+    onErrorFunc_ = func;
+}
 // call init worker func
 bool NativeEngine::CallInitWorkerFunc(NativeEngine* engine)
 {
@@ -203,6 +215,53 @@ bool NativeEngine::CallOffWorkerFunc(NativeEngine* engine)
 {
     if (offWorkerFunc_ != nullptr) {
         offWorkerFunc_(engine);
+        return true;
+    }
+    return false;
+}
+bool NativeEngine::SetOnMessageHandle()
+{
+    if (onMessageFunc_ != nullptr) {
+        return true;
+    }
+    return false;
+}
+bool NativeEngine::SetOnErrorHandle()
+{
+    if (onErrorFunc_ != nullptr) {
+        return true;
+    }
+    return false;
+}
+bool NativeEngine::BeforeCallOnMessageFunc()
+{
+    if (onMessageFunc_ != nullptr) {
+        // reinterpret_cast<HookFunc>(messageFunc_)(engine);
+        // onMessageFunc_;
+        return true;
+    }
+    return false;
+}
+bool NativeEngine::AfterCallOnMessageFunc()
+{
+    if (onMessageFunc_ != nullptr) {
+        // messageFunc_(engine);
+        return true;
+    }
+    return false;
+}
+bool NativeEngine::BeforeCallOnErrorFunc()
+{
+    if (onErrorFunc_ != nullptr) {
+        // errorFunc_(engine);
+        return true;
+    }
+    return false;
+}
+bool NativeEngine::AfterCallOnErrorFunc()
+{
+    if (onErrorFunc_ != nullptr) {
+        // errorFunc_(engine);
         return true;
     }
     return false;
