@@ -140,7 +140,7 @@ void ArkNativeObject::SetNativePointer(void* pointer, NativeFinalize cb, void* h
         }
         object->SetNativePointerFieldCount(1);
         object->SetNativePointerField(0, ref, nullptr, nullptr);
-        PropertyAttribute attr(object, true, false, true);
+        PropertyAttribute attr(vm, object, true, false, true);
         value->DefineProperty(vm, key, attr);
     }
 }
@@ -259,19 +259,19 @@ bool ArkNativeObject::DefineProperty(NativePropertyDescriptor propertyDescriptor
             localSetter = *setter;
         }
 
-        PropertyAttribute attr(JSValueRef::Undefined(engine_->GetEcmaVm()), false, enumable, configable);
+        PropertyAttribute attr(vm, JSValueRef::Undefined(engine_->GetEcmaVm()), false, enumable, configable);
         result = obj->SetAccessorProperty(vm, propertyName, localGetter.ToLocal(vm), localSetter.ToLocal(vm), attr);
     } else if (propertyDescriptor.method != nullptr) {
         fullName += propertyDescriptor.utf8name;
         NativeValue* cb = new ArkNativeFunction(engine_, fullName.c_str(), 0, propertyDescriptor.method,
                                                propertyDescriptor.data);
         Global<JSValueRef> globalCb = *cb;
-        PropertyAttribute attr(globalCb.ToLocal(vm), writable, enumable, configable);
+        PropertyAttribute attr(vm, globalCb.ToLocal(vm), writable, enumable, configable);
         result = obj->DefineProperty(vm, propertyName, attr);
     } else {
         Global<JSValueRef> value = *(propertyDescriptor.value);
 
-        PropertyAttribute attr(value.ToLocal(vm), writable, enumable, configable);
+        PropertyAttribute attr(vm, value.ToLocal(vm), writable, enumable, configable);
         result = obj->DefineProperty(vm, propertyName, attr);
     }
     Local<ObjectRef> excep = panda::JSNApi::GetUncaughtException(vm);
