@@ -136,7 +136,8 @@ void NativeEngine::EncodeToChinese(NativeValue* nativeValue, std::string& buffer
     nativeEngineImpl_->EncodeToChinese(nativeValue, buffer, encoding);
 }
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
 void NativeEngine::CheckUVLoop()
 {
     nativeEngineImpl_->CheckUVLoop();
@@ -209,7 +210,8 @@ bool NativeEngine::CallOffWorkerFunc(NativeEngine* engine)
     return false;
 }
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
 void NativeEngine::CallDebuggerPostTaskFunc(std::function<void()>&& task)
 {
     if (debuggerPostTaskFunc_ != nullptr) {

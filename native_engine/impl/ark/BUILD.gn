@@ -30,6 +30,9 @@ config("ace_napi_ark_config") {
     cflags_cc += [ "-std=c++17" ]
   } else if (is_mac) {
     defines += [ "MAC_PLATFORM" ]
+  } else if (is_ios) {
+    # UniqueLabel005 UniqueAddCondition00n
+    defines += [ "IOS_PLATFORM" ]
   }
 }
 
@@ -72,7 +75,9 @@ template("ace_napi_impl") {
       "//foundation/arkui/napi:ace_napi",
     ]
 
-    if (product_name != "ohos-sdk") {
+    # UniqueLabel001 UniqueMask000
+    # if (product_name != "ohos-sdk") {
+    if (product_name != "ohos-sdk" && product_name != "arkui-cross") {
       if (napi_enable_container_scope) {
         deps += [ "//foundation/arkui/napi:ace_container_scope" ]
         defines += [ "ENABLE_CONTAINER_SCOPE" ]
@@ -97,13 +102,18 @@ template("ace_napi_impl") {
 }
 
 foreach(item, ace_platforms) {
-  if (item.name == "ohos") {
+  # UniqueLabel000 UniqueComplete000
+  if (item.name == "ohos" || is_cross_platform_build) {
     engine_config = item.config
     support_engines = engine_config.js_engines
     foreach(engine, support_engines) {
       if (engine.engine_name == "ark") {
         ace_napi_impl("ace_napi_impl_ark") {
+          # UniqueLabel000 UniqueComplete000 UniqueFalse
+          defines = []
           engine_defines = engine.engine_defines
+          # UniqueLabel000 UniqueComplete000 UniqueFalse
+          defines = engine_config.defines
         }
       }
     }

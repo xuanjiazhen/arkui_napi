@@ -299,7 +299,8 @@ void NativeEngineInterface::EncodeToChinese(NativeValue* nativeValue, std::strin
     nativeString->EncodeWriteChinese(buffer, encoding.c_str());
 }
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
 void NativeEngineInterface::CheckUVLoop()
 {
     checkUVLoop_ = true;

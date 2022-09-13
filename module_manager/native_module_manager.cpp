@@ -255,7 +255,8 @@ bool NativeModuleManager::GetNativeModulePath(
     const char* soPostfix = ".dll";
     const char* sysPrefix = "./module";
     const char* zfix = "";
-#elif defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#elif defined(MAC_PLATFORM) || defined(IOS_PLATFORM)
     const char* soPostfix = ".dylib";
     const char* sysPrefix = "./module";
     const char* zfix = "";
@@ -360,7 +361,8 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const bool is
     if (lib == nullptr) {
         HILOG_ERROR("LoadLibrary failed, error: %{public}d", GetLastError());
     }
-#elif defined(MAC_PLATFORM) || defined(__BIONIC__)
+// UniqueLabel005 UniqueAddCondition00n
+#elif defined(MAC_PLATFORM) || defined(IOS_PLATFORM) || defined(__BIONIC__)
     lib = dlopen(path, RTLD_LAZY);
     if (lib == nullptr) {
         HILOG_ERROR("dlopen failed: %{public}s", dlerror());

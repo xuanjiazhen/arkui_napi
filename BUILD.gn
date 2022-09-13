@@ -149,6 +149,11 @@ if (defined(ohos_lite)) {
       defines += [ "_ARM64_" ]
     }
 
+    # UniqueLabel005 UniqueTemp00n
+    print("is_cross_platform_build:")
+    print(is_cross_platform_build)
+    print("target_os:")
+    print(target_os)
     if (use_mingw_win) {
       defines += [ "WINDOWS_PLATFORM" ]
     } else if (use_mac) {
@@ -177,6 +182,12 @@ if (defined(ohos_lite)) {
         external_deps = [ "hilog:libhilog" ]
       }
     }
+    # UniqueLabel005 UniqueTemp00n
+    print("defines-->")
+    foreach(def, defines) {
+      print(def)
+    }
+    print("-->defines")
 
     deps += [
       "//third_party/bounds_checking_function:libsec_static",
@@ -198,6 +209,10 @@ if (defined(ohos_lite)) {
   if (is_cross_platform_build && target_os == "ios") {
     ohos_source_set("ace_napi") {
       deps = [ ":ace_napi_static" ]
+      # UniqueLabel000 UniqueAddDeps000
+      deps += [
+        "$ace_root/frameworks/core/components/theme:build_theme_code",
+      ]
       public_configs = [ ":ace_napi_config" ]
       subsystem_name = "arkui"
       part_name = "napi"
