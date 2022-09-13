@@ -65,7 +65,6 @@ NAPI_EXPORT void PrintLog(LogLevel level, const char* fmt, ...)
     }
     va_end(args);
 
-    printf("%s\r\n", buf);
     fflush(stdout);
 }
 #endif
