@@ -517,6 +517,10 @@ bool QuickJSNativeEngine::BuildJsStackInfoList(uint32_t tid, std::vector<JsFrame
 {
     return nativeEngineImpl_->BuildJsStackInfoList(tid, jsFrames);
 }
+bool QuickJSNativeEngine::DeleteWorker(NativeEngine* engine, uint32_t tid)
+{
+    return nativeEngineImpl_->DeleteWorker(engine, tid);
+}
 bool QuickJSNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
 {
     return nativeEngineImpl_->StartHeapTracking(timeInterval, isVmMode);

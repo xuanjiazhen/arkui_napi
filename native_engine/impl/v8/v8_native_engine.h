@@ -244,6 +244,10 @@ public:
     {
         return false;
     }
+    bool DeleteWorker(NativeEngine* engine, uint32_t tid) override
+    {
+        return false;
+    }
     bool StartHeapTracking(double timeInterval, bool isVmMode = true) override
     {
         return false;

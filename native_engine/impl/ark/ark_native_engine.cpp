@@ -526,6 +526,12 @@ bool ArkNativeEngine::BuildJsStackInfoList(uint32_t tid, std::vector<JsFrameInfo
     return arkNativeEngineImpl->BuildJsStackInfoList(tid, jsFrames);
 }
 
+bool ArkNativeEngine::DeleteWorker(NativeEngine* engine, uint32_t tid)
+{
+    auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
+    return arkNativeEngineImpl->DeleteWorker(engine, tid);
+}
+
 bool ArkNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
