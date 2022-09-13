@@ -14,7 +14,8 @@
  */
 
 #include "ark_native_string.h"
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
 #include "ohos/init_data.h"
 #else
 #include "unicode/putil.h"
@@ -129,7 +130,9 @@ void ArkNativeString::EncodeWriteChinese(std::string& buffer, const char* encodi
         int32_t len = str->Utf8Length() - 1;
         if ((pos + len) >= writableSize) {
             char outBuf[writableSize] = {0};
-            ucnv_convert(encoding, encFrom, outBuf, writableSize, tempBuf.c_str(), pos, &ErrorCode);
+            // UniqueLabel006 UniqueSpecial00n
+            ErrorCode = U_MISSING_RESOURCE_ERROR;
+            // ucnv_convert(encoding, encFrom, outBuf, writableSize, tempBuf.c_str(), pos, &ErrorCode);
             if (ErrorCode != U_ZERO_ERROR) {
                 HILOG_ERROR("ucnv_convert is failed : ErrorCode = %{public}d", static_cast<int32_t>(ErrorCode));
                 return;

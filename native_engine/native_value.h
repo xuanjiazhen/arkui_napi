@@ -24,6 +24,7 @@
 
 class NativeValue;
 class NativeEngine;
+class NativeReference;
 
 struct NativePropertyDescriptor;
 struct NativeCallbackInfo;
@@ -45,6 +46,13 @@ struct NativeObjectInfo {
     void* nativeObject = nullptr;
     NativeFinalize callback = nullptr;
     void* hint = nullptr;
+};
+
+struct JsFrameInfo {
+    std::string functionName;
+    std::string fileName;
+    std::string pos;
+    uintptr_t *nativePointer = nullptr;
 };
 
 struct NativeFunctionInfo {
@@ -209,10 +217,13 @@ public:
 class NativeObject {
 public:
     static const int INTERFACE_ID = 3;
+    static constexpr auto PANDA_MODULE_NAME = "_GLOBAL_MODULE_NAME";
+    static const auto PANDA_MODULE_NAME_LEN = 32;
 
     virtual bool ConvertToNativeBindingObject(
         void* engine, DetachCallback detach, AttachCallback attach, void *object, void *hint) = 0;
-    virtual void SetNativePointer(void* pointer, NativeFinalize cb, void* hint) = 0;
+    virtual void SetNativePointer(
+        void* pointer, NativeFinalize cb, void* hint, NativeReference** reference = nullptr) = 0;
     virtual void* GetNativePointer() = 0;
     virtual void SetNativeBindingPointer(
         void* enginePointer, void* objPointer, void* hint, void* detachData = nullptr, void* attachData = nullptr) = 0;

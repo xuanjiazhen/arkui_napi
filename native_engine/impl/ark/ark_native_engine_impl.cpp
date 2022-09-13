@@ -47,6 +47,9 @@
 #endif
 #include "securec.h"
 #include "utils/log.h"
+#ifdef ENABLE_HITRACE
+#include "parameter.h"
+#endif
 
 using panda::JsiRuntimeCallInfo;
 using panda::BooleanRef;
@@ -64,11 +67,28 @@ using panda::IntegerRef;
 using panda::DateRef;
 using panda::BigIntRef;
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
+#ifdef ENABLE_HITRACE
+constexpr auto NAPI_PROFILER_PARAM_SIZE = 10;
+#endif
+
+bool ArkNativeEngineImpl::napiProfilerEnabled {false};
+bool ArkNativeEngineImpl::napiProfilerParamReaded {false};
 
 ArkNativeEngineImpl::ArkNativeEngineImpl(
     EcmaVM* vm, NativeEngine* engine, void* jsEngine) : NativeEngineInterface(engine, jsEngine),
     vm_(vm), topScope_(vm)
 {
+#ifdef ENABLE_HITRACE
+    if (!ArkNativeEngineImpl::napiProfilerParamReaded) {
+        char napiProfilerParam[NAPI_PROFILER_PARAM_SIZE] = {0};
+        int ret = GetParameter("persist.hiviewdfx.napiprofiler.enabled", "false",
+            napiProfilerParam, sizeof(napiProfilerParam));
+        if (ret > 0 && strcmp(napiProfilerParam, "true") == 0) {
+            ArkNativeEngineImpl::napiProfilerEnabled = true;
+        }
+        ArkNativeEngineImpl::napiProfilerParamReaded = true;
+    }
+#endif
     Local<StringRef> requireInternalName = StringRef::NewFromUtf8(vm, "requireInternal");
     void* requireData = static_cast<void*>(this);
 
@@ -129,6 +149,8 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
 #ifdef ENABLE_HITRACE
                         StartTrace(HITRACE_TAG_ACE, "NAPI module init, name = " + std::string(module->name));
 #endif
+                        ArkNativeObject* exportObj = reinterpret_cast<ArkNativeObject*>(exportObject);
+                        engineImpl->SetModuleName(exportObj, module->name);
                         module->registerCallback(arkNativeEngine, exportObject);
 #ifdef ENABLE_HITRACE
                         FinishTrace(HITRACE_TAG_ACE);
@@ -173,6 +195,8 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                             HILOG_ERROR("exportObject is nullptr");
                             return scope.Escape(exports.ToLocal(ecmaVm));
                         }
+                        ArkNativeObject* exportObj = reinterpret_cast<ArkNativeObject*>(exportObject);
+                        engineImpl->SetModuleName(exportObj, module->name);
                         module->registerCallback(arkNativeEngine, exportObject);
                         exports = *exportObject;
                         engineImpl->loadedModules_[module] = Global<JSValueRef>(ecmaVm, exports.ToLocal(ecmaVm));
@@ -187,7 +211,8 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
             requireData);
 
     Local<ObjectRef> global = panda::JSNApi::GetGlobalObject(vm);
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     Local<StringRef> requireName = StringRef::NewFromUtf8(vm, "requireNapi");
     global->Set(vm, requireName, requireNapi);
 #else
@@ -238,6 +263,7 @@ panda::Global<panda::ObjectRef> ArkNativeEngineImpl::GetModuleFromName(NativeEng
         paramProperty.value = paramValue;
 
         ArkNativeObject* exportObj = reinterpret_cast<ArkNativeObject*>(exportObject);
+        SetModuleName(exportObj, module->name);
         exportObj->DefineProperty(idProperty);
         exportObj->DefineProperty(paramProperty);
         module->registerCallback(engine, exportObject);
@@ -283,6 +309,7 @@ panda::Global<panda::ObjectRef> ArkNativeEngineImpl::LoadModuleByName(ArkNativeE
         instanceProperty.utf8name = instanceName.c_str();
         instanceProperty.value = instanceValue;
 
+        SetModuleName(exportObj, module->name);
         exportObj->DefineProperty(paramProperty);
         exportObj->DefineProperty(instanceProperty);
 
@@ -572,7 +599,11 @@ NativeValue* ArkNativeEngineImpl::DefineClass(NativeEngine* engine, const char* 
     NativeCallback callback, void* data, const NativePropertyDescriptor* properties, size_t length)
 {
     LocalScope scope(vm_);
-    auto classConstructor = new ArkNativeFunction(static_cast<ArkNativeEngine*>(engine), name, callback, data);
+    std::string className(name);
+    std::string constructorName = className + ".Constructor";
+    auto classConstructor = new ArkNativeFunction(static_cast<ArkNativeEngine*>(engine),
+        constructorName.c_str(), callback, data);
+    SetModuleName(classConstructor, constructorName);
     auto classPrototype = classConstructor->GetFunctionPrototype();
 
     for (size_t i = 0; i < length; i++) {
@@ -583,7 +614,9 @@ NativeValue* ArkNativeEngineImpl::DefineClass(NativeEngine* engine, const char* 
                 HILOG_ERROR("ArkNativeEngineImpl::Class's prototype is null");
                 continue;
             }
-            static_cast<ArkNativeObject*>(classPrototype)->DefineProperty(properties[i]);
+            ArkNativeObject* arkNativeobj = static_cast<ArkNativeObject*>(classPrototype);
+            SetModuleName(arkNativeobj, className);
+            arkNativeobj->DefineProperty(properties[i]);
         }
     }
 
@@ -667,7 +700,8 @@ bool ArkNativeEngineImpl::Throw(NativeEngine* engine, NativeErrorType type, cons
 NativeEngine* ArkNativeEngineImpl::CreateRuntimeFunc(NativeEngine* engine, void* jsEngine)
 {
     panda::RuntimeOption option;
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     size_t gcThreadNum = OHOS::system::GetUintParameter<size_t>("persist.ark.gcthreads", 7);
     size_t longPauseTime = OHOS::system::GetUintParameter<size_t>("persist.ark.longpausetime", 40);
@@ -680,7 +714,8 @@ NativeEngine* ArkNativeEngineImpl::CreateRuntimeFunc(NativeEngine* engine, void*
     option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
     const int64_t poolSize = 0x1000000;
     option.SetGcPoolSize(poolSize);
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::INFO);
 #endif
     option.SetDebuggerLibraryPath("");
@@ -762,7 +797,7 @@ void ArkNativeEngineImpl::StartCpuProfiler(const std::string& fileName)
 
 void ArkNativeEngineImpl::StopCpuProfiler()
 {
-    DFXJSNApi::StopCpuProfilerForFile();
+    DFXJSNApi::StopCpuProfilerForFile(vm_);
     JSNApi::SetNativePtrGetter(vm_, nullptr);
 }
 #else
@@ -1074,7 +1109,8 @@ void ArkNativeEngineImpl::DumpHeapSnapshotExt(bool isVmMode, DumpFormat dumpForm
 }
 #endif
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
 bool ArkNativeEngineImpl::BuildNativeAndJsStackTrace(std::string& stackTraceStr)
 {
     return DFXJSNApi::BuildNativeAndJsStackTrace(vm_, stackTraceStr);
@@ -1087,13 +1123,38 @@ bool ArkNativeEngineImpl::BuildNativeAndJsStackTrace(std::string& stackTraceStr)
 }
 #endif
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
 bool ArkNativeEngineImpl::BuildJsStackTrace(std::string& stackTraceStr)
 {
     return DFXJSNApi::BuildJsStackTrace(vm_, stackTraceStr);
 }
 #else
 bool ArkNativeEngineImpl::BuildJsStackTrace(std::string& stackTraceStr)
+{
+    HILOG_WARN("ARK does not support dfx on windows");
+    return false;
+}
+#endif
+
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
+bool ArkNativeEngineImpl::BuildJsStackInfoList(std::vector<JsFrameInfo>& jsFrames)
+{
+    std::vector<ArkJsFrameInfo> arkJsFrames;
+    bool sign = DFXJSNApi::BuildJsStackInfoList(vm_, arkJsFrames);
+    for (auto jf : arkJsFrames) {
+        struct JsFrameInfo jsframe;
+        jsframe.fileName = jf.fileName;
+        jsframe.functionName = jf.functionName;
+        jsframe.pos = jf.pos;
+        jsframe.nativePointer = jf.nativePointer;
+        jsFrames.emplace_back(jsframe);
+    }
+    return sign;
+}
+#else
+bool ArkNativeEngineImpl::BuildJsStackInfoList(std::vector<JsFrameInfo>& jsFrames)
 {
     HILOG_WARN("ARK does not support dfx on windows");
     return false;
@@ -1126,7 +1187,8 @@ bool ArkNativeEngineImpl::StopHeapTracking(const std::string& filePath)
 }
 #endif
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
 void ArkNativeEngineImpl::PrintStatisticResult()
 {
     DFXJSNApi::PrintStatisticResult(vm_);
@@ -1225,3 +1287,11 @@ void ArkNativeEngineImpl::HandleUncaughtException(NativeEngine* engine)
     }
 }
 
+inline void ArkNativeEngineImpl::SetModuleName(ArkNativeObject *nativeObj, std::string moduleName)
+{
+#ifdef ENABLE_HITRACE
+    if (ArkNativeEngineImpl::napiProfilerEnabled) {
+        nativeObj->SetModuleName(moduleName);
+    }
+#endif
+}

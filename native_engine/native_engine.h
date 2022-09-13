@@ -58,7 +58,8 @@ public:
     virtual void Loop(LoopMode mode, bool needSync = false);
     virtual void SetPostTask(PostTask postTask);
     virtual void TriggerPostTask();
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     virtual void CheckUVLoop();
     virtual void CancelCheckUVLoop();
 #endif
@@ -162,6 +163,7 @@ public:
         bool isPrivate = false) = 0;
     virtual bool BuildNativeAndJsStackTrace(std::string &stackTraceStr) = 0;
     virtual bool BuildJsStackTrace(std::string &stackTraceStr) = 0;
+    virtual bool BuildJsStackInfoList(std::vector<JsFrameInfo>& jsFrames) = 0;
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true) = 0;
     virtual bool StopHeapTracking(const std::string &filePath) = 0;
 
@@ -205,7 +207,8 @@ public:
     virtual bool CallGetAssetFunc(const std::string& uri, std::vector<uint8_t>& content, std::string& ami);
     virtual bool CallOffWorkerFunc(NativeEngine* engine);
     virtual bool CallWorkerAsyncWorkFunc(NativeEngine* engine);
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     virtual void SetDebuggerPostTaskFunc(DebuggerPostTask func);
     virtual void CallDebuggerPostTaskFunc(std::function<void()>&& task);
 #endif
@@ -266,7 +269,8 @@ protected:
     InitWorkerFunc initWorkerFunc_ {nullptr};
     GetAssetFunc getAssetFunc_ {nullptr};
     OffWorkerFunc offWorkerFunc_ {nullptr};
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     DebuggerPostTask debuggerPostTaskFunc_ {nullptr};
 #endif
     NativeAsyncExecuteCallback nativeAsyncExecuteCallback_ {nullptr};

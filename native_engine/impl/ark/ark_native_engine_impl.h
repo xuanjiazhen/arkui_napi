@@ -23,6 +23,17 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "native_engine/native_engine_interface.h"
 #include "ark_native_engine.h"
+#include "native_value/ark_native_object.h"
+
+namespace panda::ecmascript {
+struct JsFrameInfo {
+    std::string functionName;
+    std::string fileName;
+    std::string pos;
+    uintptr_t *nativePointer = nullptr;
+};
+}
+using ArkJsFrameInfo = panda::ecmascript::JsFrameInfo;
 
 using panda::ecmascript::EcmaVM;
 using panda::Local;
@@ -192,6 +203,7 @@ public:
         bool isPrivate = false) override;
     bool BuildNativeAndJsStackTrace(std::string& stackTraceStr) override;
     bool BuildJsStackTrace(std::string& stackTraceStr) override;
+    bool BuildJsStackInfoList(std::vector<JsFrameInfo>& jsFrames) override;
     bool StartHeapTracking(double timeInterval, bool isVmMode = true) override;
     bool StopHeapTracking(const std::string& filePath) override;
 
@@ -220,6 +232,8 @@ public:
         const std::string& moduleName, bool isAppModule, const std::string& id, const std::string& param,
         const std::string& instanceName, void** instance);
 
+    static bool napiProfilerEnabled;
+
 private:
     static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, void* jsEngine);
 
@@ -230,6 +244,8 @@ private:
     NativeReference* checkCallbackRef_ { nullptr };
     std::unordered_map<NativeModule*, panda::Global<panda::JSValueRef>> loadedModules_;
     UncaughtExceptionCallback uncaughtExceptionCallback_ { nullptr };
+    inline void SetModuleName(ArkNativeObject *nativeObj, std::string moduleName);
+    static bool napiProfilerParamReaded;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_IMPL_H */

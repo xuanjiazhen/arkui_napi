@@ -111,7 +111,8 @@ public:
     virtual void Loop(LoopMode mode, bool needSync = false);
     virtual void SetPostTask(PostTask postTask);
     virtual void TriggerPostTask();
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     virtual void CheckUVLoop();
     virtual void CancelCheckUVLoop();
 #endif
@@ -214,6 +215,7 @@ public:
         bool isPrivate = false) = 0;
     virtual bool BuildNativeAndJsStackTrace(std::string& stackTraceStr) = 0;
     virtual bool BuildJsStackTrace(std::string& stackTraceStr) = 0;
+    virtual bool BuildJsStackInfoList(std::vector<JsFrameInfo>& jsFrames) = 0;
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true) = 0;
     virtual bool StopHeapTracking(const std::string& filePath) = 0;
 
@@ -302,7 +304,8 @@ protected:
 private:
     bool isMainThread_ { true };
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     static void UVThreadRunner(void* nativeEngine);
     void PostLoopTask();
 

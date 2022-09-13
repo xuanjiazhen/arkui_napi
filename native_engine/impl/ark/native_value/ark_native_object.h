@@ -34,7 +34,7 @@ public:
 
     static void* DetachFuncCallback(void* engine, void* object, void* hint, void* detachData);
     static Local<JSValueRef> AttachFuncCallback(void* engine, void* object, void* hint, void* attachData);
-    void SetNativePointer(void* pointer, NativeFinalize cb, void* hint) override;
+    void SetNativePointer(void* pointer, NativeFinalize cb, void* hint, NativeReference** reference = nullptr) override;
     void* GetNativePointer() override;
     void SetNativeBindingPointer(
         void* enginePointer, void* objPointer, void* hint, void* detachData, void* attachData) override;
@@ -68,6 +68,8 @@ public:
         napi_key_collection_mode keyMode, napi_key_filter keyFilter, napi_key_conversion keyConversion) override;
     bool AssociateTypeTag(NapiTypeTag* typeTag) override;
     bool CheckTypeTag(NapiTypeTag* typeTag) override;
+    void SetModuleName(std::string moduleName);
+    std::string GetModuleName();
 
 private:
     static AttachCallback attach_;

@@ -511,6 +511,12 @@ bool ArkNativeEngine::BuildJsStackTrace(std::string& stackTraceStr)
     return arkNativeEngineImpl->BuildJsStackTrace(stackTraceStr);
 }
 
+bool ArkNativeEngine::BuildJsStackInfoList(std::vector<JsFrameInfo>& jsFrames)
+{
+    auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
+    return arkNativeEngineImpl->BuildJsStackInfoList(jsFrames);
+}
+
 bool ArkNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
@@ -523,7 +529,8 @@ bool ArkNativeEngine::StopHeapTracking(const std::string &filePath)
     return arkNativeEngineImpl->StopHeapTracking(filePath);
 }
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM)
+// UniqueLabel005 UniqueAddCondition00n
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
 void ArkNativeEngine::PrintStatisticResult()
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
