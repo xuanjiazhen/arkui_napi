@@ -1189,6 +1189,21 @@ bool ArkNativeEngineImpl::BuildJsStackInfoList(uint32_t tid, std::vector<JsFrame
 }
 #endif
 
+#if !defined(PREVIEW)
+bool ArkNativeEngineImpl::DeleteWorker(NativeEngine* hostEngine, NativeEngine* workerEngine)
+{
+    const panda::ecmascript::EcmaVM* hostVM = reinterpret_cast<ArkNativeEngine*>(hostEngine)->GetEcmaVm();
+    const panda::ecmascript::EcmaVM* workerVM = reinterpret_cast<ArkNativeEngine*>(workerEngine)->GetEcmaVm();
+    return panda::JSNApi::DeleteWorker(const_cast<EcmaVM*>(hostVM), const_cast<EcmaVM*>(workerVM));
+}
+#else
+bool ArkNativeEngineImpl::DeleteWorker(NativeEngine* engine, NativeEngine* workerEngine)
+{
+    HILOG_WARN("ARK does not support dfx on windows");
+    return false;
+}
+#endif
+
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 bool ArkNativeEngineImpl::StartHeapTracking(double timeInterval, bool isVmMode)
 {
