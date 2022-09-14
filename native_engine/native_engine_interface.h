@@ -46,6 +46,7 @@ struct NativeErrorExtendedInfo {
 
 struct ExceptionInfo {
     const char* message_ = nullptr;
+    const char* stack_ = nullptr;
     int32_t lineno_ = 0;
     int32_t colno_ = 0;
 
@@ -53,6 +54,9 @@ struct ExceptionInfo {
     {
         if (message_ != nullptr) {
             delete[] message_;
+        }
+        if (stack_ != nullptr) {
+            delete[] stack_;
         }
     }
 };
