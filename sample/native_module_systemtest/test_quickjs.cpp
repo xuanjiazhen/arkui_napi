@@ -46,23 +46,17 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    js_std_add_helpers(ctx, 0, nullptr);
-
-    g_nativeEngine = new QuickJSNativeEngine(rt, ctx, 0); // default instance id 0
+    g_nativeEngine = new QuickJSNativeEngine(rt, ctx, 0);
 
     uv_thread_t tid;
     uv_thread_create(&tid, LoopNewThread, nullptr);
 
     int ret = RUN_ALL_TESTS();
 
-    uv_thread_join(&tid);
-
     delete g_nativeEngine;
     g_nativeEngine = nullptr;
 
-    js_std_free_handlers(rt);
     JS_FreeContext(ctx);
     JS_FreeRuntime(rt);
-
     return ret;
 }

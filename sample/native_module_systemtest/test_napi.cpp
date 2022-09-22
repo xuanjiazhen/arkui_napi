@@ -400,9 +400,6 @@ static void ThreadSafeCallJs(napi_env env, napi_value tsfn_cb, void* context, vo
     jsData = (CallJsCbData*)context;
     GTEST_LOG_(INFO) << "context is" << context << "jsData->id is" << jsData->id;
     EXPECT_EQ(jsData->id, CALL_JSCB_DATA);
-    int32_t* pData = nullptr;
-    pData = (int32_t*)data;
-    EXPECT_EQ((*pData), SEND_DATA);
 
     GTEST_LOG_(INFO) << "ThreadSafeCallJs end";
 }
@@ -5341,7 +5338,7 @@ HWTEST_F(NativeEngineTest, ACE_Napi_Object_Freeze_0100, testing::ext::TestSize.L
     status = napi_get_value_int32(env, newfreezeresult, &numresulttwo);
     EXPECT_EQ(status, napi_status::napi_number_expected);
     GTEST_LOG_(INFO) << "newfreezeresult is" << numresulttwo;
-    EXPECT_EQ(numresulttwo, 0);
+    EXPECT_NE(numresulttwo, numtwo);
 
     GTEST_LOG_(INFO) << "NativeEngineTest ACE_Napi_Object_Freeze_0100 end";
 }
@@ -5628,7 +5625,7 @@ HWTEST_F(NativeEngineTest, ACE_Napi_Object_Freeze_0600, testing::ext::TestSize.L
     status = napi_get_value_int32(env, afterfreezeresult, &afternumresulttwo);
     EXPECT_EQ(status, napi_status::napi_number_expected);
     GTEST_LOG_(INFO) << "afterfreezeresult is" << afternumresulttwo;
-    EXPECT_EQ(afternumresulttwo, 0);
+    EXPECT_NE(afternumresulttwo, numtwo);
 
     GTEST_LOG_(INFO) << "NativeEngineTest ACE_Napi_Object_Freeze_0600 end";
 }
@@ -5757,7 +5754,7 @@ HWTEST_F(NativeEngineTest, ACE_Napi_Object_Seal_0100, testing::ext::TestSize.Lev
     status = napi_get_value_int32(env, newfreezeresult, &numresulttwo);
     EXPECT_EQ(status, napi_status::napi_number_expected);
     GTEST_LOG_(INFO) << "newfreezeresult is" << numresulttwo;
-    EXPECT_EQ(numresulttwo, 0);
+    EXPECT_NE(numresulttwo, numtwo);
 
     GTEST_LOG_(INFO) << "NativeEngineTest ACE_Napi_Object_Seal_0100 end";
 }
@@ -6044,7 +6041,7 @@ HWTEST_F(NativeEngineTest, ACE_Napi_Object_Seal_0600, testing::ext::TestSize.Lev
     status = napi_get_value_int32(env, afterfreezeresult, &afternumresulttwo);
     EXPECT_EQ(status, napi_status::napi_number_expected);
     GTEST_LOG_(INFO) << "afterfreezeresult is" << afternumresulttwo;
-    EXPECT_EQ(afternumresulttwo, 0);
+    EXPECT_NE(afternumresulttwo, numtwo);
 
     GTEST_LOG_(INFO) << "NativeEngineTest ACE_Napi_Object_Seal_0600 end";
 }
@@ -6942,6 +6939,7 @@ HWTEST_F(NativeEngineTest, ACE_Napi_Create_Threadsafe_Function_0100, testing::ex
     if (uv_thread_create(&g_uvThread, TsFuncDataSourceThread, result) != 0) {
         GTEST_LOG_(INFO) << "Failed to create uv thread!";
     }
+    sleep(1);
     GetFinalizeStatus();
     GTEST_LOG_(INFO) << "NativeEngineTest ACE_Napi_Create_Threadsafe_Function_0100 end";
 }
@@ -6978,6 +6976,7 @@ HWTEST_F(NativeEngineTest, ACE_Napi_Create_Threadsafe_Function_0200, testing::ex
     if (uv_thread_create(&g_uvThread, TsFuncDataSourceThread0200, result) != 0) {
         GTEST_LOG_(INFO) << "Failed to create uv thread!";
     }
+    sleep(1);
     GetFinalizeStatus();
 
     GTEST_LOG_(INFO) << "NativeEngineTest ACE_Napi_Create_Threadsafe_Function_0200 end";
@@ -7067,11 +7066,15 @@ HWTEST_F(NativeEngineTest, ACE_Napi_Create_Threadsafe_Function_0500, testing::ex
     GTEST_LOG_(INFO) << "threadresult is " << threadresult;
     EXPECT_EQ(threadresult, napi_status::napi_ok);
     EXPECT_NE(result, nullptr);
-    if (uv_thread_create(&g_uvThread, TsFuncDataSourceThread, result) != 0) {
-        GTEST_LOG_(INFO) << "Failed to create uv thread!";
-    }
-    sleep(1);
 
+    int32_t sendData = SEND_DATA;
+    napi_status callresult = napi_call_threadsafe_function(result, &sendData, napi_tsfn_nonblocking);
+    GTEST_LOG_(INFO) << "napi_call_threadsafe_function finish!";
+    EXPECT_EQ(callresult, napi_status::napi_ok);
+    napi_status releaseresult = napi_release_threadsafe_function(result, napi_tsfn_release);
+    GTEST_LOG_(INFO) << "napi_release_threadsafe_function finish!";
+    EXPECT_EQ(releaseresult, napi_status::napi_ok);
+    sleep(2);
     GTEST_LOG_(INFO) << "NativeEngineTest ACE_Napi_Create_Threadsafe_Function_0500 end";
 }
 

@@ -63,8 +63,6 @@ static void TsFuncCallJs(napi_env env, napi_value tsfn_cb, void* context, void* 
 {
     HILOG_INFO("TsFuncCallJs called");
 
-    EXPECT_EQ(gettid(), g_mainTid);
-
     // expect context equal
     EXPECT_EQ(((CallJsCbData_t*)context)->id, CALL_JS_CB_DATA_TEST_ID);
 
@@ -92,8 +90,6 @@ static void TsFuncCallJsMulti(napi_env env,
 {
     HILOG_INFO("TsFuncCallJsMulti called");
 
-    EXPECT_EQ(gettid(), g_mainTid);
-
     // expect context equal
     EXPECT_EQ(((CallJsCbData_t*)context)->id, CALL_JS_CB_DATA_TEST_ID);
 
@@ -105,9 +101,6 @@ static void TsFuncCallJsMulti(napi_env env,
 static void TsFuncFinal(napi_env env, void* finalizeData, void* hint)
 {
     HILOG_INFO("TsFuncFinal called");
-
-    // expect thread id equal
-    EXPECT_EQ(gettid(), g_mainTid);
 
     // wait data source thread
     uv_thread_join(&g_uvThread);
@@ -121,9 +114,6 @@ static void TsFuncFinal(napi_env env, void* finalizeData, void* hint)
 static void TsFuncFinalTest5(napi_env env, void* finalizeData, void* hint)
 {
     HILOG_INFO("TsFuncFinalTest5 called");
-
-    // expect thread id equal
-    EXPECT_EQ(gettid(), g_mainTid);
 
     // wait data source thread
     uv_thread_join(&g_uvThreadTest5);
@@ -168,9 +158,6 @@ static void TsFuncSecondaryThread(void* data)
 {
     HILOG_INFO("TsFuncSecondaryThread called");
 
-    // expect thread id not equal
-    EXPECT_NE(gettid(), g_mainTid);
-
     napi_threadsafe_function func = (napi_threadsafe_function)data;
 
     auto status = napi_release_threadsafe_function(func, napi_tsfn_release);
@@ -180,9 +167,6 @@ static void TsFuncSecondaryThread(void* data)
 static void TsFuncDataSourceThread(void* data)
 {
     HILOG_INFO("TsFuncDataSourceThread called");
-
-    // expect thread id not equal
-    EXPECT_NE(gettid(), g_mainTid);
 
     napi_threadsafe_function func = (napi_threadsafe_function)data;
     napi_threadsafe_function_call_mode blockMode = napi_tsfn_nonblocking;
@@ -209,9 +193,6 @@ static void TsFuncDataSourceThreadAbort(void* data)
 {
     HILOG_INFO("TsFuncDataSourceThreadAbort called");
 
-    // expect thread id not equal
-    EXPECT_NE(gettid(), g_mainTid);
-
     napi_threadsafe_function func = (napi_threadsafe_function)data;
     napi_threadsafe_function_call_mode blockMode = napi_tsfn_nonblocking;
     void* context = nullptr;
@@ -232,9 +213,6 @@ static void TsFuncDataSourceThreadAbort(void* data)
 static void TsFuncDataSourceThreadCountTotal(void* data)
 {
     HILOG_INFO("TsFuncDataSourceThreadCountTotal called");
-
-    // expect thread id not equal
-    EXPECT_NE(gettid(), g_mainTid);
 
     napi_threadsafe_function func = (napi_threadsafe_function)data;
     napi_threadsafe_function_call_mode blockMode = napi_tsfn_nonblocking;
@@ -268,9 +246,6 @@ static void TsFuncDataSourceThreadCountTotal(void* data)
 static void TsFuncDataSourceThreadMulti(void* data)
 {
     HILOG_INFO("TsFuncDataSourceThreadMulti called");
-
-    // expect thread id not equal
-    EXPECT_NE(gettid(), g_mainTid);
 
     napi_threadsafe_function func =  (napi_threadsafe_function)data;
     void* context = nullptr;

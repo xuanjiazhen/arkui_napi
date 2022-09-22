@@ -849,13 +849,25 @@ HWTEST_F(NapiExtTest, ApiGetModuleFileName_001, testing::ext::TestSize.Level1)
     const char* result = nullptr;
     GTEST_LOG_(INFO) << "node_api_get_module_file_name 1 execute";
     ASSERT_CHECK_CALL(node_api_get_module_file_name(env, &result));
-    ASSERT_EQ(std::string(result), "/system/lib/module/ability/libfeatureability.z.so");
+    if (result) {
+#if defined(_ARM64_)
+        ASSERT_EQ(std::string(result), "/system/lib64/module/ability/libfeatureability.z.so");
+#else
+        ASSERT_EQ(std::string(result), "/system/lib/module/ability/libfeatureability.z.so");
+#endif
+    }
 
     napi_env windowEnv = (napi_env)moduleNameEngine_;
     const char* result2 = nullptr;
     GTEST_LOG_(INFO) << "node_api_get_module_file_name 2 execute";
     ASSERT_CHECK_CALL(node_api_get_module_file_name(windowEnv, &result2));
-    ASSERT_EQ(std::string(result2), "/system/lib/module/libwindow.z.so");
+    if (result2) {
+#if defined(_ARM64_)
+        ASSERT_EQ(std::string(result2), "/system/lib64/module/ability/libparticleability.z.so");
+#else
+        ASSERT_EQ(std::string(result2), "/system/lib/module/ability/libparticleability.z.so");
+#endif
+    }
     GTEST_LOG_(INFO) << "ApiGetModuleFileName_001 result2" << result2;
     HILOG_INFO("ApiGetModuleFileName_001 end");
 }
