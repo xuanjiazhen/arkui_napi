@@ -227,15 +227,6 @@ HWTEST_F(NapiBasicTest, ObjectTest001, testing::ext::TestSize.Level1)
     ASSERT_CHECK_VALUE_TYPE(env, numberAttribute, napi_number);
     ASSERT_CHECK_CALL(napi_set_named_property(env, result, "numberAttribute", numberAttribute));
 
-    result = nullptr;
-    napi_create_object(env, &result);
-    napi_property_descriptor desc[] = {
-        DECLARE_NAPI_FUNCTION("add", [](napi_env env, napi_callback_info info) -> napi_value { return nullptr; }),
-        DECLARE_NAPI_FUNCTION("sub", [](napi_env env, napi_callback_info info) -> napi_value { return nullptr; })
-    };
-
-    ASSERT_CHECK_CALL(napi_define_properties(env, result, sizeof(desc) / sizeof(desc[0]), desc));
-
     napi_value propNames = nullptr;
     ASSERT_CHECK_CALL(napi_get_property_names(env, result, &propNames));
     ASSERT_CHECK_VALUE_TYPE(env, propNames, napi_object);
@@ -800,7 +791,7 @@ HWTEST_F(NapiBasicTest, SerializeDeSerializeTest001, testing::ext::TestSize.Leve
 
     napi_value undefined = nullptr;
     napi_get_undefined(env, &undefined);
-#ifdef USE_V8_ENGINE
+
     napi_value num = nullptr;
     uint32_t value = 1000;
     napi_create_uint32(env, value, &num);
@@ -816,7 +807,6 @@ HWTEST_F(NapiBasicTest, SerializeDeSerializeTest001, testing::ext::TestSize.Leve
     ASSERT_EQ(resultData, 1000);
 
     napi_delete_serialization_data(env, data);
-#endif
 }
 
 /**

@@ -55,6 +55,10 @@ NativeModuleManager::~NativeModuleManager()
         delete[] appLibPath_;
     }
 
+    for (const auto& item : appLibPathMap_) {
+        delete[] item.second;
+    }
+    std::map<std::string, char*>().swap(appLibPathMap_);
     while (nativeEngineList_.size() > 0) {
         NativeEngine* wraper = nativeEngineList_.begin()->second;
         if (wraper != nullptr) {
@@ -209,8 +213,8 @@ void NativeModuleManager::CreateLdNamespace(const std::string moduleName,const c
 #endif
 }
 
-void NativeModuleManager::StandardizeLibPath(const std::string& moduleName, 
-    const std::vector<std::string>& appLibPath)
+void NativeModuleManager::SetAppLibPath(
+    const std::string& moduleName, const std::vector<std::string>& appLibPath)
 {
     char* tmp = new char[NAPI_PATH_MAX];
     errno_t err = EOK;
@@ -238,21 +242,9 @@ void NativeModuleManager::StandardizeLibPath(const std::string& moduleName,
         return;
     }
 
-    if (appLibPath_ != nullptr) {
-        delete[] appLibPath_;
-    }
-
     appLibPathMap_[moduleName] = tmp;
     CreateLdNamespace(moduleName, tmp);
-    HILOG_INFO("create ld namespace, path: %{private}s", appLibPath_);
-}
-
-void NativeModuleManager::SetAppLibPath(
-    const std::map<std::string, std::vector<std::string>>& appLibPaths)
-{
-    for (const auto& path : appLibPaths) {
-        StandardizeLibPath(path.first, path.second);
-    }
+    HILOG_INFO("create ld namespace, path: %{private}s", appLibPathMap_[moduleName]);
 }
 
 NativeModule* NativeModuleManager::LoadNativeModule(
@@ -263,11 +255,23 @@ NativeModule* NativeModuleManager::LoadNativeModule(
         return nullptr;
     }
 
+#ifdef ANDROID_PLATFORM
+    std::string strModule(moduleName);
+    std::string strCutName =
+        strModule.find(".") == std::string::npos ?
+            strModule :
+            strModule.substr(0, strModule.find(".")) + "_" + strModule.substr(strModule.find(".") + 1);
+    HILOG_INFO("strCutName value is %{public}s", strCutName.c_str());
+#endif
+
     if (pthread_mutex_lock(&mutex_) != 0) {
         HILOG_ERROR("pthread_mutex_lock is failed");
         return nullptr;
     }
 
+#ifdef ANDROID_PLATFORM
+    NativeModule* nativeModule = FindNativeModuleByCache(strCutName.c_str());
+#else
     std::string key(moduleName);
     std::string prefix;
     if (isAppModule) {
@@ -278,11 +282,17 @@ NativeModule* NativeModuleManager::LoadNativeModule(
         key = prefix + '/' + moduleName;
     }
     NativeModule* nativeModule = FindNativeModuleByCache(key.c_str());
+#endif
 
 #ifndef IOS_PLATFORM
     if (nativeModule == nullptr) {
+#ifdef ANDROID_PLATFORM
+        HILOG_INFO("not in cache: moduleName: %{public}s", strCutName.c_str());
+        nativeModule = FindNativeModuleByDisk(strCutName.c_str(), nullptr, internal, isAppModule, isArk);
+#else
         HILOG_INFO("not in cache: moduleName: %{public}s", moduleName);
         nativeModule = FindNativeModuleByDisk(moduleName, prefix.c_str(), internal, isAppModule, isArk);
+#endif
     }
 #endif
 
@@ -360,9 +370,16 @@ bool NativeModuleManager::GetNativeModulePath(
                 return false;
             }
         } else {
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
             if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix) == -1) {
                 return false;
             }
+#else
+            if (sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s", prefix, dupModuleName, soPostfix) == -1) {
+                return false;
+            }
+#endif
         }
     } else {
         char* afterDot = lastDot + 1;
@@ -386,9 +403,17 @@ bool NativeModuleManager::GetNativeModulePath(
                 return false;
             }
         } else {
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
             if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", afterDot, soPostfix) == -1) {
                 return false;
             }
+#else
+            if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s/lib%s%s",
+                prefix, dupModuleName, afterDot, soPostfix) == -1) {
+                return false;
+            }
+#endif
         }
     }
     return true;
@@ -418,7 +443,6 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const char* p
 #elif defined(IOS_PLATFORM)
     lib = nullptr;
 #else
-    HILOG_INFO("jyj LoadModuleLibrary path %{public}s isAppModule %{public}d", path, isAppModule);
     if (isAppModule && IsExistedPath(pathKey)) {
         Dl_namespace ns = nsMap_[pathKey];
         lib = dlopen_ns(&ns, path, RTLD_LAZY);
