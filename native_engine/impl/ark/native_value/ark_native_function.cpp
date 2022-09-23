@@ -169,6 +169,7 @@ Local<JSValueRef> ArkNativeFunction::NativeFunctionCallBack(JsiRuntimeCallInfo *
         ret = *result;
     }
     auto localRet = ret.ToLocal(vm);
+    ret.FreeGlobalHandleAddr();
     scopeManager->Close(nativeScope);
     FinishNapiProfilerTrace();
     if (localRet.IsEmpty()) {

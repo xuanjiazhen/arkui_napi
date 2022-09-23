@@ -263,6 +263,8 @@ bool ArkNativeObject::DefineProperty(NativePropertyDescriptor propertyDescriptor
 
         PropertyAttribute attr(JSValueRef::Undefined(engine_->GetEcmaVm()), false, enumable, configable);
         result = obj->SetAccessorProperty(vm, propertyName, localGetter.ToLocal(vm), localSetter.ToLocal(vm), attr);
+        localGetter.FreeGlobalHandleAddr();
+        localSetter.FreeGlobalHandleAddr();
     } else if (propertyDescriptor.method != nullptr) {
         fullName += propertyDescriptor.utf8name;
         NativeValue* cb = new ArkNativeFunction(engine_, fullName.c_str(), 0, propertyDescriptor.method,

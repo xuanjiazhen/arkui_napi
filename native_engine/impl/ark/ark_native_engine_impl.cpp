@@ -567,6 +567,7 @@ NativeValue* ArkNativeEngineImpl::CallFunction(
     }
 
     Local<JSValueRef> value = funcObj->Call(vm_, thisObj.ToLocal(vm_), args.data(), argc);
+    thisObj.FreeGlobalHandleAddr();
     Local<ObjectRef> excep = panda::JSNApi::GetUncaughtException(vm_);
     HandleUncaughtException(engine);
     if (!excep.IsNull()) {
@@ -1091,6 +1092,7 @@ void ArkNativeEngineImpl::PromiseRejectCallback(void* info)
     if (!promiseRejectCallback.IsEmpty()) {
         Global<JSValueRef> thisObj = Global<JSValueRef>(vm, JSValueRef::Undefined(vm));
         promiseRejectCallback->Call(vm, thisObj.ToLocal(vm), args, 3); // 3 args size
+        thisObj.FreeGlobalHandleAddr();
     }
 
     if (operation == panda::PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT) {
