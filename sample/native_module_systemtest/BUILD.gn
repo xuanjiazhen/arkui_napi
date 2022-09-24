@@ -105,12 +105,12 @@ ohos_unittest("test_quickjs_systemtest") {
 
   if (is_standard_system) {
     external_deps = [
-      "c_utils:utils",
+      #"c_utils:utils",
       "hiviewdfx_hilog_native:libhilog",
     ]
   } else {
     external_deps = [
-      "c_utils:utils",
+      #"c_utils:utils",
       "hilog:libhilog",
     ]
   }
