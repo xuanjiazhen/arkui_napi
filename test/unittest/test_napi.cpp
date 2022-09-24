@@ -924,3 +924,100 @@ HWTEST_F(NapiBasicTest, EncodeToUtf8Test001, testing::ext::TestSize.Level1)
     ASSERT_EQ(nchars, 0);
     delete[] buffer;
 }
+
+/**
+ * @tc.name: WrapWithSizeTest001
+ * @tc.desc: Test wrap with size.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, WrapWithSizeTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_value testClass = nullptr;
+    napi_define_class(
+        env, "TestClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+            return thisVar;
+        },
+        nullptr, 0, nullptr, &testClass);
+
+    napi_value instanceValue = nullptr;
+    napi_new_instance(env, testClass, 0, nullptr, &instanceValue);
+
+    const char* testStr = "test";
+    size_t size = sizeof(*testStr) / sizeof(char);
+    napi_wrap_with_size(
+        env, instanceValue, (void*)testStr, [](napi_env env, void* data, void* hint) {}, nullptr, nullptr, size);
+
+    char* tmpTestStr = nullptr;
+    napi_unwrap(env, instanceValue, (void**)&tmpTestStr);
+    ASSERT_STREQ(testStr, tmpTestStr);
+
+    char* tmpTestStr1 = nullptr;
+    napi_remove_wrap(env, instanceValue, (void**)&tmpTestStr1);
+    ASSERT_STREQ(testStr, tmpTestStr1);
+    
+}
+
+/**
+ * @tc.name: CreateExternalWithSizeTest001
+ * @tc.desc: Test create external with size.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateExternalWithSizeTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "test";
+    size_t size = sizeof(testStr) / sizeof(char);
+    napi_value external = nullptr;
+    napi_create_external_with_size(
+        env, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, &external, size);
+
+    ASSERT_CHECK_VALUE_TYPE(env, external, napi_external);
+    void* tmpExternal = nullptr;
+    napi_get_value_external(env, external, &tmpExternal);
+    ASSERT_TRUE(tmpExternal);
+    ASSERT_EQ(tmpExternal, testStr);
+}
+
+/**
+ * @tc.name: BigArrayTest001
+ * @tc.desc: Test is big int64 array and big uint64 array.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, BigArrayTest001, testing::ext::TestSize.Level1) {
+    napi_env env = (napi_env) engine_;
+    {
+    napi_value arrayBuffer = nullptr;
+    void* arrayBufferPtr = nullptr;
+    size_t arrayBufferSize = 1024;
+    napi_create_arraybuffer(env, arrayBufferSize, &arrayBufferPtr, &arrayBuffer);
+
+    napi_value bigint64array = nullptr;
+    napi_create_typedarray(env, napi_bigint64_array, arrayBufferSize, arrayBuffer, 0, &bigint64array);
+    ASSERT_NE(bigint64array, nullptr);
+    bool isBigInt64Array = false;
+    napi_is_typedarray(env, bigint64array, &isBigInt64Array);
+    ASSERT_TRUE(isBigInt64Array);
+    }
+    {
+    napi_value arrayBuffer = nullptr;
+    void* arrayBufferPtr = nullptr;
+    size_t arrayBufferSize = 1024;
+    napi_create_arraybuffer(env, arrayBufferSize, &arrayBufferPtr, &arrayBuffer);
+
+    napi_value biguint64array = nullptr;
+    napi_create_typedarray(env, napi_biguint64_array, arrayBufferSize, arrayBuffer, 0, &biguint64array);
+    ASSERT_NE(biguint64array, nullptr);
+    bool isBigUInt64Array = false;
+    napi_is_typedarray(env, biguint64array, &isBigUInt64Array);
+    ASSERT_TRUE(isBigUInt64Array);
+    }
+
+}
