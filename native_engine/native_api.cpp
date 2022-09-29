@@ -2161,6 +2161,13 @@ NAPI_EXTERN napi_status napi_get_exception_info_for_worker(napi_env env, napi_va
         napi_set_named_property(env, obj, "message", messageValue);
     }
 
+    if (exceptionInfo->stack_ != nullptr) {
+        napi_value stackValue = nullptr;
+        uint32_t stackLen = strlen(exceptionInfo->stack_);
+        napi_create_string_utf8(env, exceptionInfo->stack_, stackLen, &stackValue);
+        napi_set_named_property(env, obj, "error", stackValue);
+    }
+
     delete exceptionInfo;
     return napi_clear_last_error(env);
 }

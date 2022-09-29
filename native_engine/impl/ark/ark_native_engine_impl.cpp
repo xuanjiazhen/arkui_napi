@@ -54,6 +54,7 @@
 #endif
 
 using panda::JsiRuntimeCallInfo;
+using panda::ArrayRef;
 using panda::BooleanRef;
 using panda::ObjectRef;
 using panda::StringRef;
@@ -574,8 +575,82 @@ NativeValue* ArkNativeEngineImpl::CallFunction(
     Local<ObjectRef> excep = panda::JSNApi::GetUncaughtException(vm_);
     HandleUncaughtException(engine);
     if (!excep.IsNull()) {
+        // get stack(string), check not have "at native method"
+        // then splict, according to ":" get line and colnum, set val
+        // error type?
+
+        // Local<ArrayRef> properties = excep->GetOwnPropertyNames(vm_);
+        // int32_t l = properties->Length(vm_);
+        // for (int32_t i = 0; i < l; i++) {
+        //     Local<JSValueRef> m = properties->Get(vm_, i);
+        //     if (m->IsString()) {
+        //         Local<StringRef> str = m->ToString(vm_);
+        //         std::string s = str->ToString();
+        //         HILOG_INFO("worker:: wzy excep num:%{public}d, current excep %{public}d : %{public}s", l, i, s.c_str());
+        //     } else {
+        //         HILOG_INFO("worker:: current excep %{public}d is not string", i);
+        //     }
+        // }
+        Local<JSValueRef> message = excep->Get(vm_, StringRef::NewFromUtf8(vm_, "message"));
+        Local<JSValueRef> errorfunc = excep->Get(vm_, StringRef::NewFromUtf8(vm_, "errorfunc"));
+        Local<JSValueRef> stack = excep->Get(vm_, StringRef::NewFromUtf8(vm_, "stack"));
+        Local<ObjectRef> messageObj(message);
+        Local<ObjectRef> errorObj(errorfunc);
+        Local<ObjectRef> stackObj(stack);
+
+        // Local<StringRef> messageStr = messageObj->ToString(vm_);
+        // std::string messageStr_ = messageStr->ToString();
+        // HILOG_INFO("worker:: wzy excep first param message is:%{public}s", messageStr_.c_str());
+
+        Local<StringRef> stackStr = stackObj->ToString(vm_);
+        stack_ = stackStr->ToString();
+        HILOG_INFO("worker:: wzy excep third param stack is:%{public}s", stack_.c_str());
+
+        // Local<ArrayRef> properties1 = messageObj->GetOwnPropertyNames(vm_);
+        // int32_t l1 = properties1->Length(vm_);
+        // HILOG_INFO("worker:: wzy messageObj has %{public}d param", l1);
+        // for (int32_t i = 0; i < l1; i++) {
+        //     Local<JSValueRef> m = properties1->Get(vm_, i);
+        //     if (m->IsString()) {
+        //         Local<StringRef> str = m->ToString(vm_);
+        //         std::string s = str->ToString();
+        //         HILOG_INFO("worker:: wzy excep num:%{public}d, current excep %{public}d : %{public}s", l1, i, s.c_str());
+        //     } else {
+        //         HILOG_INFO("worker:: current excep %{public}d is not string", i);
+        //     }
+        // }
+
+        // Local<ArrayRef> properties2 = errorObj->GetOwnPropertyNames(vm_);
+        // int32_t l2 = properties2->Length(vm_);
+        // HILOG_INFO("worker:: wzy errorObj has %{public}d param", l2);
+        // for (int32_t i = 0; i < l2; i++) {
+        //     Local<JSValueRef> m = properties2->Get(vm_, i);
+        //     if (m->IsString()) {
+        //         Local<StringRef> str = m->ToString(vm_);
+        //         std::string s = str->ToString();
+        //         HILOG_INFO("worker:: wzy excep num:%{public}d, current excep %{public}d : %{public}s", l2, i, s.c_str());
+        //     } else {
+        //         HILOG_INFO("worker:: current excep %{public}d is not string", i);
+        //     }
+        // }
+
+        // Local<ArrayRef> properties3 = stackObj->GetOwnPropertyNames(vm_);
+        // int32_t l3 = properties3->Length(vm_);
+        // HILOG_INFO("worker:: wzy stackObj has %{public}d param", l3);
+        // for (int32_t i = 0; i < l3; i++) {
+        //     Local<JSValueRef> m = properties3->Get(vm_, i);
+        //     if (m->IsString()) {
+        //         Local<StringRef> str = m->ToString(vm_);
+        //         std::string s = str->ToString();
+        //         HILOG_INFO("worker:: wzy excep num:%{public}d, current excep %{public}d : %{public}s", l3, i, s.c_str());
+        //     } else {
+        //         HILOG_INFO("worker:: current excep %{public}d is not string", i);
+        //     }
+        // }
+
         Local<StringRef> exceptionMsg = excep->ToString(vm_);
         exceptionStr_ = exceptionMsg->ToString();
+        HILOG_INFO("worker:: wzy CallFunction exeception:%{public}s", exceptionStr_.c_str());
         return nullptr;
     }
 
@@ -809,13 +884,21 @@ ExceptionInfo* ArkNativeEngineImpl::GetExceptionForWorker() const
     size_t msgLength = exceptionStr_.length();
     char* exceptionMessage = new char[msgLength + 1] { 0 };
     if (memcpy_s(exceptionMessage, msgLength + 1, exceptionStr_.c_str(), msgLength) != EOK) {
-        HILOG_ERROR("worker:: memcpy_s error");
+        HILOG_ERROR("worker:: memcpy_s exceptionMessage error");
         delete exceptionInfo;
         delete[] exceptionMessage;
         return nullptr;
     }
     exceptionInfo->message_ = exceptionMessage;
-    // need add colno, lineno when ark exception support
+    size_t stackLength = stack_.length();
+    char* exceptionStack = new char[stackLength + 1] {0};
+    if (memcpy_s(exceptionStack, stackLength + 1, stack_.c_str(), stackLength) != EOK) {
+        HILOG_ERROR("worker:: memcpy_s exceptionStack error");
+        delete exceptionInfo;
+        delete[] exceptionStack;
+        return nullptr;
+    }
+    exceptionInfo->stack_ = exceptionStack;
     return exceptionInfo;
 }
 

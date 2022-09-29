@@ -249,6 +249,7 @@ private:
 
     EcmaVM* vm_ = nullptr;
     std::string exceptionStr_;
+    std::string stack_;
     panda::LocalScope topScope_;
     NativeReference* promiseRejectCallbackRef_ { nullptr };
     NativeReference* checkCallbackRef_ { nullptr };
