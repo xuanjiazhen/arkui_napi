@@ -606,18 +606,12 @@ NativeValue* ArkNativeEngineImpl::RunScriptPath(NativeEngine* engine, const char
     return CreateUndefined(engine);
 }
 
-NativeValue* ArkNativeEngineImpl::RunScriptBuffer(
-    NativeEngine* engine, const char* path, std::vector<uint8_t>& buffer, bool isBundle)
+NativeValue* ArkNativeEngineImpl::RunScriptBuffer(NativeEngine* engine, const char* path, std::vector<uint8_t>& buffer)
 {
     panda::JSExecutionScope executionScope(vm_);
     LocalScope scope(vm_);
-    [[maybe_unused]] bool ret = false;
-    if (isBundle) {
-        ret = panda::JSNApi::Execute(vm_, buffer.data(), buffer.size(), PANDA_MAIN_FUNCTION, path);
-    } else {
-        ret = panda::JSNApi::ExecuteModuleBuffer(vm_, buffer.data(), buffer.size(), path);
-    }
-    
+    [[maybe_unused]] bool ret = panda::JSNApi::Execute(vm_, buffer.data(), buffer.size(), PANDA_MAIN_FUNCTION, path);
+
     Local<ObjectRef> excep = panda::JSNApi::GetUncaughtException(vm_);
     HandleUncaughtException(engine);
     if (!excep.IsNull()) {
