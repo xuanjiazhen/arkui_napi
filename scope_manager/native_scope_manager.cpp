@@ -45,12 +45,20 @@ struct NativeScope {
     {
         return new NativeScope();
     }
+
+    NativeScope() {};
+    NativeScope(NativeChunk& chunk) : prevScopeIndex_(chunk.GetCurrentHandleIndex()),
+        prevNext_(chunk.GetPrevNext()), prevEnd_(chunk.GetPrevEnd()) {}
+
     NativeHandle* handlePtr = nullptr;
     size_t handleCount = 0;
     bool escaped = false;
 
     NativeScope* child = nullptr;
     NativeScope* parent = nullptr;
+    size_t prevScopeIndex_ {-1};
+    uintptr_t prevNext_ {0};
+    uintptr_t prevEnd_ {0};
 };
 
 #ifdef ENABLE_MEMLEAK_DEBUG
@@ -193,8 +201,8 @@ NativeScopeManager::~NativeScopeManager()
         NativeHandle* handle = scope->handlePtr;
         while (handle != nullptr) {
             NativeHandle* tempHandle = handle->sibling;
-            delete handle->value;
-            delete handle;
+            nativeChunk_.Delete(handle->value);
+            nativeChunk_.Delete(handle);
             handle = tempHandle;
         }
         delete scope;
@@ -211,7 +219,7 @@ NativeScope* NativeScopeManager::Open()
         return nullptr;
     }
 
-    auto scope = new NativeScope();
+    auto scope = new NativeScope(nativeChunk_);
     if (scope != nullptr) {
         current_->child = scope;
         scope->parent = current_;
@@ -221,23 +229,27 @@ NativeScope* NativeScopeManager::Open()
     return scope;
 }
 
-void NativeScopeManager::Close(NativeScope* scope)
+void NativeScopeManager::Close(NativeScope* scope, bool needReset)
 {
     if ((scope == nullptr) || (scope == root_)) {
         return;
     }
-    if (scope == current_) {
-        current_ = scope->parent;
+    if (scope != current_) {
+        std::abort();
     }
+    current_ = scope->parent;
 
     scope->parent->child = scope->child;
 
     NativeHandle* handle = scope->handlePtr;
     while (handle != nullptr) {
         scope->handlePtr = handle->sibling;
-        delete handle->value;
-        delete handle;
+        nativeChunk_.Delete(handle->value);
+        nativeChunk_.Delete(handle);
         handle = scope->handlePtr;
+    }
+    if (needReset) {
+        nativeChunk_.ChunkReset(scope->prevScopeIndex_, scope->prevNext_, scope->prevEnd_);
     }
     delete scope;
 }
@@ -256,7 +268,7 @@ void NativeScopeManager::CloseEscape(NativeScope* scope)
     if (scope == nullptr) {
         return;
     }
-    Close(scope);
+    Close(scope, false);
 }
 
 NativeValue* NativeScopeManager::Escape(NativeScope* scope, NativeValue* value)
@@ -300,7 +312,7 @@ void NativeScopeManager::CreateHandle(NativeValue* value)
         HILOG_ERROR("current scope is null when create handle");
         return;
     }
-    auto handlePtr = new NativeHandle();
+    auto handlePtr = nativeChunk_.New<NativeHandle>();
     if (handlePtr == nullptr) {
         HILOG_ERROR("create handle ptr failed");
         return;

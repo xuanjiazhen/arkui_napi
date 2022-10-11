@@ -140,7 +140,11 @@ Local<JSValueRef> ArkNativeFunction::NativeFunctionCallBack(JsiRuntimeCallInfo *
     cbInfo.argv = nullptr;
     cbInfo.functionInfo = info;
     if (cbInfo.argc > 0) {
-        cbInfo.argv = new NativeValue* [cbInfo.argc];
+        if (cbInfo.argc > 10) {
+            cbInfo.argv = new NativeValue* [cbInfo.argc];
+        } else {
+            cbInfo.argv = scopeManager->GetNativeChunk().NewArray<NativeValue *>(cbInfo.argc);
+        }
         for (size_t i = 0; i < cbInfo.argc; i++) {
             cbInfo.argv[i] = ArkNativeEngine::ArkValueToNativeValue(engine, runtimeInfo->GetCallArgRef(i));
         }
@@ -156,7 +160,11 @@ Local<JSValueRef> ArkNativeFunction::NativeFunctionCallBack(JsiRuntimeCallInfo *
     }
 
     if (cbInfo.argv != nullptr) {
-        delete[] cbInfo.argv;
+        if (cbInfo.argc > 10) {
+            delete[] cbInfo.argv;
+        } else {
+            scopeManager->GetNativeChunk().Delete(cbInfo.argv);
+        }
         cbInfo.argv = nullptr;
     }
 
