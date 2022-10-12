@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <map>
 #include <vector>
+#include <string>
 #include <pthread.h>
 #include "utils/macros.h"
 
@@ -82,7 +83,6 @@ private:
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
     char* FormatString();
-    Dl_namespace ns_;
     std::map<std::string, Dl_namespace> nsMap_;
 #endif
     NativeModule* firstNativeModule_ = nullptr;
@@ -91,6 +91,8 @@ private:
 
     static NativeModuleManager *instance_;
     pthread_mutex_t mutex_;
+    std::string prefix_;
+    bool isAppModule_ = false;
 
     std::map<std::string, NativeEngine*> nativeEngineList_;
     std::map<std::string, char*> appLibPathMap_;
