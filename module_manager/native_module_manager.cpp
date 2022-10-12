@@ -126,9 +126,23 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
         lastNativeModule_ = lastNativeModule_->next;
     }
 
+    auto tmp = prefix_ + "/" + nativeModule->name;
+    char* moduleName = new char[NAPI_PATH_MAX];
+    errno_t err = EOK;
+    err = memset_s(moduleName, NAPI_PATH_MAX, 0, NAPI_PATH_MAX);
+    if (err != EOK) {
+        delete[] moduleName;
+        return;
+    }
+    err = strcpy_s(moduleName, NAPI_PATH_MAX, tmp.c_str());
+    if (err != EOK) {
+        delete[] moduleName;
+        return;
+    }
+
     lastNativeModule_->version = nativeModule->version;
     lastNativeModule_->fileName = nativeModule->fileName;
-    lastNativeModule_->name = nativeModule->name;
+    lastNativeModule_->name = isAppModule_ ? moduleName : nativeModule->name;
     lastNativeModule_->refCount = nativeModule->refCount;
     lastNativeModule_->registerCallback = nativeModule->registerCallback;
     lastNativeModule_->next = nullptr;
@@ -276,13 +290,13 @@ NativeModule* NativeModuleManager::LoadNativeModule(
     NativeModule* nativeModule = FindNativeModuleByCache(strCutName.c_str());
 #else
     std::string key(moduleName);
-    std::string prefix;
+    isAppModule_ = isAppModule;
     if (isAppModule) {
-        prefix = "default";
+        prefix_ = "default";
         if (path && IsExistedPath(path)) {
-            prefix = path;
+            prefix_ = path;
         }
-        key = prefix + '/' + moduleName;
+        key = prefix_ + '/' + moduleName;
     }
     NativeModule* nativeModule = FindNativeModuleByCache(key.c_str());
 #endif
@@ -294,7 +308,7 @@ NativeModule* NativeModuleManager::LoadNativeModule(
         nativeModule = FindNativeModuleByDisk(strCutName.c_str(), nullptr, internal, isAppModule, isArk);
 #else
         HILOG_INFO("not in cache: moduleName: %{public}s", moduleName);
-        nativeModule = FindNativeModuleByDisk(moduleName, prefix.c_str(), internal, isAppModule, isArk);
+        nativeModule = FindNativeModuleByDisk(moduleName, prefix_.c_str(), internal, isAppModule, isArk);
 #endif
     }
 #endif
