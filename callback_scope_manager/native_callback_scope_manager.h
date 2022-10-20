@@ -64,6 +64,7 @@ public:
 
 private:
     size_t openCallbackScopes_ = 0;
+    int demoValue = 10;
     size_t asyncCallbackScopeDepth_ = 0;
 };
 
