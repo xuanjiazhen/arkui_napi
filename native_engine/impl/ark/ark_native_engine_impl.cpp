@@ -1250,7 +1250,23 @@ bool ArkNativeEngineImpl::DeleteWorker(NativeEngine* engine, NativeEngine* worke
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 bool ArkNativeEngineImpl::StartHeapTracking(double timeInterval, bool isVmMode)
 {
-    return DFXJSNApi::StartHeapTracking(vm_, timeInterval, isVmMode);
+    HILOG_ERROR("cjx ArkNativeEngineImpl::StartHeapTracking before");
+    bool result = DFXJSNApi::StartHeapTracking(vm_, timeInterval, isVmMode);
+    HILOG_ERROR("cjx ArkNativeEngineImpl::StartHeapTracking after");
+    uv_loop_t* loop = loop_;
+    uv_timer_init(loop, &handle_);
+    handle_.data = this;
+    uv_timer_start(&handle_, HeapTrackingCallback, 0, timeInterval);
+    uv_run(loop, UV_RUN_DEFAULT);
+
+    return result;
+}
+
+void ArkNativeEngineImpl::HeapTrackingCallback(uv_timer_t* handle)
+{
+    ArkNativeEngineImpl* obj = static_cast<ArkNativeEngineImpl *>(handle->data);
+    HILOG_ERROR("cjx ArkNativeEngineImpl::HeapTrackingCallback");
+    DFXJSNApi::UpdateHeapTracking(obj->GetEcmaVm());
 }
 #else
 bool ArkNativeEngineImpl::StartHeapTracking(double timeInterval, bool isVmMode)
@@ -1263,12 +1279,15 @@ bool ArkNativeEngineImpl::StartHeapTracking(double timeInterval, bool isVmMode)
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 bool ArkNativeEngineImpl::StopHeapTracking(const std::string& filePath)
 {
-    return DFXJSNApi::StopHeapTracking(vm_, filePath);
+    HILOG_ERROR("cjx ArkNativeEngineImpl::StopHeapTracking");
+    bool result = DFXJSNApi::StopHeapTracking(vm_, filePath);
+    uv_timer_stop(&handle_);
+    return result;
 }
 #else
 bool ArkNativeEngineImpl::StopHeapTracking(const std::string& filePath)
 {
-    HILOG_WARN("ARK does not support snapshot on windows");
+    HILOG_ERROR("ARK does not support snapshot on windows");
     return false;
 }
 #endif
