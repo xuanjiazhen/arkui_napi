@@ -17,6 +17,7 @@
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_IMPL_H
 
 #include <unordered_map>
+#include <uv.h>
 
 #include "ark_headers.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -210,6 +211,7 @@ public:
     bool BuildJsStackInfoList(uint32_t tid, std::vector<JsFrameInfo>& jsFrames) override;
     bool DeleteWorker(NativeEngine* hostEngine, NativeEngine* workerEngine) override;
     bool StartHeapTracking(double timeInterval, bool isVmMode = true) override;
+    static void HeapTrackingCallback(uv_timer_t* handle);
     bool StopHeapTracking(const std::string& filePath) override;
 
     void PrintStatisticResult() override;
@@ -256,6 +258,7 @@ private:
     inline void SetModuleName(ArkNativeObject *nativeObj, std::string moduleName);
     static bool napiProfilerParamReaded;
     static std::string tempModuleName_;
+    uv_timer_t handle_;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_IMPL_H */

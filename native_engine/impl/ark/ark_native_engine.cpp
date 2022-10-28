@@ -531,6 +531,7 @@ bool ArkNativeEngine::DeleteWorker(NativeEngine* hostEngine, NativeEngine* worke
 bool ArkNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
+    HILOG_ERROR("cjx ArkNativeEngine::StartHeapTracking");
     return arkNativeEngineImpl->StartHeapTracking(timeInterval, isVmMode);
 }
 
