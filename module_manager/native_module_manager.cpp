@@ -148,16 +148,20 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
         }
     }
 
-    lastNativeModule_->version = nativeModule->version;
-    lastNativeModule_->fileName = nativeModule->fileName;
-    lastNativeModule_->isAppModule = isAppModule_;
-    lastNativeModule_->name = isAppModule_ ? moduleName : nativeModule->name;
-    lastNativeModule_->refCount = nativeModule->refCount;
-    lastNativeModule_->registerCallback = nativeModule->registerCallback;
-    lastNativeModule_->next = nullptr;
+    if (lastNativeModule_) {
+        lastNativeModule_->version = nativeModule->version;
+        lastNativeModule_->fileName = nativeModule->fileName;
+        lastNativeModule_->isAppModule = isAppModule_;
+        lastNativeModule_->name = isAppModule_ ? moduleName : nativeModule->name;
+        lastNativeModule_->refCount = nativeModule->refCount;
+        lastNativeModule_->registerCallback = nativeModule->registerCallback;
+        lastNativeModule_->next = nullptr;
+    }
 #ifdef IOS_PLATFORM
     // For iOS, force make module loaded, should support `GetJSCode` later
-    lastNativeModule_->moduleLoaded = true;
+    if (lastNativeModule_) {
+        lastNativeModule_->moduleLoaded = true;
+    }
 #endif
 }
 
