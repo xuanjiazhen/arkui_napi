@@ -40,7 +40,7 @@ public:
     NativeValue* GetEnumerablePropertyNames() override;
 
     NativeValue* GetPrototype() override;
-
+    std::string GetSourceCodeInfo(ErrorPos pos) override;
     bool DefineProperty(NativePropertyDescriptor propertyDescriptor) override;
 
     bool SetProperty(NativeValue* key, NativeValue* value) override;

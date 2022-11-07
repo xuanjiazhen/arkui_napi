@@ -30,6 +30,7 @@ using panda::ObjectRef;
 using panda::StringRef;
 using panda::NativePointerRef;
 using panda::ArrayRef;
+using panda::FunctionRef;
 using panda::PropertyAttribute;
 
 ArkNativeObject::ArkNativeObject(ArkNativeEngine* engine)
@@ -412,3 +413,30 @@ void ArkNativeObject::AddFinalizer(void* pointer, NativeFinalize cb, void* hint)
 void ArkNativeObject::Freeze() {}
 
 void ArkNativeObject::Seal() {}
+
+std::string ArkNativeObject::GetSourceCodeInfo(ErrorPos pos)
+{
+    if (pos.first == 0) {
+        return "";
+    }
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Local<StringRef> key = StringRef::NewFromUtf8(vm, "errorfunc");
+    Global<ObjectRef> obj = value_;
+    Local<JSValueRef> val = obj->Get(vm, key);
+    Local<FunctionRef> function(val);
+    uint32_t line = pos.first;
+    uint32_t column = pos.second;
+    Local<panda::StringRef> sourceCode = function->GetSourceCode(vm, line);
+    std::string sourceCodeStr = sourceCode->ToString();
+    if (sourceCodeStr.empty()) {
+        return "";
+    }
+    std::string sourceCodeInfo = "SourceCode:\n";
+    sourceCodeInfo.append(sourceCodeStr).append("\n");
+    for (uint32_t k = 0; k < column - 1; k++) {
+        sourceCodeInfo.push_back(' ');
+    }
+    sourceCodeInfo.append("^\n");
+    return sourceCodeInfo;
+}

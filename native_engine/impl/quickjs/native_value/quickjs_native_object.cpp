@@ -234,6 +234,11 @@ NativeValue* QuickJSNativeObject::GetProperty(const char* name)
     return QuickJSNativeEngine::JSValueToNativeValue(engine_, value);
 }
 
+std::string QuickJSNativeObject::GetSourceCodeInfo(ErrorPos pos)
+{
+    return "";
+}
+
 bool QuickJSNativeObject::HasProperty(const char* name)
 {
     bool result = false;
