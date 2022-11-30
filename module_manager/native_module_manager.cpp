@@ -481,7 +481,7 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const char* p
 #elif defined(MAC_PLATFORM) || defined(__BIONIC__) || defined(LINUX_PLATFORM)
     lib = dlopen(path, RTLD_LAZY);
     if (lib == nullptr) {
-        HILOG_WARN("dlopen failed: %{public}s", dlerror());
+        HILOG_WARN("dlopen failed: %{public}s %{public}s", path, dlerror());
     }
 
 #elif defined(IOS_PLATFORM)
@@ -494,7 +494,7 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const char* p
         lib = dlopen(path, RTLD_LAZY);
     }
     if (lib == nullptr) {
-        HILOG_WARN("dlopen failed: %{public}s", dlerror());
+        HILOG_WARN("dlopen failed: %{public}s %{public}s", path, dlerror());
     }
 #endif
 #ifdef ENABLE_HITRACE
