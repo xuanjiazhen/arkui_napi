@@ -20,6 +20,7 @@ config("ace_napi_config") {
     "//foundation/arkui/napi/interfaces/kits",
     "//third_party/libuv/include",
     "//third_party/node/src",
+	".",
   ]
 }
 
@@ -48,6 +49,7 @@ if (defined(ohos_lite)) {
       "//foundation/arkui/napi/interfaces/kits",
       "//third_party/libuv/include",
       "//third_party/node/src",
+	  ".",
       "//third_party/bounds_checking_function/include",
     ]
 
@@ -140,10 +142,16 @@ if (defined(ohos_lite)) {
       "//foundation/arkui/napi/interfaces/kits",
       "//third_party/libuv/include",
       "//third_party/node/src",
+	  ".",
       "//commonlibrary/c_utils/base/include",
     ]
 
     sources = napi_sources
+    sources += [   
+  "//foundation/arkui/napi/atest_all/napitest_middle.cpp",
+  "//foundation/arkui/napi/atest_all/napitest.cpp",
+  "//foundation/arkui/napi/atest_all/tool_utility.cpp", 
+  ]
 
     if (current_cpu == "arm64") {
       defines += [ "_ARM64_" ]
@@ -197,7 +205,10 @@ if (defined(ohos_lite)) {
       deps += [ "//third_party/libuv:uv_static" ]
     }
 
-    cflags_cc = [ "-Wno-missing-braces" ]
+    remove_configs = [ "//build/config/compiler:no_rtti" ]
+    
+    cflags_cc = [ "-frtti",
+                  "-Wno-missing-braces" ]
 
     subsystem_name = "arkui"
     part_name = "napi"
