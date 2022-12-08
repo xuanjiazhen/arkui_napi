@@ -23,6 +23,7 @@ napi_sources = [
   "//foundation/arkui/napi/reference_manager/native_reference_manager.cpp",
   "//foundation/arkui/napi/scope_manager/native_scope_manager.cpp",
   "//foundation/arkui/napi/utils/log.cpp",
+
 ]
 
 declare_args() {
