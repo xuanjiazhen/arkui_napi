@@ -165,6 +165,7 @@ if (defined(ohos_lite)) {
     } else {
       if (is_standard_system) {
         external_deps = [
+          "bundle_framework:appexecfwk_base",
           "hitrace_native:hitrace_meter",
           "hitrace_native:libhitracechain",
           "hiviewdfx_hilog_native:libhilog",

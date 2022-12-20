@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "callback_scope_manager/native_callback_scope_manager.h"
@@ -270,7 +271,8 @@ public:
 
     void SetInstanceData(void* data, NativeFinalize finalize_cb, void* hint);
     void GetInstanceData(void** data);
-
+    void SetExtensionInfos(std::unordered_map<std::string, OHOS::AppExecFwk::ExtensionAbilityType>&& fileType);
+    const std::unordered_map<std::string, OHOS::AppExecFwk::ExtensionAbilityType>& GetExtensionInfos();
 protected:
     void *jsEngine_;
 
@@ -292,6 +294,7 @@ private:
     std::mutex instanceDataLock_;
     NativeObjectInfo instanceDataInfo_;
     void FinalizerInstanceData(void);
+    std::unordered_map<std::string, OHOS::AppExecFwk::ExtensionAbilityType> extensionInfos_;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ENGINE_H */
