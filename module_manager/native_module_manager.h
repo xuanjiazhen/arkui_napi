@@ -19,8 +19,11 @@
 #include <cstdint>
 #include <map>
 #include <vector>
+#include <set>
 #include <string>
 #include <pthread.h>
+
+#include "extension_ability_info.h"
 #include "utils/macros.h"
 
 #ifdef WINDOWS_PLATFORM
@@ -68,6 +71,9 @@ public:
                                    bool internal = false);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     const char* GetModuleFileName(const char* moduleName, bool isAppModule);
+    void SetModuleBlacklist(std::map<std::string, std::set<std::string>>&& blacklist);
+    void SetRunningScriptType(OHOS::AppExecFwk::ExtensionAbilityType scriptType);
+    OHOS::AppExecFwk::ExtensionAbilityType GetRunningScriptType();
 
 private:
     NativeModuleManager();
@@ -99,6 +105,8 @@ private:
 
     std::map<std::string, NativeEngine*> nativeEngineList_;
     std::map<std::string, char*> appLibPathMap_;
+    std::map<std::string, std::set<std::string>> moduleBlacklist_;
+    OHOS::AppExecFwk::ExtensionAbilityType runningScriptType_{OHOS::AppExecFwk::ExtensionAbilityType::UNSPECIFIED};
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H */

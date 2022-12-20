@@ -90,7 +90,7 @@ NativeModuleManager* NativeModuleManager::GetInstance()
 
 void NativeModuleManager::SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine)
 {
-    HILOG_DEBUG("%{public}s, start.nativeEngine:%{public}p", __func__, nativeEngine);
+    HILOG_ERROR("%{public}s, start.nativeEngine:%{public}p", __func__, nativeEngine);
     nativeEngineList_.emplace(moduleName, nativeEngine);
 }
 
@@ -305,6 +305,9 @@ NativeModule* NativeModuleManager::LoadNativeModule(
         HILOG_ERROR("pthread_mutex_lock is failed");
         return nullptr;
     }
+
+    HILOG_INFO("raul LoadNativeModule, name: %{public}s", moduleName);
+    
 
 #ifdef ANDROID_PLATFORM
     NativeModule* nativeModule = FindNativeModuleByCache(strCutName.c_str());
@@ -616,4 +619,19 @@ NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleNam
 bool NativeModuleManager::IsExistedPath(const char* pathKey) const
 {
     return pathKey && appLibPathMap_.find(pathKey) != appLibPathMap_.end();
+}
+
+void NativeModuleManager::SetModuleBlacklist(std::map<std::string, std::set<std::string>>&& blacklist)
+{
+    moduleBlacklist_ = blacklist;
+}
+
+void NativeModuleManager::SetRunningScriptType(OHOS::AppExecFwk::ExtensionAbilityType scriptType)
+{
+    runningScriptType_ = scriptType;
+}
+
+OHOS::AppExecFwk::ExtensionAbilityType NativeModuleManager::GetRunningScriptType()
+{
+    return runningScriptType_;
 }

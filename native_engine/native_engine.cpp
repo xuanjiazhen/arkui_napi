@@ -388,3 +388,14 @@ void NativeEngine::DeleteEngine()
         nativeEngineImpl_ = nullptr;
     }
 }
+
+void NativeEngine::SetExtensionInfos(
+    std::unordered_map<std::string, OHOS::AppExecFwk::ExtensionAbilityType>&& extensionInfos)
+{
+    extensionInfos_ = extensionInfos;
+}
+
+const std::unordered_map<std::string, OHOS::AppExecFwk::ExtensionAbilityType>& NativeEngine::GetExtensionInfos()
+{
+    return extensionInfos_;
+}
