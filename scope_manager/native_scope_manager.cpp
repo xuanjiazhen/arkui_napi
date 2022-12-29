@@ -283,8 +283,14 @@ NativeValue* NativeScopeManager::Escape(NativeScope* scope, NativeValue* value)
     }
 
     NativeHandle* handle = scope->handlePtr;
+    NativeHandle* temp = nullptr;
     while (handle != nullptr && scope->escaped) {
         if (handle->value == value) {
+            if (temp == nullptr) {
+                scope->handlePtr = handle->sibling;
+            } else {
+                temp->sibling = handle->sibling;
+            }
             uintptr_t endAddr = nativeChunk_.GetPrevChunkPtr();
             uintptr_t valueAddr = endAddr - ESCAPED_VALUE_SIZE;
             if (memcpy_s(reinterpret_cast<void *>(valueAddr), ESCAPED_VALUE_SIZE,
@@ -302,6 +308,7 @@ NativeValue* NativeScopeManager::Escape(NativeScope* scope, NativeValue* value)
             result = scope->parent->handlePtr->value;
             break;
         }
+        temp = handle;
         handle = handle->sibling;
     }
     return result;
