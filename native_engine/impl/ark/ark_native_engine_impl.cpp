@@ -933,6 +933,10 @@ bool ArkNativeEngineImpl::CheckSafepoint()
 
 NativeValue* ArkNativeEngineImpl::RunBufferScript(NativeEngine* engine, std::vector<uint8_t>& buffer)
 {
+    // if (!permissionCheckCallback_()) {
+    //     return nullptr;
+    // }
+
     panda::JSExecutionScope executionScope(vm_);
     LocalScope scope(vm_);
     [[maybe_unused]] bool ret = panda::JSNApi::Execute(vm_, buffer.data(), buffer.size(), PANDA_MAIN_FUNCTION);
@@ -1381,6 +1385,16 @@ void ArkNativeEngineImpl::HandleUncaughtException(NativeEngine* engine)
     if (!exception.IsEmpty() && !exception->IsHole() && uncaughtExceptionCallback_ != nullptr) {
         uncaughtExceptionCallback_(ArkValueToNativeValue(static_cast<ArkNativeEngine*>(engine), exception));
     }
+}
+
+void ArkNativeEngineImpl::RegisterPermissionCheck(PermissionCheckCallback callback)
+{
+    permissionCheckCallback_ = callback;
+}
+
+bool ArkNativeEngineImpl::CheckPermission()
+{
+    return (permissionCheckCallback_ != nullptr) && (permissionCheckCallback_());
 }
 
 inline void ArkNativeEngineImpl::SetModuleName(ArkNativeObject *nativeObj, std::string moduleName)
