@@ -31,7 +31,7 @@ template("ace_napi_impl") {
 
     defines = invoker.engine_defines
 
-    if (target_cpu == "arm64") {
+    if (target_cpu == "arm64" || target_cpu == "riscv64") {
       defines += [ "APP_USE_ARM64" ]
     } else if (target_cpu == "arm") {
       defines += [ "APP_USE_ARM" ]

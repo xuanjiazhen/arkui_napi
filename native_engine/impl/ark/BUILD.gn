@@ -61,7 +61,7 @@ template("ace_napi_impl") {
       "native_value/ark_native_value.cpp",
     ]
 
-    if (target_cpu == "arm64") {
+    if (target_cpu == "arm64" || target_cpu == "riscv64") {
       defines += [ "APP_USE_ARM64" ]
     } else if (target_cpu == "arm") {
       defines += [ "APP_USE_ARM" ]
