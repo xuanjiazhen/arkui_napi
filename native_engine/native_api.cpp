@@ -1239,15 +1239,33 @@ NAPI_EXTERN napi_status napi_reference_unref(napi_env env, napi_ref ref, uint32_
 // is still successful but the result is nullptr.
 NAPI_EXTERN napi_status napi_get_reference_value(napi_env env, napi_ref ref, napi_value* result)
 {
+    if (env == nullptr) {
+        HILOG_ERROR("napi_get_reference_value env is nullptr.");
+    }
+    if (ref == nullptr) {
+        HILOG_ERROR("napi_get_reference_value ref is nullptr.");
+    }
+    if (result == nullptr) {
+        HILOG_ERROR("napi_get_reference_value result1 is nullptr.");
+    }
     CHECK_ENV(env);
     CHECK_ARG(env, ref);
     CHECK_ARG(env, result);
 
     auto reference = reinterpret_cast<NativeReference*>(ref);
+    if (reference == nullptr) {
+        HILOG_ERROR("napi_get_reference_value reference is nullptr.");
+    }
 
     auto resultValue = reference->Get();
+    if (resultValue == nullptr) {
+        HILOG_ERROR("napi_get_reference_value resultValue is nullptr.");
+    }
 
     *result = reinterpret_cast<napi_value>(resultValue);
+    if (result == nullptr) {
+        HILOG_ERROR("napi_get_reference_value result2 is nullptr.");
+    }
     return napi_clear_last_error(env);
 }
 
