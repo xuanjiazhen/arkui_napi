@@ -30,7 +30,7 @@ ohos_shared_library("storage") {
 
   deps = [
     "//foundation/arkui/napi/:ace_napi",
-    "//third_party/bounds_checking_function:libsec_static",
+    "//third_party/bounds_checking_function:libsec_shared",
   ]
 
   relative_install_dir = "module"
