@@ -141,6 +141,17 @@ Local<JSValueRef> ArkNativeFunction::NativeFunctionCallBack(JsiRuntimeCallInfo *
     cbInfo.argc = static_cast<size_t>(runtimeInfo->GetArgsNumber());
     cbInfo.argv = nullptr;
     cbInfo.functionInfo = info;
+
+    // black list check
+    ArkNativeObject* exportObj = reinterpret_cast<ArkNativeObject*>(cbInfo.thisVar);
+    const char* isPrivateModuleKey = "isPrivateModuleKey";
+    NativeValue* isPrivateModuleValue = exportObj->GetProperty(isPrivateModuleKey);
+    bool isPrivateModule = isPrivateModuleValue->ToBoolean();
+    if (isPrivateModule) {
+        HILOG_ERROR("The module is private and cannot call functions");
+        return JSValueRef::Undefined(vm);
+    }
+
     if (cbInfo.argc > 0) {
         if (cbInfo.argc > MAX_CHUNK_ARRAY_SIZE) {
             cbInfo.argv = new NativeValue* [cbInfo.argc];

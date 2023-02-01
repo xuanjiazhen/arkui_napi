@@ -74,8 +74,10 @@ V8NativeEngine::V8NativeEngine(v8::Platform* platform, v8::Isolate* isolate,
                 if (info.Length() == 2) {
                     isAppModule = info[1]->ToBoolean(info.GetIsolate())->Value();
                 }
-                NativeModule* module = moduleManager->LoadNativeModule(*moduleName, nullptr, isAppModule);
-
+                bool isPrivateModule = false;
+                NativeModule* module = moduleManager->LoadNativeModule(*moduleName, nullptr, isAppModule,
+                    false, isPrivateModule);
+                HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
                 if (module == nullptr) {
                     return;
                 }
@@ -121,7 +123,10 @@ V8NativeEngine::V8NativeEngine(v8::Platform* platform, v8::Isolate* isolate,
                 if (moduleManager == nullptr) {
                     return;
                 }
-                NativeModule* module = moduleManager->LoadNativeModule(*moduleName, nullptr, false, true);
+                bool isPrivateModule = false;
+                NativeModule* module = moduleManager->LoadNativeModule(*moduleName, nullptr, false,
+                    true, isPrivateModule);
+                HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
                 if (module == nullptr) {
                     return;
                 }
@@ -165,7 +170,10 @@ v8::Local<v8::Object> V8NativeEngine::GetModuleFromName(
 
     v8::Local<v8::Object> exports;
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), nullptr, isAppModule);
+    bool isPrivateModule = false;
+    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), nullptr, isAppModule,
+        false, isPrivateModule);
+    HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
     if (module != nullptr) {
         NativeValue* idValue = new V8NativeString(this, id.c_str(), id.size());
         NativeValue* paramValue = new V8NativeString(this, param.c_str(), param.size());
@@ -208,7 +216,10 @@ v8::Local<v8::Object> V8NativeEngine::LoadModuleByName(
 
     v8::Local<v8::Object> exports;
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), nullptr, isAppModule);
+    bool isPrivateModule = false;
+    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), nullptr, isAppModule,
+        false, isPrivateModule);
+    HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
     if (module != nullptr) {
         NativeValue* exportObject = new V8NativeObject(this);
         V8NativeObject* exportObj = reinterpret_cast<V8NativeObject*>(exportObject);

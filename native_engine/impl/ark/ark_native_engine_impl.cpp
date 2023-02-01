@@ -123,16 +123,19 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                     isAppModule = ret->Value();
                 }
                 NativeModule* module;
+                bool isPrivateModule = false;
                 if (info->GetArgsNumber() == 3) {
                     Local<StringRef> path(info->GetCallArgRef(2));
                     module =
                         moduleManager->LoadNativeModule(moduleName->ToString().c_str(), path->ToString().c_str(),
-                            isAppModule, false);
+                            isAppModule, false, isPrivateModule);
                 } else {
                     module = 
-                        moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, isAppModule, false);
+                        moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr,
+                            isAppModule, false, isPrivateModule);
                 }
 
+                HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
                 Local<JSValueRef> exports(JSValueRef::Undefined(ecmaVm));
                 if (module != nullptr) {
                     auto it = engineImpl->loadedModules_.find(module);
@@ -173,6 +176,9 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                         StartTrace(HITRACE_TAG_ACE, "NAPI module init, name = " + std::string(module->name));
 #endif
                         ArkNativeObject* exportObj = reinterpret_cast<ArkNativeObject*>(exportObject);
+                        const char* isPrivateModuleKey = "isPrivateModuleKey";
+                        NativeValue* isPrivateModuleValue = nativeEngine->CreateBoolean(isPrivateModule);
+                        exportObj->SetProperty(isPrivateModuleKey, isPrivateModuleValue);
                         engineImpl->SetModuleName(exportObj, module->name);
                         module->registerCallback(arkNativeEngine, exportObject);
 #ifdef ENABLE_HITRACE
@@ -200,7 +206,10 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                 NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
                 ArkNativeEngineImpl* engineImpl = static_cast<ArkNativeEngineImpl*>(info->GetData());
                 Local<StringRef> moduleName(info->GetCallArgRef(0));
-                NativeModule* module = moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, false);
+                bool isPrivateModule = false;
+                NativeModule* module = moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr,
+                    false, false, isPrivateModule);
+                HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
                 Local<JSValueRef> exports(JSValueRef::Undefined(ecmaVm));
                 MoudleNameLocker nameLocker(moduleName->ToString());
                 if (module != nullptr && engineImpl) {
@@ -220,6 +229,9 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                             return scope.Escape(exports);
                         }
                         ArkNativeObject* exportObj = reinterpret_cast<ArkNativeObject*>(exportObject);
+                        const char* isPrivateModuleKey = "isPrivateModuleKey";
+                        NativeValue* isPrivateModuleValue = nativeEngine->CreateBoolean(isPrivateModule);
+                        exportObj->SetProperty(isPrivateModuleKey, isPrivateModuleValue);
                         engineImpl->SetModuleName(exportObj, module->name);
                         module->registerCallback(arkNativeEngine, exportObject);
                         Global<JSValueRef> globalExports = *exportObject;
@@ -275,7 +287,10 @@ panda::Local<panda::ObjectRef> ArkNativeEngineImpl::GetModuleFromName(NativeEngi
 {
     Local<ObjectRef> exports(JSValueRef::Undefined(vm_));
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), nullptr, isAppModule);
+    bool isPrivateModule = false;
+    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), nullptr, isAppModule,
+        false, isPrivateModule);
+    HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
     if (module != nullptr) {
         NativeChunk& chunk = static_cast<ArkNativeEngine*>(engine)->GetNativeChunk();
         NativeValue* idValue = chunk.New<ArkNativeString>(static_cast<ArkNativeEngine*>(engine), id.c_str(), id.size());
@@ -321,8 +336,10 @@ panda::Local<panda::ObjectRef> ArkNativeEngineImpl::LoadModuleByName(ArkNativeEn
 {
     Local<ObjectRef> exports(JSValueRef::Undefined(vm_));
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    NativeModule* module =
-        moduleManager->LoadNativeModule(moduleName.c_str(), path.empty() ? nullptr : path.c_str(), isAppModule);
+    bool isPrivateModule = false;
+    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), path.empty() ? nullptr : path.c_str(),
+        isAppModule, false, isPrivateModule);
+    HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
     if (module != nullptr) {
         NativeValue* exportObject = new ArkNativeObject(static_cast<ArkNativeEngine*>(engine));
         ArkNativeObject* exportObj = reinterpret_cast<ArkNativeObject*>(exportObject);

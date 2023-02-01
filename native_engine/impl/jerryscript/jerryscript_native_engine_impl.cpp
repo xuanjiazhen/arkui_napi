@@ -59,8 +59,10 @@ JerryScriptNativeEngineImpl::JerryScriptNativeEngineImpl(NativeEngine* engine,
         char* moduleName = new char[moduleNameSize + 1] { 0 };
         uint32_t moduleNameLength = jerry_string_to_char_buffer(args[0], (jerry_char_t*)moduleName, moduleNameSize + 1);
         moduleName[moduleNameLength] = '\0';
-        NativeModule* module = that->GetModuleManager()->LoadNativeModule(moduleName, nullptr, false);
-        
+        bool isPrivateModule = false;
+        NativeModule* module = that->GetModuleManager()->LoadNativeModule(moduleName, nullptr, false,
+            false, isPrivateModule);
+        HILOG_DEBUG("isPrivateModule: %{public}d", isPrivateModule);
         if (module != nullptr) {
             std::string strModuleName(moduleName);
             JerryScriptNativeEngine* nativeEngine = new JerryScriptNativeEngine(that, that->GetJsEngine(), false);
