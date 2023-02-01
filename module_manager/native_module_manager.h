@@ -69,7 +69,7 @@ public:
     void Register(NativeModule* nativeModule);
     void SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath);
     NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
-                                   bool internal = false);
+                                   bool internal, bool& isPrivateModule);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     const char* GetModuleFileName(const char* moduleName, bool isAppModule);
 
@@ -101,7 +101,7 @@ private:
     bool GetNativeModulePath(const char* moduleName, const char* pathKey, bool isAppModule,
         char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength);
     NativeModule* FindNativeModuleByDisk(const char* moduleName, const char* pathKey, bool internal,
-        const bool isAppModule);
+        const bool isAppModule, bool& isPrivateModule);
     NativeModule* FindNativeModuleByCache(const char* moduleName);
     LIBHANDLE LoadModuleLibrary(const char* path, const char* pathKey, const bool isAppModule);
     void CreateLdNamespace(const std::string moduleName, const char* lib_ld_path);
