@@ -288,7 +288,7 @@ void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std
 }
 
 NativeModule* NativeModuleManager::LoadNativeModule(
-    const char* moduleName, const char* path, bool isAppModule, bool internal)
+    const char* moduleName, const char* path, bool isAppModule, bool internal, bool& isPrivateModule)
 {
     if (moduleName == nullptr) {
         HILOG_ERROR("moduleName value is null");
@@ -328,10 +328,10 @@ NativeModule* NativeModuleManager::LoadNativeModule(
     if (nativeModule == nullptr) {
 #ifdef ANDROID_PLATFORM
         HILOG_INFO("not in cache: moduleName: %{public}s", strCutName.c_str());
-        nativeModule = FindNativeModuleByDisk(strCutName.c_str(), "default", internal, isAppModule);
+        nativeModule = FindNativeModuleByDisk(strCutName.c_str(), "default", internal, isAppModule, isPrivateModule);
 #else
         HILOG_INFO("not in cache: moduleName: %{public}s", moduleName);
-        nativeModule = FindNativeModuleByDisk(moduleName, prefix_.c_str(), internal, isAppModule);
+        nativeModule = FindNativeModuleByDisk(moduleName, prefix_.c_str(), internal, isAppModule, isPrivateModule);
 #endif
     }
 #endif
@@ -517,7 +517,7 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const char* p
 
 using NAPIGetJSCode = void (*)(const char** buf, int* bufLen);
 NativeModule* NativeModuleManager::FindNativeModuleByDisk(
-    const char* moduleName, const char* path, bool internal, const bool isAppModule)
+    const char* moduleName, const char* path, bool internal, const bool isAppModule, bool& isPrivateModule)
 {
     char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
     nativeModulePath[0][0] = 0;
@@ -531,9 +531,10 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
     }
     if (!moduleLoadChecker_->CheckModuleLoadable(moduleName)) {
         HILOG_ERROR("module %{public}s is not allow to load", moduleName);
+        isPrivateModule = true;
         return nullptr;
     }
-
+    isPrivateModule = false;
     // load primary module path first
     char* loadPath = nativeModulePath[0];
     HILOG_DEBUG("get primary module path: %{public}s", loadPath);
