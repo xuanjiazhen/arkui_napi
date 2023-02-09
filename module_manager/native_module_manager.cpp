@@ -357,7 +357,7 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     const char* zfix = "";
 #elif defined(_ARM64_) || defined(SIMULATOR)
     const char* soPostfix = ".so";
-    const char* sysPrefix = "/system/lib64/module";
+    const char* sysPrefix = "";
     const char* zfix = ".z";
 #elif defined(LINUX_PLATFORM)
     const char* soPostfix = ".so";
@@ -365,7 +365,7 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     const char* zfix = "";
 #else
     const char* soPostfix = ".so";
-    const char* sysPrefix = "/system/lib/module";
+    const char* sysPrefix = "";
     const char* zfix = ".z";
 #endif
 
@@ -397,7 +397,7 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     int32_t lengthOfPostfix = strlen(soPostfix);
     if ((lengthOfModuleName > lengthOfPostfix) &&
         (strcmp(dupModuleName + lengthOfModuleName - lengthOfPostfix, soPostfix) == 0)) {
-        if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s", prefix, dupModuleName) == -1) {
+        if (sprintf_s(nativeModulePath[0], pathLength, "%s", dupModuleName) == -1) {
             return false;
         }
         return true;
@@ -406,12 +406,10 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     char* lastDot = strrchr(dupModuleName, '.');
     if (lastDot == nullptr) {
         if (!isAppModule || !IsExistedPath(path)) {
-            if (sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s%s",
-                prefix, dupModuleName, zfix, soPostfix) == -1) {
+            if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s%s", dupModuleName, zfix, soPostfix) == -1) {
                 return false;
             }
-            if (sprintf_s(nativeModulePath[1], pathLength, "%s/lib%s_napi%s%s",
-                prefix, dupModuleName, zfix, soPostfix) == -1) {
+            if (sprintf_s(nativeModulePath[1], pathLength, "lib%s_napi%s%s", dupModuleName, zfix, soPostfix) == -1) {
                 return false;
             }
         } else {
@@ -421,12 +419,12 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
                 return false;
             }
 #else
-            if (sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s", prefix, dupModuleName, soPostfix) == -1) {
+            if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix) == -1) {
                 return false;
             }
 #endif
 #ifdef ANDROID_PLATFORM
-            if (sprintf_s(nativeModulePath[1], pathLength, "%s/lib%s%s", prefix, moduleName, soPostfix) == -1) {
+            if (sprintf_s(nativeModulePath[1], pathLength, "lib%s%s", moduleName, soPostfix) == -1) {
                 return false;
             }
 #endif
@@ -444,12 +442,10 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
             }
         }
         if (!isAppModule || !IsExistedPath(path)) {
-            if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s/lib%s%s%s",
-                prefix, dupModuleName, afterDot, zfix, soPostfix) == -1) {
+            if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s%s", afterDot, zfix, soPostfix) == -1) {
                 return false;
             }
-            if (sprintf_s(nativeModulePath[1], pathLength, "%s/%s/lib%s_napi%s%s",
-                prefix, dupModuleName, afterDot, zfix, soPostfix) == -1) {
+            if (sprintf_s(nativeModulePath[1], pathLength, "lib%s_napi%s%s", afterDot, zfix, soPostfix) == -1) {
                 return false;
             }
         } else {
@@ -459,14 +455,12 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
                 return false;
             }
 #else
-            if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s/lib%s%s",
-                prefix, dupModuleName, afterDot, soPostfix) == -1) {
+            if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", afterDot, soPostfix) == -1) {
                 return false;
             }
 #endif
 #ifdef ANDROID_PLATFORM
-            if (sprintf_s(nativeModulePath[1], pathLength, "%s/%s/lib%s%s",
-                prefix, moduleName, afterDot, soPostfix) == -1) {
+            if (sprintf_s(nativeModulePath[1], pathLength, "lib%s%s", afterDot, soPostfix) == -1) {
                 return false;
             }
 #endif
