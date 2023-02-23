@@ -294,6 +294,8 @@ NativeModule* NativeModuleManager::LoadNativeModule(
         HILOG_ERROR("moduleName value is null");
         return nullptr;
     }
+    HILOG_DEBUG("moduleName: %{private}s, path: %{private}s, isAppModule: %{public}d, internal: %{public}d.",
+        moduleName, path, isAppModule, internal);
 
 #ifdef ANDROID_PLATFORM
     std::string strModule(moduleName);
@@ -555,8 +557,10 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
     }
 
     if (lastNativeModule_ && strcmp(lastNativeModule_->name, moduleKey.c_str())) {
-        HILOG_WARN(
-            "moduleName '%{public}s' does not match plugin's name '%{public}s'", moduleName, lastNativeModule_->name);
+        HILOG_ERROR("moduleName '%{public}s' does not match plugin's name '%{public}s'", moduleName,
+            lastNativeModule_->name);
+        LIBFREE(lib);
+        return nullptr;
     }
 
     if (!internal) {
@@ -593,13 +597,11 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
 
 NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleName)
 {
+    HILOG_DEBUG("moduleName: %{private}s.", moduleName);
     NativeModule* result = nullptr;
     NativeModule* preNativeModule = nullptr;
     for (NativeModule* temp = firstNativeModule_; temp != nullptr; temp = temp->next) {
-        if (!strcasecmp(temp->name, moduleName)) {
-            if (strcmp(temp->name, moduleName)) {
-                HILOG_WARN("moduleName '%{public}s' does not match plugin's name '%{public}s'", moduleName, temp->name);
-            }
+        if (strcmp(temp->name, moduleName) == 0) {
             result = temp;
             break;
         }
