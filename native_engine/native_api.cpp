@@ -871,7 +871,6 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     if (argc > 0) {
         CHECK_ARG(env, argv);
     }
-    CHECK_ARG(env, result);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto nativeRecv = reinterpret_cast<NativeValue*>(recv);
@@ -883,7 +882,9 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     auto resultValue = engine->CallFunction(nativeRecv, nativeFunc, nativeArgv, argc);
 
     RETURN_STATUS_IF_FALSE(env, resultValue != nullptr, napi_pending_exception);
-    *result = reinterpret_cast<napi_value>(resultValue);
+    if (result != nullptr) {
+        *result = reinterpret_cast<napi_value>(resultValue);
+    }
     return napi_clear_last_error(env);
 }
 
@@ -946,6 +947,13 @@ NAPI_EXTERN napi_status napi_get_cb_info(napi_env env,              // [in] NAPI
         size_t i = 0;
         for (i = 0; (i < *argc) && (i < info->argc); i++) {
             argv[i] = reinterpret_cast<napi_value>(info->argv[i]);
+        }
+        if (i < *argc) {
+            NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+            napi_value undefined = reinterpret_cast<napi_value>(engine->CreateUndefined());
+            for (size_t j = i; j < *argc; j++) {
+                argv[j] = undefined;
+            }
         }
         *argc = i;
     }
