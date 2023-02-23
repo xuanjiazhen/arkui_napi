@@ -378,7 +378,7 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
         HILOG_ERROR("strcpy moduleName failed");
         return false;
     }
-
+    HILOG_ERROR("kangchongtao dupModuleName %{public}s", dupModuleName);
     const char* prefix = nullptr;
     if (isAppModule && IsExistedPath(path)) {
         prefix = appLibPathMap_[path];
@@ -398,11 +398,12 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     if ((lengthOfModuleName > lengthOfPostfix) &&
         (strcmp(dupModuleName + lengthOfModuleName - lengthOfPostfix, soPostfix) == 0)) {
         if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s", prefix, dupModuleName) == -1) {
+            HILOG_ERROR("kangchongtao nativeModulePath1111111 %{public}s", nativeModulePath[0]);
             return false;
         }
         return true;
     }
-
+    HILOG_ERROR("kangchongtao prefix %{public}s", prefix);
     char* lastDot = strrchr(dupModuleName, '.');
     if (lastDot == nullptr) {
         if (!isAppModule || !IsExistedPath(path)) {
@@ -414,16 +415,20 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
                 prefix, dupModuleName, zfix, soPostfix) == -1) {
                 return false;
             }
+            HILOG_ERROR("kangchongtao nativeModulePath2222222222 %{public}s", nativeModulePath[0]);
+            HILOG_ERROR("kangchongtao nativeModulePath2222222221111 %{public}s", nativeModulePath[1]);
         } else {
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
             if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix) == -1) {
                 return false;
             }
+            HILOG_ERROR("kangchongtao nativeModulePath33333333 %{public}s", nativeModulePath[0]);
 #else
             if (sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s", prefix, dupModuleName, soPostfix) == -1) {
                 return false;
             }
+            HILOG_ERROR("kangchongtao nativeModulePath444444444 %{public}s", nativeModulePath[0]);
 #endif
 #ifdef ANDROID_PLATFORM
             if (sprintf_s(nativeModulePath[1], pathLength, "%s/lib%s%s", prefix, moduleName, soPostfix) == -1) {
@@ -452,6 +457,8 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
                 prefix, dupModuleName, afterDot, zfix, soPostfix) == -1) {
                 return false;
             }
+            HILOG_ERROR("kangchongtao nativeModulePath5555555555555 %{public}s", nativeModulePath[0]);
+            HILOG_ERROR("kangchongtao nativeModulePath666666666666 %{public}s", nativeModulePath[1]);
         } else {
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
@@ -501,10 +508,13 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const char* p
 #else
     if (isAppModule && IsExistedPath(pathKey)) {
         Dl_namespace ns = nsMap_[pathKey];
+        HILOG_ERROR("kangchongtao dlopen_ns");
         lib = dlopen_ns(&ns, path, RTLD_LAZY);
     } else {
+        HILOG_ERROR("kangchongtao dlopen");
         lib = dlopen(path, RTLD_LAZY);
     }
+    HILOG_ERROR("kangchongtao path %{public}s", path);
     if (lib == nullptr) {
         HILOG_WARN("dlopen failed: %{public}s", dlerror());
     }
@@ -536,11 +546,11 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
 
     // load primary module path first
     char* loadPath = nativeModulePath[0];
-    HILOG_DEBUG("get primary module path: %{public}s", loadPath);
+    HILOG_DEBUG("kangchongtao get primary module path: %{public}s", loadPath);
     LIBHANDLE lib = LoadModuleLibrary(loadPath, path, isAppModule);
     if (lib == nullptr) {
         loadPath = nativeModulePath[1];
-        HILOG_DEBUG("primary module path load failed, try to load secondary module path: %{public}s", loadPath);
+        HILOG_DEBUG("kangchongtao primary module path load failed, try to load secondary module path: %{public}s", loadPath);
         lib = LoadModuleLibrary(loadPath, path, isAppModule);
         if (lib == nullptr) {
             HILOG_ERROR("primary and secondary module path load failed %{public}s", moduleName);
