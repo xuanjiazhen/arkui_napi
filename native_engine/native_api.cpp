@@ -236,15 +236,20 @@ NAPI_EXTERN napi_status napi_create_function(napi_env env,
                                              napi_value* result)
 {
     CHECK_ENV(env);
-    CHECK_ARG(env, utf8name);
     CHECK_ARG(env, cb);
     CHECK_ARG(env, result);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto callback = reinterpret_cast<NativeCallback>(cb);
-
-    auto resultValue =
-        engine->CreateFunction(utf8name, (length == NAPI_AUTO_LENGTH) ? strlen(utf8name) : length, callback, data);
+    NativeValue* resultValue = nullptr;
+    if (utf8name != nullptr) {
+        resultValue = engine->CreateFunction(utf8name,
+            (length == NAPI_AUTO_LENGTH) ? strlen(utf8name) : length, callback, data);
+    } else {
+        const char* name = "defaultName";
+        resultValue = engine->CreateFunction(name,
+            (length == NAPI_AUTO_LENGTH) ? strlen(name) : length, callback, data);
+    }
 
     *result = reinterpret_cast<napi_value>(resultValue);
     return napi_clear_last_error(env);
@@ -871,7 +876,6 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     if (argc > 0) {
         CHECK_ARG(env, argv);
     }
-    CHECK_ARG(env, result);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto nativeRecv = reinterpret_cast<NativeValue*>(recv);
@@ -883,7 +887,9 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     auto resultValue = engine->CallFunction(nativeRecv, nativeFunc, nativeArgv, argc);
 
     RETURN_STATUS_IF_FALSE(env, resultValue != nullptr, napi_pending_exception);
-    *result = reinterpret_cast<napi_value>(resultValue);
+    if (result != nullptr) {
+        *result = reinterpret_cast<napi_value>(resultValue);
+    }
     return napi_clear_last_error(env);
 }
 
@@ -946,6 +952,13 @@ NAPI_EXTERN napi_status napi_get_cb_info(napi_env env,              // [in] NAPI
         size_t i = 0;
         for (i = 0; (i < *argc) && (i < info->argc); i++) {
             argv[i] = reinterpret_cast<napi_value>(info->argv[i]);
+        }
+        if (i < *argc) {
+            NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+            napi_value undefined = reinterpret_cast<napi_value>(engine->CreateUndefined());
+            for (size_t j = i; j < *argc; j++) {
+                argv[j] = undefined;
+            }
         }
         *argc = i;
     }
