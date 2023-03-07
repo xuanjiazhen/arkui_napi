@@ -613,7 +613,6 @@ NAPI_EXTERN napi_status napi_delete_property(napi_env env, napi_value object, na
     CHECK_ENV(env);
     CHECK_ARG(env, object);
     CHECK_ARG(env, key);
-    CHECK_ARG(env, result);
 
     auto nativeValue = reinterpret_cast<NativeValue*>(object);
     auto propKey = reinterpret_cast<NativeValue*>(key);
@@ -624,7 +623,11 @@ NAPI_EXTERN napi_status napi_delete_property(napi_env env, napi_value object, na
 
     auto nativeObject = reinterpret_cast<NativeObject*>(nativeValue->GetInterface(NativeObject::INTERFACE_ID));
 
-    *result = nativeObject->DeleteProperty(propKey);
+    bool deleteResult = nativeObject->DeleteProperty(propKey);
+    if (result) {
+        *result = deleteResult;
+    }
+
     return napi_clear_last_error(env);
 }
 
@@ -766,7 +769,6 @@ NAPI_EXTERN napi_status napi_delete_element(napi_env env, napi_value object, uin
 {
     CHECK_ENV(env);
     CHECK_ARG(env, object);
-    CHECK_ARG(env, result);
 
     auto nativeValue = reinterpret_cast<NativeValue*>(object);
 
@@ -774,7 +776,10 @@ NAPI_EXTERN napi_status napi_delete_element(napi_env env, napi_value object, uin
 
     auto nativeArray = reinterpret_cast<NativeArray*>(nativeValue->GetInterface(NativeArray::INTERFACE_ID));
 
-    *result = nativeArray->DeleteElement(index);
+    bool deleteResult = nativeArray->DeleteElement(index);
+    if (result) {
+        *result = deleteResult;
+    }
     return napi_clear_last_error(env);
 }
 
@@ -871,7 +876,6 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     if (argc > 0) {
         CHECK_ARG(env, argv);
     }
-    CHECK_ARG(env, result);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto nativeRecv = reinterpret_cast<NativeValue*>(recv);
@@ -880,16 +884,12 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
 
     RETURN_STATUS_IF_FALSE(env, nativeFunc->TypeOf() == NATIVE_FUNCTION, napi_function_expected);
 
-    HILOG_DEBUG("engine: %{public}p, nativeRecv: %{public}p, nativeFunc: %{public}p, nativeArgv: %{public}p",
-        engine, nativeRecv, nativeFunc, nativeArgv);
-
     auto resultValue = engine->CallFunction(nativeRecv, nativeFunc, nativeArgv, argc);
 
-    HILOG_DEBUG("engine: %{public}p, nativeRecv: %{public}p, nativeFunc: %{public}p, nativeArgv: %{public}p, "
-        "resultValue: %{public}p", engine, nativeRecv, nativeFunc, nativeArgv, resultValue);
-
     RETURN_STATUS_IF_FALSE(env, resultValue != nullptr, napi_pending_exception);
-    *result = reinterpret_cast<napi_value>(resultValue);
+    if (result) {
+        *result = reinterpret_cast<napi_value>(resultValue);
+    }
     return napi_clear_last_error(env);
 }
 
@@ -1228,11 +1228,13 @@ NAPI_EXTERN napi_status napi_reference_unref(napi_env env, napi_ref ref, uint32_
 {
     CHECK_ENV(env);
     CHECK_ARG(env, ref);
-    CHECK_ARG(env, result);
 
     auto reference = reinterpret_cast<NativeReference*>(ref);
+    uint32_t unrefCount = reference->Unref();
 
-    *result = reference->Unref();
+    if (result) {
+        *result = unrefCount;
+    }
 
     return napi_clear_last_error(env);
 }
@@ -1338,10 +1340,13 @@ NAPI_EXTERN napi_status napi_escape_handle(napi_env env,
         return napi_set_last_error(env, napi_generic_failure);
     }
 
-    auto resultValue = scopeManager->Escape(nativeScope, escapeeValue);
-
-    *result = reinterpret_cast<napi_value>(resultValue);
-    return napi_clear_last_error(env);
+    if (!nativeScope->escapeCalled) {
+        auto resultValue = scopeManager->Escape(nativeScope, escapeeValue);
+        *result = reinterpret_cast<napi_value>(resultValue);
+        nativeScope->escapeCalled = true;
+        return napi_clear_last_error(env);
+    }
+    return napi_set_last_error(env, napi_escape_called_twice);
 }
 
 // Methods to support error handling

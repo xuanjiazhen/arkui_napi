@@ -84,7 +84,7 @@ NativeModuleManager* NativeModuleManager::GetInstance()
 
 void NativeModuleManager::SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine)
 {
-    HILOG_DEBUG("%{public}s, start.nativeEngine:%{public}p", __func__, nativeEngine);
+    HILOG_DEBUG("%{public}s", __func__);
     nativeEngineList_.emplace(moduleName, nativeEngine);
 }
 
@@ -173,6 +173,7 @@ char* NativeModuleManager::FormatString()
         "libdl.so",
         "libm.so",
         "libz.so",
+	"libclang_rt.asan.so",
         // z library
         "libace_napi.z.so",
         "libace_ndk.z.so",

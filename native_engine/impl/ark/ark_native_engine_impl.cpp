@@ -789,9 +789,10 @@ NativeValue* ArkNativeEngineImpl::GetAndClearLastException(NativeEngine* engine)
 {
     NativeValue* temp = lastException_;
     lastException_ = nullptr;
-    if (IsMainThread()) {
+    if (IsMainThread() || temp != nullptr) {
         return temp;
     }
+
     // Worker need handle all exception
     LocalScope scope(vm_);
     Local<ObjectRef> exception = panda::JSNApi::GetAndClearUncaughtException(vm_);
@@ -1441,12 +1442,15 @@ void ArkNativeEngineImpl::RegisterUncaughtExceptionHandler(UncaughtExceptionCall
 void ArkNativeEngineImpl::HandleUncaughtException(NativeEngine* engine)
 {
     HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException begin");
+    Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm_);
     if (uncaughtExceptionCallback_ == nullptr) {
         HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException begin 1");
+        if (!exception.IsNull()) {
+            HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException %{public}s", exception->ToString(vm_)->ToString().c_str());
+        }
         return;
     }
     HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException begin 2");
-    Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm_);
     if (!exception.IsEmpty() && !exception->IsHole()) {
         HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException begin 3");
         uncaughtExceptionCallback_(ArkValueToNativeValue(static_cast<ArkNativeEngine*>(engine), exception));
