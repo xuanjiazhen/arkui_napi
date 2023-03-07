@@ -220,6 +220,10 @@ if (defined(ohos_lite)) {
       if (!is_cross_platform_build) {
         public_deps = [ "//third_party/libuv:uv" ]
       }
+
+      install_images = [ system_base_dir ]
+      relative_install_dir = "platformsdk"
+
       subsystem_name = "arkui"
       part_name = "napi"
     }
