@@ -613,10 +613,13 @@ bool ArkNativeEngineImpl::InitTaskPoolFunc(NativeEngine* engine, NativeValue* fu
 NativeValue* ArkNativeEngineImpl::CallFunction(
     NativeEngine* engine, NativeValue* thisVar, NativeValue* function, NativeValue* const *argv, size_t argc)
 {
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::CallFunction begin");
+
     if (function == nullptr) {
         return nullptr;
     }
     LocalScope scope(vm_);
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::CallFunction begin 1");
     NativeScopeManager* scopeManager = engine->GetScopeManager();
     if (scopeManager == nullptr) {
         HILOG_ERROR("scope manager is null");
@@ -628,13 +631,16 @@ NativeValue* ArkNativeEngineImpl::CallFunction(
         Global<JSValueRef> globalObj = *thisVar;
         thisObj = globalObj.ToLocal(vm_);
     }
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::CallFunction begin 2");
     Global<FunctionRef> funcObj = *function;
 #ifdef ENABLE_CONTAINER_SCOPE
     auto nativeFunction = static_cast<NativeFunction*>(function->GetInterface(NativeFunction::INTERFACE_ID));
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::CallFunction begin 3-a");
     if (nativeFunction == nullptr) {
         HILOG_ERROR("nativeFunction is null");
         return nullptr;
     }
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::CallFunction begin 3-b");
     auto arkNativeFunc = static_cast<ArkNativeFunction*>(nativeFunction);
     OHOS::Ace::ContainerScope containerScope(arkNativeFunc->GetScopeId());
 #endif
@@ -649,12 +655,15 @@ NativeValue* ArkNativeEngineImpl::CallFunction(
         }
     }
 
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::CallFunction begin 3-c");
+
     Local<JSValueRef> value = funcObj->Call(vm_, thisObj, args.data(), argc);
     if (panda::JSNApi::HasPendingException(vm_)) {
         HandleUncaughtException(engine);
         return nullptr;
     }
 
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::CallFunction begin 4");
     scopeManager->Close(nativeScope);
     return ArkValueToNativeValue(static_cast<ArkNativeEngine*>(engine), value);
 }
@@ -1431,11 +1440,15 @@ void ArkNativeEngineImpl::RegisterUncaughtExceptionHandler(UncaughtExceptionCall
 
 void ArkNativeEngineImpl::HandleUncaughtException(NativeEngine* engine)
 {
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException begin");
     if (uncaughtExceptionCallback_ == nullptr) {
+        HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException begin 1");
         return;
     }
+    HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException begin 2");
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm_);
     if (!exception.IsEmpty() && !exception->IsHole()) {
+        HILOG_INFO("xts_test_tag ArkNativeEngineImpl::HandleUncaughtException begin 3");
         uncaughtExceptionCallback_(ArkValueToNativeValue(static_cast<ArkNativeEngine*>(engine), exception));
     }
 }
