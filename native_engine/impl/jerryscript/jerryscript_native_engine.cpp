@@ -508,6 +508,7 @@ void JerryScriptNativeEngine::RegisterUncaughtExceptionHandler(UncaughtException
 }
 void JerryScriptNativeEngine::HandleUncaughtException()
 {
+    HILOG_INFO("xts_test_tag_2: JerryScriptNativeEngine::HandleUncaughtException");
     auto jerryscriptNativeEngineImpl = static_cast<JerryScriptNativeEngineImpl*>(nativeEngineImpl_);
     jerryscriptNativeEngineImpl->HandleUncaughtException(this);
 }
