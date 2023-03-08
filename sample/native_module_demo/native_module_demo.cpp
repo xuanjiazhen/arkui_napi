@@ -201,6 +201,7 @@ static napi_value Init(napi_env env, napi_value exports)
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
 
     DemoJavascriptClassInit(env, exports);
+    SubDemoJavascriptClassInit(env, exports);
 
     return exports;
 }
