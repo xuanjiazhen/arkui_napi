@@ -86,6 +86,7 @@ ArkNativeFunction::ArkNativeFunction(ArkNativeEngine* engine,
         HILOG_ERROR("funcInfo is nullptr");
         return;
     }
+    HILOG_ERROR("=============== print ArkNativeFunction: %{public}s: %{public}p", name, (void *)cb);
     funcInfo->engine = engine;
     funcInfo->callback = cb;
     funcInfo->data = value;
