@@ -1380,7 +1380,13 @@ void ArkNativeEngineImpl::RegisterUncaughtExceptionHandler(UncaughtExceptionCall
 
 void ArkNativeEngineImpl::HandleUncaughtException(NativeEngine* engine)
 {
+    HILOG_INFO("xts_test_tag_2 ArkNativeEngineImpl::HandleUncaughtException begin");
     if (uncaughtExceptionCallback_ == nullptr) {
+        Local<ObjectRef> exception = JSNApi::GetUncaughtException(vm_);
+        HILOG_INFO("xts_test_tag_2 ArkNativeEngineImpl::HandleUncaughtException begin 1");
+        if (!exception.IsNull()) {
+            HILOG_INFO("xts_test_tag_2 ArkNativeEngineImpl::HandleUncaughtException notnull");
+        }
         return;
     }
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm_);

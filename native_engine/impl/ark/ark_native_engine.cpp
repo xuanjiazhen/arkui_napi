@@ -679,6 +679,7 @@ void ArkNativeEngine::RegisterUncaughtExceptionHandler(UncaughtExceptionCallback
 
 void ArkNativeEngine::HandleUncaughtException()
 {
+    HILOG_WARN("xts_test_tag_2: ArkNativeEngine::HandleUncaughtException");
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
     return arkNativeEngineImpl->HandleUncaughtException(this);
 }
