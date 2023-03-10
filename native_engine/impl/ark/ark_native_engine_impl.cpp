@@ -988,18 +988,23 @@ NativeValue* ArkNativeEngineImpl::LoadArkModule(
     NativeEngine* engine, const char* str, int32_t len, const std::string& fileName)
 {
     HILOG_DEBUG("ArkNativeEngineImpl::LoadModule start, buffer = %{public}s", str);
-    if (str == nullptr || len <= 0 || fileName.empty()) {
+    if (fileName.empty()) {
         HILOG_ERROR("fileName is nullptr or source code is nullptr");
         return nullptr;
     }
+    Local<JSValueRef> res = JSValueRef::Undefined(vm_);
+    if (str == nullptr || len <= 0) {
+        res = panda::SourceTextModuleRef::New(vm_, fileName);
+    } else {
+        res = panda::SourceTextModuleRef::New(vm_, str, len, fileName);
+    }
 
-    bool res = JSNApi::ExecuteModuleFromBuffer(vm_, str, len, fileName);
-    if (!res) {
+    if (!res->IsSourceTextModule()) {
         HILOG_ERROR("Execute module failed");
         return nullptr;
     }
 
-    Local<ObjectRef> exportObj = JSNApi::GetExportObjectFromBuffer(vm_, fileName, "default");
+    Local<ObjectRef> exportObj = Local<panda::SourceTextModuleRef>(res)->GetExportObject(vm_, "default");
     if (exportObj->IsNull()) {
         HILOG_ERROR("Get export object failed");
         return nullptr;
