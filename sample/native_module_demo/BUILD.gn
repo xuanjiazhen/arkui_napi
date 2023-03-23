@@ -12,9 +12,9 @@
 # limitations under the License.
 
 if (defined(ohos_lite)) {
-  import("//build/lite/config/component/lite_component.gni")
-  import("//build/lite/config/subsystem/aafwk/config.gni")
-  import("//build/lite/config/test.gni")
+  import("//build/hb/config/component/lite_component.gni")
+  import("//build/hb/config/subsystem/aafwk/config.gni")
+  import("//build/hb/config/test.gni")
 
   shared_library("demo") {
     include_dirs = [

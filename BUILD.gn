@@ -24,8 +24,8 @@ config("ace_napi_config") {
 }
 
 if (defined(ohos_lite)) {
-  import("//build/lite/config/component/lite_component.gni")
-  import("//build/lite/config/subsystem/aafwk/config.gni")
+  import("//build/hb/config/component/lite_component.gni")
+  import("//build/hb/config/subsystem/aafwk/config.gni")
 
   config("ace_napi_jerryscript_config") {
     include_dirs = [
@@ -70,7 +70,7 @@ if (defined(ohos_lite)) {
   }
 
   shared_library("ace_napi_jerryscript") {
-    configs -= [ "//build/lite/config:language_cpp" ]
+    configs -= [ "//build/hb/config:language_cpp" ]
 
     public_configs = [ ":ace_napi_jerryscript_config" ]
 
