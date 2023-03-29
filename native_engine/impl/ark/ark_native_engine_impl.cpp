@@ -132,7 +132,7 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                         moduleManager->LoadNativeModule(moduleName->ToString().c_str(), path->ToString().c_str(),
                             isAppModule, false);
                 } else {
-                    module = 
+                    module =
                         moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, isAppModule, false);
                 }
 #endif
@@ -702,7 +702,7 @@ NativeValue* ArkNativeEngineImpl::RunScriptBuffer(
     } else {
         ret = panda::JSNApi::ExecuteModuleBuffer(vm_, buffer.data(), buffer.size(), path);
     }
-    
+
     if (panda::JSNApi::HasPendingException(vm_)) {
         HandleUncaughtException(engine);
         return nullptr;
@@ -884,6 +884,7 @@ NativeEngine* ArkNativeEngineImpl::CreateRuntimeFunc(NativeEngine* engine, void*
     ArkNativeEngine* arkEngine = new ArkNativeEngine(vm, jsEngine);
     // init callback
     arkEngine->RegisterWorkerFunction(engine);
+    arkEngine->SetHostEngine(engine);
 
     auto cleanEnv = [vm]() {
         if (vm != nullptr) {

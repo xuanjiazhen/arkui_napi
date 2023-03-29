@@ -169,7 +169,7 @@ public:
     virtual bool DeleteWorker(NativeEngine* hostEngine, NativeEngine* workerEngine) = 0;
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true) = 0;
     virtual bool StopHeapTracking(const std::string &filePath) = 0;
-    
+
     virtual void AllowCrossThreadExecution() const = 0;
 
     NativeErrorExtendedInfo* GetLastError();
@@ -226,6 +226,10 @@ public:
     virtual void SetDebuggerPostTaskFunc(DebuggerPostTask func);
     virtual void CallDebuggerPostTaskFunc(std::function<void()>&& task);
 #endif
+
+    virtual void SetHostEngine(NativeEngine* engine);
+    virtual NativeEngine* GetHostEngine() const;
+
     virtual NativeValue* CreateDate(double value) = 0;
     virtual NativeValue* CreateBigWords(int sign_bit, size_t word_count, const uint64_t* words) = 0;
     using CleanupCallback = CleanupHookCallback::Callback;
@@ -283,21 +287,21 @@ public:
 
     /**
      * @brief Set the Extension Infos
-     * 
-     * @param extensionInfos extension infos to set 
+     *
+     * @param extensionInfos extension infos to set
      */
     void SetExtensionInfos(std::unordered_map<std::string, int32_t>&& extensionInfos);
 
     /**
      * @brief Get the Extension Infos
-     * 
+     *
      * @return extension infos
      */
     const std::unordered_map<std::string, int32_t>& GetExtensionInfos();
 
     /**
      * @brief Set the Module Blocklist
-     * 
+     *
      * @param blocklist the blocklist set to native engine
      */
     void SetModuleBlocklist(std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist);
