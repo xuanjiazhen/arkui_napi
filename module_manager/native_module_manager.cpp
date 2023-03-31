@@ -214,6 +214,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libnative_media_core.so",
         "libnative_media_vdec.so",
         "libnative_media_venc.so",
+        "libvulkan.so",
         // adaptor library
         "libohosadaptor.so",
     };
