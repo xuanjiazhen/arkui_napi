@@ -568,9 +568,10 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
         moduleKey = moduleKey + '/' + moduleName;
     }
 
-    if (lastNativeModule_ && strcmp(lastNativeModule_->name, moduleKey.c_str())) {
-        HILOG_WARN(
+    if (lastNativeModule_ && strcasecmp(lastNativeModule_->name, moduleKey.c_str())) {
+        HILOG_ERROR(
             "moduleName '%{public}s' does not match plugin's name '%{public}s'", moduleName, lastNativeModule_->name);
+        return nullptr;
     }
 
     if (!internal) {
