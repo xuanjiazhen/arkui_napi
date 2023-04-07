@@ -185,7 +185,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libdl.so",
         "libm.so",
         "libz.so",
-	"libclang_rt.asan.so",
+        "libclang_rt.asan.so",
         // z library
         "libace_napi.z.so",
         "libace_ndk.z.so",
@@ -216,6 +216,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libnative_media_venc.so",
         // adaptor library
         "libohosadaptor.so",
+        "libusb_ndk.z.so",
     };
 
     size_t allowListLength = sizeof(allowList) / sizeof(char*);
