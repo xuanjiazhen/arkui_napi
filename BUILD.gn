@@ -21,6 +21,9 @@ config("ace_napi_config") {
     "//third_party/libuv/include",
     "//third_party/node/src",
   ]
+  if (current_os == "darwin") {
+    cflags_cc = [ "-O0" ]
+  }
 }
 
 if (defined(ohos_lite)) {
