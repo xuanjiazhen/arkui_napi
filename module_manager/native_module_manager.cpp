@@ -15,6 +15,7 @@
 
 #include "native_module_manager.h"
 
+#include <cstring>
 #include <dirent.h>
 #include <mutex>
 
@@ -24,6 +25,8 @@
 #include "native_engine/native_engine.h"
 #include "securec.h"
 #include "utils/log.h"
+
+#define NDK "ndk"
 
 namespace {
 constexpr static int32_t NATIVE_PATH_NUMBER = 2;
@@ -243,20 +246,30 @@ void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const 
     !defined(LINUX_PLATFORM)
     Dl_namespace current_ns;
     Dl_namespace ns;
+    Dl_namespace ndk_ns;
+
     std::string nsName = "arkUI_" + moduleName;
     dlns_init(&ns, nsName.c_str());
     dlns_get(nullptr, &current_ns);
+    dlns_get(NDK, &ndk_ns);
     dlns_create2(&ns, lib_ld_path, 0);
     if (!sharedLibsSonames_) {
         CreateSharedLibsSonames();
     }
     dlns_inherit(&ns, &current_ns, sharedLibsSonames_);
+    
+    // valid ndk_ns
+    if (strlen(ndk_ns.name) > 0) {
+        dlns_inherit(&ns, &ndk_ns, nullptr);
+    }
     nsMap_[moduleName] = ns;
+    nsMap_[NDK] = ndk_ns;
     HILOG_INFO("CreateLdNamespace success, path: %{private}s", lib_ld_path);
 #endif
 }
 
-void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath)
+void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath, 
+    const bool &isSystemApp)
 {
     char* tmp = new char[NAPI_PATH_MAX];
     errno_t err = EOK;
@@ -289,7 +302,9 @@ void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std
     }
 
     appLibPathMap_[moduleName] = tmp;
-    CreateLdNamespace(moduleName, tmp);
+    if (isSystemApp) {
+        CreateLdNamespace(moduleName, tmp);
+    }
     HILOG_INFO("create ld namespace, path: %{private}s", appLibPathMap_[moduleName]);
 }
 

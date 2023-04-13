@@ -71,7 +71,8 @@ public:
     static uint64_t Release();
 
     void Register(NativeModule* nativeModule);
-    void SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath);
+    void SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath,
+                        const bool &isSystemApp = false);
     NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
                                    bool internal = false);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
