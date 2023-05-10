@@ -21,6 +21,7 @@
 #ifdef ENABLE_HITRACE
 #include "hitrace_meter.h"
 #endif
+#include "module_load_checker.h"
 #include "native_engine/native_engine.h"
 #include "securec.h"
 #include "utils/log.h"
@@ -32,10 +33,10 @@ constexpr static int32_t NATIVE_PATH_NUMBER = 2;
 NativeModuleManager* NativeModuleManager::instance_ = NULL;
 std::mutex g_instanceMutex;
 
-NativeModuleManager::NativeModuleManager()
+NativeModuleManager::NativeModuleManager(ProcessType type)
 {
     pthread_mutex_init(&mutex_, nullptr);
-    moduleLoadChecker_ = new ModuleLoadChecker();
+    moduleLoadChecker_ = new ModuleLoadChecker(type);
 }
 
 NativeModuleManager::~NativeModuleManager()
@@ -74,12 +75,12 @@ NativeModuleManager::~NativeModuleManager()
     pthread_mutex_destroy(&mutex_);
 }
 
-NativeModuleManager* NativeModuleManager::GetInstance()
+NativeModuleManager* NativeModuleManager::GetInstance(ProcessType type)
 {
     if (instance_ == NULL) {
         std::lock_guard<std::mutex> lock(g_instanceMutex);
         if (instance_ == NULL) {
-            instance_ = new NativeModuleManager();
+            instance_ = new NativeModuleManager(type);
         }
     }
     return instance_;
@@ -520,6 +521,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
         return nullptr;
     }
     if (!moduleLoadChecker_) {
+        HILOG_ERROR("moduleLoadChecker_ is nullptr");
         return nullptr;
     }
     if (!moduleLoadChecker_->CheckModuleLoadable(moduleName)) {
@@ -632,6 +634,7 @@ void NativeModuleManager::SetModuleBlocklist(
     std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist)
 {
     if (!moduleLoadChecker_) {
+        HILOG_ERROR("SetModuleBlocklist failed, moduleLoadChecker_ is nullptr");
         return;
     }
     moduleLoadChecker_->SetModuleBlocklist(std::forward<decltype(blocklist)>(blocklist));
@@ -640,6 +643,7 @@ void NativeModuleManager::SetModuleBlocklist(
 void NativeModuleManager::SetProcessExtensionType(int32_t extensionType)
 {
     if (!moduleLoadChecker_) {
+        HILOG_ERROR("SetProcessExtensionType failed, moduleLoadChecker_ is nullptr");
         return;
     }
     moduleLoadChecker_->SetProcessExtensionType(extensionType);
@@ -648,7 +652,8 @@ void NativeModuleManager::SetProcessExtensionType(int32_t extensionType)
 int32_t NativeModuleManager::GetProcessExtensionType()
 {
     if (!moduleLoadChecker_) {
-        return EXTENSION_TYPE_UNSPECIFIED;
+        HILOG_ERROR("GetProcessExtensionType failed, moduleLoadChecker_ is nullptr");
+        return EXTENSION_TYPE_UNKNOWN;
     }
     return moduleLoadChecker_->GetProcessExtensionType();
 }

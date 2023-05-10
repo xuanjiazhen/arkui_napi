@@ -15,36 +15,63 @@
 
 #include "module_load_checker.h"
 
+#include "app_module_checker.h"
+#include "form_module_checker.h"
 #include "utils/log.h"
+
+ModuleLoadChecker::ModuleLoadChecker(ProcessType type)
+{
+    std::lock_guard<std::mutex> lock(checkerDelegateMutex_);
+    moduleCheckerDelegate_ = CreateModuleCheckerDelegate(type);
+}
+
+std::unique_ptr<ModuleCheckerDelegate> ModuleLoadChecker::CreateModuleCheckerDelegate(ProcessType type)
+{
+    if (type == ProcessType::APPLICATION) {
+        return std::make_unique<AppModuleChecker>();
+    } else if (type == ProcessType::FORM) {
+        return std::make_unique<FormModuleChecker>();
+    }
+    return nullptr;
+}
 
 void ModuleLoadChecker::SetModuleBlocklist(
     std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist)
 {
-    moduleBlocklist_ = std::move(blocklist);
-    HILOG_INFO("moduleBlocklist_ size = %{public}d", static_cast<int32_t>(moduleBlocklist_.size()));
+    std::lock_guard<std::mutex> lock(checkerDelegateMutex_);
+    if (!moduleCheckerDelegate_) {
+        HILOG_ERROR("SetModuleBlocklist failed, moduleCheckerDelegate_ is nullptr");
+        return;
+    }
+    moduleCheckerDelegate_->SetModuleBlocklist(std::move(blocklist));
 }
 
 void ModuleLoadChecker::SetProcessExtensionType(int32_t extensionType)
 {
-    processExtensionType_ = extensionType;
+    std::lock_guard<std::mutex> lock(checkerDelegateMutex_);
+    if (!moduleCheckerDelegate_) {
+        HILOG_ERROR("SetProcessExtensionType failed, moduleCheckerDelegate_ is nullptr");
+        return;
+    }
+    moduleCheckerDelegate_->SetProcessExtensionType(extensionType);
 }
 
 int32_t ModuleLoadChecker::GetProcessExtensionType()
 {
-    return processExtensionType_;
+    std::lock_guard<std::mutex> lock(checkerDelegateMutex_);
+    if (!moduleCheckerDelegate_) {
+        HILOG_ERROR("GetProcessExtensionType failed, moduleCheckerDelegate_ is nullptr");
+        return EXTENSION_TYPE_UNKNOWN;
+    }
+    return moduleCheckerDelegate_->GetProcessExtensionType();
 }
 
 bool ModuleLoadChecker::CheckModuleLoadable(const char* moduleName)
 {
-    HILOG_INFO("check blocklist, moduleName = %{public}s, processExtensionType_ = %{public}d",
-        moduleName, static_cast<int32_t>(processExtensionType_));
-    const auto& blockListIter = moduleBlocklist_.find(processExtensionType_);
-    if (blockListIter == moduleBlocklist_.end()) {
-        return true;
+    std::lock_guard<std::mutex> lock(checkerDelegateMutex_);
+    if (!moduleCheckerDelegate_) {
+        HILOG_ERROR("CheckModuleLoadable failed, moduleCheckerDelegate_ is nullptr");
+        return false;
     }
-    auto blackList = blockListIter->second;
-    if (blackList.find(moduleName) == blackList.end()) {
-        return true;
-    }
-    return false;
+    return moduleCheckerDelegate_->CheckModuleLoadable(moduleName);
 }

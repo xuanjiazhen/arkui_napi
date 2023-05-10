@@ -62,7 +62,7 @@ struct NativeModule {
 
 class NAPI_EXPORT NativeModuleManager {
 public:
-    static NativeModuleManager* GetInstance();
+    static NativeModuleManager* GetInstance(ProcessType type = ProcessType::APPLICATION);
     static uint64_t Release();
 
     void Register(NativeModule* nativeModule);
@@ -94,7 +94,7 @@ public:
     int32_t GetProcessExtensionType();
 
 private:
-    NativeModuleManager();
+    NativeModuleManager(ProcessType type);
     virtual ~NativeModuleManager();
 
     bool GetNativeModulePath(const char* moduleName, const char* pathKey, bool isAppModule,
@@ -123,6 +123,7 @@ private:
     std::map<std::string, NativeEngine*> nativeEngineList_;
     std::map<std::string, char*> appLibPathMap_;
     ModuleLoadChecker* moduleLoadChecker_ = nullptr;
+    ProcessType processType_ = ProcessType::UNKNOWN;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H */
