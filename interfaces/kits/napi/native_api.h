@@ -163,6 +163,6 @@ NAPI_INNER_EXTERN napi_status napi_adjust_external_memory(napi_env env,
 
 NAPI_INNER_EXTERN napi_status node_api_get_module_file_name(napi_env env, const char** result);
 
-NAPI_EXTERN napi_status napi_run_script_path(napi_env env, const char* path, napi_value* result);
+extern "C" NAPI_EXTERN napi_status napi_run_script_path(napi_env env, const char* path, napi_value* result);
 
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_API_H */
