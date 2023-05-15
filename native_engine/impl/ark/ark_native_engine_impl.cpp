@@ -669,7 +669,16 @@ NativeValue* ArkNativeEngineImpl::CallFunction(
         }
     }
 
-    Local<JSValueRef> value = funcObj->Call(vm_, thisObj, args.data(), argc);
+    // for promise then, should not ExecutePendingJob
+    Local<panda::StringRef> nameRef = funcObj->GetName(vm_);
+    std::string funcName = nameRef->ToString();
+    Local<JSValueRef> value = JSValueRef::Undefined(vm_);
+    if (strcmp(funcName.c_str(), "then") != 0) {
+        value = funcObj->Call(vm_, thisObj, args.data(), argc);
+    } else {
+        value = funcObj->Call(vm_, thisObj, args.data(), argc, true);
+    }
+
     if (panda::JSNApi::HasPendingException(vm_)) {
         HandleUncaughtException(engine);
         return nullptr;
