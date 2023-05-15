@@ -1406,6 +1406,8 @@ void ArkNativeEngineImpl::NotifyMemoryPressure([[maybe_unused]] bool inHighMemor
 void ArkNativeEngineImpl::RegisterUncaughtExceptionHandler(UncaughtExceptionCallback callback)
 {
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    JSNApi::RegisterUncatchableErrorHandler(vm_,
+        std::bind(&ArkNativeEngineImpl::HandleUncaughtException, this, GetRootNativeEngine()), true);
     uncaughtExceptionCallback_ = callback;
 }
 
