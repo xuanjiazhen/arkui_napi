@@ -1592,7 +1592,7 @@ NAPI_INNER_EXTERN napi_status napi_create_buffer_copy(
 {
     CHECK_ENV(env);
     CHECK_ARG(env, data);
-    CHECK_ARG(env, result_data);
+    //CHECK_ARG(env, result_data);
     CHECK_ARG(env, result);
     RETURN_STATUS_IF_FALSE(env, length > 0, napi_invalid_arg);
 
