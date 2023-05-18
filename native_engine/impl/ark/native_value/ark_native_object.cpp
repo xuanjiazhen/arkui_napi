@@ -383,7 +383,40 @@ bool ArkNativeObject::DeletePrivateProperty(const char* name)
 NativeValue* ArkNativeObject::GetAllPropertyNames(
     napi_key_collection_mode keyMode, napi_key_filter keyFilter, napi_key_conversion keyConversion)
 {
-    return nullptr;
+    uint32_t filter = NATIVE_DEFAULT;
+    if (keyFilter & napi_key_writable) {
+        filter = static_cast<uint32_t>(filter | NATIVE_WRITABLE);
+    }
+    if (keyFilter & napi_key_enumerable) {
+        filter = static_cast<uint32_t>(filter | NATIVE_ENUMERABLE);
+    }
+    if (keyFilter & napi_key_configurable) {
+        filter = static_cast<uint32_t>(filter | NATIVE_CONFIGURABLE);
+    }
+    if (keyFilter & napi_key_skip_strings) {
+        filter = static_cast<uint32_t>(filter | NATIVE_KEY_SKIP_STRINGS);
+    }
+    if (keyFilter & napi_key_skip_symbols) {
+        filter = static_cast<uint32_t>(filter | NATIVE_KEY_SKIP_SYMBOLS);
+    }
+
+    switch (keyConversion) {
+        case napi_key_keep_numbers:
+            filter = static_cast<uint32_t>(filter | NATIVE_KEY_KEEP_NUMBERS);
+            break;
+        case napi_key_numbers_to_strings:
+            filter = static_cast<uint32_t>(filter | NATIVE_KEY_NUMBERS_TO_STRINGS);
+            break;
+        default:
+            break;
+    }
+
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<ObjectRef> val = value_;
+    Local<ArrayRef> arrayVal = val->GetOwnPropertyNames(vm, filter);
+    NativeChunk& chunk = engine_->GetNativeChunk();
+    return chunk.New<ArkNativeArray>(engine_, arrayVal);
 }
 
 bool ArkNativeObject::AssociateTypeTag(NapiTypeTag* typeTag)
@@ -447,6 +480,20 @@ std::string ArkNativeObject::GetModuleName()
 
 void ArkNativeObject::AddFinalizer(void* pointer, NativeFinalize cb, void* hint) {}
 
-void ArkNativeObject::Freeze() {}
+void ArkNativeObject::Freeze()
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<ObjectRef> obj = value_;
 
-void ArkNativeObject::Seal() {}
+    obj->Freeze(vm);
+}
+
+void ArkNativeObject::Seal()
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<ObjectRef> obj = value_;
+    
+    obj->Seal(vm);
+}
