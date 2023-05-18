@@ -23,6 +23,12 @@ config("ace_napi_config") {
   ]
 }
 
+config("module_manager_config") {
+  include_dirs = [
+    "//foundation/arkui/napi/module_manager",
+  ]
+}
+
 if (defined(ohos_lite)) {
   import("//build/lite/config/component/lite_component.gni")
   import("//build/lite/config/subsystem/aafwk/config.gni")
