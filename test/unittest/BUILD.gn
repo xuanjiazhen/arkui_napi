@@ -139,6 +139,58 @@ if (defined(ohos_lite)) {
       }
       external_deps += [ "ets_runtime:libark_jsruntime" ]
     }
+
+    ohos_unittest("test_ark_unittest_promise") {
+      module_out_path = module_output_path
+
+      include_dirs = ark_include
+
+      cflags = [ "-g3" ]
+
+      sources = [
+        "engine/test_ark.cpp",
+        "test_napi_promise.cpp",
+      ]
+      sources += napi_sources
+
+      defines = [ "NAPI_TEST" ]
+
+      deps = ark_deps
+      external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+      if (is_standard_system) {
+        external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
+      } else {
+        external_deps += [ "hilog:libhilog" ]
+      }
+      external_deps += [ "ets_runtime:libark_jsruntime" ]
+    }
+
+    ohos_unittest("test_ark_unittest_function") {
+      module_out_path = module_output_path
+
+      include_dirs = ark_include
+
+      cflags = [ "-g3" ]
+
+      sources = [
+        "engine/test_ark.cpp",
+        "test_napi_function.cpp",
+      ]
+      sources += napi_sources
+
+      defines = [ "NAPI_TEST" ]
+
+      deps = ark_deps
+      external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+      if (is_standard_system) {
+        external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
+      } else {
+        external_deps += [ "hilog:libhilog" ]
+      }
+      external_deps += [ "ets_runtime:libark_jsruntime" ]
+    }
   }
 
   group("unittest") {
@@ -148,6 +200,8 @@ if (defined(ohos_lite)) {
       deps += [
         ":test_ark_unittest",
         ":test_ark_unittest_threadsafe",
+        ":test_ark_unittest_promise",
+        ":test_ark_unittest_function",
       ]
     }
   }

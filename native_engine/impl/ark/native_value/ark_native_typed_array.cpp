@@ -118,8 +118,32 @@ size_t ArkNativeTypedArray::GetLength()
     auto vm = engine_->GetEcmaVm();
     LocalScope scope(vm);
     Global<TypedArrayRef> value = value_;
-
-    return value->ByteLength(vm);
+    //add
+    size_t type_size = 0;
+    if (value->IsInt8Array()) {
+        type_size = 1;
+    } else if (value->IsUint8Array()) {
+        type_size = 1;
+    } else if (value->IsUint8ClampedArray()) {
+        type_size = 1;
+    } else if (value->IsInt16Array()) {
+        type_size = 2;
+    } else if (value->IsUint16Array()) {
+        type_size = 2;
+    } else if (value->IsInt32Array()) {
+        type_size = 4;
+    } else if (value->IsUint32Array()) {
+        type_size = 4;
+    } else if (value->IsFloat32Array()) {
+        type_size = 4;
+    } else if (value->IsFloat64Array()) {
+        type_size = 8;
+    } else if (value->IsBigInt64Array()) {
+        type_size = 8;
+    } else if (value->IsBigUint64Array()) {
+        type_size = 8;
+    }
+    return value->ByteLength(vm) / type_size;
 }
 
 NativeValue* ArkNativeTypedArray::GetArrayBuffer()

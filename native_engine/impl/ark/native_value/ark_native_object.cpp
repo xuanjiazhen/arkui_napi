@@ -421,6 +421,23 @@ std::string ArkNativeObject::GetModuleName()
 
 void ArkNativeObject::AddFinalizer(void* pointer, NativeFinalize cb, void* hint) {}
 
-void ArkNativeObject::Freeze() {}
+//void ArkNativeObject::Freeze() {}
+void ArkNativeObject::Freeze()
+{
+    auto freeze = GetProperty("freeze");
+    auto resultValue = engine_->CallFunction(this, freeze, nullptr, 0);
+    if (resultValue == nullptr) {
+        HILOG_ERROR("ArkNativeObject::Freeze CallFunction failed");
+    }
+}
 
-void ArkNativeObject::Seal() {}
+//void ArkNativeObject::Seal() {}
+// No newline at end of file
+void ArkNativeObject::Seal()
+{
+    auto seal = GetProperty("seal");
+    auto resultValue = engine_->CallFunction(this, seal, nullptr, 0);
+    if (resultValue == nullptr) {
+        HILOG_ERROR("ArkNativeObject::Seal CallFunction failed");
+    }
+}
