@@ -33,10 +33,10 @@ constexpr static int32_t NATIVE_PATH_NUMBER = 2;
 NativeModuleManager* NativeModuleManager::instance_ = NULL;
 std::mutex g_instanceMutex;
 
-NativeModuleManager::NativeModuleManager(ProcessType type)
+NativeModuleManager::NativeModuleManager()
 {
     pthread_mutex_init(&mutex_, nullptr);
-    moduleLoadChecker_ = new ModuleLoadChecker(type);
+    moduleLoadChecker_ = std::make_unique<ModuleLoadChecker>();
 }
 
 NativeModuleManager::~NativeModuleManager()
@@ -69,18 +69,15 @@ NativeModuleManager::~NativeModuleManager()
         }
         nativeEngineList_.erase(nativeEngineList_.begin());
     }
-    if (moduleLoadChecker_) {
-        delete moduleLoadChecker_;
-    }
     pthread_mutex_destroy(&mutex_);
 }
 
-NativeModuleManager* NativeModuleManager::GetInstance(ProcessType type)
+NativeModuleManager* NativeModuleManager::GetInstance()
 {
     if (instance_ == NULL) {
         std::lock_guard<std::mutex> lock(g_instanceMutex);
         if (instance_ == NULL) {
-            instance_ = new NativeModuleManager(type);
+            instance_ = new NativeModuleManager();
         }
     }
     return instance_;
@@ -520,11 +517,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
         HILOG_WARN("get module failed, moduleName = %{public}s", moduleName);
         return nullptr;
     }
-    if (!moduleLoadChecker_) {
-        HILOG_ERROR("moduleLoadChecker_ is nullptr");
-        return nullptr;
-    }
-    if (!moduleLoadChecker_->CheckModuleLoadable(moduleName)) {
+    if (moduleLoadChecker_ && !moduleLoadChecker_->CheckModuleLoadable(moduleName)) {
         HILOG_ERROR("module %{public}s is not allow to load", moduleName);
         return nullptr;
     }
@@ -630,30 +623,11 @@ bool NativeModuleManager::IsExistedPath(const char* pathKey) const
     return pathKey && appLibPathMap_.find(pathKey) != appLibPathMap_.end();
 }
 
-void NativeModuleManager::SetModuleBlocklist(
-    std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist)
+void NativeModuleManager::SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDelegate>& moduleCheckerDelegate)
 {
     if (!moduleLoadChecker_) {
-        HILOG_ERROR("SetModuleBlocklist failed, moduleLoadChecker_ is nullptr");
+        HILOG_ERROR("SetModuleLoadChecker failed, moduleLoadChecker_ is nullptr");
         return;
     }
-    moduleLoadChecker_->SetModuleBlocklist(std::forward<decltype(blocklist)>(blocklist));
-}
-
-void NativeModuleManager::SetProcessExtensionType(int32_t extensionType)
-{
-    if (!moduleLoadChecker_) {
-        HILOG_ERROR("SetProcessExtensionType failed, moduleLoadChecker_ is nullptr");
-        return;
-    }
-    moduleLoadChecker_->SetProcessExtensionType(extensionType);
-}
-
-int32_t NativeModuleManager::GetProcessExtensionType()
-{
-    if (!moduleLoadChecker_) {
-        HILOG_ERROR("GetProcessExtensionType failed, moduleLoadChecker_ is nullptr");
-        return EXTENSION_TYPE_UNKNOWN;
-    }
-    return moduleLoadChecker_->GetProcessExtensionType();
+    moduleLoadChecker_->SetDelegate(moduleCheckerDelegate);
 }

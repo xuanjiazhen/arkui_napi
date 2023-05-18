@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <map>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 #include <string>
 #include <pthread.h>
@@ -62,7 +63,7 @@ struct NativeModule {
 
 class NAPI_EXPORT NativeModuleManager {
 public:
-    static NativeModuleManager* GetInstance(ProcessType type = ProcessType::APPLICATION);
+    static NativeModuleManager* GetInstance();
     static uint64_t Release();
 
     void Register(NativeModule* nativeModule);
@@ -71,13 +72,6 @@ public:
                                    bool isArk = false);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     const char* GetModuleFileName(const char* moduleName, bool isAppModule);
-
-    /**
-     * @brief Set the Module Blacklist
-     *
-     * @param blocklist the blocklist
-     */
-    void SetModuleBlocklist(std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist);
 
     /**
      * @brief Set the Process Extension Type
@@ -93,8 +87,10 @@ public:
      */
     int32_t GetProcessExtensionType();
 
+    void SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDelegate>& moduleCheckerDelegate);
+
 private:
-    NativeModuleManager(ProcessType type);
+    NativeModuleManager();
     virtual ~NativeModuleManager();
 
     bool GetNativeModulePath(const char* moduleName, const char* pathKey, bool isAppModule,
@@ -122,8 +118,7 @@ private:
     std::mutex nativeEngineListMutex_;
     std::map<std::string, NativeEngine*> nativeEngineList_;
     std::map<std::string, char*> appLibPathMap_;
-    ModuleLoadChecker* moduleLoadChecker_ = nullptr;
-    ProcessType processType_ = ProcessType::UNKNOWN;
+    std::unique_ptr<ModuleLoadChecker> moduleLoadChecker_ = nullptr;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H */

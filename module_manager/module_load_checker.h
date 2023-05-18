@@ -16,22 +16,9 @@
 #ifndef FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_LOAD_CHECKER_H
 #define FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_LOAD_CHECKER_H
 
-#include <string>
-#include <mutex>
-#include <unordered_map>
-#include <unordered_set>
-
 #include "module_checker_delegate.h"
 
-/**
- * @brief Enumerates the process type
- *
- */
-enum class ProcessType {
-    UNKNOWN = -1,
-    APPLICATION,
-    FORM
-};
+#include <memory>
 
 /**
  * @brief Module load checker. check whether module can be loaded
@@ -39,36 +26,8 @@ enum class ProcessType {
  */
 class ModuleLoadChecker {
 public:
-    ModuleLoadChecker(ProcessType type);
+    ModuleLoadChecker() = default;
     virtual ~ModuleLoadChecker() = default;
-
-    /**
-     * @brief Create a Module Checker Delegate object
-     *
-     * @return the new Module Checker Delegate object ptr
-     */
-    std::unique_ptr<ModuleCheckerDelegate> CreateModuleCheckerDelegate(ProcessType type);
-
-    /**
-     * @brief Set the module blocklist, module in the blocklist will prevent loading 
-     *
-     * @param blocklist module blocklist
-     */
-    void SetModuleBlocklist(std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist);
-
-    /**
-     * @brief Set the process extension type
-     *
-     * @param extensionType extension type
-     */
-    void SetProcessExtensionType(int32_t extensionType);
-
-    /**
-     * @brief Get the process extension type
-     *
-     * @return The extension type
-     */
-    int32_t GetProcessExtensionType();
 
     /**
      * @brief Check whether the module is allowed to be loaded
@@ -79,9 +38,15 @@ public:
      */
     bool CheckModuleLoadable(const char* moduleName);
 
+    /**
+     * @brief Set the moudle checker delegate
+     *
+     * @param moduleCheckerDelegate
+     */
+    void SetDelegate(const std::shared_ptr<ModuleCheckerDelegate>& moduleCheckerDelegate);
+
 private:
-    std::unique_ptr<ModuleCheckerDelegate> moduleCheckerDelegate_ = nullptr;
-    std::mutex checkerDelegateMutex_;
+    std::shared_ptr<ModuleCheckerDelegate> moduleCheckerDelegate_ = nullptr;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_LOAD_CHECKER_H */

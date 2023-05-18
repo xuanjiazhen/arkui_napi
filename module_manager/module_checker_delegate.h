@@ -16,11 +16,6 @@
 #ifndef FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_CHECKER_H
 #define FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_CHECKER_H
 
-#include <unordered_map>
-#include <unordered_set>
-
-constexpr int32_t EXTENSION_TYPE_UNKNOWN = 255;
-
 /**
  * @brief Module checker interface. check whether module can be loaded
  *
@@ -37,30 +32,6 @@ public:
      * @return false The module cannot be loaded
      */
     virtual bool CheckModuleLoadable(const char* moduleName) = 0;
-
-    /**
-     * @brief Set the module blocklist, module in the blocklist will prevent loading 
-     *
-     * @param blocklist module blocklist
-     */
-    virtual void SetModuleBlocklist(std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist) {}
-
-    /**
-     * @brief Set the process extension type
-     *
-     * @param extensionType extension type
-     */
-    virtual void SetProcessExtensionType(int32_t extensionType) {}
-
-    /**
-     * @brief Get the process extension type
-     *
-     * @return The extension type
-     */
-    virtual int32_t GetProcessExtensionType()
-    {
-        return EXTENSION_TYPE_UNKNOWN;
-    }
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_CHECKER_H */
