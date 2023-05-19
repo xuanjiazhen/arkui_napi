@@ -118,7 +118,6 @@ size_t ArkNativeTypedArray::GetLength()
     auto vm = engine_->GetEcmaVm();
     LocalScope scope(vm);
     Global<TypedArrayRef> value = value_;
-
     return value->ByteLength(vm);
 }
 
