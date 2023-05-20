@@ -89,6 +89,15 @@
                       ]
                     },
                     "name": "//foundation/arkui/napi:ace_napi_ark"
+                  },
+				  {
+					"header": {
+                      "header_base": "//foundation/arkui/napi/module_manager",
+                      "header_files": [
+                        "module_checker_delegate.h"
+                      ]
+                    },
+                    "name": "//foundation/arkui/napi:ace_napi"
                   }
             ],
             "test": [
