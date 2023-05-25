@@ -1001,6 +1001,26 @@ NAPI_EXTERN napi_status napi_get_cb_info(napi_env env,              // [in] NAPI
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_create_cbinfo(napi_env env,              // [in] NAPI environment handle
+                                           size_t* argc,        // and receives the actual count of args.
+                                           napi_value* argv,     // [out] Array of values
+                                           napi_callback_info* cbinfo) // [in] Opaque callback-info handle
+{
+    CHECK_ENV(env);
+
+    auto info = reinterpret_cast<NativeCallbackInfo*>(*cbinfo);
+
+    if (argv != nullptr && argc != nullptr) {
+        info->argc = *argc;
+        size_t i;
+        for (i = 0; i < *argc; i++) {
+            info->argv[i] = reinterpret_cast<NativeValue*>(argv[i]);
+        }
+    }
+    
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_get_new_target(napi_env env, napi_callback_info cbinfo, napi_value* result)
 {
     CHECK_ENV(env);
@@ -2549,5 +2569,16 @@ NAPI_EXTERN napi_status napi_object_get_keys(napi_env env, napi_value data, napi
     auto resultValue = nativeObject->GetEnumerablePropertyNames();
 
     *result = reinterpret_cast<napi_value>(resultValue);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_is_main_thread(napi_env env, bool* isMainThread)
+{
+    CHECK_ENV(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+
+    *isMainThread = engine->IsMainThread();
+
     return napi_clear_last_error(env);
 }

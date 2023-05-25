@@ -91,4 +91,9 @@ NAPI_EXTERN napi_status napi_get_own_property_descriptor(napi_env env,
                                                          const char* utf8name,
                                                          napi_value* result);
 NAPI_EXTERN napi_status napi_object_get_keys(napi_env env, napi_value data, napi_value* result);
+NAPI_EXTERN napi_status napi_is_main_thread(napi_env env, bool* isMainThread);
+NAPI_EXTERN napi_status napi_create_cbinfo(napi_env env,
+                                           size_t* argc,
+                                           napi_value* argv,
+                                           napi_callback_info* cbinfo);
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_API_H */
