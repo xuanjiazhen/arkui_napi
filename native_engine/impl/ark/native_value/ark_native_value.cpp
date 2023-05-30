@@ -104,7 +104,21 @@ bool ArkNativeValue::IsArrayBuffer()
 
 bool ArkNativeValue::IsBuffer()
 {
-    return false;
+    Global<JSValueRef> value = value_;
+    return value->IsBuffer();
+}
+
+void* ArkNativeValue::GetBuffer()
+{
+    Global<BufferRef> value = value_;
+    return value->GetBuffer();
+}
+size_t ArkNativeValue::GetLength() 
+{
+    auto vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+    Global<BufferRef> value = value_;
+    return value->ByteLength(vm);
 }
 
 bool ArkNativeValue::IsDate()
