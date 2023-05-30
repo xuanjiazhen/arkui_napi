@@ -278,6 +278,10 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
         }
         queue_.pop();
         size--;
+        if (that->engine_->HasPendingException()) {
+            HILOG_ERROR("pending exception after NativeSafeAsyncWork::ProcessAsyncHandle. Triggering HandleUncaughtException");
+            that->engine_->HandleUncaughtException();
+        }
     }
 
     if (size == 0) {

@@ -197,6 +197,10 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
     FinishTrace(HITRACE_TAG_ACE);
 #endif
     scopeManager->Close(scope);
+    if (that->engine_->HasPendingException()) {
+        HILOG_ERROR("pending exception after NativeAsyncWork::AsyncAfterWorkCallback. Triggering HandleUncaughtException");
+        that->engine_->HandleUncaughtException();
+    }
 }
 
 std::string NativeAsyncWork::GetTraceDescription()
