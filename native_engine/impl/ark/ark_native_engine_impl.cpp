@@ -151,7 +151,6 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                     ArkNativeEngine* nativeEngine = new ArkNativeEngine(engineImpl, engineImpl->GetJsEngine(),
                         isAppModule);
                     std::string strModuleName = moduleName->ToString();
-                    moduleManager->SetNativeEngine(strModuleName, nativeEngine);
                     MoudleNameLocker nameLocker(strModuleName);
 
                     if (module->jsCode == nullptr && module->getABCCode != nullptr) {
@@ -231,7 +230,6 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
                     }
                     ArkNativeEngine* nativeEngine = new ArkNativeEngine(engineImpl, engineImpl->GetJsEngine(), false);
                     std::string strModuleName = moduleName->ToString();
-                    moduleManager->SetNativeEngine(strModuleName, nativeEngine);
                     NativeScopeManager* scopeManager = nativeEngine->GetScopeManager();
                     if (scopeManager == nullptr) {
                         HILOG_ERROR("scope manager is null");

@@ -42,7 +42,6 @@ foundation/arkui/napi
    ├── interfaces
    │   └── kits
    │       └── napi           # NAPI header files
-   ├── module_manager         # Module manager
    ├── native_engine          # NativeEngine abstraction layer
    │   └── impl
    │       └── ark            # Ark-based NativeEngine implementation

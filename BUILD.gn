@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//foundation/arkui/ace_engine/ace_config.gni")
 import("//foundation/arkui/napi/napi.gni")
 
 config("ace_napi_config") {
@@ -40,9 +41,11 @@ if (defined(ohos_lite)) {
     ]
   }
 
-  shared_library("ace_napi") {
+  ohos_shared_library("ace_napi") {
     public_configs = [ ":ace_napi_config" ]
-
+    external_deps = [
+      "ability_runtime:module_manager",
+    ]
     include_dirs = [
       "//foundation/arkui/napi",
       "//foundation/arkui/napi/interfaces/inner_api",
@@ -134,7 +137,6 @@ if (defined(ohos_lite)) {
     defines = []
     public_configs = [ ":ace_napi_config" ]
     deps = []
-
     include_dirs = [
       "//foundation/arkui/napi",
       "//foundation/arkui/napi/interfaces/inner_api",
@@ -177,6 +179,7 @@ if (defined(ohos_lite)) {
     } else {
       if (is_standard_system) {
         external_deps = [
+          "ability_runtime:module_manager",
           "hitrace_native:hitrace_meter",
           "hitrace_native:libhitracechain",
           "hiviewdfx_hilog_native:libhilog",
@@ -194,7 +197,10 @@ if (defined(ohos_lite)) {
           }
         }
       } else {
-        external_deps = [ "hilog:libhilog" ]
+        external_deps = [
+          "ability_runtime:module_manager",
+          "hilog:libhilog",
+        ]
       }
     }
 
@@ -228,6 +234,7 @@ if (defined(ohos_lite)) {
       public_configs = [ ":ace_napi_config" ]
       if (!is_cross_platform_build) {
         public_deps = [ "//third_party/libuv:uv" ]
+        external_deps = [ "ability_runtime:module_manager" ]
       }
       subsystem_name = "arkui"
       innerapi_tags = [ "platformsdk" ]

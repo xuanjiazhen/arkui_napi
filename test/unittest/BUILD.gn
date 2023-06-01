@@ -102,6 +102,7 @@ if (defined(ohos_lite)) {
       deps = ark_deps
 
       external_deps = [
+        "ability_runtime:module_manager",
         "bounds_checking_function:libsec_shared",
         "c_utils:utils",
       ]
@@ -130,7 +131,10 @@ if (defined(ohos_lite)) {
       defines = [ "NAPI_TEST" ]
 
       deps = ark_deps
-      external_deps = [ "bounds_checking_function:libsec_shared" ]
+      external_deps = [
+        "ability_runtime:module_manager",
+        "bounds_checking_function:libsec_shared",
+      ]
 
       if (is_standard_system) {
         external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
