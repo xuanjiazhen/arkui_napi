@@ -102,6 +102,7 @@ if (defined(ohos_lite)) {
       deps = ark_deps
 
       external_deps = [
+        "ability_runtime:module_manager",
         "bounds_checking_function:libsec_shared",
         "c_utils:utils",
       ]

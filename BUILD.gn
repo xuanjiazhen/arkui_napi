@@ -11,10 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//foundation/arkui/ace_engine/ace_config.gni")
 import("//foundation/arkui/napi/napi.gni")
 
 config("ace_napi_config") {
   include_dirs = [
+    "${ability_runtime_path}/js_environment/module_manager/include",
     "../../../foundation/arkui/napi/native_engine",
     "//foundation/arkui/napi",
     "//foundation/arkui/napi/interfaces/inner_api",
@@ -40,9 +42,11 @@ if (defined(ohos_lite)) {
     ]
   }
 
-  shared_library("ace_napi") {
+  ohos_shared_library("ace_napi") {
     public_configs = [ ":ace_napi_config" ]
-
+    public_deps = [
+      "${ability_runtime_path}/js_environment/module_manager:module_manager",
+    ]
     include_dirs = [
       "//foundation/arkui/napi",
       "//foundation/arkui/napi/interfaces/inner_api",
@@ -134,7 +138,9 @@ if (defined(ohos_lite)) {
     defines = []
     public_configs = [ ":ace_napi_config" ]
     deps = []
-
+    public_deps = [
+      "${ability_runtime_path}/js_environment/module_manager:module_manager",
+    ]
     include_dirs = [
       "//foundation/arkui/napi",
       "//foundation/arkui/napi/interfaces/inner_api",
@@ -227,7 +233,10 @@ if (defined(ohos_lite)) {
       deps = [ ":ace_napi_static" ]
       public_configs = [ ":ace_napi_config" ]
       if (!is_cross_platform_build) {
-        public_deps = [ "//third_party/libuv:uv" ]
+        public_deps = [
+          "${ability_runtime_path}/js_environment/module_manager:module_manager",
+          "//third_party/libuv:uv",
+        ]
       }
       subsystem_name = "arkui"
       innerapi_tags = [ "platformsdk" ]
