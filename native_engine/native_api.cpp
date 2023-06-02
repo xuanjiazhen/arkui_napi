@@ -1623,11 +1623,9 @@ NAPI_INNER_EXTERN napi_status napi_create_external_buffer(
     auto callback = reinterpret_cast<NativeFinalize>(finalize_cb);
     auto resultValue = engine->CreateBufferExternal(data, length, callback, finalize_hint);
     CHECK_ARG(env, resultValue);
-
     auto nativeBuffer = reinterpret_cast<NativeBuffer*>(resultValue->GetInterface(NativeBuffer::INTERFACE_ID));
     void* ptr = nativeBuffer->GetBuffer();
     CHECK_ARG(env, ptr);
-
     *result = reinterpret_cast<napi_value>(resultValue);
     return napi_clear_last_error(env);
 }
@@ -1639,13 +1637,11 @@ NAPI_INNER_EXTERN napi_status napi_get_buffer_info(napi_env env, napi_value valu
 
     auto nativeValue = reinterpret_cast<NativeValue*>(value);
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsBuffer(), napi_status::napi_arraybuffer_expected);
-
-    auto nativeBuffer = reinterpret_cast<NativeBuffer*>(nativeValue->GetInterface(NativeBuffer::INTERFACE_ID));
     if (data != nullptr) {
-        *data = nativeBuffer->GetBuffer();
+        *data = nativeValue->GetBuffer();
     }
     if (length != nullptr) {
-        *length = nativeBuffer->GetLength();
+        *length = nativeValue->GetLength();
     }
     return napi_clear_last_error(env);
 }

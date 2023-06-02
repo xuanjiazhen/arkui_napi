@@ -185,6 +185,9 @@ public:
 
     virtual bool StrictEquals(NativeValue* value) = 0;
 
+    virtual void* GetBuffer() = 0;
+    virtual size_t GetLength() = 0;
+
 protected:
     JSValueWrapper value_;
 };

@@ -22,6 +22,7 @@ using panda::Local;
 using panda::LocalScope;
 using panda::Global;
 using panda::JSValueRef;
+using panda::BufferRef;
 class ArkNativeValue : public NativeValue {
 public:
     ArkNativeValue(ArkNativeEngine* engine, Local<JSValueRef> value);
@@ -73,6 +74,9 @@ public:
     // value_ in NativeValue should not be replaced directly.
     // If you must replace it, you should use this method.
     void UpdateValue(Local<JSValueRef> value);
+
+    void* GetBuffer() override;
+    size_t GetLength() override;
 
 protected:
     ArkNativeEngine* engine_;
