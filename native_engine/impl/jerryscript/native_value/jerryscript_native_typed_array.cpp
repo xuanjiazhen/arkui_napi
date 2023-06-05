@@ -116,6 +116,11 @@ size_t JerryScriptNativeTypedArray::GetLength()
     return jerry_get_typedarray_length(value_);
 }
 
+size_t JerryScriptNativeTypedArray::GetElementLength()
+{
+    
+}
+
 NativeValue* JerryScriptNativeTypedArray::GetArrayBuffer()
 {
     return new JerryScriptNativeArrayBuffer(engine_, jerry_get_typedarray_buffer(value_, nullptr, nullptr));
