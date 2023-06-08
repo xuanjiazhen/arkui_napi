@@ -42,7 +42,6 @@ foundation/arkui/napi
    ├── interfaces
    │   └── kits
    │       └── napi           # NAPI头文件目录
-   ├── module_manager         # 模块管理
    ├── native_engine          # NativeEngine抽象层
    │   └── impl
    │       └── ark            # 基于Ark的NativeEngine实现
