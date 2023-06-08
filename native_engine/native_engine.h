@@ -112,6 +112,10 @@ public:
                                       NativeValue* function,
                                       NativeValue* const *argv,
                                       size_t argc) = 0;
+    virtual NativeValue* CallFunctionWithoutHandleException(NativeValue* thisVar,
+                                      NativeValue* function,
+                                      NativeValue* const *argv,
+                                      size_t argc) = 0;
     virtual NativeValue* RunScript(NativeValue* script) = 0;
     virtual NativeValue* RunScriptPath(const char* path) = 0;
     virtual NativeValue* RunScriptBuffer(const char* path, std::vector<uint8_t>& buffer, bool isBundle) = 0;

@@ -144,6 +144,8 @@ public:
     // Call function
     NativeValue* CallFunction(NativeEngine* engine, NativeValue* thisVar, NativeValue* function,
         NativeValue* const *argv, size_t argc) override;
+    NativeValue* CallFunctionWithoutHandleException(NativeEngine* engine, NativeValue* thisVar, NativeValue* function,
+        NativeValue* const *argv, size_t argc) override;
     // Run script
     NativeValue* RunScript(NativeEngine* engine, NativeValue* script) override;
     NativeValue* RunScriptPath(NativeEngine* engine, const char* path) override;

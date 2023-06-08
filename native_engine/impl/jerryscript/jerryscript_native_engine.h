@@ -70,6 +70,10 @@ public:
                                       NativeValue* function,
                                       NativeValue* const* argv,
                                       size_t argc) override;
+    virtual NativeValue* CallFunctionWithoutHandleException(NativeValue* thisVar,
+                                                            NativeValue* function,
+                                                            NativeValue* const* argv,
+                                                            size_t argc) override;
     virtual NativeValue* RunScript(NativeValue* script) override;
     virtual NativeValue* RunScriptPath(const char* path) override
     {

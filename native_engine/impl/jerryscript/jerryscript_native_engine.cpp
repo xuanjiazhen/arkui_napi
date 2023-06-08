@@ -206,6 +206,13 @@ NativeValue* JerryScriptNativeEngine::CallFunction(
     return jerryscriptNativeEngineImpl->CallFunction(this, thisVar, function, argv, argc);
 }
 
+NativeValue* JerryScriptNativeEngine::CallFunctionWithoutHandleException(
+    NativeValue* thisVar, NativeValue* function, NativeValue* const *argv, size_t argc)
+{
+    auto jerryscriptNativeEngineImpl = static_cast<JerryScriptNativeEngineImpl*>(nativeEngineImpl_);
+    return jerryscriptNativeEngineImpl->CallFunctionWithoutHandleException(this, thisVar, function, argv, argc);
+}
+
 NativeValue* JerryScriptNativeEngine::RunScript(NativeValue* script)
 {
     auto jerryscriptNativeEngineImpl = static_cast<JerryScriptNativeEngineImpl*>(nativeEngineImpl_);

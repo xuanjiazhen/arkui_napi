@@ -170,6 +170,8 @@ public:
 
     virtual NativeValue* CallFunction(
         NativeEngine* engine, NativeValue* thisVar, NativeValue* function, NativeValue* const *argv, size_t argc) = 0;
+    virtual NativeValue* CallFunctionWithoutHandleException(
+        NativeEngine* engine, NativeValue* thisVar, NativeValue* function, NativeValue* const *argv, size_t argc) = 0;
     virtual NativeValue* RunScript(NativeEngine* engine, NativeValue* script) = 0;
     virtual NativeValue* RunScriptPath(NativeEngine* engine, const char* path) = 0;
     virtual NativeValue* RunScriptBuffer(
