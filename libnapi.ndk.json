@@ -120,5 +120,10 @@
     {"name": "napi_create_bigint_words"},
     {"name": "napi_get_value_bigint_int64"},
     {"name": "napi_get_value_bigint_uint64"},
-    {"name": "napi_get_value_bigint_words"}
+    {"name": "napi_get_value_bigint_words"},
+    {"name": "napi_is_buffer"},
+    {"name": "napi_create_buffer"},
+    {"name": "napi_create_buffer_copy"},
+    {"name": "napi_create_external_buffer"},
+    {"name": "napi_get_buffer_info"}
 ]
