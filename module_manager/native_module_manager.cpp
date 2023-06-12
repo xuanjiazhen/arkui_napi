@@ -218,6 +218,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libnative_media_venc.so",
         // adaptor library
         "libohosadaptor.so",
+	"libmindspore-lite.huawei.so",
     };
 
     size_t allowListLength = sizeof(allowList) / sizeof(char*);
