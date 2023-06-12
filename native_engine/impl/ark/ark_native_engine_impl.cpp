@@ -622,7 +622,7 @@ bool ArkNativeEngineImpl::InitTaskPoolFunc(NativeEngine* engine, NativeValue* fu
     return JSNApi::InitForConcurrentFunction(vm_, function, taskInfo);
 }
 
-NativeValue* ArkNativeEngineImpl::CallFunction(
+NativeValue* ArkNativeEngineImpl::CallFunctionWithoutHandleException(
     NativeEngine* engine, NativeValue* thisVar, NativeValue* function, NativeValue* const *argv, size_t argc)
 {
     if (function == nullptr) {
@@ -671,6 +671,17 @@ NativeValue* ArkNativeEngineImpl::CallFunction(
     }
 
     return ArkValueToNativeValue(static_cast<ArkNativeEngine*>(engine), value);
+}
+
+NativeValue* ArkNativeEngineImpl::CallFunction(
+    NativeEngine* engine, NativeValue* thisVar, NativeValue* function, NativeValue* const *argv, size_t argc)
+{
+    NativeValue* ret = CallFunctionWithoutHandleException(engine, thisVar, function, argv, argc);
+    if (panda::JSNApi::HasPendingException(vm_)) {
+        HILOG_ERROR("handle uncaught exception because pending exception in ArkNativeEngineImpl::CallFunction");
+        HandleUncaughtException(engine);
+    }
+    return ret;
 }
 
 NativeValue* ArkNativeEngineImpl::RunScript(NativeEngine* engine, NativeValue* script)

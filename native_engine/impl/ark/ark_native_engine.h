@@ -98,9 +98,13 @@ public:
     bool InitTaskPoolFunc(NativeEngine* engine, NativeValue* func, void* taskInfo) override;
     // Call function
     NativeValue* CallFunction(NativeValue* thisVar,
-                                      NativeValue* function,
-                                      NativeValue* const* argv,
-                                      size_t argc) override;
+                              NativeValue* function,
+                              NativeValue* const* argv,
+                              size_t argc) override;
+    NativeValue* CallFunctionWithoutHandleException(NativeValue* thisVar,
+                                                    NativeValue* function,
+                                                    NativeValue* const* argv,
+                                                    size_t argc) override;
     // Run script
     NativeValue* RunScript(NativeValue* script) override;
     NativeValue* RunScriptPath(const char* path) override;

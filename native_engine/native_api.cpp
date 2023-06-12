@@ -914,7 +914,7 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
 
     RETURN_STATUS_IF_FALSE(env, nativeFunc->TypeOf() == NATIVE_FUNCTION, napi_function_expected);
 
-    auto resultValue = engine->CallFunction(nativeRecv, nativeFunc, nativeArgv, argc);
+    auto resultValue = engine->CallFunctionWithoutHandleException(nativeRecv, nativeFunc, nativeArgv, argc);
 
     RETURN_STATUS_IF_FALSE(env, resultValue != nullptr, napi_pending_exception);
     if (result) {
@@ -2549,5 +2549,16 @@ NAPI_EXTERN napi_status napi_object_get_keys(napi_env env, napi_value data, napi
     auto resultValue = nativeObject->GetEnumerablePropertyNames();
 
     *result = reinterpret_cast<napi_value>(resultValue);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_handle_uncaught_exception_if_pending(napi_env env)
+{
+    CHECK_ENV(env);
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    if (engine->HasPendingException()) {
+        engine->HandleUncaughtException();
+    }
+
     return napi_clear_last_error(env);
 }

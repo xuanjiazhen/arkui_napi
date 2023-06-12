@@ -276,6 +276,12 @@ NativeValue* JerryScriptNativeEngineImpl::CallFunction(
     }
 }
 
+NativeValue* JerryScriptNativeEngineImpl::CallFunctionWithoutHandleException(
+    NativeEngine* engine, NativeValue* thisVar, NativeValue* function, NativeValue* const *argv, size_t argc)
+{
+    return CallFunction(engine, thisVar, function, argv, argc);
+}
+
 NativeValue* JerryScriptNativeEngineImpl::RunScript(NativeEngine* engine, NativeValue* script)
 {
     NativeString* pscript = (NativeString*)script->GetInterface(NativeString::INTERFACE_ID);

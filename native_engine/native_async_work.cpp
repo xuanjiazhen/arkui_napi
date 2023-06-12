@@ -189,6 +189,11 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
         FinishTrace(HITRACE_TAG_ACE);
         OHOS::HiviewDFX::HiTraceChain::ClearId();
         scopeManager->Close(scope);
+        if (that->engine_->HasPendingException()) {
+            HILOG_ERROR("pending exception in napi async work complete callback.");
+            that->engine_->HandleUncaughtException();
+            return;
+        }
         return;
     }
 #endif
@@ -197,6 +202,11 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
     FinishTrace(HITRACE_TAG_ACE);
 #endif
     scopeManager->Close(scope);
+    if (that->engine_->HasPendingException()) {
+        HILOG_ERROR("pending exception in napi async work complete callback.");
+        that->engine_->HandleUncaughtException();
+        return;
+    }
 }
 
 std::string NativeAsyncWork::GetTraceDescription()

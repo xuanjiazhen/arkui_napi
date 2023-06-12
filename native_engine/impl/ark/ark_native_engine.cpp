@@ -251,6 +251,13 @@ NativeValue* ArkNativeEngine::CallFunction(
     return arkNativeEngineImpl->CallFunction(this, thisVar, function, argv, argc);
 }
 
+NativeValue* ArkNativeEngine::CallFunctionWithoutHandleException(
+    NativeValue* thisVar, NativeValue* function, NativeValue* const* argv, size_t argc)
+{
+    auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);
+    return arkNativeEngineImpl->CallFunctionWithoutHandleException(this, thisVar, function, argv, argc);
+}
+
 NativeValue* ArkNativeEngine::RunScript(NativeValue* script)
 {
     auto arkNativeEngineImpl = static_cast<ArkNativeEngineImpl*>(nativeEngineImpl_);

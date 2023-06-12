@@ -278,6 +278,11 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
         }
         queue_.pop();
         size--;
+        if (engine_->HasPendingException()) {
+            HILOG_ERROR("pending exception in napi threadsafe function callback.");
+            engine_->HandleUncaughtException();
+            return;
+        }
     }
 
     if (size == 0) {
@@ -314,6 +319,11 @@ void NativeSafeAsyncWork::CleanUp()
 
     if (finalizeCallback_ != nullptr) {
         finalizeCallback_(engine_, finalizeData_, context_);
+        if (engine_->HasPendingException()) {
+            HILOG_ERROR("pending exception in napi threadsafe function finalizeCallback_.");
+            engine_->HandleUncaughtException();
+            return;
+        }
     }
 
     // clean data
@@ -324,6 +334,11 @@ void NativeSafeAsyncWork::CleanUp()
             CallJs(nullptr, nullptr, context_, queue_.front());
         }
         queue_.pop();
+        if (engine_->HasPendingException()) {
+            HILOG_ERROR("pending exception in napi threadsafe function callback.");
+            engine_->HandleUncaughtException();
+            return;
+        }
     }
 }
 
