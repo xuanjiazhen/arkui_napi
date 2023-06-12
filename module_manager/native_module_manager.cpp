@@ -255,7 +255,9 @@ void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const 
     Dl_namespace ndk_ns;
     dlns_get(NDK, &ndk_ns);
 
+    HILOG_ERROR("----------------into here, %{public}s", nsName.c_str());
     if (isSystemApp) {
+        HILOG_ERROR("------------------into111");
         /*
          * The app's so may have the same name as the system library, LOCAL_NS_PREFERED means linker will check
          * and use the app's so first.
@@ -268,22 +270,28 @@ void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const 
             dlns_inherit(&ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
         }
     } else {
-        dlns_create2(&ns, lib_ld_path, 0);
+        HILOG_ERROR("------------------into2222");
+        int ret;
+        ret = dlns_create2(&ns, lib_ld_path, 0);
+        HILOG_ERROR("-----------------create %{public}d, %{public}s", ret, lib_ld_path);
         // Non-system app can visit all ndk ns libs and default ns shared libs.
         if (!sharedLibsSonames_) {
             CreateSharedLibsSonames();
         }
         dlns_set_namespace_allowed_libs("default", sharedLibsSonames_);
-        dlns_inherit(&ns, &current_ns, sharedLibsSonames_);
+        ret = dlns_inherit(&ns, &current_ns, sharedLibsSonames_);
+        HILOG_ERROR("-----------------dlns_inherit %{public}d", ret);
         if (strlen(ndk_ns.name) > 0) {
             dlns_inherit(&ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
+            HILOG_ERROR("-----------------dlns_inherit2 %{public}d", ret);
             dlns_inherit(&ndk_ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
+            HILOG_ERROR("-----------------dlns_inherit3 %{public}d", ret);
         }
     }
 
     nsMap_[moduleName] = ns;
 
-    HILOG_INFO("CreateLdNamespace success, path: %{private}s", lib_ld_path);
+    HILOG_INFO("CreateLdNamespace success, path: %{public}s", lib_ld_path);
 #endif
 }
 
@@ -552,8 +560,10 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(const char* path, const char* p
     if (isAppModule && IsExistedPath(pathKey)) {
         Dl_namespace ns = nsMap_[pathKey];
         lib = dlopen_ns(&ns, path, RTLD_LAZY);
+        HILOG_ERROR("------------------into load 111, %{public}s, %{public}s", path, ns.name);
     } else {
         lib = dlopen(path, RTLD_LAZY);
+        HILOG_ERROR("------------------into load 222, %{public}s", path);
     }
     if (lib == nullptr) {
         HILOG_WARN("dlopen failed: %{public}s", dlerror());
