@@ -71,7 +71,6 @@ NAPI_EXTERN napi_status napi_is_map_iterator(napi_env env, napi_value value, boo
 NAPI_EXTERN napi_status napi_is_set_iterator(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_generator_object(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_module_namespace_object(napi_env env, napi_value value, bool* result);
-NAPI_EXTERN napi_status napi_is_proxy(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_reg_exp(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_number_object(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_map(napi_env env, napi_value value, bool* result);
