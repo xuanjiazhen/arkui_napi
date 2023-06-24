@@ -98,6 +98,71 @@ void NativeModuleManager::SetNativeEngine(std::string moduleName, NativeEngine* 
     nativeEngineList_.emplace(moduleName, nativeEngine);
 }
 
+void NativeModuleManager::SetModuleLib(std::string moduleKey, LIBHANDLE lib)
+{
+    HILOG_DEBUG("SetModuleLib modulekey %{public}s", moduleKey.c_str());
+    std::lock_guard<std::mutex> lock(moduleLibMutex_);
+    moduleLibMap_.emplace(moduleKey, lib);
+}
+
+LIBHANDLE NativeModuleManager::GetNativeModuleHandle(std::string moduleKey) const
+{
+    HILOG_DEBUG("GetNativeModuleHandle moduleKey is %{public}s", moduleKey.c_str());
+
+    auto it = moduleLibMap_.find(moduleKey);
+    if (it == moduleLibMap_.end()) {
+        return nullptr;
+    }
+    return it->second;
+}
+
+bool NativeModuleManager::DeleteNativeModule(const char* moduleKey)
+{
+    // 1. delete native module's handle from moduleLibMap_
+    std::lock_guard<std::mutex> lock(deleteModuleLibMutex_);
+    bool libMap = false;
+    bool listNode = false;
+    auto it = moduleLibMap_.find(moduleKey);
+    if (it != moduleLibMap_.end()) {
+        moduleLibMap_.erase(it);
+        libMap = true;
+    }
+
+    // 2. delete native module from NativeModuleManager
+    NativeModule* nativeModule = firstNativeModule_;
+    if (!strcasecmp(nativeModule->name, moduleKey)) {
+        NativeModule* dump = nativeModule;
+        firstNativeModule_ = firstNativeModule_->next;
+        HILOG_INFO("Start deleting module '%{public}s'", moduleKey);
+        if (dump->isAppModule) {
+            delete[] dump->name;
+        }
+        delete dump;
+        listNode = true;
+    }
+    NativeModule* prev = firstNativeModule_;
+    NativeModule* cur = firstNativeModule_->next;
+
+    while(cur != nullptr) {
+        if (!strcasecmp(cur->name, moduleKey)) {
+            if (strcmp(cur->name, moduleKey)) {
+                HILOG_WARN("moduleName '%{public}s' does not match plugin's name '%{public}s' during deleting module",
+                           moduleKey, cur->name);
+            }
+            HILOG_INFO("Start deleting module '%{public}s'", moduleKey);
+            prev->next = cur->next;
+            if (cur->isAppModule) {
+                delete[] cur->name;
+            }
+            delete cur;
+            listNode = true;
+            break;
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+    return (listNode && libMap);
+}
 const char* NativeModuleManager::GetModuleFileName(const char* moduleName, bool isAppModule)
 {
     HILOG_INFO("%{public}s, start. moduleName:%{public}s", __func__, moduleName);
@@ -362,6 +427,7 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName,
             prefix_ = path;
         }
         key = prefix_ + '/' + moduleName;
+        HILOG_DEBUG("Load appmodule , prefix %{public}s, moduleName:%{public}s", prefix_.c_str(), moduleName);
     }
     NativeModule* nativeModule = FindNativeModuleByCache(key.c_str());
 #endif
@@ -422,8 +488,12 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     }
 
     const char* prefix = nullptr;
+    HILOG_INFO("GetNativeModulePath ,path : %{public}s, isAppModule is %{public}d", path, isAppModule);
+
     if (isAppModule && IsExistedPath(path)) {
         prefix = appLibPathMap_[path];
+        HILOG_INFO("GetNativeModulePath ,prefix : %{public}s", prefix);
+
 #ifdef ANDROID_PLATFORM
         for (int32_t i = 0; i < lengthOfModuleName; i++) {
             dupModuleName[i] = tolower(dupModuleName[i]);
@@ -606,6 +676,11 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
     }
 
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
+
+    // record so's handle in appLibMap_
+    SetModuleLib(moduleKey, lib);
+    HILOG_DEBUG("SetModuleLib moduleKey is %{public}s", moduleKey.c_str());
+
     if (lastNativeModule_ && strcmp(lastNativeModule_->name, moduleKey.c_str())) {
         HILOG_WARN("moduleName '%{public}s' seems not match plugin's name '%{public}s'",
                    moduleKey.c_str(), lastNativeModule_->name);

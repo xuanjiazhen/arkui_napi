@@ -76,6 +76,10 @@ public:
     NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
                                    bool internal = false, const char* relativePath = "");
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
+    void SetModuleLib(std::string moduleKey, LIBHANDLE lib);
+    LIBHANDLE GetNativeModuleHandle(std::string moduleKey) const;
+    bool DeleteNativeModule(const char* moduleKey);
+
     const char* GetModuleFileName(const char* moduleName, bool isAppModule);
 
     /**
@@ -122,8 +126,12 @@ private:
     bool isAppModule_ = false;
 
     std::mutex nativeEngineListMutex_;
+    std::mutex moduleLibMutex_;
+    std::mutex deleteModuleLibMutex_;
+
     std::map<std::string, NativeEngine*> nativeEngineList_;
     std::map<std::string, char*> appLibPathMap_;
+    std::map<std::string, LIBHANDLE> moduleLibMap_;
     std::string previewSearchPath_;
     std::unique_ptr<ModuleLoadChecker> moduleLoadChecker_ = nullptr;
 };

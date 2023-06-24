@@ -276,6 +276,11 @@ ArkNativeEngineImpl::ArkNativeEngineImpl(
     global->Set(vm, requireInternalName, requireInternal);
     JSNApi::SetNativePtrGetter(vm, reinterpret_cast<void*>(ArkNativeFunction::GetNativePtrCallBack));
     // need to call init of base class.
+    NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
+    JSNApi::SetNativeModuleHandleGetter(vm, std::bind(&NativeModuleManager::GetNativeModuleHandle,
+        moduleManager, std::placeholders::_1));
+    JSNApi::SetDeleteNativeModuleCallback(vm, std::bind(&NativeModuleManager::DeleteNativeModule,
+        moduleManager, std::placeholders::_1));
     Init();
     panda::JSNApi::SetLoop(vm, loop_);
 }
