@@ -1638,13 +1638,18 @@ NAPI_EXTERN napi_status napi_get_buffer_info(napi_env env, napi_value value, voi
     CHECK_ARG(env, value);
 
     auto nativeValue = reinterpret_cast<NativeValue*>(value);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsArrayBuffer(), napi_status::napi_arraybuffer_expected);
-
-    auto nativeArrayBuffer =
-        reinterpret_cast<NativeArrayBuffer*>(nativeValue->GetInterface(NativeArrayBuffer::INTERFACE_ID));
-
-    *data = nativeArrayBuffer->GetBuffer();
-    *length = nativeArrayBuffer->GetLength();
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsBuffer(), napi_status::napi_arraybuffer_expected);
+    if (nativeValue->IsArrayBuffer()) {
+        auto nativeArrayBuffer =
+            reinterpret_cast<NativeArrayBuffer*>(nativeValue->GetInterface(NativeArrayBuffer::INTERFACE_ID));
+        *data = nativeArrayBuffer->GetBuffer();
+        *length = nativeArrayBuffer->GetLength();
+    } else {
+        auto nativeBuffer =
+            reinterpret_cast<NativeBuffer*>(nativeValue->GetInterface(NativeBuffer::INTERFACE_ID));
+        *data = nativeBuffer->GetBuffer();
+        *length = nativeBuffer->GetLength();
+    }
     return napi_clear_last_error(env);
 }
 
