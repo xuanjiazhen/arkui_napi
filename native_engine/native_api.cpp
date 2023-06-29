@@ -2549,3 +2549,14 @@ NAPI_EXTERN napi_status napi_object_get_keys(napi_env env, napi_value data, napi
     *result = reinterpret_cast<napi_value>(resultValue);
     return napi_clear_last_error(env);
 }
+
+NAPI_EXTERN napi_status napi_is_main_thread(napi_env env, bool* isMainThread)
+{
+    CHECK_ENV(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+
+    *isMainThread = engine->IsMainThread();
+
+    return napi_clear_last_error(env);
+}
