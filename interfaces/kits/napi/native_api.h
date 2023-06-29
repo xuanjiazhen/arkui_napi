@@ -118,4 +118,6 @@ NAPI_INNER_EXTERN napi_status node_api_get_module_file_name(napi_env env, const 
 
 NAPI_EXTERN napi_status napi_run_script_path(napi_env env, const char* path, napi_value* result);
 
+extern "C" NAPI_EXTERN napi_status napi_is_proxy(napi_env env, napi_value value, bool* result);
+
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_API_H */
