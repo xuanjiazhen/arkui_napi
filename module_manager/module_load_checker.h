@@ -16,13 +16,9 @@
 #ifndef FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_LOAD_CHECKER_H
 #define FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_LOAD_CHECKER_H
 
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
+#include "module_checker_delegate.h"
 
-namespace {
-    constexpr int32_t EXTENSION_TYPE_UNSPECIFIED = 255;
-}
+#include <memory>
 
 /**
  * @brief Module load checker. check whether module can be loaded
@@ -34,38 +30,23 @@ public:
     virtual ~ModuleLoadChecker() = default;
 
     /**
-     * @brief Set the module blocklist, module in the blocklist will prevent loading 
-     * 
-     * @param blocklist module blocklist
-     */
-    void SetModuleBlocklist(std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist);
-
-    /**
-     * @brief Set the process extension type
-     * 
-     * @param extensionType extension type
-     */
-    void SetProcessExtensionType(int32_t extensionType);
-
-    /**
-     * @brief Get the process extension type
-     * 
-     * @return The extension type
-     */
-    int32_t GetProcessExtensionType();
-
-    /**
      * @brief Check whether the module is allowed to be loaded
-     * 
+     *
      * @param moduleName module name
      * @return true The module can be loaded
      * @return false The module cannot be loaded
      */
     bool CheckModuleLoadable(const char* moduleName);
 
+    /**
+     * @brief Set the moudle checker delegate
+     *
+     * @param moduleCheckerDelegate
+     */
+    void SetDelegate(const std::shared_ptr<ModuleCheckerDelegate>& moduleCheckerDelegate);
+
 private:
-    std::unordered_map<int32_t, std::unordered_set<std::string>> moduleBlocklist_;
-    int32_t processExtensionType_{EXTENSION_TYPE_UNSPECIFIED};
+    std::shared_ptr<ModuleCheckerDelegate> moduleCheckerDelegate_ = nullptr;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_MODULE_LOAD_CHECKER_H */

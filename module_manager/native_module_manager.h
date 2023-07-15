@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <map>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 #include <string>
 #include <pthread.h>
@@ -73,13 +74,6 @@ public:
     const char* GetModuleFileName(const char* moduleName, bool isAppModule);
 
     /**
-     * @brief Set the Module Blacklist
-     *
-     * @param blocklist the blocklist
-     */
-    void SetModuleBlocklist(std::unordered_map<int32_t, std::unordered_set<std::string>>&& blocklist);
-
-    /**
      * @brief Set the Process Extension Type
      *
      * @param extensionType extension type
@@ -92,6 +86,8 @@ public:
      * @return Process extension type
      */
     int32_t GetProcessExtensionType();
+
+    void SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDelegate>& moduleCheckerDelegate);
 
 private:
     NativeModuleManager();
@@ -122,7 +118,7 @@ private:
     std::mutex nativeEngineListMutex_;
     std::map<std::string, NativeEngine*> nativeEngineList_;
     std::map<std::string, char*> appLibPathMap_;
-    ModuleLoadChecker* moduleLoadChecker_ = nullptr;
+    std::unique_ptr<ModuleLoadChecker> moduleLoadChecker_ = nullptr;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H */
