@@ -459,6 +459,13 @@ bool JerryScriptNativeEngine::DeleteWorker(NativeEngine* hostEngine, NativeEngin
     auto jerryscriptNativeEngineImpl = static_cast<JerryScriptNativeEngineImpl*>(nativeEngineImpl_);
     return jerryscriptNativeEngineImpl->DeleteWorker(hostEngine, workerEngine);
 }
+
+NativeEngine* JerryScriptNativeEngine::GetWorkerVm(NativeEngine* hostEngine, uint32_t tid)
+{
+    auto jerryscriptNativeEngineImpl = static_cast<JerryScriptNativeEngineImpl*>(nativeEngineImpl_);
+    return jerryscriptNativeEngineImpl->GetWorkerVm(hostEngine, tid);
+}
+
 bool JerryScriptNativeEngine::StartHeapTracking(double timeInterval, bool isVmMode)
 {
     auto jerryscriptNativeEngineImpl = static_cast<JerryScriptNativeEngineImpl*>(nativeEngineImpl_);
