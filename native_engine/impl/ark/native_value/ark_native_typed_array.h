@@ -34,6 +34,7 @@ public:
 
     NativeTypedArrayType GetTypedArrayType() override;
     size_t GetLength() override;
+    size_t GetElementLength() override;
     NativeValue* GetArrayBuffer() override;
     void* GetData() override;
     size_t GetOffset() override;

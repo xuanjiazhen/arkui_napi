@@ -1734,7 +1734,7 @@ NAPI_EXTERN napi_status napi_get_typedarray_info(napi_env env,
         *type = (napi_typedarray_type)nativeTypedArray->GetTypedArrayType();
     }
     if (length != nullptr) {
-        *length = nativeTypedArray->GetLength();
+        *length = nativeTypedArray->GetElementLength();
     }
     if (data != nullptr) {
         *data = static_cast<uint8_t*>(nativeTypedArray->GetData()) + nativeTypedArray->GetOffset();

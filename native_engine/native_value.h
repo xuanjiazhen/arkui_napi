@@ -314,6 +314,7 @@ public:
 
     virtual NativeTypedArrayType GetTypedArrayType() = 0;
     virtual size_t GetLength() = 0;
+    virtual size_t GetElementLength() = 0;
     virtual NativeValue* GetArrayBuffer() = 0;
     virtual void* GetData() = 0;
     virtual size_t GetOffset() = 0;
