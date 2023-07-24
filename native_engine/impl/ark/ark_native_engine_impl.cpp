@@ -1447,8 +1447,8 @@ bool ArkNativeEngineImpl::ExecutePermissionCheck()
     if (permissionCheckCallback_ != nullptr) {
         return permissionCheckCallback_();
     } else {
-        HILOG_INFO("permissionCheckCallback_ is still nullptr when executing permission check!");
-        return true;
+        HILOG_ERROR("permissionCheckCallback_ is not registered when executing permission check!");
+        return false;
     }
 }
 
