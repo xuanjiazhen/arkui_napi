@@ -107,6 +107,7 @@ void NativeModuleManager::EmplaceModuleLib(std::string moduleKey, const LIBHANDL
 
 bool NativeModuleManager::RemoveModuleLib(const std::string moduleKey)
 {
+    HILOG_DEBUG("modulekey is %{public}s", moduleKey.c_str());
     bool deleted = false;
     std::lock_guard<std::mutex> lock(moduleLibMutex_);
     auto it = moduleLibMap_.find(moduleKey);
@@ -131,6 +132,7 @@ LIBHANDLE NativeModuleManager::GetNativeModuleHandle(const std::string &moduleKe
 
 bool NativeModuleManager::RemoveNativeModule(const std::string &moduleKey)
 {
+    HILOG_DEBUG("modulekey is %{public}s", moduleKey.c_str());
     bool handleRemoved = RemoveModuleLib(moduleKey);
     bool moduleRemoved = RemoveNativeModuleByCache(moduleKey);
 
@@ -157,7 +159,6 @@ bool NativeModuleManager::UnloadNativeModule(const std::string &moduleKey)
 const char* NativeModuleManager::GetModuleFileName(const char* moduleName, bool isAppModule)
 {
     HILOG_INFO("%{public}s, start. moduleName:%{public}s", __func__, moduleName);
-
     NativeModule* module = FindNativeModuleByCache(moduleName);
     if (module != nullptr) {
         char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
@@ -587,13 +588,9 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     return true;
 }
 
-LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string &moduleKey, const char* path,
+LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string &moduleKey, char nativeModulePath[][NAPI_PATH_MAX],
                                                  const char* pathKey, const bool isAppModule)
 {
-    if (strlen(path) == 0) {
-        HILOG_ERROR("primary module path is empty");
-        return nullptr;
-    }
     LIBHANDLE lib = nullptr;
 
     lib = GetNativeModuleHandle(moduleKey);
@@ -602,6 +599,29 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string &moduleKey, const c
         return lib;
     }
 
+    char* loadPath = nativeModulePath[0];
+    HILOG_DEBUG("moduleName: %{public}s. get primary module path: %{public}s", moduleName, loadPath);
+    LIBHANDLE lib = LoadModuleLibrarySlow(moduleKey, loadPath, path, isAppModule);
+    if (lib == nullptr) {
+        loadPath = nativeModulePath[1];
+        HILOG_DEBUG("try to load secondary module path: %{public}s", loadPath);
+        lib = LoadModuleLibrarySlow(moduleKey, loadPath, path, isAppModule);
+        if (lib == nullptr) {
+            HILOG_ERROR("primary and secondary module path load failed %{public}s", moduleName);
+            return nullptr;
+        }
+    }
+    EmplaceModuleLib(moduleKey, lib);
+}
+
+LIBHANDLE NativeModuleManager::LoadModuleLibrarySlow(std::string &moduleKey, const char* path,
+                                                     const char* pathKey, const bool isAppModule)
+{
+    if (strlen(path) == 0) {
+        HILOG_ERROR("module path is empty");
+        return nullptr;
+    }
+    LIBHANDLE lib = nullptr;
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, path);
 #endif
@@ -632,8 +652,6 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string &moduleKey, const c
 #ifdef ENABLE_HITRACE
     FinishTrace(HITRACE_TAG_ACE);
 #endif
-    EmplaceModuleLib(moduleKey, lib);
-
     return lib;
 }
 
@@ -658,7 +676,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
     nativeModulePath[0][0] = 0;
     nativeModulePath[1][0] = 0;
     if (!GetNativeModulePath(moduleName, path, relativePath, isAppModule, nativeModulePath, NAPI_PATH_MAX)) {
-        HILOG_WARN("get module failed, moduleName = %{public}s", moduleName);
+        HILOG_ERROR("get native module path failed, moduleName = %{public}s", moduleName);
         return nullptr;
     }
     if (moduleLoadChecker_ && !moduleLoadChecker_->CheckModuleLoadable(moduleName)) {
@@ -672,18 +690,10 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
         moduleKey = moduleKey + '/' + moduleName;
     }
 
-    // load primary module path first
-    char* loadPath = nativeModulePath[0];
-    HILOG_DEBUG("moduleName: %{public}s. get primary module path: %{public}s", moduleName, loadPath);
-    LIBHANDLE lib = LoadModuleLibrary(moduleKey, loadPath, path, isAppModule);
+    LIBHANDLE lib = LoadModuleLibrary(moduleKey, nativeModulePath, path, isAppModule);
     if (lib == nullptr) {
-        loadPath = nativeModulePath[1];
-        HILOG_DEBUG("try to load secondary module path: %{public}s", loadPath);
-        lib = LoadModuleLibrary(moduleKey, loadPath, path, isAppModule);
-        if (lib == nullptr) {
-            HILOG_ERROR("primary and secondary module path load failed %{public}s", moduleName);
-            return nullptr;
-        }
+        HILOG_ERROR("Load module failed, moduleName = %{public}s", moduleName);
+        return nullptr;
     }
 
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);

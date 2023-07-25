@@ -102,7 +102,10 @@ private:
     NativeModule* FindNativeModuleByDisk(const char* moduleName, const char* path, const char* relativePath,
         bool internal, const bool isAppModule);
     NativeModule* FindNativeModuleByCache(const char* moduleName);
-    LIBHANDLE LoadModuleLibrary(std::string &moduleKey, const char* path, const char* pathKey, const bool isAppModule);
+    LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string &moduleKey, char nativeModulePath[][NAPI_PATH_MAX],
+                                                     const char* pathKey, const bool isAppModule);
+    LIBHANDLE NativeModuleManager::LoadModuleLibrarySlow(std::string &moduleKey, const char* path,
+                                                     const char* pathKey, const bool isAppModule);
     bool UnloadModuleLibrary(LIBHANDLE handle);
     bool CloseModuleLibrary(LIBHANDLE handle);
     void CreateLdNamespace(const std::string moduleName, const char* lib_ld_path, const bool& isSystemApp);
