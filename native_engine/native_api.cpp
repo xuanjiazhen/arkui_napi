@@ -2243,7 +2243,6 @@ NAPI_EXTERN napi_status napi_create_bigint_uint64(napi_env env, uint64_t value, 
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto resultValue = engine->CreateBigInt(value);
-
     *result = reinterpret_cast<napi_value>(resultValue);
     return napi_clear_last_error(env);
 }
@@ -2271,7 +2270,6 @@ NAPI_EXTERN napi_status napi_get_value_bigint_uint64(
     CHECK_ARG(env, value);
     CHECK_ARG(env, result);
     CHECK_ARG(env, lossless);
-
     auto nativeValue = reinterpret_cast<NativeValue*>(value);
     RETURN_STATUS_IF_FALSE(env, nativeValue->TypeOf() == NATIVE_BIGINT, napi_bigint_expected);
     auto nativeBigint = reinterpret_cast<NativeBigint*>(nativeValue->GetInterface(NativeBigint::INTERFACE_ID));
