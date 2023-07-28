@@ -810,7 +810,11 @@ NativeValue* ArkNativeEngineImpl::CreateInstance(
 NativeReference* ArkNativeEngineImpl::CreateReference(
     NativeEngine* engine, NativeValue* value, uint32_t initialRefcount, NativeFinalize callback, void* data, void* hint)
 {
-    return new ArkNativeReference(static_cast<ArkNativeEngine*>(engine), value, initialRefcount, false);
+    if (initialRefcount == 0) {
+        return new ArkNativeReference(static_cast<ArkNativeEngine*>(engine), value, initialRefcount, true);
+    } else {
+        return new ArkNativeReference(static_cast<ArkNativeEngine*>(engine), value, initialRefcount, false);
+    }
 }
 
 bool ArkNativeEngineImpl::IsExceptionPending() const
