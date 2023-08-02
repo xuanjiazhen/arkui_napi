@@ -102,7 +102,8 @@ private:
 using PostTask = std::function<void(bool needSync)>;
 using CleanEnv = std::function<void()>;
 using InitWorkerFunc = std::function<void(NativeEngine* engine)>;
-using GetAssetFunc = std::function<void(const std::string& uri, std::vector<uint8_t>& content, std::string& ami)>;
+using GetAssetFunc = std::function<void(NativeEngine* engine, const std::string& uri, std::vector<uint8_t>& content,
+                                        std::string& ami, bool isFromWorker)>;
 using OffWorkerFunc = std::function<void(NativeEngine* engine)>;
 using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
 using UncaughtExceptionCallback = std::function<void(NativeValue* value)>;
@@ -289,7 +290,8 @@ public:
 
     // call init worker func
     virtual bool CallInitWorkerFunc(NativeEngine* engine);
-    virtual bool CallGetAssetFunc(const std::string& uri, std::vector<uint8_t>& content, std::string& ami);
+    virtual bool CallGetAssetFunc(NativeEngine* engine, const std::string& uri, std::vector<uint8_t>& content,
+                                  std::string& ami, bool isFromWorker = false);
     virtual bool CallOffWorkerFunc(NativeEngine* engine);
 
     // adapt worker to ace container
