@@ -168,7 +168,7 @@ NAPI_EXTERN napi_status napi_get_uv_event_loop(napi_env env, struct uv_loop_s** 
     return napi_status::napi_ok;
 }
 
-NAPI_INNER_EXTERN napi_status napi_add_env_cleanup_hook(napi_env env, void (*fun)(void* arg), void* arg)
+NAPI_EXTERN napi_status napi_add_env_cleanup_hook(napi_env env, void (*fun)(void* arg), void* arg)
 {
     CHECK_ENV(env);
     CHECK_ARG(env, fun);
