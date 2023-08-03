@@ -50,11 +50,11 @@ NAPI_INNER_EXTERN napi_status napi_get_instance_data(napi_env env,
 
 NAPI_INNER_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err);
 
-NAPI_INNER_EXTERN napi_status napi_add_env_cleanup_hook(napi_env env,
+NAPI_EXTERN napi_status napi_add_env_cleanup_hook(napi_env env,
                                                         void (*fun)(void* arg),
                                                         void* arg);
 
-NAPI_INNER_EXTERN napi_status napi_remove_env_cleanup_hook(napi_env env,
+NAPI_EXTERN napi_status napi_remove_env_cleanup_hook(napi_env env,
                                                            void (*fun)(void* arg),
                                                            void* arg);
 
