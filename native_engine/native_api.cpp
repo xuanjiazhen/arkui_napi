@@ -534,6 +534,15 @@ NAPI_EXTERN napi_status napi_get_prototype(napi_env env, napi_value object, napi
 
 NAPI_EXTERN napi_status napi_get_property_names(napi_env env, napi_value object, napi_value* result)
 {
+    return napi_get_all_property_names(env, object, napi_key_include_prototypes,
+        static_cast<napi_key_filter>(napi_key_enumerable | napi_key_skip_symbols),
+        napi_key_numbers_to_strings, result);
+}
+
+NAPI_EXTERN napi_status napi_get_all_property_names(
+    napi_env env, napi_value object, napi_key_collection_mode key_mode,
+    napi_key_filter key_filter, napi_key_conversion key_conversion, napi_value* result)
+{
     CHECK_ENV(env);
     CHECK_ARG(env, object);
     CHECK_ARG(env, result);
@@ -546,8 +555,7 @@ NAPI_EXTERN napi_status napi_get_property_names(napi_env env, napi_value object,
 
     auto nativeObject = reinterpret_cast<NativeObject*>(nativeValue->GetInterface(NativeObject::INTERFACE_ID));
 
-    auto resultValue = nativeObject->GetPropertyNames();
-
+    auto resultValue = nativeObject->GetAllPropertyNames(key_mode, key_filter, key_conversion);
     *result = reinterpret_cast<napi_value>(resultValue);
     return napi_clear_last_error(env);
 }
@@ -2306,27 +2314,6 @@ NAPI_EXTERN napi_status napi_is_detached_arraybuffer(napi_env env, napi_value ar
     } else {
         return napi_set_last_error(env, napi_invalid_arg);
     }
-    return napi_clear_last_error(env);
-}
-
-NAPI_EXTERN napi_status napi_get_all_property_names(
-    napi_env env, napi_value object, napi_key_collection_mode key_mode,
-    napi_key_filter key_filter, napi_key_conversion key_conversion, napi_value* result)
-{
-    CHECK_ENV(env);
-    CHECK_ARG(env, object);
-    CHECK_ARG(env, result);
-
-    auto nativeValue = reinterpret_cast<NativeValue*>(object);
-
-    NativeValueType type = nativeValue->TypeOf();
-    RETURN_STATUS_IF_FALSE(env, type == NATIVE_OBJECT || type == NATIVE_FUNCTION,
-        napi_object_expected);
-
-    auto nativeObject = reinterpret_cast<NativeObject*>(nativeValue->GetInterface(NativeObject::INTERFACE_ID));
-
-    auto resultValue = nativeObject->GetAllPropertyNames(key_mode, key_filter, key_conversion);
-    *result = reinterpret_cast<napi_value>(resultValue);
     return napi_clear_last_error(env);
 }
 
