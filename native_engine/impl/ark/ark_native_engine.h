@@ -245,6 +245,7 @@ public:
     bool ExecutePermissionCheck() override;
     void RegisterTranslateBySourceMap(SourceMapCallback callback) override;
     std::string ExecuteTranslateBySourceMap(const std::string& rawStack) override;
+    void RegisterTranslateUrlPositionBySourceMap(TranslateUrlPositionCallback callback) override;
     panda::Local<panda::ObjectRef> GetModuleFromName(
         const std::string& moduleName, bool isAppModule, const std::string& id, const std::string& param,
         const std::string& instanceName, void** instance);
