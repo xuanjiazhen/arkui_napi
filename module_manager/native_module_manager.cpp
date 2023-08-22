@@ -446,10 +446,10 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName,
 #ifndef IOS_PLATFORM
     if (nativeModule == nullptr) {
 #ifdef ANDROID_PLATFORM
-        HILOG_WARN("module '%{public}s' does not in cache", strCutName.c_str());
+        HILOG_ERROR("module '%{public}s' does not in cache", strCutName.c_str());
         nativeModule = FindNativeModuleByDisk(strCutName.c_str(), "default", relativePath, internal, isAppModule);
 #else
-        HILOG_WARN("module '%{public}s' does not in cache", moduleName);
+        HILOG_ERROR("module '%{public}s' does not in cache", moduleName);
         nativeModule = FindNativeModuleByDisk(moduleName, prefix_.c_str(), relativePath, internal, isAppModule);
 #endif
     }
@@ -645,12 +645,12 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string &moduleKey, const c
 #if defined(WINDOWS_PLATFORM)
     lib = LoadLibrary(path);
     if (lib == nullptr) {
-        HILOG_WARN("LoadLibrary failed, error: %{public}d", GetLastError());
+        HILOG_ERROR("LoadLibrary failed, error: %{public}d", GetLastError());
     }
 #elif defined(MAC_PLATFORM) || defined(__BIONIC__) || defined(LINUX_PLATFORM)
     lib = dlopen(path, RTLD_LAZY);
     if (lib == nullptr) {
-        HILOG_WARN("dlopen failed: %{public}s", dlerror());
+        HILOG_ERROR("dlopen failed: %{public}s", dlerror());
     }
 
 #elif defined(IOS_PLATFORM)
@@ -663,7 +663,7 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string &moduleKey, const c
         lib = dlopen(path, RTLD_LAZY);
     }
     if (lib == nullptr) {
-        HILOG_WARN("dlopen failed: %{public}s", dlerror());
+        HILOG_ERROR("dlopen failed: %{public}s", dlerror());
     }
 #endif
 #ifdef ENABLE_HITRACE
@@ -677,14 +677,14 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string &moduleKey, const c
 bool NativeModuleManager::UnloadModuleLibrary(LIBHANDLE handle)
 {
     if (handle == nullptr) {
-        HILOG_WARN("handle is nullptr");
+        HILOG_ERROR("handle is nullptr");
         return false;
     }
 #if !defined(WINDOWS_PLATFORM) && !defined(IOS_PLATFORM)
     if (!dlclose(handle)) {
         return true;
     }
-    HILOG_WARN("dlclose failed: %{public}s", dlerror());
+    HILOG_ERROR("dlclose failed: %{public}s", dlerror());
 #endif
     return false;
 }
@@ -696,7 +696,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
     nativeModulePath[0][0] = 0;
     nativeModulePath[1][0] = 0;
     if (!GetNativeModulePath(moduleName, path, relativePath, isAppModule, nativeModulePath, NAPI_PATH_MAX)) {
-        HILOG_WARN("get module '%{public}s' path failed", moduleName);
+        HILOG_ERROR("get module '%{public}s' path failed", moduleName);
         return nullptr;
     }
     if (moduleLoadChecker_ && !moduleLoadChecker_->CheckModuleLoadable(moduleName)) {
@@ -726,7 +726,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
 
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
     if (lastNativeModule_ && strcmp(lastNativeModule_->name, moduleKey.c_str())) {
-        HILOG_WARN("moduleName '%{public}s' seems not match plugin's name '%{public}s'",
+        HILOG_ERROR("moduleName '%{public}s' seems not match plugin's name '%{public}s'",
                    moduleKey.c_str(), lastNativeModule_->name);
     }
 
@@ -768,7 +768,7 @@ bool NativeModuleManager::RemoveNativeModuleByCache(const std::string &moduleKey
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
 
     if (firstNativeModule_ == nullptr) {
-        HILOG_WARN("NativeModule list is empty");
+        HILOG_ERROR("NativeModule list is empty");
         return false;
     }
 
@@ -809,7 +809,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleNam
     for (NativeModule* temp = firstNativeModule_; temp != nullptr; temp = temp->next) {
         if (!strcasecmp(temp->name, moduleName)) {
             if (strcmp(temp->name, moduleName)) {
-                HILOG_WARN("moduleName '%{public}s' seems not match plugin's name '%{public}s'",
+                HILOG_ERROR("moduleName '%{public}s' seems not match plugin's name '%{public}s'",
                            moduleName, temp->name);
             }
             result = temp;
