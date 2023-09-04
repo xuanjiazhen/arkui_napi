@@ -1436,6 +1436,11 @@ void ArkNativeEngine::RegisterTranslateBySourceMap(SourceMapCallback callback)
     }
 }
 
+void ArkNativeEngine::RegisterTranslateUrlPositionBySourceMap(TranslateUrlPositionCallback callback)
+{
+    panda::JSNApi::SetTranslateUrlPositionCallback(vm_, callback);
+}
+
 std::string ArkNativeEngine::ExecuteTranslateBySourceMap(const std::string& rawStack)
 {
     if (SourceMapCallback_ != nullptr) {
