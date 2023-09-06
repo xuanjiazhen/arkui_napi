@@ -29,6 +29,9 @@ class NativeReference;
 struct NativePropertyDescriptor;
 struct NativeCallbackInfo;
 
+static constexpr size_t MAX_BYTE_LENGTH = 2097152;
+static constexpr size_t ONEMIB_BYTE_SIZE = 1048576;
+
 typedef NativeValue* (*NativeCallback)(NativeEngine* engine, NativeCallbackInfo*);
 typedef void (*NativeFinalize)(NativeEngine* engine, void* data, void* hint);
 typedef void (*NativeAsyncExecuteCallback)(NativeEngine* engine, void* data);
