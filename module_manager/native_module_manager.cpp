@@ -507,15 +507,19 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
             dupModuleName[i] = tolower(dupModuleName[i]);
         }
 #endif
+        HILOG_DEBUG("1: prefix is %{public}s", prefix);
     } else {
         if (relativePath[0]) {
             if (previewSearchPath_.empty()) {
                 sysPrefix = sysPrefix + "/" + relativePath;
+                HILOG_DEBUG("previewSearchPath_ is empty");
             } else {
                 sysPrefix = previewSearchPath_ + "/module";
             }
+            HILOG_DEBUG("sysPrefix is %{public}s", sysPrefix.c_str());
         }
         prefix = sysPrefix.c_str();
+        HILOG_DEBUG("2: prefix is %{public}s", prefix);
         for (int32_t i = 0; i < lengthOfModuleName; i++) {
             dupModuleName[i] = tolower(dupModuleName[i]);
         }
