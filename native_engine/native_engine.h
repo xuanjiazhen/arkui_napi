@@ -38,6 +38,10 @@
 #include "scope_manager/native_scope_manager.h"
 #include "utils/macros.h"
 
+namespace panda::ecmascript {
+    class EcmaVM;
+}
+
 typedef int32_t (*GetContainerScopeIdCallback)(void);
 typedef void (*ContainerScopeCallback)(int32_t);
 
@@ -137,6 +141,7 @@ public:
 #endif
     virtual void* GetJsEngine();
 
+    virtual const panda::ecmascript::EcmaVM* GetEcmaVm() const = 0;
     virtual NativeValue* GetGlobal() = 0;
 
     virtual NativeValue* CreateNull() = 0;
