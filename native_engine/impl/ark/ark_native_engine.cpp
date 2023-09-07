@@ -293,7 +293,7 @@ ArkNativeEngine::~ArkNativeEngine()
     }
 }
 
-const EcmaVM* ArkNativeEngine::GetEcmaVm() const
+const panda::ecmascript::EcmaVM* ArkNativeEngine::GetEcmaVm() const
 {
     return vm_;
 }
