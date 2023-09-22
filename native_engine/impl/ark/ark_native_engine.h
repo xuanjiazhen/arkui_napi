@@ -227,6 +227,7 @@ public:
     bool SuspendVM() override;
     bool IsSuspended() override;
     bool CheckSafepoint() override;
+    void NotifyJSReturnNative() override;
     bool SuspendVMById(uint32_t tid) override;
     void ResumeVMById(uint32_t tid) override;
 
@@ -264,7 +265,7 @@ public:
     void SetMockModuleList(const std::map<std::string, std::string> &list) override;
 
     // debugger
-    bool IsMixedDebugEnabled();
+    bool IsMixedDebugEnabled() override;
     void JsHeapStart();
     uint64_t GetCurrentTickMillseconds();
     void JudgmentDump(size_t limitSize);

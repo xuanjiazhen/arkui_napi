@@ -235,6 +235,8 @@ public:
     virtual bool CheckSafepoint() = 0;
     virtual bool SuspendVMById(uint32_t tid) = 0;
     virtual void ResumeVMById(uint32_t tid) = 0;
+    virtual void NotifyJSReturnNative() = 0;
+    virtual bool IsMixedDebugEnabled() = 0;
 
     virtual void DumpHeapSnapshot(const std::string &path, bool isVmMode = true,
         DumpFormat dumpFormat = DumpFormat::JSON) = 0;
