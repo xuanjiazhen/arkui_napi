@@ -94,7 +94,6 @@ ohos_source_set("ace_napi_static") {
   if (is_cross_platform_build) {
     deps += [
       "${ets_runtime_path}:libark_jsruntime_static",
-      "//third_party/bounds_checking_function:libsec_static",
       "//third_party/icu/icu4c:static_icui18n",
       "//third_party/icu/icu4c:static_icuuc",
       "//third_party/libuv:uv_static",
@@ -109,6 +108,7 @@ ohos_source_set("ace_napi_static") {
     external_deps += [ "ets_runtime:libark_jsruntime" ]
   }
 
+  deps += [ "//third_party/bounds_checking_function:libsec_static" ]
   cflags_cc = [ "-Wno-missing-braces" ]
 
   subsystem_name = "arkui"
@@ -129,10 +129,7 @@ if (is_cross_platform_build) {
       ":ace_napi_config",
       ":module_manager_config",
     ]
-    public_deps = [
-      "//third_party/bounds_checking_function:libsec_shared",
-      "//third_party/libuv:uv",
-    ]
+    public_deps = [ "//third_party/libuv:uv" ]
 
     subsystem_name = "arkui"
     innerapi_tags = [ "platformsdk" ]
