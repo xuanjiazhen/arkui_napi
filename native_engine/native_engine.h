@@ -71,7 +71,7 @@ enum class DumpFormat {
 };
 
 enum class WorkerVersion {
-    NONE, OLD, NEW
+    NONE, OLD, NEW, Test
 };
 
 class CleanupHookCallback {
@@ -221,6 +221,7 @@ public:
     virtual bool Throw(NativeErrorType type, const char* code, const char* message) = 0;
 
     virtual void* CreateRuntime() = 0;
+    virtual void* CreateRuntime1() = 0;
     virtual NativeValue* Serialize(NativeEngine* context, NativeValue* value, NativeValue* transfer) = 0;
     virtual NativeValue* Deserialize(NativeEngine* context, NativeValue* recorder) = 0;
     virtual void DeleteSerializationData(NativeValue* value) const = 0;

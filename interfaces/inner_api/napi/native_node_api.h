@@ -43,6 +43,7 @@ typedef struct napi_module_with_js {
 NAPI_EXTERN void napi_module_with_js_register(napi_module_with_js* mod);
 NAPI_EXTERN napi_status napi_is_callable(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_create_runtime(napi_env env, napi_env* result_env);
+NAPI_EXTERN napi_status napi_create_runtime_test(napi_env env, napi_env* result_env);
 NAPI_EXTERN napi_status napi_serialize(napi_env env, napi_value object, napi_value transfer_list, napi_value* result);
 NAPI_EXTERN napi_status napi_deserialize(napi_env env, napi_value recorder, napi_value* object);
 NAPI_EXTERN napi_status napi_delete_serialization_data(napi_env env, napi_value value);

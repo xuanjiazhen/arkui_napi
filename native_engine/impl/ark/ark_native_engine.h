@@ -187,6 +187,7 @@ public:
     bool Throw(NativeErrorType type, const char* code, const char* message) override;
 
     void* CreateRuntime() override;
+    void* CreateRuntime1() override;
     NativeValue* Serialize(NativeEngine* context, NativeValue* value, NativeValue* transfer) override;
     NativeValue* Deserialize(NativeEngine* context, NativeValue* recorder) override;
     void DeleteSerializationData(NativeValue* value) const override;
@@ -289,6 +290,7 @@ public:
 
 private:
     static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, void* jsEngine);
+    static NativeEngine* CreateRuntimeFunc1(NativeEngine* engine, void* jsEngine);
 
     EcmaVM* vm_ = nullptr;
     panda::LocalScope topScope_;

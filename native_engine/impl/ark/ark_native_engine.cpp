@@ -942,9 +942,69 @@ NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsE
     return arkEngine;
 }
 
+NativeEngine* ArkNativeEngine::CreateRuntimeFunc1(NativeEngine* engine, void* jsEngine)
+{
+    panda::RuntimeOption option;
+#if defined(OHOS_PLATFORM) && !defined(IOS_PLATFORM)
+    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    std::string bundleName = OHOS::system::GetParameter("persist.ark.arkbundlename", "");
+    size_t gcThreadNum = OHOS::system::GetUintParameter<size_t>("persist.ark.gcthreads", 7);
+    size_t longPauseTime = OHOS::system::GetUintParameter<size_t>("persist.ark.longpausetime", 40);
+    bool asmInterpreterEnabled = OHOS::system::GetBoolParameter("persist.ark.asminterpreter", true);
+    std::string asmOpcodeDisableRange = OHOS::system::GetParameter("persist.ark.asmopcodedisablerange", "");
+    bool builtinsLazyEnabled = OHOS::system::GetBoolParameter("persist.ark.enablebuiltinslazy", true);
+    option.SetEnableBuiltinsLazy(builtinsLazyEnabled);
+    option.SetArkProperties(arkProperties);
+    option.SetArkBundleName(bundleName);
+    option.SetGcThreadNum(gcThreadNum);
+    option.SetLongPauseTime(longPauseTime);
+    option.SetEnableAsmInterpreter(asmInterpreterEnabled);
+    option.SetAsmOpcodeDisableRange(asmOpcodeDisableRange);
+    option.SetIsWorker();
+    HILOG_INFO("ArkNativeEngineImpl::CreateRuntimeFunc ark properties = %{public}d, bundlename = %{public}s",
+        arkProperties, bundleName.c_str());
+#endif
+    option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
+    const int64_t poolSize = 0x1000000;
+    option.SetGcPoolSize(poolSize);
+#if !defined(PREVIEW) && !defined(IOS_PLATFORM)
+    option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::INFO);
+#endif
+    option.SetDebuggerLibraryPath("");
+    EcmaVM* vm = panda::JSNApi::CreateJSVM(option);
+    if (vm == nullptr) {
+        return nullptr;
+    }
+    // worker adaptation mergeabc
+    const panda::ecmascript::EcmaVM* hostVM = reinterpret_cast<ArkNativeEngine*>(engine)->GetEcmaVm();
+    panda::JSNApi::SynchronizVMInfo(vm, hostVM);
+    ArkNativeEngine* arkEngine = new ArkNativeEngine(vm, jsEngine);
+    // init callback
+    arkEngine->RegisterWorkerFunction(engine);
+    arkEngine->SetHostEngine(engine);
+
+    auto cleanEnv = [vm]() {
+        if (vm != nullptr) {
+            HILOG_INFO("cleanEnv is called");
+            panda::JSNApi::DestroyJSVM(vm);
+        }
+    };
+    arkEngine->SetCleanEnv(cleanEnv);
+
+    if (hostVM != nullptr) {
+        panda::JSNApi::addWorker(const_cast<EcmaVM*>(hostVM), vm);
+    }
+    return arkEngine;
+}
+
 void* ArkNativeEngine::CreateRuntime()
 {
     return ArkNativeEngine::CreateRuntimeFunc(this, jsEngine_);
+}
+
+void* ArkNativeEngine::CreateRuntime1()
+{
+    return ArkNativeEngine::CreateRuntimeFunc1(this, jsEngine_);
 }
 
 NativeValue* ArkNativeEngine::Serialize(NativeEngine* context, NativeValue* value, NativeValue* transfer)
