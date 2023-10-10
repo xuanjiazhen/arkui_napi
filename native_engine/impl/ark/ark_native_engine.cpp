@@ -277,9 +277,11 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine) : NativeEngine(jsEn
     global->Set(vm, requireInternalName, requireInternal);
     JSNApi::SetNativePtrGetter(vm, reinterpret_cast<void*>(ArkNativeFunction::GetNativePtrCallBack));
     // need to call init of base class.
-    NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    JSNApi::SetUnloadNativeModuleCallback(vm, std::bind(&NativeModuleManager::UnloadNativeModule,
-        moduleManager, std::placeholders::_1));
+    if (IsMainThread()) {
+        NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
+        JSNApi::SetUnloadNativeModuleCallback(vm, std::bind(&NativeModuleManager::UnloadNativeModule,
+            moduleManager, std::placeholders::_1));
+    }
     Init();
     panda::JSNApi::SetLoop(vm, loop_);
 }
