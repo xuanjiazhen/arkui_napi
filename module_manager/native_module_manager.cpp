@@ -274,6 +274,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libimage_ndk.z.so",
         "libimage_receiver_ndk.z.so",
         "libimage_source_ndk.z.so",
+        "libimage_packer_ndk.z.so",
         "librawfile.z.so",
         "libuv.so",
         "libhilog.so",
