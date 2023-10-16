@@ -49,7 +49,8 @@ using panda::JSNApi;
 using panda::DFXJSNApi;
 
 enum class ForceExpandState : int32_t {
-    FINISH_COLD_START = 0,
+    APP_COLD_START = 0,
+    FINISH_COLD_START,
     START_HIGH_SENSITIVE,
     FINISH_HIGH_SENSITIVE,
 };
