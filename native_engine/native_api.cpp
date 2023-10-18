@@ -2184,6 +2184,19 @@ NAPI_EXTERN napi_status napi_create_runtime(napi_env env, napi_env* result_env)
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_create_runtime_test(napi_env env, napi_env* result_env)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, result_env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+
+    auto result = engine->CreateRuntime1();
+    *result_env = reinterpret_cast<napi_env>(result);
+
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_serialize(napi_env env, napi_value object, napi_value transfer_list, napi_value* result)
 {
     CHECK_ENV(env);
