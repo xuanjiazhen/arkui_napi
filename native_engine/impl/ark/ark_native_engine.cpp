@@ -1431,6 +1431,9 @@ void ArkNativeEngine::NotifyMemoryPressure(bool inHighMemoryPressure)
 void ArkNativeEngine::NotifyForceExpandState(int32_t value)
 {
     switch (ForceExpandState(value)) {
+        case ForceExpandState::APP_COLD_START:
+            DFXJSNApi::NotifyAppColdStart(vm_);
+            break;
         case ForceExpandState::FINISH_COLD_START:
             DFXJSNApi::NotifyFinishColdStart(vm_, true);
             break;
