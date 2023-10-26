@@ -293,6 +293,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libohosadaptor.so",
         "libusb_ndk.z.so",
         "libvulkan.so",
+        "libnative_hgm.so",
     };
 
     size_t allowListLength = sizeof(allowList) / sizeof(char*);
