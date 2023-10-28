@@ -50,6 +50,9 @@ void NativeSafeAsyncWork::CallJs(NativeEngine* engine, NativeValue* js_call_func
     if (resultValue == nullptr) {
         HILOG_ERROR("CallFunction failed");
     }
+    if (engine->IsMixedDebugEnabled()) {
+        engine->NotifyJSReturnNative();
+    }
 }
 // static methods end
 

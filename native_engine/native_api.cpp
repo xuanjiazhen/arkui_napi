@@ -709,6 +709,7 @@ NAPI_EXTERN napi_status napi_get_named_property(napi_env env,
     CHECK_ARG(env, utf8name);
     CHECK_ARG(env, result);
 
+    auto engine = reinterpret_cast<NativeEngine*>(env);
     auto nativeValue = reinterpret_cast<NativeValue*>(object);
 
     NativeValueType type = nativeValue->TypeOf();
@@ -718,7 +719,9 @@ NAPI_EXTERN napi_status napi_get_named_property(napi_env env,
     auto nativeObject = reinterpret_cast<NativeObject*>(nativeValue->GetInterface(NativeObject::INTERFACE_ID));
 
     auto resultValue = nativeObject->GetProperty(utf8name);
-
+    if (engine->IsMixedDebugEnabled()) {
+        engine->NotifyJSReturnNative();
+    }
     *result = reinterpret_cast<napi_value>(resultValue);
     return napi_clear_last_error(env);
 }
@@ -934,6 +937,9 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     RETURN_STATUS_IF_FALSE(env, resultValue != nullptr, napi_pending_exception);
     if (result) {
         *result = reinterpret_cast<napi_value>(resultValue);
+    }
+    if (engine->IsMixedDebugEnabled()) {
+        engine->NotifyJSReturnNative();
     }
     return napi_clear_last_error(env);
 }
