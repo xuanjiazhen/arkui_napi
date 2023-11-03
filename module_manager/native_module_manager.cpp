@@ -403,8 +403,32 @@ void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std
     HILOG_INFO("create ld namespace, path: %{public}s", appLibPathMap_[moduleName]);
 }
 
+bool NativeModuleManager::CheckModuleLimited(const std::string& moduleName, bool isAppModule, bool isModuleLimited)
+{
+    HILOG_DEBUG("isAppModule is %{public}d, isModuleLimited is %{public}d", isAppModule, isModuleLimited);
+
+    // we only check system so in limited runtime. or else, it'not limited
+    if (isAppModule == true || isModuleLimited == false) {
+        return false;
+    }
+
+    const std::string whiteList[] = {
+    };
+
+    size_t listLen = sizeof(whiteList) / sizeof(whiteList[0]);
+    for (size_t i = 0; i < listLen; ++i) {
+        if (moduleName == whiteList[i]) {
+            HILOG_DEBUG("module %{public}s found in whitelist", moduleName.c_str());
+            return false;
+        }
+    }
+
+    HILOG_DEBUG("module %{public}s does not found in whitelist", moduleName.c_str());
+    return true;
+}
+
 NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName,
-    const char* path, bool isAppModule, bool internal, const char* relativePath)
+    const char* path, bool isAppModule, bool internal, const char* relativePath, bool moduleLimited)
 {
     if (moduleName == nullptr || relativePath == nullptr) {
         HILOG_ERROR("moduleName or relativePath is nullptr");
@@ -412,6 +436,11 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName,
     }
 
     HILOG_DEBUG("moduleName is %{public}s, path is %{public}s", moduleName, path);
+    if (CheckModuleLimited(moduleName, isAppModule, moduleLimited) == true) {
+        HILOG_WARN("module is not allowd to load.");
+        return nullptr;
+    }
+
     if (moduleLoadChecker_ && !moduleLoadChecker_->DiskCheckOnly() &&
         !moduleLoadChecker_->CheckModuleLoadable(moduleName)) {
         HILOG_INFO("Block module name: %{public}s", moduleName);
