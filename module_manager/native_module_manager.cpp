@@ -762,8 +762,10 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(
 
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
     if (lastNativeModule_ && strcmp(lastNativeModule_->name, moduleKey.c_str())) {
-        HILOG_WARN("moduleName '%{public}s' seems not match plugin's name '%{public}s'",
-                   moduleKey.c_str(), lastNativeModule_->name);
+        HILOG_ERROR("moduleName '%{public}s' seems not match plugin's name '%{public}s'",
+            moduleKey.c_str(), lastNativeModule_->name);
+        LIBFREE(lib);
+        return nullptr;
     }
 
     if (!internal) {
@@ -852,11 +854,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleNam
 
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
     for (NativeModule* temp = firstNativeModule_; temp != nullptr; temp = temp->next) {
-        if (!strcasecmp(temp->name, moduleName)) {
-            if (strcmp(temp->name, moduleName)) {
-                HILOG_WARN("moduleName '%{public}s' seems not match plugin's name '%{public}s'",
-                           moduleName, temp->name);
-            }
+        if (strcmp(temp->name, moduleName) == 0) {
             result = temp;
             break;
         }
