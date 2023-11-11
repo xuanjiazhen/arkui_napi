@@ -2450,6 +2450,28 @@ NAPI_EXTERN napi_status napi_is_async_function(napi_env env, napi_value value, b
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_is_async_method(napi_env env, napi_value value, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    *result = nativeValue->IsAsyncMethod();
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_is_generator_method(napi_env env, napi_value value, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    *result = nativeValue->IsGeneratorMethod();
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_is_boolean_object(napi_env env, napi_value value, bool* result)
 {
     CHECK_ENV(env);
