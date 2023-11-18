@@ -23,9 +23,10 @@
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
 #endif
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_api_internal.h"
-#include "native_engine/impl/ark/ark_native_engine.h"
+#include "native_engine/native_engine.h"
 #include "native_engine/native_property.h"
 #include "native_engine/native_utils.h"
 #include "native_engine/native_value.h"
@@ -46,6 +47,7 @@ using panda::EscapeLocalScope;
 using panda::FunctionRef;
 using panda::Global;
 using panda::IntegerRef;
+using panda::DFXJSNApi;
 using panda::JSNApi;
 using panda::JsiRuntimeCallInfo;
 using panda::Local;
@@ -355,7 +357,7 @@ NAPI_EXTERN napi_status napi_create_function(napi_env env,
     funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
 #endif
 
-    Local<panda::FunctionRef> fn = panda::FunctionRef::New(vm, ArkNativeFunctionCallBack,
+    Local<panda::FunctionRef> fn = panda::FunctionRef::New(vm, NativeFunctionCallBack,
                                                            [](void* externalPointer, void* data) {
                                                                 auto info = reinterpret_cast<NapiFunctionInfo*>(data);
                                                                 if (info != nullptr) {
@@ -1268,7 +1270,6 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
         Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
         auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
         // Try to remove native pointer from ArrayDataList
-        ASSERT(nativeBindingSize == 0);
         wrapper->SetNativePointerField(0, nullptr, nullptr, nullptr, nativeBindingSize);
         nativeObject->Delete(vm, key);
         delete ref;
@@ -1315,7 +1316,6 @@ NAPI_EXTERN napi_status napi_wrap_with_size(napi_env env,
         Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
         auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
         // Try to remove native pointer from ArrayDataList
-        ASSERT(native_binding_size == 0);
         wrapper->SetNativePointerField(0, nullptr, nullptr, nullptr, native_binding_size);
         nativeObject->Delete(vm, key);
         delete ref;
@@ -1383,7 +1383,6 @@ NAPI_EXTERN napi_status napi_remove_wrap(napi_env env, napi_value js_object, voi
         Local<panda::ObjectRef> wrapper = val;
         auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
         // Try to remove native pointer from ArrayDataList
-        ASSERT(nativeBindingSize == 0);
         wrapper->SetNativePointerField(0, nullptr, nullptr, nullptr, nativeBindingSize);
         nativeObject->Delete(vm, key);
         delete ref;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,24 +13,24 @@
  * limitations under the License.
  */
 
-#include "ark_native_reference.h"
+#include "native_reference.h"
 
-#include "ark_native_engine.h"
+#include "native_engine.h"
 #include "native_engine/native_utils.h"
 #include "utils/log.h"
 
-ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
+NativeReference::NativeReference(NativeEngine* engine,
                                        napi_value value,
                                        uint32_t initialRefcount,
                                        bool deleteSelf,
                                        NapiNativeFinalize napiCallback,
                                        void* data,
                                        void* hint)
-    : ArkNativeReference::ArkNativeReference(engine, LocalValueFromJsValue(value), initialRefcount, deleteSelf,
+    : NativeReference::NativeReference(engine, LocalValueFromJsValue(value), initialRefcount, deleteSelf,
                                              napiCallback, data, hint)
 {}
 
-ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
+NativeReference::NativeReference(NativeEngine* engine,
                                        Local<JSValueRef> value,
                                        uint32_t initialRefcount,
                                        bool deleteSelf,
@@ -61,7 +61,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
     }
 }
 
-ArkNativeReference::~ArkNativeReference()
+NativeReference::~NativeReference()
 {
     if (deleteSelf_ && engine_->GetReferenceManager()) {
         engine_->GetReferenceManager()->ReleaseHandler(this);
@@ -74,7 +74,7 @@ ArkNativeReference::~ArkNativeReference()
     FinalizeCallback();
 }
 
-uint32_t ArkNativeReference::Ref()
+uint32_t NativeReference::Ref()
 {
     ++refCount_;
     if (refCount_ == 1) {
@@ -83,7 +83,7 @@ uint32_t ArkNativeReference::Ref()
     return refCount_;
 }
 
-uint32_t ArkNativeReference::Unref()
+uint32_t NativeReference::Unref()
 {
     if (refCount_ == 0) {
         return refCount_;
@@ -98,7 +98,7 @@ uint32_t ArkNativeReference::Unref()
     return refCount_;
 }
 
-napi_value ArkNativeReference::Get()
+napi_value NativeReference::Get()
 {
     if (value_.IsEmpty()) {
         return nullptr;
@@ -108,17 +108,17 @@ napi_value ArkNativeReference::Get()
     return JsValueFromLocalValue(value);
 }
 
-ArkNativeReference::operator napi_value()
+NativeReference::operator napi_value()
 {
     return Get();
 }
 
-void* ArkNativeReference::GetData()
+void* NativeReference::GetData()
 {
     return data_;
 }
 
-void ArkNativeReference::FinalizeCallback()
+void NativeReference::FinalizeCallback()
 {
     if (napiCallback_ != nullptr) {
         napiCallback_(reinterpret_cast<napi_env>(engine_), data_, hint_);
@@ -133,34 +133,34 @@ void ArkNativeReference::FinalizeCallback()
     }
 }
 
-void ArkNativeReference::FreeGlobalCallBack(void* ref)
+void NativeReference::FreeGlobalCallBack(void* ref)
 {
-    auto that = reinterpret_cast<ArkNativeReference*>(ref);
+    auto that = reinterpret_cast<NativeReference*>(ref);
     that->value_.FreeGlobalHandleAddr();
 }
 
-void ArkNativeReference::NativeFinalizeCallBack(void* ref)
+void NativeReference::NativeFinalizeCallBack(void* ref)
 {
-    auto that = reinterpret_cast<ArkNativeReference*>(ref);
+    auto that = reinterpret_cast<NativeReference*>(ref);
     that->FinalizeCallback();
 }
 
-void ArkNativeReference::SetDeleteSelf()
+void NativeReference::SetDeleteSelf()
 {
     deleteSelf_ = true;
 }
 
-uint32_t ArkNativeReference::GetRefCount()
+uint32_t NativeReference::GetRefCount()
 {
     return refCount_;
 }
 
-bool ArkNativeReference::GetFinalRun()
+bool NativeReference::GetFinalRun()
 {
     return finalRun_;
 }
 
-napi_value ArkNativeReference::GetNapiValue()
+napi_value NativeReference::GetNapiValue()
 {
     return Get();
 }

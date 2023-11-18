@@ -14,7 +14,7 @@
  */
 
 #include "arknativeengine_fuzzer.h"
-#include "native_engine/impl/ark/ark_native_engine.h"
+#include "native_engine/native_engine.h"
 #include "securec.h"
 
 using namespace panda;
@@ -31,7 +31,7 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         vm_ = JSNApi::CreateJSVM(option);
-        arkNativeEngine_ = new ArkNativeEngine(vm_, nullptr);
+        arkNativeEngine_ = new NativeEngine(vm_, nullptr);
     }
 
     void RunBufferScript(std::vector<uint8_t>& buffer)
@@ -51,7 +51,7 @@ public:
     }
 private:
     EcmaVM* vm_ {nullptr};
-    ArkNativeEngine* arkNativeEngine_ {nullptr};
+    NativeEngine* arkNativeEngine_ {nullptr};
 };
 
 static Engine g_nativeEngine;
@@ -68,7 +68,7 @@ namespace OHOS {
         }
         if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!" << std::endl;
-            UNREACHABLE();
+            std::abort();
         }
 
         std::string result(reinterpret_cast<const char*>(data), size);

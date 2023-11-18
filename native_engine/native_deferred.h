@@ -16,13 +16,29 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_DEFERRED_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_DEFERRED_H
 
-#include "native_value.h"
+#include "ecmascript/napi/include/jsnapi.h"
+#include "native_engine/native_value.h"
+
+class NativeEngine;
+
+using panda::Global;
+using panda::JSValueRef;
+using panda::Local;
+using panda::PromiseCapabilityRef;
 
 class NativeDeferred {
 public:
-    virtual ~NativeDeferred() {}
-    virtual void Resolve(napi_value data) = 0;
-    virtual void Reject(napi_value reason) = 0;
+    NativeDeferred(NativeEngine* engine, Local<PromiseCapabilityRef> deferred);
+    ~NativeDeferred();
+    void Resolve(napi_value data);
+    void Reject(napi_value reason);
+
+private:
+    NativeEngine* engine_;
+    panda::Global<PromiseCapabilityRef> deferred_;
+#ifdef ENABLE_CONTAINER_SCOPE
+    int32_t scopeId_ = -1;
+#endif
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_DEFERRED_H */

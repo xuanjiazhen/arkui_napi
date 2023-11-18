@@ -15,7 +15,7 @@
 
 #include "test.h"
 
-#include "native_engine/impl/ark/ark_native_engine.h"
+#include "native_engine/native_engine.h"
 #include "utils/log.h"
 
 using panda::RuntimeOption;
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    g_nativeEngine = new ArkNativeEngine(vm, nullptr);
+    g_nativeEngine = new NativeEngine(vm, nullptr);
 
     int ret = testing::UnitTest::GetInstance()->Run();
 

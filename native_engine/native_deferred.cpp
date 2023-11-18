@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-#include "ark_native_deferred.h"
+#include "native_deferred.h"
 
 #include <cstring>
 
-#include "ark_native_engine.h"
+#include "native_engine.h"
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
 #endif
 #include "native_engine/native_utils.h"
 
-ArkNativeDeferred::ArkNativeDeferred(ArkNativeEngine* engine, Local<PromiseCapabilityRef> deferred)
+NativeDeferred::NativeDeferred(NativeEngine* engine, Local<PromiseCapabilityRef> deferred)
     : engine_(engine), deferred_(engine->GetEcmaVm(), deferred)
 {
 #ifdef ENABLE_CONTAINER_SCOPE
@@ -31,13 +31,13 @@ ArkNativeDeferred::ArkNativeDeferred(ArkNativeEngine* engine, Local<PromiseCapab
 #endif
 }
 
-ArkNativeDeferred::~ArkNativeDeferred()
+NativeDeferred::~NativeDeferred()
 {
-    // Addr of Global stored in ArkNativeDeferred should be released.
+    // Addr of Global stored in NativeDeferred should be released.
     deferred_.FreeGlobalHandleAddr();
 }
 
-void ArkNativeDeferred::Resolve(napi_value data)
+void NativeDeferred::Resolve(napi_value data)
 {
 #ifdef ENABLE_CONTAINER_SCOPE
     OHOS::Ace::ContainerScope containerScope(scopeId_);
@@ -48,7 +48,7 @@ void ArkNativeDeferred::Resolve(napi_value data)
     deferred_->Resolve(vm, value);
 }
 
-void ArkNativeDeferred::Reject(napi_value reason)
+void NativeDeferred::Reject(napi_value reason)
 {
 #ifdef ENABLE_CONTAINER_SCOPE
     OHOS::Ace::ContainerScope containerScope(scopeId_);
