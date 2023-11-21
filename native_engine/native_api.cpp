@@ -1114,17 +1114,8 @@ NAPI_EXTERN napi_status napi_new_instance(napi_env env,
     RETURN_STATUS_IF_FALSE(env, nativeConstructor->IsFunction(), napi_function_expected);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     Local<panda::FunctionRef> constructorVal = nativeConstructor->ToObject(vm);
-    std::vector<Local<panda::JSValueRef>> args;
-    args.reserve(argc);
-    for (size_t i = 0; i < argc; i++) {
-        if (argv[i] != nullptr) {
-            Local<panda::JSValueRef> arg = LocalValueFromJsValue(argv[i]);
-            args.emplace_back(arg);
-        } else {
-            args.emplace_back(panda::JSValueRef::Undefined(vm));
-        }
-    }
-    Local<panda::JSValueRef> instance = constructorVal->Constructor(vm, args.data(), argc);
+    Local<panda::JSValueRef> instance = constructorVal->Constructor(vm,
+        reinterpret_cast<panda::Local<panda::JSValueRef>*>(const_cast<napi_value*>(argv)), argc);
     Local<panda::ObjectRef> excep = panda::JSNApi::GetUncaughtException(vm);
     if (!excep.IsNull()) {
         HILOG_ERROR("CreateInstance occur Exception");
