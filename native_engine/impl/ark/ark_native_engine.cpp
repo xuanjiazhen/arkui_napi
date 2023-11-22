@@ -424,16 +424,16 @@ static inline void FinishNapiProfilerTrace()
 #endif
 }
 
-panda::Local<panda::JSValueRef> ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
+panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
 {
     EcmaVM *vm = runtimeInfo->GetVM();
-    panda::EscapeLocalScope scope(vm);
+    panda::LocalScope scope(vm);
     auto info = reinterpret_cast<NapiFunctionInfo*>(runtimeInfo->GetData());
     auto engine = reinterpret_cast<NativeEngine*>(info->env);
     auto cb = info->callback;
     if (engine == nullptr) {
         HILOG_ERROR("native engine is null");
-        return JSValueRef::Undefined(vm);
+        return **JSValueRef::Undefined(vm);
     }
 
     NapiNativeCallbackInfo cbInfo = { 0 };
@@ -491,9 +491,9 @@ panda::Local<panda::JSValueRef> ArkNativeFunctionCallBack(JsiRuntimeCallInfo *ru
 
     FinishNapiProfilerTrace();
     if (localRet.IsEmpty()) {
-        return JSValueRef::Undefined(vm);
+        return **JSValueRef::Undefined(vm);
     }
-    return scope.Escape(localRet);
+    return **localRet;
 }
 
 Local<panda::JSValueRef> NapiNativeCreateFunction(napi_env env, const char* name, NapiNativeCallback cb, void* value)
