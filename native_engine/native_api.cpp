@@ -23,9 +23,10 @@
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
 #endif
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_api_internal.h"
-#include "native_engine/impl/ark/ark_native_engine.h"
+#include "native_engine/native_engine.h"
 #include "native_engine/native_property.h"
 #include "native_engine/native_utils.h"
 #include "native_engine/native_value.h"
@@ -46,6 +47,7 @@ using panda::EscapeLocalScope;
 using panda::FunctionRef;
 using panda::Global;
 using panda::IntegerRef;
+using panda::DFXJSNApi;
 using panda::JSNApi;
 using panda::JsiRuntimeCallInfo;
 using panda::Local;
@@ -355,7 +357,7 @@ NAPI_EXTERN napi_status napi_create_function(napi_env env,
     funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
 #endif
 
-    Local<panda::FunctionRef> fn = panda::FunctionRef::New(vm, ArkNativeFunctionCallBack,
+    Local<panda::FunctionRef> fn = panda::FunctionRef::New(vm, NativeFunctionCallBack,
                                                            [](void* externalPointer, void* data) {
                                                                 auto info = reinterpret_cast<NapiFunctionInfo*>(data);
                                                                 if (info != nullptr) {
