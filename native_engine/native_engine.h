@@ -369,6 +369,10 @@ public:
     {
         jsThreadType_ = JSThreadType::WORKER_THREAD;
     }
+    void MarkRestrictedWorkerThread()
+    {
+        jsThreadType_ = JSThreadType::RESTRICTEDWORKER_THREAD;
+    }
     void MarkTaskPoolThread()
     {
         jsThreadType_ = JSThreadType::TASKPOOL_THREAD;
@@ -376,6 +380,10 @@ public:
     bool IsWorkerThread() const
     {
         return jsThreadType_ == JSThreadType::WORKER_THREAD;
+    }
+    bool IsRestrictedWorkerThread() const
+    {
+        return jsThreadType_ == JSThreadType::RESTRICTEDWORKER_THREAD;
     }
     bool IsTaskPoolThread() const
     {
@@ -608,6 +616,7 @@ protected:
 public:
     uint64_t openHandleScopes_ = 0;
     static std::string tempModuleName_;
+    panda::Local<panda::ObjectRef> lastException_;
 
 private:
     std::string moduleName_;
@@ -619,7 +628,7 @@ private:
     uv_sem_t uvSem_;
 
     // the old worker api use before api9, the new worker api start with api9
-    enum JSThreadType { MAIN_THREAD, WORKER_THREAD, TASKPOOL_THREAD };
+    enum JSThreadType { MAIN_THREAD, WORKER_THREAD, TASKPOOL_THREAD, RESTRICTEDWORKER_THREAD};
     JSThreadType jsThreadType_ = JSThreadType::MAIN_THREAD;
     // current is hostengine, can create old worker, new worker, or no workers on hostengine
     std::atomic<WorkerVersion> workerVersion_ { WorkerVersion::NONE };
@@ -660,4 +669,19 @@ private:
     bool isLimitedWorker_ = false;
 };
 
+class TryCatch : public panda::TryCatch {
+public:
+    explicit TryCatch(napi_env env)
+        : panda::TryCatch(reinterpret_cast<NativeEngine*>(env)->GetEcmaVm()),
+          engine_(reinterpret_cast<NativeEngine*>(env)) {}
+
+    ~TryCatch()
+    {
+        if (HasCaught()) {
+            engine_->lastException_ = GetException();
+        }
+    }
+private:
+   NativeEngine* engine_ = nullptr;
+};
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ENGINE_H */

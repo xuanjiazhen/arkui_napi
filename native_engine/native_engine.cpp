@@ -2196,6 +2196,7 @@ void NativeEngine::HandleUncaughtException()
         return;
     }
     LocalScope scope(vm_);
+    lastException_.Empty();
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm_);
     if (!exception.IsEmpty() && !exception->IsHole()) {
         if (napiUncaughtExceptionCallback_ != nullptr) {
