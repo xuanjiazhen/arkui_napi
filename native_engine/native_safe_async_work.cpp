@@ -278,7 +278,6 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
     ContainerScope containerScope(containerScopeId_);
 #endif
     HILOG_INFO("queue size %d", (int32_t)size);
-    TryCatch tryCatch(reinterpret_cast<napi_env>(engine_));
     while (size > 0) {
         data = queue_.front();
 
@@ -292,10 +291,6 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
             callJsCallback_(engine_, func_, context_, data);
         } else {
             CallJs(engine_, func_, context_, data);
-        }
-
-        if (tryCatch.HasCaught()) {
-            engine_->HandleUncaughtException();
         }
         queue_.pop();
         size--;
