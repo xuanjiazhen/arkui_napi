@@ -189,6 +189,33 @@ void* ArkNativeEngine::GetNativePtrCallBack(void* data)
     return cb;
 }
 
+void CopyPropertyApiFilter(const std::unique_ptr<ApiWhileListCheck>& apiWhileListFilter, const EcmaVM* ecmaVm, 
+        const panda::Local<panda::ObjectRef> exportObj, panda::Local<panda::ObjectRef>& exportCopy, const std::string& apiPath)
+{
+    panda::Local<panda::ArrayRef> namesArrayRef = exportObj->GetAllPropertyNames(ecmaVm, NATIVE_DEFAULT);
+    for (int i = namesArrayRef->Length(ecmaVm) - 1; i >= 0; i--) {
+        const panda::Local<panda::JSValueRef> nameValue = panda::ArrayRef::GetValueAt(ecmaVm, namesArrayRef, i);
+        const panda::Local<panda::JSValueRef> value = exportObj->Get(ecmaVm, nameValue);
+        const std::string curPath = apiPath + "." + nameValue->ToString(ecmaVm)->ToString();
+        if ((*apiWhileListFilter)(curPath)) {
+            const std::string valueType = value->Typeof(ecmaVm)->ToString();
+            if (valueType == "object") {
+                panda::Local<panda::ObjectRef> subObject = ObjectRef::New(ecmaVm);
+                CopyPropertyApiFilter(apiWhileListFilter, ecmaVm, value, subObject, curPath);
+                exportCopy->Set(ecmaVm, nameValue, subObject);
+                HILOG_DEBUG("Set the package '%{public}s' to the white list", curPath.c_str());
+            } else if (valueType == "function") {
+                exportCopy->Set(ecmaVm, nameValue, value);
+                HILOG_DEBUG("Set the function '%{public}s' to the white list", curPath.c_str());
+            } else {
+                exportCopy->Set(ecmaVm, nameValue, value);
+                HILOG_DEBUG("Set the element type is '%{public}s::%{public}s' to the white list", valueType.c_str(), curPath.c_str());
+            }
+        }
+    }
+}
+
+
 ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker) : NativeEngine(jsEngine),
                                                                                      vm_(vm),
                                                                                      topScope_(vm),
@@ -303,6 +330,15 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 #ifdef ENABLE_HITRACE
                         FinishTrace(HITRACE_TAG_ACE);
 #endif
+                        std::unique_ptr<ApiWhileListCheck> &apiWhileListFilter = moduleManager->GetApiWhileListCheck();
+                        if (apiWhileListFilter != nullptr) {
+                            Local<ObjectRef> exportCopy = ObjectRef::New(ecmaVm);
+                            const std::string apiPath = moduleName->ToString();
+                            if ((*apiWhileListFilter)(apiPath)) {
+                                CopyPropertyApiFilter(apiWhileListFilter, ecmaVm, exportObj, exportCopy, apiPath);
+                            }
+                            return scope.Escape(exportCopy);
+                        }
                         exports = exportObj;
                         arkNativeEngine->loadedModules_[module] = Global<JSValueRef>(ecmaVm, exports);
                     } else {

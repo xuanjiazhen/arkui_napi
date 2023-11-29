@@ -56,6 +56,9 @@ void FunctionSetContainerId(const EcmaVM *vm, panda::Local<panda::JSValueRef> &l
 panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, NapiNativeCallback callback,
     void* data, const NapiPropertyDescriptor* properties, size_t length);
 
+void CopyPropertyApiFilter(const std::unique_ptr<ApiWhileListCheck>& apiWhileListFilter, const EcmaVM* ecmaVm, 
+        const panda::Local<panda::ObjectRef> exportObj, panda::Local<panda::ObjectRef>& exportCopy, const std::string& apiPath);
+
 enum class ForceExpandState : int32_t {
     FINISH_COLD_START = 0,
     START_HIGH_SENSITIVE,
