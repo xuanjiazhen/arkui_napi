@@ -171,9 +171,8 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
     }
 
     auto that = reinterpret_cast<NativeAsyncWork*>(req->data);
-    auto engine = that->engine_;
-    engine->DecreaseWaitingRequestCounter();
-    auto vm = engine->GetEcmaVm();
+    that->engine_->DecreaseWaitingRequestCounter();
+    auto vm = that->engine_->GetEcmaVm();
     panda::LocalScope scope(vm);
     napi_status nstatus = napi_generic_failure;
     switch (status) {
@@ -193,25 +192,20 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
     ContainerScope containerScope(that->containerScopeId_);
 #endif
 
-    TryCatch tryCatch(reinterpret_cast<napi_env>(engine));
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi complete, " + that->GetTraceDescription());
-    bool isValidTraceId = that->traceId_ && that->traceId_->IsValid();
-    if (isValidTraceId) {
+     if (that->traceId_ && that->traceId_->IsValid()) {
         OHOS::HiviewDFX::HiTraceChain::SetId(*(that->traceId_.get()));
+        that->complete_(that->engine_, nstatus, that->data_);
+        FinishTrace(HITRACE_TAG_ACE);
+        OHOS::HiviewDFX::HiTraceChain::ClearId();
+        return;
     }
 #endif
-
-    that->complete_(engine, nstatus, that->data_);
-    if (tryCatch.HasCaught()) {
-        engine->HandleUncaughtException();
-    }
-
+    that->complete_(that->engine_, nstatus, that->data_);
+ 
 #ifdef ENABLE_HITRACE
     FinishTrace(HITRACE_TAG_ACE);
-    if (isValidTraceId) {
-        OHOS::HiviewDFX::HiTraceChain::SetId(*(that->traceId_.get()));
-    }
 #endif
 }
 
