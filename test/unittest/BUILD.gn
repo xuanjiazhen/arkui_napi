@@ -73,11 +73,36 @@ ohos_unittest("test_ark_unittest_threadsafe") {
   external_deps += [ "ets_runtime:libark_jsruntime" ]
 }
 
+ohos_unittest("test_ark_api_whitelist") {
+  module_out_path = module_output_path
+
+  include_dirs = ark_include
+
+  cflags = [ "-g3" ]
+
+  sources = [
+    "engine/test_ark.cpp",
+    "test_ark_api_whitelist.cpp",
+    "//foundation/ability/form_fwk/services/form_render_service/src/form_module_checker.cpp",
+  ]
+
+  defines = [ "NAPI_TEST" ]
+
+  deps = ark_deps
+  deps += [ "../..:ace_napi" ]
+
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+  external_deps += [ "hilog:libhilog" ]
+  external_deps += [ "ets_runtime:libark_jsruntime" ]
+}
+
 group("unittest") {
   testonly = true
   deps = [
     ":test_ark_unittest",
     ":test_ark_unittest_threadsafe",
+    ":test_ark_api_whitelist",
   ]
 }
 
