@@ -17,14 +17,15 @@
 
 #include "utils/log.h"
 
-bool ModuleLoadChecker::CheckModuleLoadable(const char* moduleName)
+bool ModuleLoadChecker::CheckModuleLoadable(const char* moduleName, std::unique_ptr<ApiWhileListCheck>& apiWhileListCheck)
 {
     std::shared_lock lock(moduleCheckerDelegateMutex_);
+	apiWhileListCheck = nullptr;
     if (!moduleCheckerDelegate_) {
         HILOG_INFO("Not check moduleLoadable, moduleCheckerDelegate_ not set");
         return true;
     }
-    return moduleCheckerDelegate_->CheckModuleLoadable(moduleName);
+    return moduleCheckerDelegate_->CheckModuleLoadable(moduleName, apiWhileListCheck);
 }
 
 bool ModuleLoadChecker::DiskCheckOnly()

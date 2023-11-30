@@ -96,6 +96,8 @@ public:
      */
     void SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDelegate>& moduleCheckerDelegate);
 
+    std::unique_ptr<ApiWhileListCheck>& GetApiWhileListCheck();
+
 private:
     NativeModuleManager();
     virtual ~NativeModuleManager();
@@ -151,6 +153,7 @@ private:
     std::map<std::string, char*> appLibPathMap_;
     std::string previewSearchPath_;
     std::unique_ptr<ModuleLoadChecker> moduleLoadChecker_ = nullptr;
+    std::unique_ptr<ApiWhileListCheck> apiWhileListCheck_ = nullptr;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H */

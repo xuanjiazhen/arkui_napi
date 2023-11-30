@@ -468,6 +468,10 @@ bool NativeModuleManager::CheckModuleRestricted(const std::string& moduleName)
     return true;
 }
 
+std::unique_ptr<ApiWhileListCheck>& NativeModuleManager::GetApiWhileListCheck(){
+    return apiWhileListCheck_;
+}
+
 NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName,
     const char* path, bool isAppModule, bool internal, const char* relativePath, bool isModuleRestricted)
 {
@@ -488,7 +492,7 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName,
     }
 
     if (moduleLoadChecker_ && !moduleLoadChecker_->DiskCheckOnly() &&
-        !moduleLoadChecker_->CheckModuleLoadable(moduleName)) {
+        !moduleLoadChecker_->CheckModuleLoadable(moduleName, apiWhileListCheck_)) {
         HILOG_INFO("Block module name: %{public}s", moduleName);
         return nullptr;
     }
