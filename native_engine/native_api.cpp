@@ -1098,6 +1098,62 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     return napi_clear_last_error(env);
 }
 
+// Methods to work with Functions
+NAPI_EXTERN napi_status napi_call_function_test(napi_env env,
+                                           napi_value recv,
+                                           napi_value func,
+                                           size_t argc,
+                                           const napi_value* argv,
+                                           napi_value* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, func);
+    if (argc > 0) {
+        CHECK_ARG(env, argv);
+    }
+
+    auto nativeFunc = LocalValueFromJsValue(func);
+    RETURN_STATUS_IF_FALSE(env, nativeFunc->IsFunction(), napi_function_expected);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    EscapeLocalScope scope(vm);
+    Local<panda::FunctionRef> function = nativeFunc->ToObject(vm);
+    Local<panda::JSValueRef> thisObj = panda::JSValueRef::Undefined(vm);
+    if (recv != nullptr) {
+        thisObj = LocalValueFromJsValue(recv);
+    }
+
+#ifdef ENABLE_CONTAINER_SCOPE
+    int32_t scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    auto funcInfo = reinterpret_cast<NapiFunctionInfo*>(function->GetData(vm));
+    if (funcInfo != nullptr) {
+        scopeId = funcInfo->scopeId;
+    }
+    OHOS::Ace::ContainerScope containerScope(scopeId);
+#endif
+
+    std::vector<Local<panda::JSValueRef>> args;
+    args.reserve(argc);
+    for (size_t i = 0; i < argc; i++) {
+        if (argv[i] != nullptr) {
+            args.emplace_back(LocalValueFromJsValue(argv[i]));
+        } else {
+            args.emplace_back(panda::JSValueRef::Undefined(vm));
+        }
+    }
+
+    Local<panda::JSValueRef> value = function->Call(vm, thisObj, args.data(), argc);
+    if (tryCatch.HasCaught()) {
+        HILOG_ERROR("pending exception when js function called");
+        HILOG_ERROR("print exception info: ");
+        panda::JSNApi::PrintExceptionInfo(vm);
+        return napi_set_last_error(env, napi_pending_exception);
+    }
+    if (result) {
+        *result = JsValueFromLocalValue(scope.Escape(value));
+    }
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_new_instance(napi_env env,
                                           napi_value constructor,
                                           size_t argc,
