@@ -20,6 +20,8 @@
 
 extern const char _binary_calc_js_start[];
 extern const char _binary_calc_js_end[];
+extern const char _binary_calc_abc_start[];
+extern const char _binary_calc_abc_end[];
 
 /*
  * Sync callback
@@ -76,6 +78,17 @@ extern "C" __attribute__((visibility("default"))) void NAPI_calc_GetJSCode(const
 
     if (bufLen != nullptr) {
         *bufLen = _binary_calc_js_end - _binary_calc_js_start;
+    }
+}
+
+extern "C" __attribute__((visibility("default"))) void NAPI_calc_GetABCCode(const char** buf, int* bufLen)
+{
+    if (buf != nullptr) {
+        *buf = _binary_calc_abc_start;
+    }
+
+    if (bufLen != nullptr) {
+        *bufLen = _binary_calc_abc_end - _binary_calc_abc_start;
     }
 }
 
