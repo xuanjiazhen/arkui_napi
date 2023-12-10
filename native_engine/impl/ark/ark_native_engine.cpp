@@ -240,6 +240,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                     Local<BooleanRef> ret(info->GetCallArgRef(1));
                     isAppModule = ret->Value();
                 }
+                HILOG_ERROR("ycn 243 %{public}s ", moduleName->ToString().c_str());
                 arkNativeEngine->isAppModule_ = isAppModule;
                 if (info->GetArgsNumber() == 3) { // 3:Determine if the number of parameters is equal to 3
                     Local<StringRef> path(info->GetCallArgRef(2)); // 2:Take the second parameter
@@ -260,18 +261,25 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 #endif
                 Local<JSValueRef> exports(JSValueRef::Undefined(ecmaVm));
                 if (module != nullptr) {
+                    HILOG_ERROR("ycn module != nullptr 263");
+                    std::string strModuleName1 = moduleName->ToString();
+                    HILOG_ERROR("ycn 265 %{public}s ", strModuleName1.c_str());
                     auto it = arkNativeEngine->loadedModules_.find(module);
                     if (it != arkNativeEngine->loadedModules_.end()) {
+                        HILOG_ERROR("ycn 268 loaded");
                         return scope.Escape(it->second.ToLocal(ecmaVm));
                     }
                     std::string strModuleName = moduleName->ToString();
+                    HILOG_ERROR("ycn 272 %{public}s ", strModuleName.c_str());
                     moduleManager->SetNativeEngine(strModuleName, arkNativeEngine);
                     MoudleNameLocker nameLocker(strModuleName);
 
                     if (module->jsCode == nullptr && module->getABCCode != nullptr) {
+                        HILOG_ERROR("ycn 278 ");
                         module->getABCCode(&module->jsCode, &module->jsCodeLen);
                     }
                     if (module->jsABCCode != nullptr || module->jsCode != nullptr) {
+                        HILOG_ERROR("ycn 282 ");
                         char fileName[NAPI_PATH_MAX] = { 0 };
                         const char* name = module->name;
                         if (sprintf_s(fileName, sizeof(fileName), "lib%s.z.so/%s.js", name, name) == -1) {
@@ -287,27 +295,32 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                         }
                         auto exportObject = arkNativeEngine->LoadArkModule(buffer, module->jsCodeLen, fileName);
                         if (exportObject->IsUndefined()) {
+                            HILOG_ERROR("ycn 298 load module failed ");
                             HILOG_ERROR("load module failed");
                             return scope.Escape(exports);
                         } else {
                             exports = exportObject;
+                            HILOG_ERROR("ycn 303 load module is not Undefined ");
                             arkNativeEngine->loadedModules_[module] = Global<JSValueRef>(ecmaVm, exports);
                         }
                     } else if (module->registerCallback != nullptr) {
+                        HILOG_ERROR("ycn 307 ");
                         Local<ObjectRef> exportObj = ObjectRef::New(ecmaVm);
 #ifdef ENABLE_HITRACE
                         StartTrace(HITRACE_TAG_ACE, "NAPI module init, name = " + std::string(module->name));
 #endif
                         arkNativeEngine->SetModuleName(exportObj, module->name);
+                        HILOG_ERROR("ycn 313 %{public}s ", module->name);
                         module->registerCallback(reinterpret_cast<napi_env>(arkNativeEngine),
                                                  JsValueFromLocalValue(exportObj));
 #ifdef ENABLE_HITRACE
                         FinishTrace(HITRACE_TAG_ACE);
 #endif
                         exports = exportObj;
+                        HILOG_ERROR("ycn 320 %{public}d ", exports->IsUndefined());
                         arkNativeEngine->loadedModules_[module] = Global<JSValueRef>(ecmaVm, exports);
                     } else {
-                        HILOG_ERROR("init module failed");
+                        HILOG_ERROR("ycn init module failed");
                         return scope.Escape(exports);
                     }
                 }
