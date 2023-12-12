@@ -147,7 +147,7 @@ The following example describes how to use NAPI to develop a JS API for obtainin
 The prototype of the JS API is as follows:
 
 ```
-function getAppName(): string;
+function getAppName(): Promise<string>;
 ```
 
 The implementation code of the JS API is as follows:
