@@ -25,7 +25,7 @@
 #endif
 
 #include "common.h"
-#include "node_api.h"
+#include "../../../third_party/node/src/oh_napi/node_api.h"
 
 #ifdef NAPI_TEST
 #ifdef _WIN32

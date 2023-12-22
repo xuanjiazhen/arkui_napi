@@ -23,7 +23,7 @@ config("ace_napi_config") {
     "native_engine",
     "native_engine/impl/ark",
     "//third_party/libuv/include",
-    "//third_party/node/src",
+    "//third_party/node/src/oh_napi",
   ]
   defines = []
   cflags_cc = []
