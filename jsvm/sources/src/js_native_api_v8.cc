@@ -983,7 +983,7 @@ OH_JSVM_CreateCodeCache(JSVM_Env env,
 }
 
 JSVM_Status JSVM_CDECL
-OH_JSVMRunScript(JSVM_Env env, JSVM_Script script, JSVM_Value* result) {
+OH_JSVM_RunScript(JSVM_Env env, JSVM_Script script, JSVM_Value* result) {
   JSVM_PREAMBLE(env);
   CHECK_ARG(env, script);
   CHECK_ARG(env, result);
@@ -3479,7 +3479,7 @@ JSVM_Status JSVM_CDECL OH_JSVM_GetDateValue(JSVM_Env env,
 }
 
 /*
-JSVM_Status JSVM_CDECL OH_JSVMRunScript(JSVM_Env env,
+JSVM_Status JSVM_CDECL OH_JSVM_RunScript(JSVM_Env env,
                                        JSVM_Value script,
                                        JSVM_Value* result) {
   JSVM_PREAMBLE(env);

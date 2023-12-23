@@ -109,7 +109,7 @@ OH_JSVM_CreateCodeCache(JSVM_Env env,
                        size_t* length);
 
 JSVM_EXTERN JSVM_Status JSVM_CDECL
-OH_JSVMRunScript(JSVM_Env env, JSVM_Script script, JSVM_Value* result);
+OH_JSVM_RunScript(JSVM_Env env, JSVM_Script script, JSVM_Value* result);
 
 JSVM_EXTERN JSVM_Status JSVM_CDECL
 OH_JSVM_JsonParse(JSVM_Env env, JSVM_Value json_string, JSVM_Value* result);
@@ -561,7 +561,7 @@ JSVM_EXTERN JSVM_Status JSVM_CDECL OH_JSVM_IsPromise(JSVM_Env env,
 
 /*
 // Running a script
-JSVM_EXTERN JSVM_Status JSVM_CDECL OH_JSVMRunScript(JSVM_Env env,
+JSVM_EXTERN JSVM_Status JSVM_CDECL OH_JSVM_RunScript(JSVM_Env env,
                                                    JSVM_Value script,
                                                    JSVM_Value* result);
 */

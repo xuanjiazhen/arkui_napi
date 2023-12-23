@@ -121,7 +121,7 @@ do_env() {
         target_name="arm-linux-ohos"
         target_arch="arm"
         target_march="armv7-a"
-        host_args="-m32"
+        host_args="-m32 -I${workdir}"
     elif [[ ${target_cpu} = "arm64" ]]; then
         target_name="aarch64-linux-ohos"
         target_arch="aarch64"

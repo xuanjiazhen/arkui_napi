@@ -10,7 +10,7 @@
     {"name": "OH_JSVM_CloseEnvScope"},
     {"name": "OH_JSVM_CompileScript"},
     {"name": "OH_JSVM_CreateCodeCache"},
-    {"name": "OH_JSVMRunScript"},
+    {"name": "OH_JSVM_RunScript"},
     {"name": "OH_JSVM_SetInstanceData"},
     {"name": "OH_JSVM_GetInstanceData"},
     {"name": "OH_JSVM_GetLastErrorInfo"},

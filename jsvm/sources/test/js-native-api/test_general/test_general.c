@@ -227,7 +227,7 @@ static JSVM_Value testNapiRun(JSVM_Env env, JSVM_CallbackInfo info) {
 
   NODE_API_CALL(env, OH_JSVM_GetCbInfo(env, info, &argc, &script, NULL, NULL));
 
-  NODE_API_CALL(env, OH_JSVMRunScript(env, script, &result));
+  NODE_API_CALL(env, OH_JSVM_RunScript(env, script, &result));
 
   return result;
 }

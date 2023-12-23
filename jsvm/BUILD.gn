@@ -1,5 +1,5 @@
-import("//build/ohos.gni")
 import("//build/config/clang/clang.gni")
+import("//build/ohos.gni")
 
 ohos_prebuilt_shared_library("libjsvm") {
   deps = [ ":build_libjsvm" ]
@@ -9,11 +9,12 @@ ohos_prebuilt_shared_library("libjsvm") {
   part_name = "napi"
 
   install_enable = true
-  install_images = ["system"]
-  innerapi_tags = ["ndk"]
+  install_images = [ "system" ]
+  innerapi_tags = [ "ndk" ]
 }
 
 ohos_ndk_library("libjsvm_ndk") {
+  deps = [ ":libjsvm" ]
   ndk_description_file = "./libjsvm.ndk.json"
   min_compact_version = "1"
   output_name = "jsvm"
@@ -21,6 +22,7 @@ ohos_ndk_library("libjsvm_ndk") {
 }
 
 ohos_ndk_headers("jsvm_header") {
+  deps = [ ":libjsvm" ]
   dest_dir = "$ndk_headers_out_dir/jsvm"
   sources = [
     "sources/src/jsvm.h",
@@ -29,13 +31,18 @@ ohos_ndk_headers("jsvm_header") {
 }
 
 action("build_libjsvm") {
+  deps = [ "//third_party/musl:musl_all" ]
   script = "build_jsvm.sh"
   sources = [ "sources/src/jsvm.h" ]
   outputs = [ "$target_gen_dir/libjsvm.so" ]
   args = [
-    "--target_gen_dir", rebase_path("$target_gen_dir"),
-    "--target_cpu", "$target_cpu",
-    "--prefix", rebase_path("$clang_base_path/bin"),
-    "--sysroot", rebase_path("$musl_sysroot")
+    "--target_gen_dir",
+    rebase_path("$target_gen_dir"),
+    "--target_cpu",
+    "$target_cpu",
+    "--prefix",
+    rebase_path("$clang_base_path/bin"),
+    "--sysroot",
+    rebase_path("$musl_sysroot"),
   ]
 }
