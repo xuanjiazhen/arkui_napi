@@ -1,0 +1,12 @@
+#ifndef JS_NATIVE_API_ENTRY_POINT_H_
+#define JS_NATIVE_API_ENTRY_POINT_H_
+
+#include <node_api.h>
+
+EXTERN_C_START
+JSVM_Value Init(JSVM_Env env, JSVM_Value exports);
+EXTERN_C_END
+
+JSVM_MODULE(NODE_GYP_MODULE_NAME, Init)
+
+#endif  // JS_NATIVE_API_ENTRY_POINT_H_
