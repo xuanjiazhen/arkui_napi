@@ -3246,3 +3246,55 @@ NAPI_EXTERN napi_status napi_run_module_path(napi_env env, const char* path, con
     *result = engine->RunScript(path, const_cast<char*>(entryPoint));
     return napi_clear_last_error(env);
 }
+
+NAPI_EXTERN napi_status napi_make_callback(napi_env env,
+                                           napi_async_context async_context,
+                                           napi_value recv,
+                                           napi_value func,
+                                           size_t argc,
+                                           const napi_value* argv,
+                                           napi_value* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, recv);
+    CHECK_ARG(env, func);
+    if (argc > 0) {
+        CHECK_ARG(env, argv);
+    }
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
+
+    auto callBackSocpeMannger= engine->GetCallbackScopeManager();
+    auto callbackScope = callBackSocpeMannger->Open(engine);
+
+    RETURN_STATUS_IF_FALSE(env, reinterpret_cast<panda::JSValueRef *>(func)->IsFunction(), napi_function_expected);
+
+    panda::JSValueRef* thisObj = reinterpret_cast<panda::JSValueRef *>(recv);
+    panda::FunctionRef* function = reinterpret_cast<panda::FunctionRef *>(func);
+
+    panda::JSValueRef* callBackRst;
+    if (async_context == nullptr) {
+        callBackRst = function->CallForNapi(vm, thisObj, reinterpret_cast<panda::JSValueRef *const*>(argv), argc);
+    } else {
+        callBackRst = nullptr;
+    }
+    if (callBackRst == nullptr) {
+        callbackScope->MarkAsFailed();
+        callBackSocpeMannger->Close(callbackScope);
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+    callBackSocpeMannger->Close(callbackScope);
+    if (callbackScope->Failed()) {
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+    if (tryCatch.HasCaught()) {
+        HILOG_ERROR("pending exception when function called");
+        HILOG_ERROR("print exception info: ");
+        panda::JSNApi::PrintExceptionInfo(vm);
+        return napi_set_last_error(env, napi_pending_exception);
+    }
+    if (result) {
+        *result = reinterpret_cast<napi_value>(callBackRst);
+    }
+    return GET_RETURN_STATUS(env);
+}
