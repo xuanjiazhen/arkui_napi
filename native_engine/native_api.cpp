@@ -2576,8 +2576,9 @@ NAPI_EXTERN napi_status napi_is_map(napi_env env, napi_value value, bool* result
     CHECK_ARG(env, value);
     CHECK_ARG(env, result);
 
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     auto nativeValue = LocalValueFromJsValue(value);
-    *result = nativeValue->IsMap();
+    *result = nativeValue->IsMap(vm);
     return napi_clear_last_error(env);
 }
 
@@ -2587,8 +2588,9 @@ NAPI_EXTERN napi_status napi_is_set(napi_env env, napi_value value, bool* result
     CHECK_ARG(env, value);
     CHECK_ARG(env, result);
 
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     auto nativeValue = LocalValueFromJsValue(value);
-    *result = nativeValue->IsSet();
+    *result = nativeValue->IsSet(vm);
     return napi_clear_last_error(env);
 }
 
