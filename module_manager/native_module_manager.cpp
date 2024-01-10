@@ -328,6 +328,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libnative_image.so",
         "libnative_media_adec.so",
         "libnative_media_aenc.so",
+	"libnative_media_acodec.so",
         "libnative_media_codecbase.so",
         "libnative_media_core.so",
         "libnative_media_vdec.so",
