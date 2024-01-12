@@ -457,6 +457,16 @@ public:
     uint64_t openHandleScopes_ = 0;
     panda::Local<panda::ObjectRef> lastException_;
 
+    void SetInstanceIdPtr(int32_t *id)
+    {
+        instanceId_ = id;
+    }
+
+    int32_t *GetInstanceIdPtr()
+    {
+        return instanceId_;
+    }
+
 private:
     std::string moduleName_;
     std::string moduleFileName_;
@@ -480,6 +490,7 @@ private:
     bool checkUVLoop_ = false;
     uv_thread_t uvThread_;
 #endif
+    int32_t *instanceId_ = nullptr;
 
     PostTask postTask_ = nullptr;
     CleanEnv cleanEnv_ = nullptr;

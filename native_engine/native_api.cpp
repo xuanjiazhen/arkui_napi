@@ -22,6 +22,7 @@
 
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
+#include "core/common/container_consts.h"
 #endif
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_api_internal.h"
@@ -1123,16 +1124,29 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     }
 
     RETURN_STATUS_IF_FALSE(env, reinterpret_cast<panda::JSValueRef *>(func)->IsFunction(), napi_function_expected);
-    auto vm = reinterpret_cast<NativeEngine *>(env)->GetEcmaVm();
+    auto engine = reinterpret_cast<NativeEngine *>(env);
+    auto vm = engine->GetEcmaVm();
     panda::JSValueRef* thisObj = reinterpret_cast<panda::JSValueRef *>(recv);
     panda::FunctionRef* function = reinterpret_cast<panda::FunctionRef *>(func);
 #ifdef ENABLE_CONTAINER_SCOPE
-    int32_t scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    int32_t *ptr = engine->GetInstanceIdPtr();
+#if !defined(PREVIEW)
+    int32_t scopeId = OHOS::Ace::INSTANCE_ID_UNDEFINED;
+#else
+    int32_t scopeId = 0;
+#endif
+    int32_t restoreId = scopeId;
+    if (ptr != nullptr) {
+        restoreId = *ptr;
+        scopeId = restoreId;
+    }
     auto funcInfo = reinterpret_cast<NapiFunctionInfo *>(function->GetData(vm));
     if (funcInfo != nullptr) {
         scopeId = funcInfo->scopeId;
     }
-    OHOS::Ace::ContainerScope containerScope(scopeId);
+    if (ptr != nullptr) {
+        *ptr = scopeId;
+    }
 #endif
     panda::JSValueRef* value =
         function->CallForNapi(vm, thisObj, reinterpret_cast<panda::JSValueRef *const*>(argv), argc);
@@ -1140,11 +1154,21 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
         HILOG_ERROR("pending exception when js function called");
         HILOG_ERROR("print exception info: ");
         panda::JSNApi::PrintExceptionInfo(vm);
+#ifdef ENABLE_CONTAINER_SCOPE
+        if (ptr != nullptr) {
+            *ptr = restoreId;
+        }
+#endif
         return napi_set_last_error(env, napi_pending_exception);
     }
     if (result) {
         *result = reinterpret_cast<napi_value>(value);
     }
+#ifdef ENABLE_CONTAINER_SCOPE
+    if (ptr != nullptr) {
+        *ptr = restoreId;
+    }
+#endif
     return napi_clear_last_error(env);
 }
 
