@@ -42,7 +42,7 @@ std::mutex g_instanceMutex;
 
 NativeModuleManager::NativeModuleManager()
 {
-    HILOG_INFO("enter");
+    HILOG_DEBUG("enter");
     pthread_mutex_init(&mutex_, nullptr);
     moduleLoadChecker_ = std::make_unique<ModuleLoadChecker>();
 }
