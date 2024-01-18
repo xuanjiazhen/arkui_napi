@@ -310,6 +310,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libbundle_ndk.z.so",
         "libdeviceinfo_ndk.z.so",
         "libEGL.so",
+        "libGLESv2.so",
         "libGLESv3.so",
         "libhiappevent_ndk.z.so",
         "libhuks_ndk.z.so",
