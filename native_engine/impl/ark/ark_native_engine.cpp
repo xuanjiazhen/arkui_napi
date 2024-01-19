@@ -1302,6 +1302,12 @@ bool ArkNativeEngine::GetIsBundle()
     return panda::JSNApi::IsBundle(vm_);
 }
 
+int ArkNativeEngine::GetProcessStartRealtime()
+{
+    LocalScope scope(vm_);
+    return panda::JSNApi::GetProcessStartRealtime(vm_);
+}
+
 panda::Local<panda::ObjectRef> ArkNativeEngine::LoadArkModule(const void* buffer,
     int32_t len, const std::string& fileName)
 {
