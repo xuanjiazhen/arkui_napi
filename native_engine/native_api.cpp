@@ -1038,8 +1038,7 @@ NAPI_EXTERN napi_status napi_define_properties(napi_env env,
     CHECK_ARG(env, properties);
 
     auto nativeValue = LocalValueFromJsValue(object);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(),
-        napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     Local<panda::ObjectRef> nativeObject = nativeValue->ToObject(vm);
 
@@ -1296,36 +1295,27 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
     CHECK_ARG(env, native_object);
     CHECK_ARG(env, finalize_cb);
 
-    auto nativeValue = LocalValueFromJsValue(js_object);
+    auto jsValue = LocalValueFromJsValue(js_object);
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
-    auto engine = reinterpret_cast<NativeEngine*>(env);
+    RETURN_STATUS_IF_FALSE(env, jsValue->IsObject() || jsValue->IsFunction(), napi_object_expected);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
-    auto nativeObject = nativeValue->ToObject(vm);
+    auto jsObject = jsValue->ToObject(vm);
     size_t nativeBindingSize = 0;
     auto reference = reinterpret_cast<NativeReference**>(result);
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    if (native_object == nullptr && nativeObject->Has(vm, key)) {
-        Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
-        auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(0, nullptr, nullptr, nullptr, nativeBindingSize);
-        nativeObject->Delete(vm, key);
-        delete ref;
+    Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
+    NativeReference* ref = nullptr;
+    if (reference != nullptr) {
+        ref = new ArkNativeReference(engine, vm, js_object, 1, false, callback, native_object, finalize_hint);
+        *reference = ref;
     } else {
-        Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
-        NativeReference* ref = nullptr;
-        if (reference != nullptr) {
-            ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
-            *reference = ref;
-        } else {
-            ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
-        }
-        object->SetNativePointerFieldCount(1);
-        object->SetNativePointerField(0, ref, nullptr, nullptr, nativeBindingSize);
-        PropertyAttribute attr(object, true, false, true);
-        nativeObject->DefineProperty(vm, key, attr);
+        ref = new ArkNativeReference(engine, vm, js_object, 0, true, callback, native_object, finalize_hint);
     }
+    object->SetNativePointerFieldCount(1);
+    object->SetNativePointerField(0, ref, nullptr, nullptr, nativeBindingSize);
+    PropertyAttribute attr(object, true, false, true);
+    jsObject->DefineProperty(vm, key, attr);
     return GET_RETURN_STATUS(env);
 }
 
@@ -1343,35 +1333,26 @@ NAPI_EXTERN napi_status napi_wrap_with_size(napi_env env,
     CHECK_ARG(env, native_object);
     CHECK_ARG(env, finalize_cb);
 
-    auto nativeValue = LocalValueFromJsValue(js_object);
+    auto jsValue = LocalValueFromJsValue(js_object);
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
-    auto engine = reinterpret_cast<NativeEngine*>(env);
+    RETURN_STATUS_IF_FALSE(env, jsValue->IsObject() || jsValue->IsFunction(), napi_object_expected);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
-    auto nativeObject = nativeValue->ToObject(vm);
+    auto jsObject = jsValue->ToObject(vm);
     auto reference = reinterpret_cast<NativeReference**>(result);
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    if (native_object == nullptr && nativeObject->Has(vm, key)) {
-        Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
-        auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(0, nullptr, nullptr, nullptr, native_binding_size);
-        nativeObject->Delete(vm, key);
-        delete ref;
+    Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
+    NativeReference* ref = nullptr;
+    if (reference != nullptr) {
+        ref = new ArkNativeReference(engine, vm, js_object, 1, false, callback, native_object, finalize_hint);
+        *reference = ref;
     } else {
-        Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
-        NativeReference* ref = nullptr;
-        if (reference != nullptr) {
-            ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
-            *reference = ref;
-        } else {
-            ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
-        }
-        object->SetNativePointerFieldCount(1);
-        object->SetNativePointerField(0, ref, nullptr, nullptr, native_binding_size);
-        PropertyAttribute attr(object, true, false, true);
-        nativeObject->DefineProperty(vm, key, attr);
+        ref = new ArkNativeReference(engine, vm, js_object, 0, true, callback, native_object, finalize_hint);
     }
+    object->SetNativePointerFieldCount(1);
+    object->SetNativePointerField(0, ref, nullptr, nullptr, native_binding_size);
+    PropertyAttribute attr(object, true, false, true);
+    jsObject->DefineProperty(vm, key, attr);
 
     return GET_RETURN_STATUS(env);
 }
@@ -1406,7 +1387,7 @@ NAPI_EXTERN napi_status napi_remove_wrap(napi_env env, napi_value js_object, voi
 
     auto nativeValue = LocalValueFromJsValue(js_object);
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
-    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
     auto nativeObject = nativeValue->ToObject(vm);
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
@@ -1428,8 +1409,7 @@ NAPI_EXTERN napi_status napi_remove_wrap(napi_env env, napi_value js_object, voi
         delete ref;
     } else {
         Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
-        NativeReference* ref = nullptr;
-        ref = engine->CreateReference(js_object, 0, true, nullptr, nullptr, nullptr);
+        NativeReference* ref = new ArkNativeReference(engine, vm, js_object, 0, true, nullptr, nullptr, nullptr);
         object->SetNativePointerFieldCount(1);
         object->SetNativePointerField(0, ref, nullptr, nullptr, nativeBindingSize);
         PropertyAttribute attr(object, true, false, true);
@@ -2338,16 +2318,12 @@ NAPI_EXTERN napi_status napi_set_promise_rejection_callback(napi_env env, napi_r
 
     auto rejectCallbackRef = reinterpret_cast<NativeReference*>(ref);
     auto checkCallbackRef = reinterpret_cast<NativeReference*>(checkRef);
-    if (rejectCallbackRef == nullptr || checkCallbackRef == nullptr) {
-        HILOG_ERROR("rejectCallbackRef or checkCallbackRef is nullptr");
-    } else {
-        auto engine = reinterpret_cast<NativeEngine*>(env);
-        auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-        engine->SetPromiseRejectCallBackRef(rejectCallbackRef);
-        engine->SetCheckCallbackRef(checkCallbackRef);
-        panda::JSNApi::SetHostPromiseRejectionTracker(const_cast<EcmaVM*>(vm), engine->GetPromiseRejectCallback(),
-                                                      reinterpret_cast<void*>(engine));
-    }
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
+    engine->SetPromiseRejectCallBackRef(rejectCallbackRef);
+    engine->SetCheckCallbackRef(checkCallbackRef);
+    panda::JSNApi::SetHostPromiseRejectionTracker(const_cast<EcmaVM*>(vm), engine->GetPromiseRejectCallback(),
+                                                  reinterpret_cast<void*>(engine));
 
     return napi_clear_last_error(env);
 }
@@ -3001,13 +2977,15 @@ NAPI_EXTERN napi_status napi_add_finalizer(napi_env env,
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject(), napi_object_expected);
     NativeReference* reference = nullptr;
-    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
     if (result != nullptr) {
-        reference = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+        reference = new ArkNativeReference(engine, vm, js_object, 1, false, callback, native_object, finalize_hint);
         *result = reinterpret_cast<napi_ref>(reference);
     } else {
-        reference = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
+        reference = new ArkNativeReference(engine, vm, js_object, 0, true, callback, native_object, finalize_hint);
     }
+
     return napi_clear_last_error(env);
 }
 
@@ -3125,9 +3103,9 @@ NAPI_EXTERN napi_status napi_get_stack_trace(napi_env env, std::string& stack)
     CHECK_ENV(env);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
-    [[maybe_unused]] auto vm = engine->GetEcmaVm();
     std::string rawStack;
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
+    auto vm = engine->GetEcmaVm();
     DFXJSNApi::BuildJsStackTrace(vm, rawStack);
 #else
     HILOG_WARN("GetStacktrace env get stack failed");
@@ -3167,8 +3145,7 @@ void* DetachFuncCallback(void* engine, void* object, void* hint, void* detachDat
         return nullptr;
     }
     DetachCallback detach = reinterpret_cast<DetachCallback>(detachData);
-    void* detachVal = detach(reinterpret_cast<NativeEngine*>(engine), object, hint);
-    return detachVal;
+    return detach(reinterpret_cast<NativeEngine*>(engine), object, hint);
 }
 
 Local<panda::JSValueRef> AttachFuncCallback(void* engine, void* buffer, void* hint, void* attachData)
