@@ -2396,10 +2396,10 @@ NAPI_EXTERN napi_status napi_run_actor(napi_env env,
     return GET_RETURN_STATUS(env);
 }
 
-NAPI_EXTERN napi_status napi_load_module(napi_env env, const char* path, napi_value* result)
+NAPI_EXTERN napi_status napi_load_module(napi_env env, const char* path, const char* module_info, napi_value* export)
 {
     CHECK_ENV(env);
-    CHECK_ARG(env, result);
+    CHECK_ARG(env, export);
     
     auto engine = reinterpret_cast<NativeEngine*>(env);
     *result = engine->NapiLoadModule(path);
