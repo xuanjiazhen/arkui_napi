@@ -20,9 +20,6 @@
 #include <sys/prctl.h>
 #endif
 
-#ifdef ENABLE_CONTAINER_SCOPE
-#include "core/common/container_scope.h"
-#endif
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_api_internal.h"
 #include "native_engine/impl/ark/ark_native_engine.h"
@@ -411,9 +408,6 @@ NAPI_EXTERN napi_status napi_create_function(napi_env env,
     funcInfo->env = env;
     funcInfo->callback = callback;
     funcInfo->data = data;
-#ifdef ENABLE_CONTAINER_SCOPE
-    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
-#endif
 
     Local<panda::FunctionRef> fn = panda::FunctionRef::New(vm, ArkNativeFunctionCallBack,
                                                            [](void* externalPointer, void* data) {
@@ -834,9 +828,6 @@ NAPI_EXTERN napi_status napi_get_property(napi_env env, napi_value object, napi_
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     Local<panda::ObjectRef> obj = nativeValue->ToObject(vm);
     Local<panda::JSValueRef> value = obj->Get(vm, propKey);
-    if (value->IsFunction()) {
-        FunctionSetContainerId(vm, value);
-    }
     *result = JsValueFromLocalValue(value);
 
     return GET_RETURN_STATUS(env);
@@ -932,9 +923,6 @@ NAPI_EXTERN napi_status napi_get_named_property(napi_env env,
     Local<panda::StringRef> key = panda::StringRef::NewFromUtf8(vm, utf8name);
     Local<panda::ObjectRef> obj = nativeValue->ToObject(vm);
     Local<panda::JSValueRef> value = obj->Get(vm, key);
-    if (value->IsFunction()) {
-        FunctionSetContainerId(vm, value);
-    }
     *result = JsValueFromLocalValue(value);
 
     return GET_RETURN_STATUS(env);
@@ -1003,9 +991,6 @@ NAPI_EXTERN napi_status napi_get_element(napi_env env, napi_value object, uint32
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     Local<panda::ObjectRef> obj = nativeValue->ToObject(vm);
     Local<panda::JSValueRef> value = obj->Get(vm, index);
-    if (value->IsFunction()) {
-        FunctionSetContainerId(vm, value);
-    }
     *result = JsValueFromLocalValue(value);
 
     return GET_RETURN_STATUS(env);
