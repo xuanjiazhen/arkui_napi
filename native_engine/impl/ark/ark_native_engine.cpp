@@ -76,6 +76,8 @@ static uint64_t g_lastHeapDumpTime = 0;
 static bool g_debugLeak = OHOS::system::GetBoolParameter("debug.arkengine.tags.enableleak", false);
 static constexpr uint64_t HEAP_DUMP_REPORT_INTERVAL = 24 * 3600 * 1000;
 static constexpr uint64_t SEC_TO_MILSEC = 1000;
+static constexpr char KEY_VERSION_TYPE[] = "const.logsystem.versiontype";
+static bool g_isCheckedBeta = false;
 #endif
 #ifdef ENABLE_HITRACE
 constexpr auto NAPI_PROFILER_PARAM_SIZE = 10;
@@ -178,6 +180,12 @@ static bool IsInAppspawn()
         return true;
     }
     return false;
+}
+
+bool IsBetaVersion()
+{
+    auto versionType = OHOS::system::GetParameter(KEY_VERSION_TYPE, "unknown");
+    return (versionType.find("beta") != std::string::npos);
 }
 
 #endif
@@ -1880,6 +1888,14 @@ void ArkNativeEngine::StartMonitorJSHeapUsage()
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM) && !defined(ANDROID_PLATFORM)
     if (!g_enableProperty) {
         return;
+    }
+    if (!g_isCheckedBeta) {
+        auto isBetaVersion = IsBetaVersion();
+        g_isCheckedBeta = true;
+        if (!isBetaVersion) {
+            g_enableProperty = false;
+            return;
+        }
     }
     if (threadJsHeap_ == nullptr && !IsInAppspawn()) {
         threadJsHeap_ = std::make_unique<std::thread>(&ArkNativeEngine::JsHeapStart, this);
