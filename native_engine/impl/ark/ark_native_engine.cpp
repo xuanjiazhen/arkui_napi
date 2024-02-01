@@ -33,7 +33,9 @@
 #include "core/common/container_scope.h"
 #endif
 #ifdef ENABLE_HITRACE
+#include "hitrace/trace.h"
 #include "hitrace_meter.h"
+#include "musl_preinit_common.h"
 #include "parameter.h"
 #endif
 
@@ -79,6 +81,7 @@ static constexpr uint64_t SEC_TO_MILSEC = 1000;
 #endif
 #ifdef ENABLE_HITRACE
 constexpr auto NAPI_PROFILER_PARAM_SIZE = 10;
+std::atomic<uint64_t> g_chainId = 0;
 #endif
 
 std::string ArkNativeEngine::tempModuleName_ {""};
@@ -502,6 +505,23 @@ static inline void StartNapiProfilerTrace(panda::JsiRuntimeCallInfo *runtimeInfo
             char threadName[128];
             prctl(PR_GET_NAME, threadName);
             StartTraceArgs(HITRACE_TAG_ACE, "Napi called:%s, tname:%s", nameRef->ToString().c_str(), threadName);
+
+            bool hookFlag = __get_hook_flag();
+            if (hookFlag && nameRef->ToString().find("hilog") == std::string::npos) {
+                std::string rawStack;
+                auto info = reinterpret_cast<NapiFunctionInfo*>(runtimeInfo->GetData());
+                auto engine = reinterpret_cast<NativeEngine*>(info->env);
+                engine->BuildJsStackTrace(rawStack);
+
+                OHOS::HiviewDFX::HiTraceChain::Begin("ArkNativeFunctionCallBack", 0);
+                g_chainId = g_chainId + static_cast<uint64_t>(1);
+                HILOG_INFO("JSStackID:%{public}llx\n, JSStackStr:%{public}s, funName:%{public}s",
+                    static_cast<unsigned long long>(g_chainId), rawStack.c_str(),
+                    nameRef->ToString().c_str());
+                OHOS::HiviewDFX::HiTraceId hitraceId = OHOS::HiviewDFX::HiTraceChain::GetId();
+                hitraceId.SetChainId(g_chainId);
+                OHOS::HiviewDFX::HiTraceChain::SetId(hitraceId);
+            }
         }
 #endif
 }
@@ -511,6 +531,13 @@ static inline void FinishNapiProfilerTrace()
 #ifdef ENABLE_HITRACE
     if (ArkNativeEngine::napiProfilerEnabled) {
         FinishTrace(HITRACE_TAG_ACE);
+
+        OHOS::HiviewDFX::HiTraceId hitraceId = OHOS::HiviewDFX::HiTraceChain::GetId();
+        if (hitraceId.IsValid()) {
+            OHOS::HiviewDFX::HiTraceChain::End(hitraceId);
+            OHOS::HiviewDFX::HiTraceChain::ClearId();
+            HILOG_INFO("JSStackID:%{public}llx", static_cast<unsigned long long>(hitraceId.GetChainId()));
+        }
     }
 #endif
 }
