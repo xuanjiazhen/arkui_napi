@@ -27,6 +27,9 @@
                 "ets_runtime",
                 "hilog",
                 "hitrace",
+                "libuv",
+                "node",
+                "bounds_checking_function",
                 "init"
             ],
             "third_party": [
