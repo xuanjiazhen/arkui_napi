@@ -134,7 +134,6 @@ if (is_arkui_x) {
     # public_deps = [ "//third_party/libuv:uv" ]
     public_external_deps = [
       "libuv:uv",
-      "node:node_header",
     ]
 
     external_deps = [ "bounds_checking_function:libsec_shared" ]
