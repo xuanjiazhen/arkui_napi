@@ -76,8 +76,13 @@ ohos_source_set("ace_napi_static") {
       "hitrace:hitrace_meter",
       "hitrace:libhitracechain",
       "init:libbegetutil",
+      "ipc:ipc_core",
+      "resource_schedule_service:ressched_client",
     ]
-    defines += [ "ENABLE_HITRACE" ]
+    defines += [
+      "ENABLE_HITRACE",
+      "OHOS_RSS_CLIENT",
+    ]
   }
 
   configs = [ "//third_party/icu/icu4c:icu_config" ]
