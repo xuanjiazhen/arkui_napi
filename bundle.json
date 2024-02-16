@@ -27,7 +27,9 @@
                 "ets_runtime",
                 "hilog",
                 "hitrace",
-                "init"
+                "init",
+                "ipc",
+                "resource_schedule_service"
             ],
             "third_party": [
                 "icu",
