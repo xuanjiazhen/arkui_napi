@@ -539,6 +539,18 @@ void NativeEngine::SetDebuggerPostTaskFunc(DebuggerPostTask func)
 {
     debuggerPostTaskFunc_ = func;
 }
+
+void NativeEngine::CallDebuggerInitTaskFunc(std::function<void()>&& task)
+{
+    if (debuggerInitTaskFunc_ != nullptr) {
+        debuggerInitTaskFunc_(std::move(task));
+    }
+}
+
+void NativeEngine::SetDebuggerInitTaskFunc(DebuggerPostTask func)
+{
+    debuggerInitTaskFunc_ = func;
+}
 #endif
 
 void NativeEngine::SetHostEngine(NativeEngine* engine)

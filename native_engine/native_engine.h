@@ -308,6 +308,8 @@ public:
 #if !defined(PREVIEW)
     virtual void SetDebuggerPostTaskFunc(DebuggerPostTask func);
     virtual void CallDebuggerPostTaskFunc(std::function<void()>&& task);
+    virtual void CallDebuggerInitTaskFunc(std::function<void()>&& task);
+    virtual void SetDebuggerInitTaskFunc(DebuggerPostTask func);
 #endif
 
     virtual void StartMonitorJSHeapUsage() = 0;
@@ -449,6 +451,7 @@ protected:
     OffWorkerFunc offWorkerFunc_ {nullptr};
 #if !defined(PREVIEW)
     DebuggerPostTask debuggerPostTaskFunc_ {nullptr};
+    DebuggerPostTask debuggerInitTaskFunc_ {nullptr};
 #endif
     NativeEngine* hostEngine_ {nullptr};
     bool isAppModule_ = false;
