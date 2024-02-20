@@ -137,8 +137,14 @@ void ArkNativeReference::FreeGlobalCallBack(void* ref)
 
 void ArkNativeReference::NativeFinalizeCallBack(void* ref)
 {
+    #ifdef ENABLE_HITRACE
+    StartTrace(HITRACE_TAG_ACE, "NativeFinalizeCallBack");
+    #endif
     auto that = reinterpret_cast<ArkNativeReference*>(ref);
     that->FinalizeCallback();
+    #ifdef ENABLE_HITRACE
+    FinishTrace(HITRACE_TAG_ACE);
+    #endif
 }
 
 void ArkNativeReference::SetDeleteSelf()
