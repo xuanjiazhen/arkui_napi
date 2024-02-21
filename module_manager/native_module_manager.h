@@ -52,6 +52,8 @@ typedef napi_value (*RegisterCallback)(napi_env, napi_value);
 
 typedef void (*GetJSCodeCallback)(const char** buf, int* bufLen);
 
+typedef void (*GetDebugInfoCallback)(uint32_t tid, std::string &result);
+
 struct NativeModule {
     const char* name = nullptr;
     const char* fileName = nullptr;
@@ -82,6 +84,9 @@ public:
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     bool UnloadNativeModule(const std::string& moduleKey);
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);
+
+    void RegisterDebugInfoCallback(GetDebugInfoCallback callback);
+    std::string GetDebugInfoFromModules(uint32_t tid);
 
     /**
      * @brief Set the path for searching napi dynamic libraries, only for the previewer.
@@ -125,6 +130,7 @@ private:
     bool RemoveNativeModule(const std::string& moduleKey);
     void MoveApiAllowListCheckerPtr(
         std::unique_ptr<ApiAllowListChecker>& apiAllowListChecker, NativeModule* nativeModule);
+
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
     void CreateSharedLibsSonames();
@@ -154,6 +160,9 @@ private:
     std::map<std::string, char*> appLibPathMap_;
     std::string previewSearchPath_;
     std::unique_ptr<ModuleLoadChecker> moduleLoadChecker_ = nullptr;
+
+    mutable std::mutex moduleDebugInfoCbMutex_;
+    std::vector<GetDebugInfoCallback> moduleDebugInfoCallbacks_;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H */
