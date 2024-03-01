@@ -20,13 +20,13 @@
 #include <string>
 #include <vector>
 
-#include "../../../third_party/node/src/js_native_api.h"
-#include "../../../third_party/node/src/node_api.h"
 #include "native_common.h"
+#include "third_party/node/src/js_native_api.h"
+#include "third_party/node/src/node_api.h"
 
 typedef void (*NAPIGetJSCode)(const char** buf, int* bufLen);
 typedef void (*NapiNativeFinalize)(napi_env env, void* data, void* hint);
-typedef void* (*NapiDetachCallback)(napi_env env, void* nativeObject, void* hint); // hint: detach params
+typedef void* (*NapiDetachCallback)(napi_env env, void* nativeObject, void* hint);      // hint: detach params
 typedef napi_value (*NapiAttachCallback)(napi_env env, void* nativeObject, void* hint); // hint: attach params
 
 typedef struct napi_module_with_js {
@@ -44,27 +44,17 @@ NAPI_EXTERN napi_status napi_create_limit_runtime(napi_env env, napi_env* result
 NAPI_EXTERN void napi_module_with_js_register(napi_module_with_js* mod);
 NAPI_EXTERN napi_status napi_is_callable(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_create_runtime(napi_env env, napi_env* result_env);
-NAPI_EXTERN napi_status napi_serialize(napi_env env, napi_value object, napi_value transfer_list,
-                                       napi_value clone_list, bool defaultTransfer, bool defaultCloneSendable,
-                                       napi_value* result);
+NAPI_EXTERN napi_status napi_serialize(napi_env env, napi_value object, napi_value transfer_list, napi_value clone_list,
+    bool defaultTransfer, bool defaultCloneSendable, napi_value* result);
 NAPI_EXTERN napi_status napi_deserialize(napi_env env, napi_value recorder, napi_value* object);
 NAPI_EXTERN napi_status napi_delete_serialization_data(napi_env env, napi_value value);
 NAPI_EXTERN napi_status napi_run_buffer_script(napi_env env, std::vector<uint8_t>& buffer, napi_value* result);
-NAPI_EXTERN napi_status napi_run_actor(napi_env env, std::vector<uint8_t>& buffer,
-                                       const char* descriptor, napi_value* result, char* entryPoint = nullptr);
-NAPI_EXTERN napi_status napi_wrap_with_size(napi_env env,
-                                  napi_value js_object,
-                                  void* native_object,
-                                  napi_finalize finalize_cb,
-                                  void* finalize_hint,
-                                  napi_ref* result,
-                                  size_t native_binding_size);
-NAPI_EXTERN napi_status napi_create_external_with_size(napi_env env,
-                                                       void* data,
-                                                       napi_finalize finalize_cb,
-                                                       void* finalize_hint,
-                                                       napi_value* result,
-                                                       size_t native_binding_size);
+NAPI_EXTERN napi_status napi_run_actor(
+    napi_env env, std::vector<uint8_t>& buffer, const char* descriptor, napi_value* result, char* entryPoint = nullptr);
+NAPI_EXTERN napi_status napi_wrap_with_size(napi_env env, napi_value js_object, void* native_object,
+    napi_finalize finalize_cb, void* finalize_hint, napi_ref* result, size_t native_binding_size);
+NAPI_EXTERN napi_status napi_create_external_with_size(napi_env env, void* data, napi_finalize finalize_cb,
+    void* finalize_hint, napi_value* result, size_t native_binding_size);
 NAPI_EXTERN napi_status napi_set_promise_rejection_callback(napi_env env, napi_ref ref, napi_ref checkRef);
 
 NAPI_EXTERN napi_status napi_is_arguments_object(napi_env env, napi_value value, bool* result);
@@ -93,16 +83,10 @@ NAPI_EXTERN napi_status napi_is_big_uint64_array(napi_env env, napi_value value,
 NAPI_EXTERN napi_status napi_is_shared_array_buffer(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_sendable_object(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_get_stack_trace(napi_env env, std::string& stack);
-NAPI_EXTERN napi_status napi_get_own_property_descriptor(napi_env env,
-                                                         napi_value object,
-                                                         const char* utf8name,
-                                                         napi_value* result);
+NAPI_EXTERN napi_status napi_get_own_property_descriptor(
+    napi_env env, napi_value object, const char* utf8name, napi_value* result);
 NAPI_EXTERN napi_status napi_object_get_keys(napi_env env, napi_value data, napi_value* result);
-NAPI_EXTERN napi_status napi_get_print_string(napi_env env,
-                                              napi_value value,
-                                              std::string& result);
-NAPI_EXTERN napi_status napi_run_module_path(napi_env env,
-                                             const char* path,
-                                             const char* entryPoint,
-                                             napi_value* result);
+NAPI_EXTERN napi_status napi_get_print_string(napi_env env, napi_value value, std::string& result);
+NAPI_EXTERN napi_status napi_run_module_path(
+    napi_env env, const char* path, const char* entryPoint, napi_value* result);
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_API_H */
