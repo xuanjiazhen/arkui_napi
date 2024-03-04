@@ -15,10 +15,11 @@ import("//build/ohos.gni")
 
 ohos_shared_library("netserver") {
   include_dirs = [
-    "//third_party/libuv/include",
+    # "//third_party/libuv/include",
     "//third_party/node/src",
     "//foundation/arkui/napi/interfaces/kits",
-    "//third_party/bounds_checking_function/include",
+
+    # "//third_party/bounds_checking_function/include",
   ]
 
   sources = [
@@ -30,11 +31,15 @@ ohos_shared_library("netserver") {
 
   deps = [
     "//foundation/arkui/napi:ace_napi",
-    "//third_party/bounds_checking_function:libsec_static",
-    "//third_party/libuv:uv",
+    # "//third_party/bounds_checking_function:libsec_static",
+    # "//third_party/libuv:uv",
   ]
 
-  external_deps = [ "hilog:libhilog" ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "hilog:libhilog",
+    "libuv:uv",
+  ]
 
   relative_install_dir = "module"
 
