@@ -26,7 +26,7 @@ ohos_shared_library("storage") {
 
   sources = [ "js_storage.cpp" ]
 
-  deps = [ "napi:ace_napi" ]
+  deps = [ "ace_napi" ]
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
