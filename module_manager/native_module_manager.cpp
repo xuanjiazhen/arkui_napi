@@ -597,8 +597,13 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     const char* zfix = ".z";
     std::string sysPrefix("/system/lib/module");
 #endif
+#ifdef WINDOWS_PLATFORM
+    const char* abcfix = ".abc";
+    std::string sysAbcPrefix("./module");
+#else
     const char* abcfix = ".abc";
     std::string sysAbcPrefix("/system/etc/abc");
+#endif
 
 #ifdef ANDROID_PLATFORM
     isAppModule = true;
