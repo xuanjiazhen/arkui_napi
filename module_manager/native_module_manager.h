@@ -76,9 +76,9 @@ public:
 
     void Register(NativeModule* nativeModule);
     void SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath,
-                       const bool& isSystemApp = false);
-    NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule, std::string& errInfo,
-        bool internal = false, const char* relativePath = "", bool moduleRestricted = false);
+                        const bool &isSystemApp = false);
+    NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
+                                   bool internal = false);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     bool UnloadNativeModule(const std::string& moduleKey);
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);

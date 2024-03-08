@@ -31,7 +31,6 @@
 #include "utils/log.h"
 
 #define NDK "ndk"
-#define ALLOW_ALL_SHARED_LIBS "allow_all_shared_libs"
 
 namespace {
     constexpr static int32_t NATIVE_PATH_NUMBER = 3;
@@ -370,58 +369,30 @@ void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const 
     !defined(LINUX_PLATFORM)
     Dl_namespace current_ns;
     Dl_namespace ns;
+    Dl_namespace ndk_ns;
 
-    // Create module ns.
-    std::string nsName = "moduleNs_" + moduleName;
+    std::string nsName = "arkUI_" + moduleName;
     dlns_init(&ns, nsName.c_str());
     dlns_get(nullptr, &current_ns);
-
-    Dl_namespace ndk_ns;
     dlns_get(NDK, &ndk_ns);
-
-    if (isSystemApp) {
-        /*
-         * The app's so may have the same name as the system library, LOCAL_NS_PREFERED means linker will check
-         * and use the app's so first.
-         */
-        dlns_create2(&ns, lib_ld_path, LOCAL_NS_PREFERED);
-        // Performs a namespace check on the full path passed directly or the full path converted after setting rpath.
-        dlns_set_namespace_separated(nsName.c_str(), true);
-        // Allows access to subdirectories of this directory for shared objects (so).
-        dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
-        // System app can visit all ndk and default ns libs.
-        if (strlen(ndk_ns.name) > 0) {
-            dlns_inherit(&ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&ndk_ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&current_ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
-        }
-    } else {
-        dlns_create2(&ns, lib_ld_path, 0);
-        // Performs a namespace check on the full path passed directly or the full path converted after setting rpath.
-        dlns_set_namespace_separated(nsName.c_str(), true);
-        // Allows access to subdirectories of this directory for shared objects (so).
-        dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
-        // Non-system app can visit all ndk ns libs and default ns shared libs.
-        if (!sharedLibsSonames_) {
-            CreateSharedLibsSonames();
-        }
-        dlns_inherit(&ns, &current_ns, sharedLibsSonames_);
-        if (strlen(ndk_ns.name) > 0) {
-            dlns_inherit(&ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&ndk_ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&current_ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
-        }
+    dlns_create2(&ns, lib_ld_path, 0);
+    if (!sharedLibsSonames_) {
+        CreateSharedLibsSonames();
     }
-
+    dlns_inherit(&ns, &current_ns, sharedLibsSonames_);
+    
+    // valid ndk_ns
+    if (strlen(ndk_ns.name) > 0) {
+        dlns_inherit(&ns, &ndk_ns, nullptr);
+    }
     nsMap_[moduleName] = ns;
-
-    HILOG_DEBUG("end. moduleName: %{public}s, path: %{public}s", moduleName.c_str(), lib_ld_path);
+    nsMap_[NDK] = ndk_ns;
+    HILOG_INFO("CreateLdNamespace success, path: %{private}s", lib_ld_path);
 #endif
 }
 
-void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath,
-                                        const bool& isSystemApp)
+void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath, 
+    const bool &isSystemApp)
 {
     HILOG_DEBUG("moduleName is %{public}s, isisSystemApp is %{public}d", moduleName.c_str(), isSystemApp);
 
@@ -447,26 +418,10 @@ void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std
         delete[] appLibPathMap_[moduleName];
     }
     appLibPathMap_[moduleName] = tmp;
-    CreateLdNamespace(moduleName, tmp, isSystemApp);
-    HILOG_DEBUG("path: %{public}s", appLibPathMap_[moduleName]);
-}
-
-bool NativeModuleManager::CheckModuleRestricted(const std::string& moduleName)
-{
-    const std::string whiteList[] = {
-        "worker",
-    };
-
-    size_t listLen = sizeof(whiteList) / sizeof(whiteList[0]);
-    for (size_t i = 0; i < listLen; ++i) {
-        if (moduleName == whiteList[i]) {
-            HILOG_DEBUG("module %{public}s found in whitelist", moduleName.c_str());
-            return false;
-        }
+    if (isSystemApp) {
+        CreateLdNamespace(moduleName, tmp);
     }
-
-    HILOG_DEBUG("module %{public}s does not found in whitelist", moduleName.c_str());
-    return true;
+    HILOG_INFO("create ld namespace, path: %{private}s", appLibPathMap_[moduleName]);
 }
 
 void NativeModuleManager::MoveApiAllowListCheckerPtr(
