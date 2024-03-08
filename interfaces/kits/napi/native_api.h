@@ -129,6 +129,15 @@ NAPI_EXTERN napi_status napi_add_finalizer(napi_env env,
                                            napi_ref* result);
 NAPI_EXTERN napi_status napi_run_event_loop(napi_env env, napi_event_mode mode);
 NAPI_EXTERN napi_status napi_stop_event_loop(napi_env env);
+NAPI_EXTERN napi_status napi_serialize(napi_env env,
+                                       napi_value object,
+                                       napi_value transfer_list,
+                                       napi_value clone_list,
+                                       bool defaultTransfer,
+                                       bool defaultCloneSendable,
+                                       napi_value* result);
+NAPI_EXTERN napi_status napi_deserialize(napi_env env, napi_value recorder, napi_value* object);
+NAPI_EXTERN napi_status napi_delete_serialization_data(napi_env env, napi_value value);
 
 #ifdef __cplusplus
 }
