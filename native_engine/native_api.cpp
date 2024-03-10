@@ -1384,7 +1384,14 @@ NAPI_EXTERN napi_status napi_unwrap(napi_env env, napi_value js_object, void** r
     *result = nullptr;
     if (val->IsObject()) {
         Local<panda::ObjectRef> ext(val);
-        auto ref = reinterpret_cast<NativeReference*>(ext->GetNativePointerField(0));
+        NativeReference* ref = nullptr;
+        if (val->IsProxy()) {
+            Local<panda::ProxyRef> proxiedObj(val);
+            ref = reinterpret_cast<NativeReference*>(
+                panda::Local<panda::ObjectRef>(proxiedObj->GetTarget(vm))->GetNativePointerField(0));
+        } else {
+            ref = reinterpret_cast<NativeReference*>(ext->GetNativePointerField(0));
+        }
         *result = ref != nullptr ? ref->GetData() : nullptr;
     }
 
