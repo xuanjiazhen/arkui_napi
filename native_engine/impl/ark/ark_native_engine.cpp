@@ -96,33 +96,6 @@ panda::Local<panda::JSValueRef> NapiValueToLocalValue(napi_value v)
     return LocalValueFromJsValue(v);
 }
 
-void FunctionSetContainerId(const EcmaVM *vm, panda::Local<panda::JSValueRef> &value)
-{
-    panda::Local<panda::FunctionRef> funcValue(value);
-    if (funcValue->IsNative(vm)) {
-        return;
-    }
-
-    auto extraInfo = funcValue->GetData(vm);
-    if (extraInfo != nullptr) {
-        return;
-    }
-
-    NapiFunctionInfo *funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_ERROR("funcInfo is nullptr");
-        return;
-    }
-    funcValue->SetData(vm, reinterpret_cast<void*>(funcInfo),
-        [](void *externalPointer, void *data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-            if (info != nullptr) {
-                delete info;
-                info = nullptr;
-            }
-        }, true);
-}
-
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM) && !defined(IOS_PLATFORM)
 bool IsFileNameFormat(char c)
 {
@@ -516,15 +489,11 @@ size_t NapiNativeCallbackInfo::GetArgc() const
 
 size_t NapiNativeCallbackInfo::GetArgv(napi_value* argv, size_t argc)
 {
-    auto *vm = info->GetVM();
     if (argc > 0) {
         size_t i = 0;
         size_t buffer = GetArgc();
         for (; i < buffer && i < argc; i++) {
             panda::Local<panda::JSValueRef> value = info->GetCallArgRef(i);
-            if (value->IsFunction()) {
-                FunctionSetContainerId(vm, value);
-            }
             argv[i] = JsValueFromLocalValue(value);
         }
         return i;
@@ -540,13 +509,7 @@ napi_value NapiNativeCallbackInfo::GetThisVar()
 
 napi_value NapiNativeCallbackInfo::GetFunction()
 {
-    auto *vm = info->GetVM();
-    panda::Local<panda::JSValueRef> newValue = info->GetNewTargetRef();
-    if (newValue->IsFunction()) {
-        FunctionSetContainerId(vm, newValue);
-    }
-
-    return JsValueFromLocalValue(newValue);
+    return JsValueFromLocalValue(info->GetNewTargetRef());
 }
 
 NapiFunctionInfo* NapiNativeCallbackInfo::GetFunctionInfo()
@@ -1096,6 +1059,31 @@ napi_value ArkNativeEngine::NapiLoadModule(const char* path, const char* module_
     return JsValueFromLocalValue(scope.Escape(exportObj));
 }
 
+napi_value ArkNativeEngine::NapiLoadModuleWithInfo(const char* path, const char* module_info)
+{
+    if (path == nullptr) {
+        HILOG_ERROR("ArkNativeEngine:The module name is empty");
+        return nullptr;
+    }
+    panda::EscapeLocalScope scope(vm_);
+    Local<JSValueRef> undefObj = JSValueRef::Undefined(vm_);
+    Local<ObjectRef> exportObj(undefObj);
+    std::string inputPath(path);
+    std::string modulePath;
+    if (module_info != nullptr) {
+        modulePath = module_info;
+        exportObj = panda::JSNApi::GetModuleNameSpaceWithModuleInfo(vm_, inputPath, modulePath);
+    } else {
+        exportObj = NapiLoadNativeModule(inputPath);
+    }
+
+    if (!exportObj->IsObject()) {
+        ThrowException("ArkNativeEngine:NapiLoadModuleWithInfo failed.");
+        return JsValueFromLocalValue(scope.Escape(undefObj));
+    }
+    return JsValueFromLocalValue(scope.Escape(exportObj));
+}
+
 bool ArkNativeEngine::SuspendVMById(uint32_t tid)
 {
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
@@ -1485,6 +1473,19 @@ void ArkNativeEngine::DumpHeapSnapshot(const std::string& path, bool isVmMode, D
     }
     if (dumpFormat == DumpFormat::OTHER) {
         DFXJSNApi::DumpHeapSnapshot(vm_, 2, path, isVmMode); // 2:enum is 2
+    }
+}
+
+void ArkNativeEngine::DumpCpuProfile(bool isVmMode, DumpFormat dumpFormat, bool isPrivate, bool isFullGC)
+{
+    if (dumpFormat == DumpFormat::JSON) {
+        DFXJSNApi::DumpCpuProfile(vm_, 0, isVmMode, isPrivate, false, isFullGC);
+    }
+    if (dumpFormat == DumpFormat::BINARY) {
+        DFXJSNApi::DumpCpuProfile(vm_, 1, isVmMode, isPrivate);
+    }
+    if (dumpFormat == DumpFormat::OTHER) {
+        DFXJSNApi::DumpCpuProfile(vm_, 2, isVmMode, isPrivate); // 2:enum is 2
     }
 }
 

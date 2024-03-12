@@ -199,6 +199,8 @@ public:
 
     virtual void DumpHeapSnapshot(const std::string &path, bool isVmMode = true,
         DumpFormat dumpFormat = DumpFormat::JSON) = 0;
+    virtual void DumpCpuProfile(bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
+        bool isPrivate = false, bool isFullGC = true) = 0;
     virtual void DumpHeapSnapshot(bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
         bool isPrivate = false, bool isFullGC = true) = 0;
     virtual bool BuildNativeAndJsStackTrace(std::string &stackTraceStr) = 0;
@@ -429,6 +431,7 @@ public:
     void SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDelegate>& moduleCheckerDelegate);
 
     virtual napi_value NapiLoadModule(const char* path, const char* module_info) = 0;
+    virtual napi_value NapiLoadModuleWithInfo(const char* path, const char* module_info) = 0;
 
     double NewAsyncId()
     {

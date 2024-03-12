@@ -133,11 +133,11 @@ NAPI_EXTERN napi_status napi_serialize(napi_env env,
                                        napi_value object,
                                        napi_value transfer_list,
                                        napi_value clone_list,
-                                       bool defaultTransfer,
-                                       bool defaultCloneSendable,
                                        napi_value* result);
 NAPI_EXTERN napi_status napi_deserialize(napi_env env, napi_value recorder, napi_value* object);
 NAPI_EXTERN napi_status napi_delete_serialization_data(napi_env env, napi_value value);
+NAPI_EXTERN napi_status napi_create_ark_runtime(napi_env *env);
+NAPI_EXTERN napi_status napi_destroy_ark_runtime(napi_env *env);
 
 #ifdef __cplusplus
 }

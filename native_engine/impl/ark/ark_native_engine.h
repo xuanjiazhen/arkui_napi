@@ -67,7 +67,6 @@ void NapiDefinePropertyInner(napi_env env,
 bool NapiDefineProperty(napi_env env, panda::Local<panda::ObjectRef> &obj, NapiPropertyDescriptor propertyDescriptor);
 NAPI_EXPORT panda::Local<panda::JSValueRef> NapiValueToLocalValue(napi_value v);
 NAPI_EXPORT napi_value LocalValueToLocalNapiValue(panda::Local<panda::JSValueRef> local);
-void FunctionSetContainerId(const EcmaVM *vm, panda::Local<panda::JSValueRef> &local);
 panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, NapiNativeCallback callback,
     void* data, const NapiPropertyDescriptor* properties, size_t length);
 panda::Local<panda::ObjectRef> NapiCreateObjectWithProperties(napi_env env, size_t propertyCount,
@@ -189,6 +188,8 @@ public:
     // isPrivate means the number and string is not visible.
     void DumpHeapSnapshot(const std::string& path, bool isVmMode = true,
         DumpFormat dumpFormat = DumpFormat::JSON) override;
+    void DumpCpuProfile(bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
+        bool isPrivate = false, bool isFullGC = true) override;
     // Dump the file into faultlog for heap leak.
     void DumpHeapSnapshot(bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
         bool isPrivate = false, bool isFullGC = true) override;
@@ -238,6 +239,7 @@ public:
         const std::string& moduleName, bool isAppModule, const std::string& id, const std::string& param,
         const std::string& instanceName, void** instance);
     napi_value NapiLoadModule(const char* path, const char* module_info) override;
+    napi_value NapiLoadModuleWithInfo(const char* path, const char* module_info) override;
     std::string GetOhmurl(std::string str);
     Local<JSValueRef> NapiLoadNativeModule(std::string path);
     ModuleTypes CheckLoadType(const std::string &path);
