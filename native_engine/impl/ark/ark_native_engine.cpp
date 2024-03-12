@@ -33,6 +33,10 @@
 #include "hitrace_meter.h"
 #include "parameter.h"
 #endif
+#ifdef OHOS_RSS_CLIENT
+#include "res_sched_client.h"
+#include "res_type.h"
+#endif
 
 using panda::JsiRuntimeCallInfo;
 using panda::BooleanRef;
@@ -1209,6 +1213,9 @@ NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsE
     option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::INFO);
 #endif
     option.SetDebuggerLibraryPath("");
+    if (isLimitedWorker) {
+        ReportKeyThread(gettid(), true);
+    }
     EcmaVM* vm = panda::JSNApi::CreateJSVM(option);
     if (vm == nullptr) {
         return nullptr;
@@ -1221,10 +1228,13 @@ NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsE
     arkEngine->RegisterWorkerFunction(engine);
     arkEngine->SetHostEngine(engine);
 
-    auto cleanEnv = [vm]() {
+    auto cleanEnv = [vm, isLimitedWorker]() {
         if (vm != nullptr) {
             HILOG_DEBUG("cleanEnv is called");
             panda::JSNApi::DestroyJSVM(vm);
+        }
+        if (isLimitedWorker) {
+            ReportKeyThread(gettid(), false);
         }
     };
     arkEngine->SetCleanEnv(cleanEnv);
@@ -1950,5 +1960,25 @@ void ArkNativeEngine::StopMonitorJSHeapUsage()
     }
 #else
     HILOG_ERROR("StopMonitorJSHeapUsage does not support dfx");
+#endif
+}
+
+void ArkNativeEngine::ReportKeyThread(int tid, bool value)
+{
+#ifdef OHOS_RSS_CLIENT
+#ifdef ENABLE_HITRACE
+    StartTrace(HITRACE_TAG_ACE, "ReportKeyThread tid=" + std::to_string(tid) + " value=" + std::to_string(value));
+#endif
+
+    std::unordered_map<std::string, std::string> payload;
+    payload["uid"] = std::to_string(getuid());
+    payload["pid"] = std::to_string(getpid());
+    payload["tid"] = std::to_string(tid);
+    OHOS::ResourceSchedule::ResSchedClient::GetInstance().ReportData(
+        OHOS::ResourceSchedule::ResType::RES_TYPE_REPORT_KEY_THREAD, value, payload);
+
+#ifdef ENABLE_HITRACE
+    FinishTrace(HITRACE_TAG_ACE);
+#endif
 #endif
 }

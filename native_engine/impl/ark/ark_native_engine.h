@@ -290,6 +290,8 @@ public:
         const EcmaVM* ecmaVm, const panda::Local<panda::ObjectRef> exportObj,
         panda::Local<panda::ObjectRef>& exportCopy, const std::string& apiPath);
 
+    static void ReportKeyThread(int tid, bool value);
+
 private:
     static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, void* jsEngine, bool isLimitedWorker = false);
     static bool CheckArkApiAllowList(
