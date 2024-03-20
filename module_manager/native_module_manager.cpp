@@ -40,6 +40,35 @@ namespace {
 NativeModuleManager* NativeModuleManager::instance_ = NULL;
 std::mutex g_instanceMutex;
 
+std::string NativeModuleManager::GetDebugInfoFromModules(uint32_t tid)
+{
+    HILOG_INFO("enter");
+    std::string result;
+    {
+        std::lock_guard<std::mutex> lock(moduleDebugInfoCbMutex_);
+        for (auto callback : moduleDebugInfoCallbacks_) {
+            if (callback != nullptr) {
+                HILOG_INFO("calling getDebugInfo");
+                std::string info;
+                callback(tid, info);
+                result += info + "\n";
+            } else {
+                HILOG_INFO("getDebugInfo callback is nullptr!");
+            }
+        }
+    }
+    HILOG_INFO("exit");
+    return result;
+}
+
+void NativeModuleManager::RegisterDebugInfoCallback(GetDebugInfoCallback callback)
+{
+    HILOG_DEBUG("enter");
+    std::lock_guard<std::mutex> lock(moduleDebugInfoCbMutex_);
+    moduleDebugInfoCallbacks_.push_back(callback);
+    HILOG_DEBUG("exit");
+}
+
 NativeModuleManager::NativeModuleManager()
 {
     HILOG_INFO("enter");
@@ -193,6 +222,7 @@ bool NativeModuleManager::RemoveNativeModule(const std::string& moduleKey)
 bool NativeModuleManager::UnloadNativeModule(const std::string& moduleKey)
 {
     HILOG_DEBUG("moduleKey is '%{public}s'", moduleKey.c_str());
+
     LIBHANDLE handle = GetNativeModuleHandle(moduleKey);
     if (handle == nullptr) {
         HILOG_ERROR("failed to get native module handle.");

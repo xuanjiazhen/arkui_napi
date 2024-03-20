@@ -1866,7 +1866,15 @@ bool ArkNativeEngine::BuildJsStackInfoList(uint32_t tid, std::vector<JsFrameInfo
         jsframe.nativePointer = jf.nativePointer;
         jsFrames.emplace_back(jsframe);
     }
-    return sign;
+    std::string info = NativeModuleManager::GetInstance()->GetDebugInfoFromModules(tid);
+    if (!info.empty()) {
+        JsFrameInfo fake_frame;
+        fake_frame.fileName = "";
+        fake_frame.functionName = info;
+        fake_frame.pos = "";
+        jsFrames.emplace_back(fake_frame);
+    }
+    return sign || !jsFrames.empty();
 #else
     HILOG_WARN("ARK does not support dfx on windows");
     return false;
