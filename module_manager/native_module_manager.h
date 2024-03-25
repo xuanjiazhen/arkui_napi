@@ -129,7 +129,7 @@ private:
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
     void CreateSharedLibsSonames();
-
+    void CreatSharedArray(const char* allowList[], size_t allowListLength);
     char* sharedLibsSonames_ = nullptr;
     std::map<std::string, Dl_namespace> nsMap_;
 #endif

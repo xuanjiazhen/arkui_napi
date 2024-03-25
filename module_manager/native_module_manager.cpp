@@ -294,6 +294,25 @@ bool NativeModuleManager::CreateNewNativeModule()
 
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
+void NativeModuleManager::CreatSharedArray(const char* allowList[], size_t allowListLength)
+{
+    int32_t sharedLibsSonamesLength = 1;
+    for (size_t i = 0; i < allowListLength; i++) {
+        sharedLibsSonamesLength += strlen(allowList[i]) + 1;
+    }
+    sharedLibsSonames_ = new char[sharedLibsSonamesLength];
+    int32_t cursor = 0;
+    for (size_t i = 0; i < allowListLength; i++) {
+        if (sprintf_s(sharedLibsSonames_ + cursor, sharedLibsSonamesLength - cursor, "%s:", allowList[i]) == -1) {
+            delete[] sharedLibsSonames_;
+            sharedLibsSonames_ = nullptr;
+            return;
+        }
+        cursor += strlen(allowList[i]) + 1;
+    }
+    sharedLibsSonames_[cursor] = '\0';
+}
+   
 void NativeModuleManager::CreateSharedLibsSonames()
 {
     HILOG_DEBUG("enter");
@@ -343,23 +362,8 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libusb_ndk.z.so",
         "libvulkan.so",
     };
-
     size_t allowListLength = sizeof(allowList) / sizeof(char*);
-    int32_t sharedLibsSonamesLength = 1;
-    for (size_t i = 0; i < allowListLength; i++) {
-        sharedLibsSonamesLength += strlen(allowList[i]) + 1;
-    }
-    sharedLibsSonames_ = new char[sharedLibsSonamesLength];
-    int32_t cursor = 0;
-    for (size_t i = 0; i < allowListLength; i++) {
-        if (sprintf_s(sharedLibsSonames_ + cursor, sharedLibsSonamesLength - cursor, "%s:", allowList[i]) == -1) {
-            delete[] sharedLibsSonames_;
-            sharedLibsSonames_ = nullptr;
-            return;
-        }
-        cursor += strlen(allowList[i]) + 1;
-    }
-    sharedLibsSonames_[cursor] = '\0';
+    CreatSharedArray(allowList, allowListLength);
 }
 #endif
 
