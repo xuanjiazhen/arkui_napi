@@ -293,10 +293,9 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                 Local<StringRef> moduleName(info->GetCallArgRef(0));
                 NativeModule* module = nullptr;
                 bool isAppModule = false;
-                std::string errInfo = "";
 #ifdef IOS_PLATFORM
-                module = moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, false,
-                                                         errInfo, false, "", arkNativeEngine->isLimitedWorker_);
+                module = moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, false, false,
+                                                         "", arkNativeEngine->isLimitedWorker_);
 #else
                 const uint32_t lengthMax = 2;
                 if (info->GetArgsNumber() >= lengthMax) {
@@ -308,17 +307,17 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                     Local<StringRef> path(info->GetCallArgRef(2)); // 2:Take the second parameter
                     module =
                         moduleManager->LoadNativeModule(moduleName->ToString().c_str(), path->ToString().c_str(),
-                            isAppModule, errInfo, false, "", arkNativeEngine->isLimitedWorker_);
+                            isAppModule, false, "", arkNativeEngine->isLimitedWorker_);
                 } else if (info->GetArgsNumber() == 4) { // 4:Determine if the number of parameters is equal to 4
                     Local<StringRef> path(info->GetCallArgRef(2)); // 2:Take the second parameter
                     Local<StringRef> relativePath(info->GetCallArgRef(3)); // 3:Take the second parameter
                     module =
-                        moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, isAppModule,
-                            errInfo, false, relativePath->ToString().c_str(), arkNativeEngine->isLimitedWorker_);
+                        moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, isAppModule, false,
+                            relativePath->ToString().c_str(), arkNativeEngine->isLimitedWorker_);
                 } else {
                     module =
-                        moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, isAppModule,
-                            errInfo, false, "", arkNativeEngine->isLimitedWorker_);
+                        moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, isAppModule, false,
+                                                        "", arkNativeEngine->isLimitedWorker_);
                 }
 #endif
                 Local<JSValueRef> exports(JSValueRef::Undefined(ecmaVm));
@@ -393,9 +392,8 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                 NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
                 ArkNativeEngine* arkNativeEngine = static_cast<ArkNativeEngine*>(info->GetData());
                 Local<StringRef> moduleName(info->GetCallArgRef(0));
-                std::string errInfo = "";
-                NativeModule* module = moduleManager->LoadNativeModule(moduleName->ToString().c_str(),
-                    nullptr, false, errInfo, false, "", arkNativeEngine->isLimitedWorker_);
+                NativeModule* module = moduleManager->LoadNativeModule(moduleName->ToString().c_str(), nullptr, false,
+                                                                       false, "", arkNativeEngine->isLimitedWorker_);
                 Local<JSValueRef> exports(JSValueRef::Undefined(ecmaVm));
                 MoudleNameLocker nameLocker(moduleName->ToString());
                 if (module != nullptr && arkNativeEngine) {
@@ -766,8 +764,7 @@ panda::Local<panda::ObjectRef> ArkNativeEngine::GetModuleFromName(
     panda::EscapeLocalScope scope(vm_);
     Local<ObjectRef> exports(JSValueRef::Undefined(vm_));
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    std::string errInfo = "";
-    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), nullptr, isAppModule, errInfo);
+    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(), nullptr, isAppModule);
     if (module != nullptr) {
         Local<StringRef> idStr = StringRef::NewFromUtf8(vm_, id.c_str(), id.size());
         napi_value idValue = JsValueFromLocalValue(idStr);
@@ -816,9 +813,8 @@ panda::Local<panda::ObjectRef> ArkNativeEngine::LoadModuleByName(const std::stri
     panda::EscapeLocalScope scope(vm_);
     Local<ObjectRef> exports(JSValueRef::Undefined(vm_));
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    std::string errInfo = "";
-    NativeModule* module = moduleManager->LoadNativeModule(moduleName.c_str(),
-        path.empty() ? nullptr : path.c_str(), isAppModule, errInfo);
+    NativeModule* module =
+        moduleManager->LoadNativeModule(moduleName.c_str(), path.empty() ? nullptr : path.c_str(), isAppModule);
     if (module != nullptr) {
         Local<ObjectRef> exportObj = ObjectRef::New(vm_);
         NapiPropertyDescriptor paramProperty, instanceProperty;
