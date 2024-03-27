@@ -39,7 +39,6 @@ bool g_napiTraceIdEnabled = false;
 bool g_ParamUpdated = false;
 constexpr size_t TRACE_BUFFER_SIZE = 120;
 constexpr size_t TRACEID_PARAM_SIZE = 10;
-
 using namespace OHOS::HiviewDFX;
 #endif
 
@@ -63,25 +62,26 @@ NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
         g_ParamUpdated = true;
     }
     bool createdTraceId = false;
-    traceId_ = std::make_unique<HiTraceId>(HiTraceChain::StoreAndSet(HiTraceChain::GetId()));
+
+    traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(OHOS::HiviewDFX::HiTraceChain::GetId());
     if (g_napiTraceIdEnabled && (!traceId_ || !traceId_->IsValid())) {
-        traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(
-            OHOS::HiviewDFX::HiTraceChain::Begin("New NativeAsyncWork", 0));
+        traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(HiTraceChain::Begin("New NativeAsyncWork", 0));
         createdTraceId = true;
     }
-    HiTraceChain::Tracepoint(HITRACE_TP_CS, HiTraceChain::GetId(), "NativeAsyncWork");
+
+    if (traceId_->IsValid()) {
+        traceId_ = std::make_unique<HiTraceId>(HiTraceChain::CreateSpan());
+    }
+
     char traceStr[TRACE_BUFFER_SIZE] = {0};
     if (sprintf_s(traceStr, sizeof(traceStr),
         "name:%s, traceid:0x%x", asyncResourceName.c_str(), traceId_->GetChainId()) < 0) {
         HILOG_ERROR("Get traceStr fail");
     }
     traceDescription_ = traceStr;
-    HiTraceChain::Tracepoint(HITRACE_TP_CR, HiTraceChain::GetId(), "NativeAsyncWork");
     if (createdTraceId) {
         OHOS::HiviewDFX::HiTraceChain::ClearId();
     }
-
-    HiTraceChain::Restore();
 #endif
 #ifdef ENABLE_CONTAINER_SCOPE
     containerScopeId_ = ContainerScope::CurrentId();
@@ -100,9 +100,11 @@ bool NativeAsyncWork::Queue()
     engine_->IncreaseWaitingRequestCounter();
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi queue, " + this->GetTraceDescription());
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, *traceId_, "napi::NativeAsyncWork::Queue");
 #endif
     int status = uv_queue_work(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback);
 #ifdef ENABLE_HITRACE
+    HiTraceChain::Tracepoint(HITRACE_TP_CR, *traceId_, "napi::NativeAsyncWork::Queue");
     FinishTrace(HITRACE_TAG_ACE);
 #endif
     if (status != 0) {
@@ -122,9 +124,11 @@ bool NativeAsyncWork::QueueWithQos(napi_qos_t qos)
     engine_->IncreaseWaitingRequestCounter();
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi queueWithQos, " + this->GetTraceDescription());
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, *traceId_, "napi::NativeAsyncWork::QueueWithQos");
 #endif
     int status = uv_queue_work_with_qos(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback, uv_qos_t(qos));
 #ifdef ENABLE_HITRACE
+    HiTraceChain::Tracepoint(HITRACE_TP_CR, *traceId_, "napi::NativeAsyncWork::QueueWithQos");
     FinishTrace(HITRACE_TAG_ACE);
 #endif
     if (status != 0) {
@@ -156,13 +160,12 @@ void NativeAsyncWork::AsyncWorkCallback(uv_work_t* req)
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi execute, " + that->GetTraceDescription());
     if (that->traceId_ && that->traceId_->IsValid()) {
-        HiTraceChain::StoreAndSet(*(that->traceId_.get()));
-        HiTraceChain::Tracepoint(HITRACE_TP_SS, HiTraceChain::GetId(), "AsyncWorkCallback");
+        HiTraceId currentId = HiTraceChain::SaveAndSet(*(that->traceId_));
+        HiTraceChain::Tracepoint(HITRACE_TP_SR, *(that->traceId_), "napi::NativeAsyncWork::AsyncWorkCallback");
         that->execute_(that->engine_, that->data_);
-
         FinishTrace(HITRACE_TAG_ACE);
-        HiTraceChain::Tracepoint(HITRACE_TP_SR, HiTraceChain::GetId(), "AsyncWorkCallback");
-        HiTraceChain::Restore();
+        HiTraceChain::Tracepoint(HITRACE_TP_SS, *(that->traceId_), "napi::NativeAsyncWork::AsyncWorkCallback");
+        HiTraceChain::Restore(currentId);
         return;
     }
 #endif
@@ -205,11 +208,11 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
     TryCatch tryCatch(reinterpret_cast<napi_env>(engine));
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi complete, " + that->GetTraceDescription());
+    HiTraceId currentId = HiTraceChain::GetId();
     bool isValidTraceId = that->traceId_ && that->traceId_->IsValid();
     if (isValidTraceId) {
-        HiTraceChain::StoreAndSet(*(that->traceId_.get()));
+        OHOS::HiviewDFX::HiTraceChain::SaveAndSet(*(that->traceId_.get()));
     }
-    HiTraceChain::Tracepoint(HITRACE_TP_SR, HiTraceChain::GetId(), "AsyncAfterWorkCallback");
 #endif
 
     // Don't use that after complete
@@ -220,8 +223,9 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
 
 #ifdef ENABLE_HITRACE
     FinishTrace(HITRACE_TAG_ACE);
-    HiTraceChain::Tracepoint(HITRACE_TP_SS, HiTraceChain::GetId(), "AsyncAfterWorkCallback");
-    HiTraceChain::Restore();
+    if (isValidTraceId) {
+        OHOS::HiviewDFX::HiTraceChain::Restore(currentId);
+    }
 #endif
 }
 
