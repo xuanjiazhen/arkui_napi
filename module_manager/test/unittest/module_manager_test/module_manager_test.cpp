@@ -59,9 +59,9 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_001 starts";
 
-    std::string errInfo = "";
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    NativeModule *module = moduleManager->LoadNativeModule(nullptr, nullptr, false, errInfo, false, nullptr);
+
+    NativeModule *module = moduleManager->LoadNativeModule(nullptr, nullptr, false, false, nullptr);
     EXPECT_EQ(module, nullptr);
 
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_001 ends";
@@ -84,11 +84,10 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_002, TestSize.Level1)
 
     MockFindNativeModuleByDisk(&mockModule);
 
-    std::string errInfo = "";
-    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false, "");
+    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, false, "");
     EXPECT_EQ(module, &mockModule);
 
-    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false);
+    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, false);
     EXPECT_EQ(module, &mockModule);
 
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_002 end";
@@ -108,11 +107,10 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_003, TestSize.Level1)
     NativeModule *module;
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
 
-    std::string errInfo = "";
-    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false, "");
+    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, false, "");
     EXPECT_EQ(module, nullptr);
 
-    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false);
+    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, false);
     EXPECT_EQ(module, nullptr);
 
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_003 end";
@@ -136,8 +134,7 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_004, TestSize.Level1)
 
     MockFindNativeModuleByDisk(&mockModule);
 
-    std::string errInfo = "";
-    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false, relativePath);
+    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, false, relativePath);
     EXPECT_EQ(module, &mockModule);
     moduleManager->Register(module);
 
@@ -162,9 +159,8 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_005, TestSize.Level1)
     MockCheckModuleLoadable(true);
     MockLoadModuleLibrary(nullptr);
 
-    std::string errInfo = "";
     NativeModule *module = moduleManager->LoadNativeModule(moduleName, nullptr,
-                                                           false, errInfo, false, relativePath);
+                                                           false, false, relativePath);
     EXPECT_EQ(module, nullptr);
 
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_005 end";
@@ -283,8 +279,7 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_011, TestSize.Level1)
     ASSERT_NE(nullptr, moduleManager);
     MockFindNativeModuleByDisk(nullptr);
 
-    std::string errInfo = "";
-    EXPECT_EQ(moduleManager->FindNativeModuleByDisk(moduleName, nullptr, nullptr, false, false, errInfo), nullptr);
+    EXPECT_EQ(moduleManager->FindNativeModuleByDisk(moduleName, nullptr, nullptr, false, false), nullptr);
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_011 end";
 }
 
@@ -424,13 +419,12 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_018, TestSize.Level1)
     NativeModule mockModule;
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
 
-    std::string errInfo = "";
     /* isModuleRestricted is true and isAppModule is false, we will check the restriction */
-    module = moduleManager->LoadNativeModule("dummy", nullptr, false, errInfo, false, "", true);
+    module = moduleManager->LoadNativeModule("dummy", nullptr, false, false, "", true);
     EXPECT_EQ(module, nullptr);
 
     MockFindNativeModuleByDisk(&mockModule);
-    module = moduleManager->LoadNativeModule("worker", nullptr, false, errInfo, false, "", true);
+    module = moduleManager->LoadNativeModule("worker", nullptr, false, false, "", true);
     EXPECT_EQ(module, &mockModule);
 
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_018 end";
@@ -452,12 +446,11 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_019, TestSize.Level1)
 
     MockFindNativeModuleByDisk(&mockModule);
 
-    std::string errInfo = "";
     /* isModuleRestricted is false, we wont check the restriction */
-    module = moduleManager->LoadNativeModule("dummy", nullptr, false, errInfo, false, "", false);
+    module = moduleManager->LoadNativeModule("dummy", nullptr, false, false, "", false);
     EXPECT_EQ(module, &mockModule);
 
-    module = moduleManager->LoadNativeModule("worker", nullptr, false, errInfo, false, "rel_path", false);
+    module = moduleManager->LoadNativeModule("worker", nullptr, false, false, "rel_path", false);
     EXPECT_EQ(module, &mockModule);
 
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_019 end";
