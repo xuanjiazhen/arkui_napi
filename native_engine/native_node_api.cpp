@@ -88,7 +88,7 @@ NAPI_EXTERN napi_status napi_create_limit_runtime(napi_env env, napi_env* result
     return napi_clear_last_error(env);
 }
 
-NAPI_INNER_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err)
+NAPI_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err)
 {
     NAPI_PREAMBLE(env);
     HILOG_INFO("%{public}s, start.", __func__);
