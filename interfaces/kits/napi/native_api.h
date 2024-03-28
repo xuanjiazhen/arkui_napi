@@ -79,9 +79,9 @@ NAPI_EXTERN napi_status napi_run_script_path(napi_env env, const char* path, nap
 NAPI_EXTERN napi_status napi_queue_async_work_with_qos(napi_env env, napi_async_work work, napi_qos_t qos);
 NAPI_EXTERN napi_status napi_load_module(napi_env env, const char* path, napi_value* result);
 NAPI_EXTERN napi_status napi_load_module_with_info(napi_env env,
-                                                   napi_value* result,
                                                    const char* path,
-                                                   const char* module_info);
+                                                   const char* module_info,
+                                                   napi_value* result);
 NAPI_EXTERN napi_status napi_get_instance_data(napi_env env, void** data);
 NAPI_EXTERN napi_status napi_set_instance_data(napi_env env,
                                                void* data,
@@ -133,11 +133,23 @@ NAPI_EXTERN napi_status napi_serialize(napi_env env,
                                        napi_value object,
                                        napi_value transfer_list,
                                        napi_value clone_list,
-                                       napi_value* result);
-NAPI_EXTERN napi_status napi_deserialize(napi_env env, napi_value recorder, napi_value* object);
-NAPI_EXTERN napi_status napi_delete_serialization_data(napi_env env, napi_value value);
+                                       void** result);
+NAPI_EXTERN napi_status napi_deserialize(napi_env env, void* buffer, napi_value* object);
+NAPI_EXTERN napi_status napi_delete_serialization_data(napi_env env, void* buffer);
 NAPI_EXTERN napi_status napi_create_ark_runtime(napi_env *env);
 NAPI_EXTERN napi_status napi_destroy_ark_runtime(napi_env *env);
+
+NAPI_EXTERN napi_status napi_define_sendable_class(napi_env env,
+                                                   const char* utf8name,
+                                                   size_t length,
+                                                   napi_callback constructor,
+                                                   void* data,
+                                                   size_t property_count,
+                                                   const napi_property_descriptor* properties,
+                                                   napi_value parent,
+                                                   napi_value* result);
+
+NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* result);
 
 #ifdef __cplusplus
 }

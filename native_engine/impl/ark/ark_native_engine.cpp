@@ -19,6 +19,7 @@
 #include <sys/prctl.h>
 #endif
 
+#include <sstream>
 #include "ark_native_deferred.h"
 #include "ark_native_reference.h"
 #include "native_engine/native_property.h"
@@ -29,9 +30,24 @@
 #include "parameters.h"
 #include <uv.h>
 #endif
+#ifdef ENABLE_CONTAINER_SCOPE
+#include "core/common/container_scope.h"
+#endif
 #ifdef ENABLE_HITRACE
+#include "hitrace/trace.h"
 #include "hitrace_meter.h"
 #include "parameter.h"
+#include "musl_preinit_common.h"
+struct alignas(8) HookJsConfig { // 8 is 8 bit
+    uint8_t maxJsStackDepth = 0;
+    bool jsStackReport = false;
+    bool jsFpUnwind = false;
+    char filterNapiName[64] = { "" };
+};
+static HookJsConfig* g_hookJsConfig = nullptr;
+static std::once_flag g_hookOnceFlag;
+static std::string JS_CALL_STACK_DEPTH_SEP = ","; // ',' is js call stack depth separator
+static std::string JS_SYMBOL_FILEPATH_SEP = "|";  // '|' is js symbol and filepath separator
 #endif
 
 using panda::JsiRuntimeCallInfo;
@@ -77,6 +93,7 @@ static constexpr uint64_t SEC_TO_MILSEC = 1000;
 #endif
 #ifdef ENABLE_HITRACE
 constexpr auto NAPI_PROFILER_PARAM_SIZE = 10;
+std::atomic<uint64_t> g_chainId = 0;
 #endif
 
 std::string ArkNativeEngine::tempModuleName_ {""};
@@ -95,6 +112,36 @@ panda::Local<panda::JSValueRef> NapiValueToLocalValue(napi_value v)
 {
     return LocalValueFromJsValue(v);
 }
+
+#ifdef ENABLE_CONTAINER_SCOPE
+void FunctionSetContainerId(const EcmaVM *vm, panda::Local<panda::JSValueRef> &value)
+{
+    panda::Local<panda::FunctionRef> funcValue(value);
+    if (funcValue->IsNative(vm)) {
+        return;
+    }
+
+    auto extraInfo = funcValue->GetData(vm);
+    if (extraInfo != nullptr) {
+        return;
+    }
+
+    NapiFunctionInfo *funcInfo = NapiFunctionInfo::CreateNewInstance();
+    if (funcInfo == nullptr) {
+        HILOG_ERROR("funcInfo is nullptr");
+        return;
+    }
+    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    funcValue->SetData(vm, reinterpret_cast<void*>(funcInfo),
+        [](void *externalPointer, void *data) {
+            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
+            if (info != nullptr) {
+                delete info;
+                info = nullptr;
+            }
+        }, true);
+}
+#endif
 
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM) && !defined(IOS_PLATFORM)
 bool IsFileNameFormat(char c)
@@ -167,6 +214,9 @@ panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, 
     funcInfo->env = env;
     funcInfo->callback = callback;
     funcInfo->data = data;
+#ifdef ENABLE_CONTAINER_SCOPE
+    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+#endif
 
     Local<panda::FunctionRef> fn = panda::FunctionRef::NewClassFunction(vm, ArkNativeFunctionCallBack,
         [](void* externalPointer, void* data) {
@@ -192,6 +242,204 @@ panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, 
             NapiDefineProperty(env, classPrototype, properties[i]);
         }
     }
+
+    return fn;
+}
+
+Local<panda::JSValueRef> NapiNativeCreateSendableFunction(napi_env env,
+                                                          const char* name,
+                                                          NapiNativeCallback cb,
+                                                          void* value)
+{
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
+    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
+    if (funcInfo == nullptr) {
+        HILOG_ERROR("funcInfo is nullptr");
+        return JSValueRef::Undefined(vm);
+    }
+    funcInfo->env = env;
+    funcInfo->callback = cb;
+    funcInfo->data = value;
+
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewSendable(
+        vm, ArkNativeFunctionCallBack,
+        [](void* externalPointer, void* data) {
+            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
+            if (info != nullptr) {
+                delete info;
+            }
+        },
+        reinterpret_cast<void*>(funcInfo), true);
+    return fn;
+}
+
+PropertyAttribute GetPropertyAttributeFromNapiPropertyDescriptor(napi_env env,
+                                                                 NapiPropertyDescriptor propertyDescriptor)
+{
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
+    Local<panda::JSValueRef> propertyName = LocalValueFromJsValue(propertyDescriptor.name);
+    if (propertyDescriptor.utf8name != nullptr) {
+        propertyName = panda::StringRef::NewFromUtf8(vm, propertyDescriptor.utf8name);
+    }
+
+    bool writable = (propertyDescriptor.attributes & NATIVE_WRITABLE) != 0;
+    bool enumable = (propertyDescriptor.attributes & NATIVE_ENUMERABLE) != 0;
+    bool configable = (propertyDescriptor.attributes & NATIVE_CONFIGURABLE) != 0;
+
+    PropertyAttribute attr;
+    std::string fullName;
+    if (propertyDescriptor.getter != nullptr || propertyDescriptor.setter != nullptr) {
+        Local<panda::JSValueRef> localGetter = panda::JSValueRef::Undefined(vm);
+        Local<panda::JSValueRef> localSetter = panda::JSValueRef::Undefined(vm);
+
+        if (propertyDescriptor.getter != nullptr) {
+            localGetter = NapiNativeCreateSendableFunction(env, (fullName + "getter").c_str(),
+                                                           propertyDescriptor.getter, propertyDescriptor.data);
+        }
+        if (propertyDescriptor.setter != nullptr) {
+            localSetter = NapiNativeCreateSendableFunction(env, (fullName + "setter").c_str(),
+                                                           propertyDescriptor.setter, propertyDescriptor.data);
+        }
+        Local<JSValueRef> val = panda::ObjectRef::CreateSendableAccessorData(vm, localGetter, localSetter);
+        attr = PropertyAttribute(val, false, enumable, configable);
+    } else if (propertyDescriptor.method != nullptr) {
+        if (propertyDescriptor.utf8name != nullptr) {
+            fullName += propertyDescriptor.utf8name;
+        } else {
+            fullName += propertyName->IsString()
+                            ? Local<panda::StringRef>(propertyName)->ToString()
+                            : Local<panda::SymbolRef>(propertyName)->GetDescription(vm)->ToString();
+        }
+        Local<panda::JSValueRef> func =
+            NapiNativeCreateSendableFunction(env, fullName.c_str(), propertyDescriptor.method, propertyDescriptor.data);
+        attr = PropertyAttribute(func, writable, enumable, configable);
+    } else {
+        Local<panda::JSValueRef> val = LocalValueFromJsValue(propertyDescriptor.value);
+        attr = PropertyAttribute(val, writable, enumable, configable);
+    }
+    return attr;
+}
+
+void InitSendablePropertiesInfo(napi_env env,
+                                const EcmaVM* vm,
+                                FunctionRef::SendablePropertiesInfo& info,
+                                const NapiPropertyDescriptor& propertyDescriptor,
+                                size_t& length)
+{
+    Local<panda::StringRef> key;
+    if (propertyDescriptor.utf8name != nullptr) {
+        key = panda::StringRef::NewFromUtf8(vm, propertyDescriptor.utf8name);
+    } else {
+        key = LocalValueFromJsValue(propertyDescriptor.name);
+    }
+    Local<panda::JSValueRef> value = LocalValueFromJsValue(propertyDescriptor.value);
+
+    info.keys->Set(vm, length, key);
+    info.values->Set(vm, length, value);
+    PropertyAttribute attr = GetPropertyAttributeFromNapiPropertyDescriptor(env, propertyDescriptor);
+    info.attributes[length] = attr;
+    ++length;
+}
+
+FunctionRef::SendablePropertiesInfos CreateSendablePropertiesInfos(napi_env env,
+                                                                   const NapiPropertyDescriptor* properties,
+                                                                   size_t propertiesLength)
+{
+    size_t instancePropertiesLength = 0;
+    // index 0 is name
+    size_t staticPropertiesLength = 1;
+    // index 0 is constructor
+    size_t nonStaticPropertiesLength = 1;
+    for (size_t i = 0; i < propertiesLength; i++) {
+        if (properties[i].attributes & NATIVE_INSTANCE) {
+            ++instancePropertiesLength;
+        } else if (properties[i].attributes & NATIVE_STATIC) {
+            ++staticPropertiesLength;
+        } else {
+            ++nonStaticPropertiesLength;
+        }
+    }
+
+    const EcmaVM* vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    FunctionRef::SendablePropertiesInfo instancePropertiesInfo = { panda::ArrayRef::New(vm, instancePropertiesLength),
+                                                                   panda::ArrayRef::New(vm, instancePropertiesLength),
+                                                                   new PropertyAttribute[instancePropertiesLength] };
+    FunctionRef::SendablePropertiesInfo staticPropertiesInfo = { panda::ArrayRef::New(vm, staticPropertiesLength),
+                                                                 panda::ArrayRef::New(vm, staticPropertiesLength),
+                                                                 new PropertyAttribute[staticPropertiesLength] };
+    FunctionRef::SendablePropertiesInfo nonStaticPropertiesInfo = { panda::ArrayRef::New(vm, nonStaticPropertiesLength),
+                                                                    panda::ArrayRef::New(vm, nonStaticPropertiesLength),
+                                                                    new PropertyAttribute[nonStaticPropertiesLength] };
+
+    instancePropertiesLength = 0;
+    // index 0 is name
+    staticPropertiesLength = 1;
+    // index 0 is constructor
+    nonStaticPropertiesLength = 1;
+
+    for (size_t i = 0; i < propertiesLength; ++i) {
+        if (properties[i].attributes & NATIVE_INSTANCE) {
+            InitSendablePropertiesInfo(env, vm, instancePropertiesInfo, properties[i], instancePropertiesLength);
+        } else if (properties[i].attributes & NATIVE_STATIC) {
+            InitSendablePropertiesInfo(env, vm, staticPropertiesInfo, properties[i], staticPropertiesLength);
+        } else {
+            InitSendablePropertiesInfo(env, vm, nonStaticPropertiesInfo, properties[i], nonStaticPropertiesLength);
+        }
+    }
+
+    return {
+        instancePropertiesInfo,
+        staticPropertiesInfo,
+        nonStaticPropertiesInfo,
+    };
+}
+
+panda::Local<panda::JSValueRef> NapiDefineSendableClass(napi_env env,
+                                                        const char* name,
+                                                        NapiNativeCallback callback,
+                                                        void* data,
+                                                        const NapiPropertyDescriptor* properties,
+                                                        size_t propertiesLength,
+                                                        napi_value parent)
+{
+    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
+    if (funcInfo == nullptr) {
+        HILOG_ERROR("funcInfo is nullptr");
+    }
+    funcInfo->env = env;
+    funcInfo->callback = callback;
+    funcInfo->data = data;
+
+    std::string className(name);
+    if (ArkNativeEngine::napiProfilerEnabled) {
+        className = ArkNativeEngine::tempModuleName_ + "." + name;
+    }
+
+    const EcmaVM* vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, className.c_str());
+    Local<JSValueRef> localParent = JSValueRef::Null(vm);
+    if (parent != nullptr) {
+        localParent = LocalValueFromJsValue(parent);
+    }
+
+    auto propertiesInfos = CreateSendablePropertiesInfos(env, properties, propertiesLength);
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewSendableClassFunction(
+        vm, ArkNativeFunctionCallBack,
+        [](void* externalPointer, void* data) {
+            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
+            if (info != nullptr) {
+                delete info;
+            }
+        },
+        reinterpret_cast<void*>(funcInfo), fnName, propertiesInfos, localParent, true, true);
+    delete[] propertiesInfos.instancePropertiesInfo.attributes;
+    delete[] propertiesInfos.staticPropertiesInfo.attributes;
+    delete[] propertiesInfos.nonStaticPropertiesInfo.attributes;
+    propertiesInfos.instancePropertiesInfo.attributes = nullptr;
+    propertiesInfos.staticPropertiesInfo.attributes = nullptr;
+    propertiesInfos.nonStaticPropertiesInfo.attributes = nullptr;
 
     return fn;
 }
@@ -458,7 +706,21 @@ ArkNativeEngine::~ArkNativeEngine()
     StopMonitorJSHeapUsage();
 }
 
-static inline void StartNapiProfilerTrace(panda::JsiRuntimeCallInfo *runtimeInfo)
+#ifdef ENABLE_HITRACE
+static inline bool CheckHookConfig(const std::string &nameRef)
+{
+    if (g_hookJsConfig == nullptr || g_hookJsConfig->jsStackReport == false ||
+        g_hookJsConfig->maxJsStackDepth == 0 || !g_hookJsConfig->jsFpUnwind) {
+        return false;
+    } else if (g_hookJsConfig->filterNapiName[0] != '\0' &&
+        nameRef.find(g_hookJsConfig->filterNapiName) != std::string::npos) {
+        return false;
+    }
+    return true;
+}
+#endif
+
+static inline uint64_t StartNapiProfilerTrace(panda::JsiRuntimeCallInfo *runtimeInfo)
 {
 #ifdef ENABLE_HITRACE
         if (ArkNativeEngine::napiProfilerEnabled) {
@@ -469,15 +731,64 @@ static inline void StartNapiProfilerTrace(panda::JsiRuntimeCallInfo *runtimeInfo
             char threadName[128];
             prctl(PR_GET_NAME, threadName);
             StartTraceArgs(HITRACE_TAG_ACE, "Napi called:%s, tname:%s", nameRef->ToString().c_str(), threadName);
+            bool hookFlag = __get_hook_flag() && __get_global_hook_flag();
+            if (!hookFlag) {
+                HILOG_DEBUG("hookFlag is false!");
+                return 0;
+            }
+            if (g_hookJsConfig == nullptr) {
+                std::call_once(g_hookOnceFlag, []() { g_hookJsConfig = (HookJsConfig*)__get_hook_js_config(); });
+            }
+            if (!CheckHookConfig(nameRef->ToString())) {
+                return 0;
+            }
+            std::string rawStack;
+            std::vector<JsFrameInfo> jsFrames;
+            uint64_t nestChainId = 0;
+            jsFrames.reserve(g_hookJsConfig->maxJsStackDepth);
+            auto info = reinterpret_cast<NapiFunctionInfo*>(runtimeInfo->GetData());
+            auto engine = reinterpret_cast<NativeEngine*>(info->env);
+            engine->BuildJsStackInfoListWithCustomDepth(jsFrames, g_hookJsConfig->maxJsStackDepth);
+            std::stringstream ssRawStack;
+            for (size_t i = 0; i < jsFrames.size(); i++) {
+                ssRawStack << jsFrames[i].functionName << JS_SYMBOL_FILEPATH_SEP << jsFrames[i].fileName << ":" <<
+                    jsFrames[i].pos;
+                if (i < jsFrames.size() - 1) {
+                    ssRawStack << JS_CALL_STACK_DEPTH_SEP;
+                }
+            }
+            rawStack = ssRawStack.str();
+            OHOS::HiviewDFX::HiTraceChain::Begin("ArkNativeFunctionCallBack", 0);
+            OHOS::HiviewDFX::HiTraceId hitraceId = OHOS::HiviewDFX::HiTraceChain::GetId();
+            // resolve nested calls to napi and ts
+            if (hitraceId.IsValid()) {
+                nestChainId = hitraceId.GetChainId();
+            }
+            uint64_t chainId = ++g_chainId;
+            hitraceId.SetChainId(chainId);
+            OHOS::HiviewDFX::HiTraceChain::SetId(hitraceId);
+            __send_hook_js_rawstack(chainId, rawStack.c_str(), rawStack.size() + 1);
+            return nestChainId;
         }
 #endif
+    return 0;
 }
 
-static inline void FinishNapiProfilerTrace()
+static inline void FinishNapiProfilerTrace(uint64_t value)
 {
 #ifdef ENABLE_HITRACE
     if (ArkNativeEngine::napiProfilerEnabled) {
         FinishTrace(HITRACE_TAG_ACE);
+        OHOS::HiviewDFX::HiTraceId hitraceId = OHOS::HiviewDFX::HiTraceChain::GetId();
+        if (hitraceId.IsValid()) {
+            OHOS::HiviewDFX::HiTraceChain::End(hitraceId);
+            OHOS::HiviewDFX::HiTraceChain::ClearId();
+        }
+        // resolve nested calls to napi and ts
+        if (value) {
+            hitraceId.SetChainId(value);
+            OHOS::HiviewDFX::HiTraceChain::SetId(hitraceId);
+        }
     }
 #endif
 }
@@ -489,11 +800,19 @@ size_t NapiNativeCallbackInfo::GetArgc() const
 
 size_t NapiNativeCallbackInfo::GetArgv(napi_value* argv, size_t argc)
 {
+#ifdef ENABLE_CONTAINER_SCOPE
+    auto *vm = info->GetVM();
+#endif
     if (argc > 0) {
         size_t i = 0;
         size_t buffer = GetArgc();
         for (; i < buffer && i < argc; i++) {
             panda::Local<panda::JSValueRef> value = info->GetCallArgRef(i);
+#ifdef ENABLE_CONTAINER_SCOPE
+            if (value->IsFunction()) {
+                FunctionSetContainerId(vm, value);
+            }
+#endif
             argv[i] = JsValueFromLocalValue(value);
         }
         return i;
@@ -509,7 +828,16 @@ napi_value NapiNativeCallbackInfo::GetThisVar()
 
 napi_value NapiNativeCallbackInfo::GetFunction()
 {
+#ifdef ENABLE_CONTAINER_SCOPE
+    auto *vm = info->GetVM();
+    panda::Local<panda::JSValueRef> newValue = info->GetNewTargetRef();
+    if (newValue->IsFunction()) {
+        FunctionSetContainerId(vm, newValue);
+    }
+    return JsValueFromLocalValue(newValue);
+#else
     return JsValueFromLocalValue(info->GetNewTargetRef());
+#endif
 }
 
 NapiFunctionInfo* NapiNativeCallbackInfo::GetFunctionInfo()
@@ -532,7 +860,7 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
     }
 
     NapiNativeCallbackInfo cbInfo(runtimeInfo);
-    StartNapiProfilerTrace(runtimeInfo);
+    uint64_t nestChainId = StartNapiProfilerTrace(runtimeInfo);
 
     if (JSNApi::IsMixedDebugEnabled(vm)) {
         JSNApi::NotifyNativeCalling(vm, reinterpret_cast<void *>(cb));
@@ -552,7 +880,7 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
         localRet = LocalValueFromJsValue(result);
     }
 
-    FinishNapiProfilerTrace();
+    FinishNapiProfilerTrace(nestChainId);
     // Fixme: Rethrow error to engine while clear lastException_
     if (!engine->lastException_.IsEmpty()) {
         engine->lastException_.Empty();
@@ -579,15 +907,20 @@ Local<panda::JSValueRef> NapiNativeCreateFunction(napi_env env, const char* name
     funcInfo->env = env;
     funcInfo->callback = cb;
     funcInfo->data = value;
+#ifdef ENABLE_CONTAINER_SCOPE
+    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+#endif
 
-    Local<panda::FunctionRef> fn = panda::FunctionRef::New(vm, ArkNativeFunctionCallBack,
-                                                           [](void* externalPointer, void* data) {
-                                                                auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-                                                                if (info != nullptr) {
-                                                                    delete info;
-                                                                }
-                                                           },
-                                                           reinterpret_cast<void*>(funcInfo), true);
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(
+        vm, ArkNativeFunctionCallBack,
+        [](void* externalPointer, void* data) {
+            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
+            if (info != nullptr) {
+                delete info;
+            }
+        },
+        reinterpret_cast<void*>(funcInfo), true
+    );
     Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, name);
     fn->SetName(vm, fnName);
     return fn;
@@ -1533,6 +1866,26 @@ bool ArkNativeEngine::BuildJsStackInfoList(uint32_t tid, std::vector<JsFrameInfo
         jsframe.functionName = jf.functionName;
         jsframe.pos = jf.pos;
         jsframe.nativePointer = jf.nativePointer;
+        jsFrames.emplace_back(jsframe);
+    }
+    return sign;
+#else
+    HILOG_WARN("ARK does not support dfx on windows");
+    return false;
+#endif
+}
+
+bool ArkNativeEngine::BuildJsStackInfoListWithCustomDepth(std::vector<JsFrameInfo>& jsFrames, uint8_t maxJsStackDepth)
+{
+#if !defined(PREVIEW) && !defined(IOS_PLATFORM)
+    std::vector<ArkJsFrameInfo> arkJsFrames;
+    bool sign = DFXJSNApi::BuildJsStackInfoList(vm_, gettid(), arkJsFrames);
+    for (size_t i = 0; i < arkJsFrames.size() && i < maxJsStackDepth; i++) {
+        struct JsFrameInfo jsframe;
+        jsframe.fileName = arkJsFrames[i].fileName;
+        jsframe.functionName = arkJsFrames[i].functionName;
+        jsframe.pos = arkJsFrames[i].pos;
+        jsframe.nativePointer = arkJsFrames[i].nativePointer;
         jsFrames.emplace_back(jsframe);
     }
     return sign;
