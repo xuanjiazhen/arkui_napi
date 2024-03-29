@@ -17,6 +17,7 @@
 
 #include <cstring>
 #include <dirent.h>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <mutex>
@@ -856,6 +857,16 @@ bool NativeModuleManager::UnloadModuleLibrary(LIBHANDLE handle)
     return false;
 }
 
+const char* NativeModuleManager::GetNativeModuleLoadPath(char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength)
+{
+    if (std::filesystem::exists(nativeModulePath[0])) {
+        return nativeModulePath[0];
+    } else if (std::filesystem::exists(nativeModulePath[1])) {
+        return nativeModulePath[1];
+    }
+    return nullptr;
+}
+
 NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName, const char* path,
     const char* relativePath, bool internal, const bool isAppModule, std::string& errInfo)
 {
@@ -881,15 +892,13 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName
         moduleKey = moduleKey + '/' + moduleName;
     }
 
-    // load primary module path first
-    char* loadPath = nativeModulePath[0];
-    HILOG_DEBUG("moduleName: %{public}s. get primary module path: %{public}s", moduleName, loadPath);
-    LIBHANDLE lib = LoadModuleLibrary(moduleKey, loadPath, path, isAppModule, errInfo);
-    if (lib == nullptr) {
-        loadPath = nativeModulePath[1];
-        HILOG_DEBUG("try to load secondary module path: %{public}s", loadPath);
-        lib = LoadModuleLibrary(moduleKey, loadPath, path, isAppModule, errInfo);
+    const char* loadPath = GetNativeModuleLoadPath(nativeModulePath, NAPI_PATH_MAX);
+    if (loadPath == nullptr) {
+        HILOG_ERROR("module %{public}s does not exist", moduleName);
+        return nullptr;
     }
+    HILOG_DEBUG("moduleName: %{public}s. module path: %{public}s", moduleName, loadPath);
+    LIBHANDLE lib = LoadModuleLibrary(moduleKey, loadPath, path, isAppModule, errInfo);
 
     const uint8_t* abcBuffer = nullptr;
     size_t len = 0;
