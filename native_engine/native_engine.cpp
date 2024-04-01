@@ -714,10 +714,13 @@ bool NativeEngine::GetAbcBuffer(const char* path, uint8_t **buffer, size_t* buff
 {
     std::string pathStr(path);
     bool useSecureMem = false;
-    if (!CallGetAssetFunc(pathStr, buffer, bufferSize, ami, useSecureMem, isRestrictedWorker)) {
+    std::string normalizedPath = panda::JSNApi::NormalizePath(path);
+    HILOG_DEBUG("GetAbcBuffer Normalized Path: %{public}s", normalizedPath.c_str());
+    if (!CallGetAssetFunc(normalizedPath, buffer, bufferSize, ami, useSecureMem, isRestrictedWorker)) {
         HILOG_ERROR("Get asset error");
         return false;
     }
+    HILOG_DEBUG("CallGetAssetFunc get ami : %{private}s", ami.c_str());
     if (useSecureMem && relativeWorker && !panda::JSNApi::CheckSecureMem(reinterpret_cast<uintptr_t>(*buffer))) {
         HILOG_ERROR("GetAbcBuffer secure memory check failed, please check abc signature.");
         return false;
