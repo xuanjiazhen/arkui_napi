@@ -685,18 +685,18 @@ static inline uint64_t StartNapiProfilerTrace(panda::JsiRuntimeCallInfo *runtime
              * resolve nested calls to napi and ts
              * example: napi1_start 
              *              |
-             *           chainId1
+             *          chainId1
              *              |
-             *         napi2_start
+             *          napi2_start
              *              |
-             *       nestChainId = chainId1
-             *           chainId2
+             *      nestChainId = chainId1
+             *          chainId2
              *              |
-             *         napi2_end
+             *          napi2_end
              *              |
              *      chainId1 = nestChainId 
              *              |
-             *         napi1_end
+             *          napi1_end
              */
             if (hitraceId.IsValid()) {
                 nestChainId = hitraceId.GetChainId();
