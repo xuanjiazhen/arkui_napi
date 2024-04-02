@@ -683,20 +683,20 @@ static inline uint64_t StartNapiProfilerTrace(panda::JsiRuntimeCallInfo *runtime
             OHOS::HiviewDFX::HiTraceId hitraceId = OHOS::HiviewDFX::HiTraceChain::GetId();
             /**
              * resolve nested calls to napi and ts
-             * example: napi1_start
+             * example: napiStart1
              *              |
              *          chainId1
              *              |
-             *          napi2_start
+             *          napiStart2
              *              |
              *      nestChainId = chainId1
              *          chainId2
              *              |
-             *          napi2_end
+             *          napiEnd2
              *              |
              *      chainId1 = nestChainId 
              *              |
-             *          napi1_end
+             *          napiEnd1
              */
             if (hitraceId.IsValid()) {
                 nestChainId = hitraceId.GetChainId();
