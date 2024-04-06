@@ -32,7 +32,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        void* hint)
     : engine_(engine),
       vm_(vm),
-      value_(vm, LocalValueFromJsValue(value)),
+      value_(vm, reinterpret_cast<uintptr_t>(value)),
       refCount_(initialRefcount),
       deleteSelf_(deleteSelf),
       napiCallback_(napiCallback),
