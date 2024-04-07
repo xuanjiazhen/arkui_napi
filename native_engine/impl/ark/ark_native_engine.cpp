@@ -663,7 +663,7 @@ static inline uint64_t StartNapiProfilerTrace(panda::JsiRuntimeCallInfo *runtime
             if (!CheckHookConfig(nameRef->ToString())) {
                 return 0;
             }
-            bool previousState = __set_hook_flag(false);
+            bool previousState = __set_hook_flag(false); // not hook the internal memory allocation of the StartNapiProfilerTrace
             uint64_t nestChainId = 0;
             {
                 std::string rawStack;
