@@ -48,16 +48,15 @@ struct alignas(8) HookJsConfig { // 8 is 8 bit
 class BlockHookScope {
 public:
     BlockHookScope()
-	{
-		previousState_ = __set_hook_flag(false);
-	}
+    {
+        previousState_ = __set_hook_flag(false);
+    }
     ~BlockHookScope()
-	{
-		__set_hook_flag(previousState_);
-	}
+    {
+        __set_hook_flag(previousState_);
+    }
 private:
     bool previousState_ {true};
-
 };
 static HookJsConfig* g_hookJsConfig = nullptr;
 static std::once_flag g_hookOnceFlag;
