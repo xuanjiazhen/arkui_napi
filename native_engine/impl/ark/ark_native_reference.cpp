@@ -65,9 +65,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
 ArkNativeReference::~ArkNativeReference()
 {
     if (deleteSelf_ && engine_->GetReferenceManager()) {
-        engine_->GetReferenceManager()->ReleaseHandler(this);
-        prev_ = nullptr;
-        next_ = nullptr;
+        engine_->GetReferenceManager()->ReleaseHandler(handler_);
     }
     if (value_.IsEmpty()) {
         return;

@@ -19,15 +19,17 @@
 #include "native_engine/native_reference.h"
 #include "utils/macros.h"
 
+struct NativeReferenceHandler;
+
 class NAPI_EXPORT NativeReferenceManager {
 public:
     NativeReferenceManager();
     virtual ~NativeReferenceManager();
 
-    void CreateHandler(NativeReference* reference);
-    void ReleaseHandler(NativeReference* reference);
+    NativeReferenceHandler* CreateHandler(NativeReference* reference);
+    void ReleaseHandler(NativeReferenceHandler* handler);
 
 private:
-    NativeReference *references_;
+    NativeReferenceHandler* referenceHandlers_;
 };
 #endif /* FOUNDATION_ACE_NAPI_REFERENCE_MANAGER_NATIVE_REFERENCE_MANAGER_H */
