@@ -69,7 +69,7 @@ private:
         if (deleteSelf) {
             NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
             if (referenceManager != nullptr) {
-                referenceManager->CreateHandler(this);
+                handler_ = referenceManager->CreateHandler(this);
             }
         }
     }
@@ -86,14 +86,12 @@ private:
     bool hasDelete_ {false};
     bool finalRun_ {false};
 
-    NativeReference* prev_ {nullptr};
-    NativeReference* next_ {nullptr};
+    NativeReferenceHandler* handler_ {nullptr};
 
     void FinalizeCallback();
 
     static void FreeGlobalCallBack(void* ref);
     static void NativeFinalizeCallBack(void* ref);
-    friend class NativeReferenceManager;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H */

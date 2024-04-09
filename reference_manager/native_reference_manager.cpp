@@ -15,39 +15,50 @@
 
 #include "native_reference_manager.h"
 
-#include "native_engine/impl/ark/ark_native_reference.h"
+struct NativeReferenceHandler {
+    NativeReference* reference = nullptr;
+    NativeReferenceHandler* next = nullptr;
+    NativeReferenceHandler* prev = nullptr;
+};
 
-NativeReferenceManager::NativeReferenceManager() : references_(nullptr) {}
+NativeReferenceManager::NativeReferenceManager() : referenceHandlers_(nullptr) {}
 
 NativeReferenceManager::~NativeReferenceManager()
 {
-    for (auto handler = references_; handler != nullptr; handler = references_) {
-        references_ = reinterpret_cast<ArkNativeReference*>(handler)->next_;
-        delete handler;
+    for (auto handler = referenceHandlers_; handler != nullptr; handler = referenceHandlers_) {
+        delete handler->reference;
     }
 }
 
-void NativeReferenceManager::CreateHandler(NativeReference* reference)
+NativeReferenceHandler* NativeReferenceManager::CreateHandler(NativeReference* reference)
 {
-    if (references_) {
-        reinterpret_cast<ArkNativeReference*>(references_)->prev_ = reference;
-        reinterpret_cast<ArkNativeReference*>(reference)->next_ = references_;
+    if (reference == nullptr) {
+        return nullptr;
     }
-    references_ = reference;
+    NativeReferenceHandler* temp = new NativeReferenceHandler;
+    temp->reference = reference;
+    temp->next = referenceHandlers_;
+    if (referenceHandlers_) {
+        referenceHandlers_->prev = temp;
+    }
+    referenceHandlers_ = temp;
+    return temp;
 }
 
-void NativeReferenceManager::ReleaseHandler(NativeReference* reference)
+void NativeReferenceManager::ReleaseHandler(NativeReferenceHandler* handler)
 {
-    NativeReference* prev = reinterpret_cast<ArkNativeReference*>(reference)->prev_;
-    NativeReference* next = reinterpret_cast<ArkNativeReference*>(reference)->next_;
-
+    if (handler == nullptr) {
+        return;
+    }
+    NativeReferenceHandler* prev = handler->prev;
+    NativeReferenceHandler* next = handler->next;
     if (prev) {
-        reinterpret_cast<ArkNativeReference*>(prev)->next_ = next;
+        prev->next = next;
     } else {
-        // reference is the head node.
-        references_ = next;
+        referenceHandlers_ = next;
     }
     if (next) {
-        reinterpret_cast<ArkNativeReference*>(next)->prev_ = prev;
+        next->prev = prev;
     }
+    delete handler;
 }
