@@ -3482,3 +3482,20 @@ NAPI_EXTERN napi_status napi_call_threadsafe_function_with_priority(napi_threads
     }
     return res;
 }
+
+NAPI_EXTERN napi_status napi_set_function_fastnative(napi_env env, napi_value func)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, func);
+    RETURN_STATUS_IF_FALSE(env, reinterpret_cast<panda::JSValueRef *>(func)->IsFunction(), napi_function_expected);
+
+    auto vm = reinterpret_cast<NativeEngine *>(env)->GetEcmaVm();
+    panda::FunctionRef* funcRef = reinterpret_cast<panda::FunctionRef *>(func);
+    auto funcInfo = reinterpret_cast<NapiFunctionInfo *>(funcRef->GetData(vm));
+    if (funcInfo != nullptr) {
+        // make sure it is a function created from napi
+        funcInfo->flags = NapiFunctionFlags::FAST_NATIVE;
+    }
+
+    return napi_clear_last_error(env);
+}

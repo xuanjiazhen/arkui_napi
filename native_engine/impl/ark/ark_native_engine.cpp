@@ -758,8 +758,12 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
     napi_value result = nullptr;
     if (cb != nullptr) {
         if constexpr (changeState) {
-            panda::JsiNativeScope nativeScope(vm);
-            result = cb(env, runtimeInfo);
+            if (info->flags == NapiFunctionFlags::FAST_NATIVE) {
+                result = cb(env, runtimeInfo);
+            } else {
+                panda::JsiNativeScope nativeScope(vm);
+                result = cb(env, runtimeInfo);
+            }
         } else {
             result = cb(env, runtimeInfo);
         }

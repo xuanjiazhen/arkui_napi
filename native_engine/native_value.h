@@ -51,10 +51,16 @@ struct NativeObjectInfo {
     void* hint = nullptr;
 };
 
+enum class NapiFunctionFlags : uint8_t {
+    NONE = 0,
+    FAST_NATIVE = 1
+};
+
 struct NapiFunctionInfo {
     static NapiFunctionInfo* CreateNewInstance() { return new(std::nothrow) NapiFunctionInfo(); }
     NapiNativeCallback callback = nullptr;
     void* data = nullptr;
+    NapiFunctionFlags flags = NapiFunctionFlags::NONE;
 #ifdef ENABLE_CONTAINER_SCOPE
     int32_t scopeId = -1;
 #endif
