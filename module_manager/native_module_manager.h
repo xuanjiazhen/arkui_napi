@@ -105,6 +105,7 @@ private:
         bool isAppModule, char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength);
     NativeModule* FindNativeModuleByDisk(const char* moduleName, const char* path, const char* relativePath,
         bool internal, const bool isAppModule, std::string& errInfo);
+    const char* GetNativeModuleLoadPath(char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength);
     NativeModule* FindNativeModuleByCache(const char* moduleName);
     LIBHANDLE LoadModuleLibrary(std::string& moduleKey, const char* path, const char* pathKey,
         const bool isAppModule, std::string& errInfo);
