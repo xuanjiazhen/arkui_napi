@@ -43,8 +43,8 @@
 #include "parameter.h"
 #include "musl_preinit_common.h"
 struct alignas(8) HookJsConfig { // 8 is 8 bit
+    int32_t jsStackReport = 0;
     uint8_t maxJsStackDepth = 0;
-    bool jsStackReport = false;
     bool jsFpUnwind = false;
     char filterNapiName[64] = { "" };
 };
@@ -637,7 +637,7 @@ ArkNativeEngine::~ArkNativeEngine()
 #ifdef ENABLE_HITRACE
 static inline bool CheckHookConfig(const std::string &nameRef)
 {
-    if (g_hookJsConfig == nullptr || g_hookJsConfig->jsStackReport == false ||
+    if (g_hookJsConfig == nullptr || g_hookJsConfig->jsStackReport <= 0 ||
         g_hookJsConfig->maxJsStackDepth == 0 || !g_hookJsConfig->jsFpUnwind) {
         return false;
     } else if (g_hookJsConfig->filterNapiName[0] != '\0' &&
