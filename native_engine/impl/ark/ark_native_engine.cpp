@@ -817,7 +817,14 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
             panda::JsiNativeScope nativeScope(vm);
             result = cb(env, &cbInfo);
         } else {
+            static constexpr uint64_t NANOSECONDSINSECOND = 1000000000;
+            struct timespec timeNow = {0, 0};
+            clock_gettime(CLOCK_REALTIME, &timeNow);
+            uint64_t old_sec_value = timeNow.tv_sec * NANOSECONDSINSECOND + timeNow.tv_nsec;
             result = cb(env, &cbInfo);
+            clock_gettime(CLOCK_REALTIME, &timeNow);
+            uint64_t new_sec_value = timeNow.tv_sec * NANOSECONDSINSECOND + timeNow.tv_nsec;
+            HILOG_ERROR("Native callback %{public}x executed for %{public}d nanoseconds", cb, (new_sec_value - old_sec_value));
         }
     }
 
