@@ -785,6 +785,11 @@ NapiFunctionInfo* NapiNativeCallbackInfo::GetFunctionInfo()
     return reinterpret_cast<NapiFunctionInfo*>(info->GetData());
 }
 
+void __attribute__ ((noinline)) FailFunction()
+{
+    std::abort();
+}
+
 template <bool changeState>
 panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
 {
@@ -817,7 +822,17 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
             panda::JsiNativeScope nativeScope(vm);
             result = cb(env, &cbInfo);
         } else {
+            static constexpr uint64_t NANOSECONDSINSECOND = 1000000000;
+            static constexpr uint64_t HALFOFSECOND = NANOSECONDSINSECOND / 2;
+            struct timespec timeNow = {0, 0};
+            clock_gettime(CLOCK_REALTIME, &timeNow);
+            uint64_t old_sec_value = timeNow.tv_sec * NANOSECONDSINSECOND + timeNow.tv_nsec;
             result = cb(env, &cbInfo);
+            clock_gettime(CLOCK_REALTIME, &timeNow);
+            uint64_t new_sec_value = timeNow.tv_sec * NANOSECONDSINSECOND + timeNow.tv_nsec;
+            if (new_sec_value - old_sec_value > HALFOFSECOND) {
+                FailFunction();
+            }
         }
     }
 
