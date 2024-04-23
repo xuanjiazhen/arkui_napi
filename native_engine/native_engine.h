@@ -276,6 +276,15 @@ public:
     {
         return jsThreadType_ == JSThreadType::NATIVE_THREAD;
     }
+    void SetEngineRunner(void* runner)
+    {
+        nativeEngineRunner_ = runner;
+    }
+
+    void* GetEngineRunner() const
+    {
+        return nativeEngineRunner_;
+    }
 
     bool CheckAndSetWorkerVersion(WorkerVersion expected, WorkerVersion desired)
     {
@@ -519,6 +528,7 @@ private:
     JSThreadType jsThreadType_ = JSThreadType::MAIN_THREAD;
     // current is hostengine, can create old worker, new worker, or no workers on hostengine
     std::atomic<WorkerVersion> workerVersion_ { WorkerVersion::NONE };
+    void* nativeEngineRunner_ = nullptr;
 
 #if !defined(PREVIEW)
     static void UVThreadRunner(void* nativeEngine);
