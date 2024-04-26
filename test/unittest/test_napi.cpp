@@ -1067,72 +1067,79 @@ HWTEST_F(NapiBasicTest, PromiseTest002, testing::ext::TestSize.Level1)
  * @tc.desc: Test error type.
  * @tc.type: FUNC
  */
+void HWTEST_F_ErrorTest001_Func1(napi_env env, bool isExceptionPending, napi_value exception)
+{
+    napi_value code = nullptr;
+    napi_value message = nullptr;
+
+    napi_create_string_latin1(env, "500", NAPI_AUTO_LENGTH, &code);
+    napi_create_string_latin1(env, "common error", NAPI_AUTO_LENGTH, &message);
+
+    napi_value error = nullptr;
+    napi_create_error(env, code, message, &error);
+    ASSERT_TRUE(error != nullptr);
+    bool isError = false;
+    napi_is_error(env, error, &isError);
+    ASSERT_TRUE(isError);
+    napi_throw(env, error);
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_TRUE(isExceptionPending);
+    napi_get_and_clear_last_exception(env, &exception);
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_FALSE(isExceptionPending);
+}
+
+void HWTEST_F_ErrorTest001_Func2(napi_env env, bool isExceptionPending, napi_value exception)
+{
+    napi_value code = nullptr;
+    napi_value message = nullptr;
+    napi_create_string_latin1(env, "500", NAPI_AUTO_LENGTH, &code);
+    napi_create_string_latin1(env, "range error", NAPI_AUTO_LENGTH, &message);
+    napi_value error = nullptr;
+    napi_create_range_error(env, code, message, &error);
+    ASSERT_TRUE(error != nullptr);
+    bool isError = false;
+    napi_is_error(env, error, &isError);
+    ASSERT_TRUE(isError);
+
+    napi_throw_range_error(env, "500", "Range error");
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_TRUE(isExceptionPending);
+    napi_get_and_clear_last_exception(env, &exception);
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_FALSE(isExceptionPending);
+}
+
+void HWTEST_F_ErrorTest001_Func3(napi_env env, bool isExceptionPending, napi_value exception)
+{
+    napi_value code = nullptr;
+    napi_value message = nullptr;
+    napi_create_string_latin1(env, "500", NAPI_AUTO_LENGTH, &code);
+    napi_create_string_latin1(env, "type error", NAPI_AUTO_LENGTH, &message);
+    napi_value error = nullptr;
+    napi_create_type_error(env, code, message, &error);
+    ASSERT_TRUE(error != nullptr);
+    bool isError = false;
+    napi_is_error(env, error, &isError);
+    ASSERT_TRUE(isError);
+
+    napi_throw_type_error(env, "500", "Type error");
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_TRUE(isExceptionPending);
+    napi_get_and_clear_last_exception(env, &exception);
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_FALSE(isExceptionPending);
+}
+
 HWTEST_F(NapiBasicTest, ErrorTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = (napi_env)engine_;
     bool isExceptionPending = false;
     napi_value exception = nullptr;
 
-    {
-        napi_value code = nullptr;
-        napi_value message = nullptr;
-
-        napi_create_string_latin1(env, "500", NAPI_AUTO_LENGTH, &code);
-        napi_create_string_latin1(env, "common error", NAPI_AUTO_LENGTH, &message);
-
-        napi_value error = nullptr;
-        napi_create_error(env, code, message, &error);
-        ASSERT_TRUE(error != nullptr);
-        bool isError = false;
-        napi_is_error(env, error, &isError);
-        ASSERT_TRUE(isError);
-        napi_throw(env, error);
-        napi_is_exception_pending(env, &isExceptionPending);
-        ASSERT_TRUE(isExceptionPending);
-        napi_get_and_clear_last_exception(env, &exception);
-        napi_is_exception_pending(env, &isExceptionPending);
-        ASSERT_FALSE(isExceptionPending);
-    }
-
-    {
-        napi_value code = nullptr;
-        napi_value message = nullptr;
-        napi_create_string_latin1(env, "500", NAPI_AUTO_LENGTH, &code);
-        napi_create_string_latin1(env, "range error", NAPI_AUTO_LENGTH, &message);
-        napi_value error = nullptr;
-        napi_create_range_error(env, code, message, &error);
-        ASSERT_TRUE(error != nullptr);
-        bool isError = false;
-        napi_is_error(env, error, &isError);
-        ASSERT_TRUE(isError);
-
-        napi_throw_range_error(env, "500", "Range error");
-        napi_is_exception_pending(env, &isExceptionPending);
-        ASSERT_TRUE(isExceptionPending);
-        napi_get_and_clear_last_exception(env, &exception);
-        napi_is_exception_pending(env, &isExceptionPending);
-        ASSERT_FALSE(isExceptionPending);
-    }
-
-    {
-        napi_value code = nullptr;
-        napi_value message = nullptr;
-        napi_create_string_latin1(env, "500", NAPI_AUTO_LENGTH, &code);
-        napi_create_string_latin1(env, "type error", NAPI_AUTO_LENGTH, &message);
-        napi_value error = nullptr;
-        napi_create_type_error(env, code, message, &error);
-        ASSERT_TRUE(error != nullptr);
-        bool isError = false;
-        napi_is_error(env, error, &isError);
-        ASSERT_TRUE(isError);
-
-        napi_throw_type_error(env, "500", "Type error");
-        napi_is_exception_pending(env, &isExceptionPending);
-        ASSERT_TRUE(isExceptionPending);
-        napi_get_and_clear_last_exception(env, &exception);
-        napi_is_exception_pending(env, &isExceptionPending);
-        ASSERT_FALSE(isExceptionPending);
-    }
+    HWTEST_F_ErrorTest001_Func1(env, isExceptionPending, exception);
+    HWTEST_F_ErrorTest001_Func2(env, isExceptionPending, exception);
+    HWTEST_F_ErrorTest001_Func3(env, isExceptionPending, exception);
 
     napi_throw_error(env, "500", "Common error");
     napi_is_exception_pending(env, &isExceptionPending);
