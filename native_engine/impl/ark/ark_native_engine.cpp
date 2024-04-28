@@ -632,6 +632,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
     panda::JSNApi::SetWeakFinalizeTaskCallback(vm, [this] () -> void {
         this->PostFinalizeTasks();
     });
+    DFXJSNApi::RegisterHeapdumpGcListener(vm);
 }
 
 ArkNativeEngine::~ArkNativeEngine()
