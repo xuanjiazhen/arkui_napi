@@ -16,7 +16,6 @@
 #include "native_async_work.h"
 
 #ifdef ENABLE_HITRACE
-#include "hitrace/trace.h"
 #include "hitrace_meter.h"
 #include "parameter.h"
 #include <securec.h>
@@ -63,19 +62,19 @@ NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
     }
     bool createdTraceId = false;
 
-    traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(OHOS::HiviewDFX::HiTraceChain::GetId());
-    if (g_napiTraceIdEnabled && (!traceId_ || !traceId_->IsValid())) {
-        traceId_ = std::make_unique<OHOS::HiviewDFX::HiTraceId>(HiTraceChain::Begin("New NativeAsyncWork", 0));
+    HiTraceId thisId = HiTraceChain::GetId();
+    if (g_napiTraceIdEnabled && (!thisId.IsValid())) {
+        thisId = HiTraceChain::Begin("New NativeAsyncWork", 0);
         createdTraceId = true;
     }
 
-    if (traceId_->IsValid()) {
-        traceId_ = std::make_unique<HiTraceId>(HiTraceChain::CreateSpan());
+    if (thisId.IsValid()) {
+        taskTraceId_ = HiTraceChain::CreateSpan();
     }
 
     char traceStr[TRACE_BUFFER_SIZE] = {0};
     if (sprintf_s(traceStr, sizeof(traceStr),
-        "name:%s, traceid:0x%x", asyncResourceName.c_str(), traceId_->GetChainId()) < 0) {
+        "name:%s, traceid:0x%x", asyncResourceName.c_str(), taskTraceId_.GetChainId()) < 0) {
         HILOG_ERROR("Get traceStr fail");
     }
     traceDescription_ = traceStr;
@@ -100,11 +99,12 @@ bool NativeAsyncWork::Queue()
     engine_->IncreaseWaitingRequestCounter();
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi queue, " + this->GetTraceDescription());
-    HiTraceChain::Tracepoint(HITRACE_TP_CS, *traceId_, "napi::NativeAsyncWork::Queue");
+    HiTraceId taskId = taskTraceId_;
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, taskId, "napi::NativeAsyncWork::Queue");
 #endif
     int status = uv_queue_work(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback);
 #ifdef ENABLE_HITRACE
-    HiTraceChain::Tracepoint(HITRACE_TP_CR, *traceId_, "napi::NativeAsyncWork::Queue");
+    HiTraceChain::Tracepoint(HITRACE_TP_CR, taskId, "napi::NativeAsyncWork::Queue");
     FinishTrace(HITRACE_TAG_ACE);
 #endif
     if (status != 0) {
@@ -124,11 +124,12 @@ bool NativeAsyncWork::QueueWithQos(napi_qos_t qos)
     engine_->IncreaseWaitingRequestCounter();
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi queueWithQos, " + this->GetTraceDescription());
-    HiTraceChain::Tracepoint(HITRACE_TP_CS, *traceId_, "napi::NativeAsyncWork::QueueWithQos");
+    HiTraceId taskId = taskTraceId_;
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, taskId, "napi::NativeAsyncWork::QueueWithQos");
 #endif
     int status = uv_queue_work_with_qos(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback, uv_qos_t(qos));
 #ifdef ENABLE_HITRACE
-    HiTraceChain::Tracepoint(HITRACE_TP_CR, *traceId_, "napi::NativeAsyncWork::QueueWithQos");
+    HiTraceChain::Tracepoint(HITRACE_TP_CR, taskId, "napi::NativeAsyncWork::QueueWithQos");
     FinishTrace(HITRACE_TAG_ACE);
 #endif
     if (status != 0) {
@@ -159,12 +160,12 @@ void NativeAsyncWork::AsyncWorkCallback(uv_work_t* req)
 
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi execute, " + that->GetTraceDescription());
-    if (that->traceId_ && that->traceId_->IsValid()) {
-        HiTraceId currentId = HiTraceChain::SaveAndSet(*(that->traceId_));
-        HiTraceChain::Tracepoint(HITRACE_TP_SR, *(that->traceId_), "napi::NativeAsyncWork::AsyncWorkCallback");
+    if (that->taskTraceId_.IsValid()) {
+        HiTraceId currentId = HiTraceChain::SaveAndSet(that->taskTraceId_);
+        HiTraceChain::Tracepoint(HITRACE_TP_SR, that->taskTraceId_, "napi::NativeAsyncWork::AsyncWorkCallback");
         that->execute_(that->engine_, that->data_);
         FinishTrace(HITRACE_TAG_ACE);
-        HiTraceChain::Tracepoint(HITRACE_TP_SS, *(that->traceId_), "napi::NativeAsyncWork::AsyncWorkCallback");
+        HiTraceChain::Tracepoint(HITRACE_TP_SS, that->taskTraceId_, "napi::NativeAsyncWork::AsyncWorkCallback");
         HiTraceChain::Restore(currentId);
         return;
     }
@@ -209,9 +210,9 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "Napi complete, " + that->GetTraceDescription());
     HiTraceId currentId = HiTraceChain::GetId();
-    bool isValidTraceId = that->traceId_ && that->traceId_->IsValid();
+    bool isValidTraceId = that->taskTraceId_.IsValid();
     if (isValidTraceId) {
-        OHOS::HiviewDFX::HiTraceChain::SaveAndSet(*(that->traceId_.get()));
+        OHOS::HiviewDFX::HiTraceChain::SaveAndSet(that->taskTraceId_);
     }
 #endif
 
