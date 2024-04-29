@@ -33,7 +33,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        bool isAsyncCall)
     : engine_(engine),
       vm_(vm),
-      value_(vm, LocalValueFromJsValue(value)),
+      value_(vm, reinterpret_cast<uintptr_t>(value)),
       refCount_(initialRefcount),
       deleteSelf_(deleteSelf),
       isAsyncCall_(isAsyncCall),

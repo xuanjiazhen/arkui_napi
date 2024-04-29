@@ -65,6 +65,23 @@ public:
     bool GetFinalRun() override;
     napi_value GetNapiValue() override;
 
+    inline NativeReference* GetPrev() const
+    {
+        return prev_;
+    }
+    inline void SetPrev(NativeReference* prev)
+    {
+        prev_ = prev;
+    }
+    inline NativeReference* GetNext() const
+    {
+        return next_;
+    }
+    inline void SetNext(NativeReference* next)
+    {
+        next_ = next;
+    }
+
 private:
     inline void ArkNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf)
     {
@@ -100,7 +117,6 @@ private:
 
     static void FreeGlobalCallBack(void* ref);
     static void NativeFinalizeCallBack(void* ref);
-    friend class NativeReferenceManager;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H */

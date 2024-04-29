@@ -20,7 +20,7 @@
 NativeReferenceManager::~NativeReferenceManager()
 {
     for (auto handler = references_; handler != nullptr; handler = references_) {
-        references_ = reinterpret_cast<ArkNativeReference*>(handler)->next_;
+        references_ = reinterpret_cast<ArkNativeReference*>(handler)->GetNext();
         delete handler;
     }
 }
@@ -28,24 +28,24 @@ NativeReferenceManager::~NativeReferenceManager()
 void NativeReferenceManager::CreateHandler(NativeReference* reference)
 {
     if (references_) {
-        reinterpret_cast<ArkNativeReference*>(references_)->prev_ = reference;
-        reinterpret_cast<ArkNativeReference*>(reference)->next_ = references_;
+        reinterpret_cast<ArkNativeReference*>(references_)->SetPrev(reference);
+        reinterpret_cast<ArkNativeReference*>(reference)->SetNext(references_);
     }
     references_ = reference;
 }
 
 void NativeReferenceManager::ReleaseHandler(NativeReference* reference)
 {
-    NativeReference* prev = reinterpret_cast<ArkNativeReference*>(reference)->prev_;
-    NativeReference* next = reinterpret_cast<ArkNativeReference*>(reference)->next_;
+    NativeReference* prev = reinterpret_cast<ArkNativeReference*>(reference)->GetPrev();
+    NativeReference* next = reinterpret_cast<ArkNativeReference*>(reference)->GetNext();
 
     if (prev) {
-        reinterpret_cast<ArkNativeReference*>(prev)->next_ = next;
+        reinterpret_cast<ArkNativeReference*>(prev)->SetNext(next);
     } else {
         // reference is the head node.
         references_ = next;
     }
     if (next) {
-        reinterpret_cast<ArkNativeReference*>(next)->prev_ = prev;
+        reinterpret_cast<ArkNativeReference*>(next)->SetPrev(prev);
     }
 }
