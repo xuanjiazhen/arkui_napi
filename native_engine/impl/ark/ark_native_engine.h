@@ -31,6 +31,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_engine/native_engine.h"
+#include "ark_native_task_runner.h"
 
 namespace panda::ecmascript {
 struct JsHeapDumpWork;
@@ -127,7 +128,8 @@ class NAPI_EXPORT ArkNativeEngine : public NativeEngine {
 friend struct MoudleNameLocker;
 public:
     // ArkNativeEngine constructor
-    ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker = false);
+    ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker = false,
+                    std::shared_ptr<TaskRunner> taskRunner = nullptr);
     // ArkNativeEngine destructor
     ~ArkNativeEngine() override;
 
@@ -349,6 +351,7 @@ private:
     std::unique_ptr<std::thread> threadJsHeap_;
     std::mutex lock_;
     std::condition_variable condition_;
+    std::shared_ptr<TaskRunner> taskRunner_;
     bool isLimitedWorker_ = false;
     bool isReady_ = false;
     struct JsHeapDumpWork *dumpWork_ = nullptr;
