@@ -23,6 +23,8 @@
 #endif
 #include "native_engine/native_utils.h"
 
+using panda::LocalScope;
+
 ArkNativeDeferred::ArkNativeDeferred(ArkNativeEngine* engine, Local<PromiseCapabilityRef> deferred)
     : engine_(engine), deferred_(engine->GetEcmaVm(), deferred)
 {

@@ -50,20 +50,12 @@ struct ApiCheckContext {
 }
 using JsFrameInfo = panda::ecmascript::JsFrameInfo;
 
-using panda::DFXJSNApi;
-using panda::Local;
-using panda::LocalScope;
-using panda::JSNApi;
-using panda::JSValueRef;
-using panda::JsiRuntimeCallInfo;
-using panda::PropertyAttribute;
-
 template <bool changeState = true>
-panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo);
+panda::JSValueRef ArkNativeFunctionCallBack(panda::JsiRuntimeCallInfo *runtimeInfo);
 void NapiDefinePropertyInner(napi_env env,
-                             Local<panda::ObjectRef> &obj,
+                             panda::Local<panda::ObjectRef> &obj,
                              NapiPropertyDescriptor &propertyDescriptor,
-                             Local<panda::JSValueRef> &propertyName,
+                             panda::Local<panda::JSValueRef> &propertyName,
                              bool &result);
 bool NapiDefineProperty(napi_env env, panda::Local<panda::ObjectRef> &obj, NapiPropertyDescriptor propertyDescriptor);
 NAPI_EXPORT panda::Local<panda::JSValueRef> NapiValueToLocalValue(napi_value v);
@@ -73,17 +65,17 @@ void FunctionSetContainerId(const EcmaVM *vm, panda::Local<panda::JSValueRef> &l
 #endif
 panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, NapiNativeCallback callback,
     void* data, const NapiPropertyDescriptor* properties, size_t length);
-Local<JSValueRef> NapiDefineSendableClass(napi_env env,
-                                          const char* name,
-                                          NapiNativeCallback callback,
-                                          void* data,
-                                          const NapiPropertyDescriptor* properties,
-                                          size_t propertiesLength,
-                                          napi_value parent);
+panda::Local<panda::JSValueRef> NapiDefineSendableClass(napi_env env,
+                                                        const char* name,
+                                                        NapiNativeCallback callback,
+                                                        void* data,
+                                                        const NapiPropertyDescriptor* properties,
+                                                        size_t propertiesLength,
+                                                        napi_value parent);
 panda::Local<panda::ObjectRef> NapiCreateObjectWithProperties(napi_env env, size_t propertyCount,
                                                               const napi_property_descriptor *properties,
-                                                              Local<panda::JSValueRef> *keys,
-                                                              PropertyAttribute *attrs);
+                                                              panda::Local<panda::JSValueRef> *keys,
+                                                              panda::PropertyAttribute *attrs);
 
 enum class ForceExpandState : int32_t {
     FINISH_COLD_START = 0,
@@ -149,8 +141,9 @@ public:
     void* GetCurrentTaskInfo() const override;
     void TerminateExecution() const override;
     // judge_typedarray
-    NAPI_EXPORT bool Napi_Judge_TypedArray(NativeTypedArrayType typedArrayType, Local<panda::TypedArrayRef> typedArray,
-                                           const EcmaVM* vm, Local<panda::ArrayBufferRef> arrayBuf,
+    NAPI_EXPORT bool Napi_Judge_TypedArray(NativeTypedArrayType typedArrayType,
+                                           panda::Local<panda::TypedArrayRef> typedArray,
+                                           const EcmaVM* vm, panda::Local<panda::ArrayBufferRef> arrayBuf,
                                            size_t byte_offset, size_t length, napi_value* result) override;
     // Call function
     napi_value CallFunction(napi_value thisVar,
@@ -180,7 +173,7 @@ public:
     void* CreateRuntime(bool isLimitedWorker = false) override;
     panda::Local<panda::ObjectRef> LoadArkModule(const void *buffer, int32_t len, const std::string& fileName);
     napi_value ValueToNapiValue(JSValueWrapper& value) override;
-    NAPI_EXPORT static napi_value ArkValueToNapiValue(napi_env env, Local<JSValueRef> value);
+    NAPI_EXPORT static napi_value ArkValueToNapiValue(napi_env env, panda::Local<panda::JSValueRef> value);
 
     std::string GetSourceCodeInfo(napi_value value, ErrorPos pos) override;
 
@@ -275,7 +268,7 @@ public:
     napi_value NapiLoadModule(const char* path, const char* module_info) override;
     napi_value NapiLoadModuleWithInfo(const char* path, const char* module_info) override;
     std::string GetOhmurl(std::string str);
-    Local<JSValueRef> NapiLoadNativeModule(std::string path);
+    panda::Local<panda::JSValueRef> NapiLoadNativeModule(std::string path);
     ModuleTypes CheckLoadType(const std::string &path);
     NativeReference* GetPromiseRejectCallBackRef()
     {

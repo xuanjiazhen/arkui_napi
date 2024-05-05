@@ -18,7 +18,10 @@
 #include "ark_native_engine.h"
 #include "native_engine/native_utils.h"
 
+using panda::DFXJSNApi;
+using panda::JSValueRef;
 using panda::ObjectRef;
+using panda::PropertyAttribute;
 using panda::StringRef;
 using panda::SymbolRef;
 

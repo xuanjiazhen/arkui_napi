@@ -48,6 +48,7 @@ using panda::BooleanRef;
 using panda::BufferRef;
 using panda::DateRef;
 using panda::DataViewRef;
+using panda::DFXJSNApi;
 using panda::EscapeLocalScope;
 using panda::FunctionRef;
 using panda::Global;
