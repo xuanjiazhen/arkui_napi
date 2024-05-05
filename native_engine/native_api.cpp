@@ -431,8 +431,7 @@ NAPI_EXTERN napi_status napi_create_function(napi_env env,
         },
         reinterpret_cast<void*>(funcInfo), true
     );
-    Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, utf8name != nullptr ? utf8name : name);
-    fn->SetName(vm, fnName);
+    fn->FastSetName(vm, utf8name != nullptr ? utf8name : name);
     *result = JsValueFromLocalValue(scope.Escape(fn));
     return GET_RETURN_STATUS(env);
 }
