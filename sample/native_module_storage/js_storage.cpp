@@ -226,51 +226,9 @@ struct StorageAsyncContext {
     StorageObjectInfo* objectInfo = nullptr;
 };
 
-// storage.get(key: string, defaultValue?: string, callback?: Function): void | Promise<string>
-static napi_value JSStorageGet(napi_env env, napi_callback_info info)
+static napi_value JSStorageGet_CreatAsyncWork(napi_env env, napi_value resource, void* data, napi_value result, 
+                                              StorageAsyncContext* asyncContext)
 {
-    size_t requireArgc = 1;
-    size_t argc = 3;
-    napi_value argv[3] = { 0 };
-    napi_value thisVar = nullptr;
-    void* data = nullptr;
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, &data);
-
-    NAPI_ASSERT(env, argc >= requireArgc, "requires 1 parameter");
-
-    auto asyncContext = new StorageAsyncContext();
-
-    asyncContext->env = env;
-
-    for (size_t i = 0; i < argc; i++) {
-        napi_valuetype valueType = napi_undefined;
-        napi_typeof(env, argv[i], &valueType);
-
-        if ((i == 0) && (valueType == napi_string)) {
-            napi_get_value_string_utf8(env, argv[i], asyncContext->key, KEY_BUFFER_SIZE, &asyncContext->keyLen);
-        } else if (valueType == napi_string) {
-            napi_get_value_string_utf8(env, argv[i], asyncContext->value, VALUE_BUFFER_SIZE, &asyncContext->valueLen);
-        } else if (valueType == napi_function) {
-            napi_create_reference(env, argv[i], 1, &asyncContext->callbackRef);
-            break;
-        } else {
-            NAPI_ASSERT(env, false, "type mismatch");
-        }
-    }
-
-    napi_value result = nullptr;
-
-    if (asyncContext->callbackRef == nullptr) {
-        napi_create_promise(env, &asyncContext->deferred, &result);
-    } else {
-        napi_get_undefined(env, &result);
-    }
-
-    napi_unwrap(env, thisVar, (void**)&asyncContext->objectInfo);
-
-    napi_value resource = nullptr;
-    napi_create_string_utf8(env, "JSStorageGet", NAPI_AUTO_LENGTH, &resource);
-
     napi_create_async_work(
         env, nullptr, resource,
         [](napi_env env, void* data) {
@@ -317,6 +275,54 @@ static napi_value JSStorageGet(napi_env env, napi_callback_info info)
         },
         (void*)asyncContext, &asyncContext->work);
     napi_queue_async_work(env, asyncContext->work);
+    return result;
+}
+
+// storage.get(key: string, defaultValue?: string, callback?: Function): void | Promise<string>
+static napi_value JSStorageGet(napi_env env, napi_callback_info info)
+{
+    size_t requireArgc = 1;
+    size_t argc = 3;
+    napi_value argv[3] = { 0 };
+    napi_value thisVar = nullptr;
+    void* data = nullptr;
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, &data);
+
+    NAPI_ASSERT(env, argc >= requireArgc, "requires 1 parameter");
+
+    auto asyncContext = new StorageAsyncContext();
+
+    asyncContext->env = env;
+
+    for (size_t i = 0; i < argc; i++) {
+        napi_valuetype valueType = napi_undefined;
+        napi_typeof(env, argv[i], &valueType);
+
+        if ((i == 0) && (valueType == napi_string)) {
+            napi_get_value_string_utf8(env, argv[i], asyncContext->key, KEY_BUFFER_SIZE, &asyncContext->keyLen);
+        } else if (valueType == napi_string) {
+            napi_get_value_string_utf8(env, argv[i], asyncContext->value, VALUE_BUFFER_SIZE, &asyncContext->valueLen);
+        } else if (valueType == napi_function) {
+            napi_create_reference(env, argv[i], 1, &asyncContext->callbackRef);
+            break;
+        } else {
+            NAPI_ASSERT(env, false, "type mismatch");
+        }
+    }
+
+    napi_value result = nullptr;
+
+    if (asyncContext->callbackRef == nullptr) {
+        napi_create_promise(env, &asyncContext->deferred, &result);
+    } else {
+        napi_get_undefined(env, &result);
+    }
+
+    napi_unwrap(env, thisVar, (void**)&asyncContext->objectInfo);
+
+    napi_value resource = nullptr;
+    napi_create_string_utf8(env, "JSStorageGet", NAPI_AUTO_LENGTH, &resource);
+    result = JSStorageGet_CreatAsyncWork(env, resource, &data, result, &asyncContext);
 
     return result;
 }
