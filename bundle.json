@@ -31,7 +31,8 @@
                 "hilog",
                 "hitrace",
                 "jsoncpp",
-                "init"
+                "init",
+                "c_utils"
             ],
             "third_party": [
                 "icu",
@@ -116,6 +117,16 @@
                       ]
                     },
                     "name": "//foundation/arkui/napi:napi_packages"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/arkui/napi/interfaces/inner_api/cj/ffi_bind",
+                      "header_files": [
+                          "cj_lambda.h",
+                          "ffi_remote_data.h"
+                      ]
+                    },
+                    "name": "//foundation/arkui/napi/interfaces/inner_api/cj/ffi_bind:cj_bind_native"
                   }
             ],
             "test": [
