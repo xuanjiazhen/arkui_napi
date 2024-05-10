@@ -480,7 +480,7 @@ NAPI_EXTERN napi_status napi_create_type_error(napi_env env, napi_value code, na
     auto msgValue = LocalValueFromJsValue(msg);
     RETURN_STATUS_IF_FALSE(env, msgValue->IsString(), napi_invalid_arg);
 
-    Local<panda::JSValueRef> errorVal = panda::Exception::Error(vm, msgValue);
+    Local<panda::JSValueRef> errorVal = panda::Exception::TypeError(vm, msgValue);
     if (code != nullptr) {
         Local<panda::StringRef> codeKey = panda::StringRef::NewFromUtf8(vm, "code");
         Local<panda::ObjectRef> errorObj(errorVal);
@@ -508,7 +508,7 @@ NAPI_EXTERN napi_status napi_create_range_error(napi_env env, napi_value code, n
     auto msgValue = LocalValueFromJsValue(msg);
     RETURN_STATUS_IF_FALSE(env, msgValue->IsString(), napi_invalid_arg);
 
-    Local<panda::JSValueRef> errorVal = panda::Exception::Error(vm, msgValue);
+    Local<panda::JSValueRef> errorVal = panda::Exception::RangeError(vm, msgValue);
     if (code != nullptr) {
         Local<panda::StringRef> codeKey = panda::StringRef::NewFromUtf8(vm, "code");
         Local<panda::ObjectRef> errorObj(errorVal);
