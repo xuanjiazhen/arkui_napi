@@ -169,6 +169,7 @@ public:
 
     virtual NativeReference* CreateReference(napi_value value, uint32_t initialRefcount,
         bool flag = false, NapiNativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) = 0;
+    virtual NativeReference* CreateSharedReference(napi_value value) = 0;
 
     virtual NativeReference* CreateAsyncReference(napi_value value, uint32_t initialRefcount,
         bool flag = false, NapiNativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) = 0;

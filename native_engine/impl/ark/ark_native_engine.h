@@ -184,6 +184,7 @@ public:
     // Create native reference
     NativeReference* CreateReference(napi_value value, uint32_t initialRefcount, bool flag = false,
         NapiNativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) override;
+    NativeReference* CreateSharedReference(napi_value value) override;
     NativeReference* CreateAsyncReference(napi_value value, uint32_t initialRefcount, bool flag = false,
         NapiNativeFinalize callback = nullptr, void* data = nullptr, void* hint = nullptr) override;
     napi_value CreatePromise(NativeDeferred** deferred) override;

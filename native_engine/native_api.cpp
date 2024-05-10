@@ -1826,6 +1826,22 @@ NAPI_EXTERN napi_status napi_create_reference(napi_env env,
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_create_sendable_reference(napi_env env,
+                                                       napi_value value,
+                                                       uint32_t initial_refcount,
+                                                       napi_ref* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    auto ref = new SharedNativeReference(engine->GetEcmaVm(), value);
+    *result = reinterpret_cast<napi_ref>(ref);
+
+    return napi_clear_last_error(env);
+}
+
 // Deletes a reference. The referenced value is released, and may
 // be GC'd unless there are other references to it.
 NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
@@ -1841,6 +1857,20 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
     } else {
         reference->SetDeleteSelf();
     }
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_delete_sendable_reference(napi_env env, napi_ref ref)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+    auto reference = reinterpret_cast<SharedNativeReference*>(ref);
+    delete reference;
+    reference = nullptr;
 
     return napi_clear_last_error(env);
 }
@@ -1896,6 +1926,19 @@ NAPI_EXTERN napi_status napi_get_reference_value(napi_env env, napi_ref ref, nap
     auto reference = reinterpret_cast<NativeReference*>(ref);
 
     *result = reference->Get();
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_sendable_reference_value(napi_env env, napi_ref ref, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+
+    auto reference = reinterpret_cast<SharedNativeReference*>(ref);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    *result = reference->Get(engine->GetEcmaVm());
+
     return napi_clear_last_error(env);
 }
 

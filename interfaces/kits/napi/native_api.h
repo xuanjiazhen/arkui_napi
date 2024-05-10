@@ -146,6 +146,12 @@ NAPI_EXTERN napi_status napi_create_sendable_object_with_properties(napi_env env
                                                                     const napi_property_descriptor* properties,
                                                                     napi_value* result);
 NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* result);
+NAPI_EXTERN napi_status napi_create_sendable_reference(napi_env env,
+                                                       napi_value value,
+                                                       uint32_t initial_refcount,
+                                                       napi_ref* result);
+NAPI_EXTERN napi_status napi_get_sendable_reference_value(napi_env env, napi_ref ref, napi_value* result);
+NAPI_EXTERN napi_status napi_delete_sendable_reference(napi_env env, napi_ref ref);
 NAPI_EXTERN napi_status napi_wrap_sendable(napi_env env,
                                            napi_value js_object,
                                            void* native_object,
