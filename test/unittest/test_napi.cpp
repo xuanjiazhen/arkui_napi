@@ -25,6 +25,7 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 #include "napi/native_common.h"
+#include "native_engine/impl/ark/ark_native_engine.h"
 #include "securec.h"
 #include "utils/log.h"
 
@@ -1171,6 +1172,72 @@ HWTEST_F(NapiBasicTest, ReferenceTest001, testing::ext::TestSize.Level1)
     ASSERT_NE(refValue, nullptr);
 
     napi_delete_reference(env, resultRef);
+}
+
+HWTEST_F(NapiBasicTest, SendableReferenceTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    auto vm = engine_->GetEcmaVm();
+
+    napi_ref ref = nullptr;
+    {
+        napi_handle_scope scope = nullptr;
+        napi_open_handle_scope(env, &scope);
+
+        napi_value result = nullptr;
+        Local<panda::ObjectRef> object = panda::ObjectRef::NewS(vm);
+        result = LocalValueToLocalNapiValue(object);
+        napi_create_sendable_reference(env, result, 1, &ref);
+
+        napi_close_handle_scope(env, scope);
+    }
+
+    napi_value refValue = nullptr;
+    napi_get_sendable_reference_value(env, ref, &refValue);
+    ASSERT_NE(refValue, nullptr);
+
+    napi_delete_sendable_reference(env, ref);
+
+    napi_value refValue0 = nullptr;
+    napi_get_sendable_reference_value(env, ref, &refValue0);
+    ASSERT_EQ(refValue0, nullptr);
+}
+
+HWTEST_F(NapiBasicTest, SendableReferenceTestMultiThread, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_ref ref = nullptr;
+    std::thread t([&ref] () {
+        panda::RuntimeOption option;
+        auto vm = panda::JSNApi::CreateJSVM(option);
+        auto engine = new ArkNativeEngine(vm, nullptr);
+        napi_env env = reinterpret_cast<napi_env>(engine);
+
+        napi_value result = nullptr;
+        Local<panda::ObjectRef> object = panda::ObjectRef::NewS(vm);
+        result = LocalValueToLocalNapiValue(object);
+        napi_create_sendable_reference(env, result, 1, &ref);
+
+        napi_value refValue = nullptr;
+        napi_get_sendable_reference_value(env, ref, &refValue);
+        ASSERT_NE(refValue, nullptr);
+
+        delete engine;
+        engine = nullptr;
+        panda::JSNApi::DestroyJSVM(vm);
+    });
+
+    t.join();
+    napi_value refValue0 = nullptr;
+    napi_get_sendable_reference_value(env, ref, &refValue0);
+    ASSERT_NE(refValue0, nullptr);
+
+    napi_delete_sendable_reference(env, ref);
+
+    napi_value refValue1 = nullptr;
+    napi_get_sendable_reference_value(env, ref, &refValue1);
+    ASSERT_EQ(refValue1, nullptr);
 }
 
 /**

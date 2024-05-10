@@ -1458,6 +1458,11 @@ NativeReference* ArkNativeEngine::CreateReference(napi_value value, uint32_t ini
     return new ArkNativeReference(this, this->GetEcmaVm(), value, initialRefcount, flag, callback, data, hint);
 }
 
+NativeReference* ArkNativeEngine::CreateSharedReference(napi_value value)
+{
+    return new SharedNativeReference(this->GetEcmaVm(), value);
+}
+
 NativeReference* ArkNativeEngine::CreateAsyncReference(napi_value value, uint32_t initialRefcount,
     bool flag, NapiNativeFinalize callback, void* data, void* hint)
 {

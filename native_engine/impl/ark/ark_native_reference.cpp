@@ -184,3 +184,80 @@ napi_value ArkNativeReference::GetNapiValue()
 {
     return Get();
 }
+
+SharedNativeReference::SharedNativeReference(const EcmaVM* vm, napi_value value)
+    : value_(vm, LocalValueFromJsValue(value))
+{}
+
+SharedNativeReference::SharedNativeReference(const EcmaVM* vm, Local<JSValueRef> value) : value_(vm, value) {}
+
+SharedNativeReference::~SharedNativeReference()
+{
+    if (value_.IsEmpty()) {
+        return;
+    }
+    value_.FreeGlobalHandleAddr();
+}
+
+
+uint32_t SharedNativeReference::Ref()
+{
+    HILOG_FATAL("Ref is invalid in SharedNativeReference");
+    return 0;
+}
+
+uint32_t SharedNativeReference::Unref()
+{
+    HILOG_FATAL("Unref is invalid in SharedNativeReference");
+    return 0;
+}
+
+napi_value SharedNativeReference::Get()
+{
+    HILOG_FATAL("Get is invalid in SharedNativeReference");
+    return nullptr;
+}
+
+napi_value SharedNativeReference::Get(const EcmaVM* vm)
+{
+    if (value_.IsEmpty()) {
+        return nullptr;
+    }
+    Local<JSValueRef> value = value_.ToLocal(vm);
+    return JsValueFromLocalValue(value);
+}
+
+SharedNativeReference::operator napi_value()
+{
+    HILOG_FATAL("napi_value operator is invalid in SharedNativeReference");
+    return nullptr;
+}
+
+void* SharedNativeReference::GetData()
+{
+    HILOG_FATAL("GetData is invalid in SharedNativeReference");
+    return nullptr;
+}
+
+void SharedNativeReference::SetDeleteSelf()
+{
+    HILOG_FATAL("SetDeleteSelf is invalid in SharedNativeReference");
+}
+
+uint32_t SharedNativeReference::GetRefCount()
+{
+    HILOG_FATAL("GetRefCount is invalid in SharedNativeReference");
+    return 0;
+}
+
+bool SharedNativeReference::GetFinalRun()
+{
+    HILOG_FATAL("GetNapiValue is invalid in SharedNativeReference");
+    return false;
+}
+
+napi_value SharedNativeReference::GetNapiValue()
+{
+    HILOG_FATAL("GetNapiValue is invalid in SharedNativeReference");
+    return nullptr;
+}

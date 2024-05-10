@@ -104,4 +104,25 @@ private:
     friend class NativeReferenceManager;
 };
 
+class SharedNativeReference : public NativeReference {
+public:
+    SharedNativeReference(const EcmaVM* vm, napi_value value);
+    SharedNativeReference(const EcmaVM* vm, Local<JSValueRef> value);
+    ~SharedNativeReference() override;
+
+    uint32_t Ref() override;
+    uint32_t Unref() override;
+    napi_value Get() override;
+    napi_value Get(const panda::EcmaVM* vm);
+    void* GetData() override;
+    operator napi_value() override;
+    void SetDeleteSelf() override;
+    uint32_t GetRefCount() override;
+    bool GetFinalRun() override;
+    napi_value GetNapiValue() override;
+
+private:
+    panda::SharedGlobal<JSValueRef> value_;
+};
+
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H */
