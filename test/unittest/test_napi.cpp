@@ -4716,3 +4716,176 @@ HWTEST_F(NapiBasicTest, loadModuleWithInfo002, testing::ext::TestSize.Level1)
     napi_status res = napi_load_module_with_info(env, "@ohos.hilog", nullptr, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
 }
+
+/**
+ * @tc.name: createSendableArrayTest001
+ * @tc.desc: Test napi_create_sendable_array with nullptr result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, createSendableArrayTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env) engine_;
+
+    napi_value array = nullptr;
+    napi_create_sendable_array(env, &array);
+    ASSERT_NE(array, nullptr);
+    bool isArray = false;
+    napi_is_array(env, array, &isArray);
+    ASSERT_TRUE(isArray);
+
+    for (size_t i = 0; i < 10; i++) {
+        napi_value num = nullptr;
+        napi_create_uint32(env, i, &num);
+        napi_set_element(env, array, i, num);
+    }
+
+    uint32_t arrayLength = 0;
+    napi_get_array_length(env, array, &arrayLength);
+
+    ASSERT_EQ(arrayLength, static_cast<uint32_t>(10));
+
+    for (size_t i = 0; i < arrayLength; i++) {
+        bool hasIndex = false;
+        napi_has_element(env, array, i, &hasIndex);
+        ASSERT_TRUE(hasIndex);
+    }
+
+    for (size_t i = 0; i < arrayLength; i++) {
+        bool isDelete = false;
+        napi_delete_element(env, array, i, &isDelete);
+        ASSERT_TRUE(isDelete);
+    }
+}
+
+/**
+ * @tc.name: createSendableArrayWithLengthTest001
+ * @tc.desc: Test napi_create_sendable_array_with_length.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, createSendableArrayWithLengthTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env) engine_;
+
+    napi_value array = nullptr;
+    size_t length = 10;
+    napi_create_sendable_array_with_length(env, length, &array);
+    ASSERT_NE(array, nullptr);
+    bool isArray = false;
+    napi_is_array(env, array, &isArray);
+    ASSERT_TRUE(isArray);
+
+    for (size_t i = 0; i < 10; i++) {
+        napi_value num = nullptr;
+        napi_create_uint32(env, i, &num);
+        napi_set_element(env, array, i, num);
+    }
+
+    uint32_t arrayLength = 0;
+    napi_get_array_length(env, array, &arrayLength);
+
+    ASSERT_EQ(arrayLength, static_cast<uint32_t>(10));
+
+    for (size_t i = 0; i < arrayLength; i++) {
+        bool hasIndex = false;
+        napi_has_element(env, array, i, &hasIndex);
+        ASSERT_TRUE(hasIndex);
+    }
+
+    for (size_t i = 0; i < arrayLength; i++) {
+        bool isDelete = false;
+        napi_delete_element(env, array, i, &isDelete);
+        ASSERT_TRUE(isDelete);
+    }
+}
+
+/**
+ * @tc.name: createSendableArrayBufferTest001
+ * @tc.desc: Test napi_create_sendable_arraybuffer with nullptr result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, createSendableArrayBufferTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_value arrayBuffer = nullptr;
+    void* arrayBufferPtr = nullptr;
+    size_t arrayBufferSize = 1024;
+    napi_create_sendable_arraybuffer(env, arrayBufferSize, &arrayBufferPtr, &arrayBuffer);
+
+    void* tmpArrayBufferPtr = nullptr;
+    size_t arrayBufferLength = 0;
+    napi_get_sendable_arraybuffer_info(env, arrayBuffer, &tmpArrayBufferPtr, &arrayBufferLength);
+
+    ASSERT_EQ(arrayBufferPtr, tmpArrayBufferPtr);
+    ASSERT_EQ(arrayBufferSize, arrayBufferLength);
+}
+
+/**
+ * @tc.name: createSendableArrayBufferTest002
+ * @tc.desc: Test napi_create_sendable_arraybuffer.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, createSendableArrayBufferTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    {
+        napi_value arrayBuffer = nullptr;
+        void* arrayBufferPtr = nullptr;
+        size_t arrayBufferSize = 1024;
+        napi_create_sendable_arraybuffer(env, arrayBufferSize, &arrayBufferPtr, &arrayBuffer);
+
+        void* tmpArrayBufferPtr = nullptr;
+        size_t arrayBufferLength = 0;
+        napi_get_arraybuffer_info(env, arrayBuffer, &tmpArrayBufferPtr, &arrayBufferLength);
+
+        ASSERT_EQ(arrayBufferPtr, tmpArrayBufferPtr);
+        ASSERT_EQ(arrayBufferSize, arrayBufferLength);
+
+        napi_value typedarray = nullptr;
+        napi_create_sendable_typedarray(env, napi_int8_array, arrayBufferSize, arrayBuffer, 0, &typedarray);
+        ASSERT_NE(typedarray, nullptr);
+        bool isTypedArray = false;
+        napi_is_typedarray(env, typedarray, &isTypedArray);
+        ASSERT_TRUE(isTypedArray);
+
+        napi_typedarray_type typedarrayType;
+        size_t typedarrayLength = 0;
+        void* typedarrayBufferPtr = nullptr;
+        napi_value tmpArrayBuffer = nullptr;
+        size_t byteOffset = 0;
+
+        napi_get_sendable_typedarray_info(env, typedarray, &typedarrayType, &typedarrayLength, &typedarrayBufferPtr,
+                                 &tmpArrayBuffer, &byteOffset);
+
+        ASSERT_EQ(typedarrayBufferPtr, arrayBufferPtr);
+        ASSERT_EQ(arrayBufferSize, typedarrayLength);
+    }
+}
+
+/**
+ * @tc.name: detachedSendableArrayBufferTest001
+ * @tc.desc: Test is DetachedSendableArrayBuffer.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, detachedSendableArrayBufferTest001, testing::ext::TestSize.Level1)
+{
+    static constexpr size_t arrayBufferSize = 1024;
+    napi_env env = (napi_env)engine_;
+    napi_value arrayBuffer = nullptr;
+    void* arrayBufferPtr = nullptr;
+    napi_create_sendable_arraybuffer(env, arrayBufferSize, &arrayBufferPtr, &arrayBuffer);
+
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_detached_sendable_arraybuffer(env, arrayBuffer, &result));
+
+    auto out = napi_detach_sendable_arraybuffer(env, arrayBuffer);
+    if (out == napi_ok) {
+        arrayBufferPtr = nullptr;
+    }
+    ASSERT_EQ(out, napi_ok);
+
+    result = false;
+    ASSERT_CHECK_CALL(napi_is_detached_sendable_arraybuffer(env, arrayBuffer, &result));
+    ASSERT_TRUE(result);
+}
