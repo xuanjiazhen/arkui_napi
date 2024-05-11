@@ -189,6 +189,13 @@ NAPI_EXTERN napi_status napi_get_sendable_typedarray_info(napi_env env,
                                                           size_t* byte_offset);
 NAPI_EXTERN napi_status napi_detach_sendable_arraybuffer(napi_env env, napi_value arraybuffer);
 
+NAPI_EXTERN napi_status napi_get_sendable_array_length(napi_env env, napi_value value, uint32_t* result);
+NAPI_EXTERN napi_status napi_is_detached_sendable_arraybuffer(napi_env env, napi_value arraybuffer, bool* result);
+NAPI_EXTERN napi_status napi_get_sendable_arraybuffer_info(napi_env env,
+                                                           napi_value arraybuffer,
+                                                           void** data,
+                                                           size_t* byte_length);
+
 NAPI_EXTERN napi_status napi_call_threadsafe_function_with_priority(napi_threadsafe_function func,
                                                                     void *data,
                                                                     napi_task_priority priority,

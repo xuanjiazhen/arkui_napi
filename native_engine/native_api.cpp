@@ -3674,3 +3674,57 @@ NAPI_EXTERN napi_status napi_call_threadsafe_function_with_priority(napi_threads
     }
     return res;
 }
+
+NAPI_EXTERN napi_status napi_is_detached_sendable_arraybuffer(napi_env env, napi_value arraybuffer, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, arraybuffer);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = LocalValueFromJsValue(arraybuffer);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    auto isArrayBuffer = nativeValue->IsSendableArrayBuffer();
+    Local<panda::ArrayBufferRef> bufObj = nativeValue->ToObject(vm);
+    if (isArrayBuffer) {
+        *result = bufObj->SendableIsDetach();
+    } else {
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_sendable_array_length(napi_env env, napi_value value, uint32_t* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    auto nativeValue = LocalValueFromJsValue(value);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsSharedArray(), napi_array_expected);
+    Local<panda::ArrayRef> arr(nativeValue);
+    *result = arr->SendableLength(vm);
+
+    return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_get_sendable_arraybuffer_info(napi_env env,
+                                                           napi_value arraybuffer,
+                                                           void** data,
+                                                           size_t* byte_length)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, arraybuffer);
+    CHECK_ARG(env, data);
+    CHECK_ARG(env, byte_length);
+
+    auto nativeValue = LocalValueFromJsValue(arraybuffer);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsSendableArrayBuffer(), napi_status::napi_arraybuffer_expected);
+    Local<panda::ArrayBufferRef> res = nativeValue->ToObject(vm);
+    *data = res->SendableGetBuffer();
+    *byte_length = res->SendableByteLength(vm);
+
+    return napi_clear_last_error(env);
+}
