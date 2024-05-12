@@ -1256,7 +1256,7 @@ bool ArkNativeEngine::NapiNewTypedArray(NativeTypedArrayType typedArrayType, Loc
 
 bool ArkNativeEngine::NapiNewSendableTypedArray(NativeTypedArrayType typedArrayType,
                                                 Local<panda::TypedArrayRef> typedArray,
-                                                const EcmaVM* vm, Local<panda::ArrayBufferRef> arrayBuf,
+                                                const EcmaVM* vm, Local<panda::SendableArrayBufferRef> arrayBuf,
                                                 size_t byte_offset, size_t length, napi_value* result)
 {
     switch (typedArrayType) {

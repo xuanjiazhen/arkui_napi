@@ -138,7 +138,7 @@ public:
                                    size_t length, napi_value* result) = 0;
     virtual bool NapiNewSendableTypedArray(NativeTypedArrayType typedArrayType,
                                            panda::Local<panda::TypedArrayRef> typedArray, const EcmaVM* vm,
-                                           panda::Local<panda::ArrayBufferRef> arrayBuf, size_t byte_offset,
+                                           panda::Local<panda::SendableArrayBufferRef> arrayBuf, size_t byte_offset,
                                            size_t length, napi_value* result) = 0;
     virtual NativeTypedArrayType GetTypedArrayType(panda::Local<panda::TypedArrayRef> typedArray) = 0;
     virtual NativeTypedArrayType GetSendableTypedArrayType(panda::Local<panda::TypedArrayRef> typedArray) = 0;

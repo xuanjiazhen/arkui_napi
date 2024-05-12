@@ -132,6 +132,22 @@ NAPI_EXTERN napi_status napi_stop_event_loop(napi_env env);
 NAPI_EXTERN napi_status napi_create_ark_runtime(napi_env *env);
 NAPI_EXTERN napi_status napi_destroy_ark_runtime(napi_env *env);
 
+NAPI_EXTERN napi_status napi_serialize(napi_env env,
+                                       napi_value object,
+                                       napi_value transfer_list,
+                                       napi_value clone_list,
+                                       void** result);
+NAPI_EXTERN napi_status napi_deserialize(napi_env env, void* buffer, napi_value* object);
+NAPI_EXTERN napi_status napi_delete_serialization_data(napi_env env, void* buffer);
+NAPI_EXTERN napi_status napi_is_concurrent_function(napi_env env, napi_value value, bool* result);
+
+
+NAPI_EXTERN napi_status napi_call_threadsafe_function_with_priority(napi_threadsafe_function func,
+                                                                    void *data,
+                                                                    napi_task_priority priority,
+                                                                    bool isTail);
+
+// ======================================= sendable api begin ======================================= //
 NAPI_EXTERN napi_status napi_define_sendable_class(napi_env env,
                                                    const char* utf8name,
                                                    size_t length,
@@ -145,31 +161,6 @@ NAPI_EXTERN napi_status napi_create_sendable_object_with_properties(napi_env env
                                                                     size_t property_count,
                                                                     const napi_property_descriptor* properties,
                                                                     napi_value* result);
-NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* result);
-NAPI_EXTERN napi_status napi_wrap_sendable(napi_env env,
-                                           napi_value js_object,
-                                           void* native_object,
-                                           napi_finalize finalize_cb,
-                                           void* finalize_hint,
-                                           napi_ref* result);
-NAPI_EXTERN napi_status napi_wrap_sendable_with_size(napi_env env,
-                                                     napi_value js_object,
-                                                     void* native_object,
-                                                     napi_finalize finalize_cb,
-                                                     void* finalize_hint,
-                                                     size_t native_binding_size,
-                                                     napi_ref* result);
-NAPI_EXTERN napi_status napi_unwrap_sendable(napi_env env, napi_value js_object, void** result);
-NAPI_EXTERN napi_status napi_remove_wrap_sendable(napi_env env, napi_value js_object, void** result);
-NAPI_EXTERN napi_status napi_serialize(napi_env env,
-                                       napi_value object,
-                                       napi_value transfer_list,
-                                       napi_value clone_list,
-                                       void** result);
-NAPI_EXTERN napi_status napi_deserialize(napi_env env, void* buffer, napi_value* object);
-NAPI_EXTERN napi_status napi_delete_serialization_data(napi_env env, void* buffer);
-NAPI_EXTERN napi_status napi_is_concurrent_function(napi_env env, napi_value value, bool* result);
-
 NAPI_EXTERN napi_status napi_create_sendable_array(napi_env env, napi_value* result);
 NAPI_EXTERN napi_status napi_create_sendable_array_with_length(napi_env env, size_t length, napi_value* result);
 NAPI_EXTERN napi_status napi_create_sendable_arraybuffer(napi_env env, size_t byte_length,
@@ -180,19 +171,11 @@ NAPI_EXTERN napi_status napi_create_sendable_typedarray(napi_env env,
                                                         napi_value arraybuffer,
                                                         size_t byte_offset,
                                                         napi_value* result);
-NAPI_EXTERN napi_status napi_get_sendable_typedarray_info(napi_env env,
-                                                          napi_value typedarray,
-                                                          napi_typedarray_type* type,
-                                                          size_t* length,
-                                                          void** data,
-                                                          napi_value* arraybuffer,
-                                                          size_t* byte_offset);
-NAPI_EXTERN napi_status napi_detach_sendable_arraybuffer(napi_env env, napi_value arraybuffer);
-
-NAPI_EXTERN napi_status napi_call_threadsafe_function_with_priority(napi_threadsafe_function func,
-                                                                    void *data,
-                                                                    napi_task_priority priority,
-                                                                    bool isTail);
+/*
+ * Determine whether it can be held by a sendable object, including the sendable object and primitive type.
+ */
+NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* result);
+// ======================================== sendable api end ======================================== //
 #ifdef __cplusplus
 }
 #endif

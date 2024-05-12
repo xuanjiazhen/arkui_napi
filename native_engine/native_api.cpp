@@ -1132,7 +1132,7 @@ NAPI_EXTERN napi_status napi_get_array_length(napi_env env, napi_value value, ui
 
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     auto nativeValue = LocalValueFromJsValue(value);
-    if (nativeValue->IsJSArray(vm)) {
+    if (LIKELY(nativeValue->IsJSArray(vm))) {
         Local<panda::ArrayRef> arr(nativeValue);
         *result = arr->Length(vm);
     } else if (nativeValue->IsSharedArray()) {
@@ -1145,17 +1145,6 @@ NAPI_EXTERN napi_status napi_get_array_length(napi_env env, napi_value value, ui
     return GET_RETURN_STATUS(env);
 }
 
-NAPI_EXTERN napi_status napi_is_sendable_object(napi_env env, napi_value value, bool* result)
-{
-    CHECK_ENV(env);
-    CHECK_ARG(env, value);
-    CHECK_ARG(env, result);
-
-    auto nativeValue = LocalValueFromJsValue(value);
-    *result = nativeValue->IsSharedObject();
-    return napi_clear_last_error(env);
-}
-
 NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* result)
 {
     CHECK_ENV(env);
@@ -1163,8 +1152,8 @@ NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* r
     CHECK_ARG(env, result);
 
     auto nativeValue = LocalValueFromJsValue(value);
-    *result = nativeValue->IsUndefined() || nativeValue->IsNull() || nativeValue->IsNumber() ||
-              nativeValue->IsString() || nativeValue->IsBoolean() || nativeValue->IsJSShared() ||
+    *result = nativeValue->IsJSShared() || nativeValue->IsString() || nativeValue->IsNumber() ||
+              nativeValue->IsBoolean() || nativeValue->IsUndefined() || nativeValue->IsNull() ||
               nativeValue->IsBigInt();
     return napi_clear_last_error(env);
 }
@@ -1448,39 +1437,42 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
     CHECK_ARG(env, native_object);
-    CHECK_ARG(env, finalize_cb);
 
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
-    size_t nativeBindingSize = 0;
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject(), napi_object_expected);
+    auto nativeObject = Local<panda::ObjectRef>(nativeValue);
+
     auto reference = reinterpret_cast<NativeReference**>(result);
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    if (native_object == nullptr && nativeObject->Has(vm, key)) {
-        Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
-        auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, nativeBindingSize);
-        nativeObject->Delete(vm, key);
-        delete ref;
-    } else {
-        Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
-        NativeReference* ref = nullptr;
-        if (reference != nullptr) {
-            ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
-            *reference = ref;
-        } else {
-            ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
-        }
-        object->SetNativePointerFieldCount(vm, 1);
-        object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
-        PropertyAttribute attr(object, true, false, true);
-        nativeObject->DefineProperty(vm, key, attr);
+    bool isSendable = nativeObject->IsJSShared();
+    if (LIKELY(!isSendable)) {
+        RETURN_STATUS_IF_FALSE(env, !nativeObject->Has(vm, key), napi_invalid_arg);
     }
+
+    NativeReference* ref = nullptr;
+    if (reference != nullptr) {
+        CHECK_ARG(env, callback);
+        ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+        *reference = ref;
+    } else {
+        ref = engine->CreateReference(js_object, 0, true, callback, native_object,
+            callback == nullptr ? nullptr : finalize_hint);
+    }
+
+    if (LIKELY(!isSendable)) {
+        auto external = NativePointerRef::New(vm, ref, nullptr, nullptr, 0);
+        PropertyAttribute attr(external, true, false, true);
+        nativeObject->DefineProperty(vm, key, attr);
+    } else {
+        auto external = NativePointerRef::NewSendable(vm, ref, nullptr, nullptr, 0);
+        // fixme: need set enumerable false
+        nativeObject->Set(vm, key, external);
+    }
+
     return GET_RETURN_STATUS(env);
 }
 
@@ -1496,38 +1488,42 @@ NAPI_EXTERN napi_status napi_wrap_async_finalizer(napi_env env,
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
     CHECK_ARG(env, native_object);
-    CHECK_ARG(env, finalize_cb);
 
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject(), napi_object_expected);
+    auto nativeObject = Local<panda::ObjectRef>(nativeValue);
+
     auto reference = reinterpret_cast<NativeReference**>(result);
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    if (native_object == nullptr && nativeObject->Has(vm, key)) {
-        Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
-        auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, native_binding_size);
-        nativeObject->Delete(vm, key);
-        delete ref;
-    } else {
-        Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
-        NativeReference* ref = nullptr;
-        if (reference != nullptr) {
-            ref = engine->CreateAsyncReference(js_object, 1, false, callback, native_object, finalize_hint);
-            *reference = ref;
-        } else {
-            ref = engine->CreateAsyncReference(js_object, 0, true, callback, native_object, finalize_hint);
-        }
-        object->SetNativePointerFieldCount(vm, 1);
-        object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, native_binding_size);
-        PropertyAttribute attr(object, true, false, true);
-        nativeObject->DefineProperty(vm, key, attr);
+    bool isSendable = nativeObject->IsJSShared();
+    if (LIKELY(!isSendable)) {
+        RETURN_STATUS_IF_FALSE(env, !nativeObject->Has(vm, key), napi_invalid_arg);
     }
+
+    NativeReference* ref = nullptr;
+    if (reference != nullptr) {
+        CHECK_ARG(env, callback);
+        ref = engine->CreateAsyncReference(js_object, 1, false, callback, native_object, finalize_hint);
+        *reference = ref;
+    } else {
+        ref = engine->CreateAsyncReference(js_object, 0, true, callback, native_object,
+            callback == nullptr ? nullptr : finalize_hint);
+    }
+
+    if (LIKELY(!isSendable)) {
+        auto external = NativePointerRef::New(vm, ref, nullptr, nullptr, native_binding_size);
+        PropertyAttribute attr(external, true, false, true);
+        nativeObject->DefineProperty(vm, key, attr);
+    } else {
+        auto external = NativePointerRef::NewSendable(vm, ref, nullptr, nullptr, native_binding_size);
+        // fixme: need set enumerable false
+        nativeObject->Set(vm, key, external);
+    }
+
     return GET_RETURN_STATUS(env);
 }
 
@@ -1543,37 +1539,40 @@ NAPI_EXTERN napi_status napi_wrap_with_size(napi_env env,
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
     CHECK_ARG(env, native_object);
-    CHECK_ARG(env, finalize_cb);
 
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject(), napi_object_expected);
+    auto nativeObject = Local<panda::ObjectRef>(nativeValue);
+
     auto reference = reinterpret_cast<NativeReference**>(result);
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    if (native_object == nullptr && nativeObject->Has(vm, key)) {
-        Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
-        auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, native_binding_size);
-        nativeObject->Delete(vm, key);
-        delete ref;
+    bool isSendable = nativeObject->IsJSShared();
+    if (LIKELY(!isSendable)) {
+        RETURN_STATUS_IF_FALSE(env, !nativeObject->Has(vm, key), napi_invalid_arg);
+    }
+
+    NativeReference* ref = nullptr;
+    if (reference != nullptr) {
+        CHECK_ARG(env, callback);
+        ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+        *reference = ref;
     } else {
-        Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
-        NativeReference* ref = nullptr;
-        if (reference != nullptr) {
-            ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
-            *reference = ref;
-        } else {
-            ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
-        }
-        object->SetNativePointerFieldCount(vm, 1);
-        object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, native_binding_size);
-        PropertyAttribute attr(object, true, false, true);
+        ref = engine->CreateReference(js_object, 0, true, callback, native_object,
+            callback == nullptr ? nullptr : finalize_hint);
+    }
+
+    if (LIKELY(!isSendable)) {
+        auto external = NativePointerRef::New(vm, ref, nullptr, nullptr, native_binding_size);
+        PropertyAttribute attr(external, true, false, true);
         nativeObject->DefineProperty(vm, key, attr);
+    } else {
+        auto external = NativePointerRef::NewSendable(vm, ref, nullptr, nullptr, native_binding_size);
+        // fixme: need set enumerable false
+        nativeObject->Set(vm, key, external);
     }
 
     return GET_RETURN_STATUS(env);
@@ -1587,17 +1586,18 @@ NAPI_EXTERN napi_status napi_unwrap(napi_env env, napi_value js_object, void** r
 
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject(), napi_object_expected);
+    auto nativeObject = Local<panda::ObjectRef>(nativeValue);
+
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
     Local<panda::JSValueRef> val = nativeObject->Get(vm, key);
-    *result = nullptr;
-    if (val->IsObject()) {
-        Local<panda::ObjectRef> ext(val);
-        auto ref = reinterpret_cast<NativeReference*>(ext->GetNativePointerField(0));
-        *result = ref != nullptr ? ref->GetData() : nullptr;
-    }
+    RETURN_STATUS_IF_FALSE(env, val->IsNativePointer(), napi_invalid_arg);
+
+    Local<panda::NativePointerRef> ext(val);
+    auto ref = static_cast<NativeReference*>(ext->Value());
+    *result = ref->GetData();
 
     return GET_RETURN_STATUS(env);
 }
@@ -1606,155 +1606,30 @@ NAPI_EXTERN napi_status napi_remove_wrap(napi_env env, napi_value js_object, voi
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
-    CHECK_ARG(env, result);
 
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject() || nativeValue->IsFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject(), napi_object_expected);
+    auto nativeObject = Local<panda::ObjectRef>(nativeValue);
+
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
     Local<panda::JSValueRef> val = nativeObject->Get(vm, key);
-    *result = nullptr;
-    if (val->IsObject()) {
-        Local<panda::ObjectRef> ext(val);
-        auto ref = reinterpret_cast<NativeReference*>(ext->GetNativePointerField(0));
-        *result = ref != nullptr ? ref->GetData() : nullptr;
+    RETURN_STATUS_IF_FALSE(env, val->IsNativePointer(), napi_invalid_arg);
+    Local<panda::NativePointerRef> ext(val);
+    auto ref = static_cast<NativeReference*>(ext->Value());
+
+    if (result != nullptr) {
+        *result = ref->GetData();
     }
 
-    size_t nativeBindingSize = 0;
-    if (nativeObject->Has(vm, key)) {
-        Local<panda::ObjectRef> wrapper = val;
-        auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, nativeBindingSize);
-        nativeObject->Delete(vm, key);
+    nativeObject->Delete(vm, key);
+    if (ref->GetDeleteSelf()) {
         delete ref;
     } else {
-        Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
-        NativeReference* ref = nullptr;
-        ref = engine->CreateReference(js_object, 0, true, nullptr, nullptr, nullptr);
-        object->SetNativePointerFieldCount(vm, 1);
-        object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
-        PropertyAttribute attr(object, true, false, true);
-        nativeObject->DefineProperty(vm, key, attr);
+        ref->ResetFinalizer();
     }
-
-    return GET_RETURN_STATUS(env);
-}
-
-NAPI_EXTERN napi_status napi_wrap_sendable(napi_env env,
-                                           napi_value js_object,
-                                           void* native_object,
-                                           napi_finalize finalize_cb,
-                                           void* finalize_hint,
-                                           napi_ref* result)
-{
-    NAPI_PREAMBLE(env);
-    CHECK_ARG(env, js_object);
-    CHECK_ARG(env, native_object);
-    CHECK_ARG(env, finalize_cb);
-
-    auto nativeValue = LocalValueFromJsValue(js_object);
-    auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
-    auto engine = reinterpret_cast<NativeEngine*>(env);
-    auto vm = engine->GetEcmaVm();
-    panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsSharedObject() || nativeValue->IsSharedFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
-    size_t nativeBindingSize = 0;
-    auto reference = reinterpret_cast<NativeReference**>(result);
-    Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    Local<panda::ObjectRef> object = panda::ObjectRef::NewS(vm);
-    NativeReference* ref = nullptr;
-    if (reference != nullptr) {
-        ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
-        *reference = ref;
-    } else {
-        ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
-    }
-    object->SetNativePointerFieldCount(vm, 1);
-    object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
-    nativeObject->Set(vm, key, object);
-    return GET_RETURN_STATUS(env);
-}
-
-NAPI_EXTERN napi_status napi_wrap_sendable_with_size(napi_env env,
-                                                     napi_value js_object,
-                                                     void* native_object,
-                                                     napi_finalize finalize_cb,
-                                                     void* finalize_hint,
-                                                     size_t native_binding_size,
-                                                     napi_ref* result)
-{
-    NAPI_PREAMBLE(env);
-    CHECK_ARG(env, js_object);
-    CHECK_ARG(env, native_object);
-    CHECK_ARG(env, finalize_cb);
-
-    auto nativeValue = LocalValueFromJsValue(js_object);
-    auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
-    auto engine = reinterpret_cast<NativeEngine*>(env);
-    auto vm = engine->GetEcmaVm();
-    panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsSharedObject() || nativeValue->IsSharedFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
-    auto reference = reinterpret_cast<NativeReference**>(result);
-    Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    Local<panda::ObjectRef> object = panda::ObjectRef::NewS(vm);
-    NativeReference* ref = nullptr;
-    if (reference != nullptr) {
-        ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
-        *reference = ref;
-    } else {
-        ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
-    }
-    object->SetNativePointerFieldCount(vm, 1);
-    object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, native_binding_size);
-    nativeObject->Set(vm, key, object);
-    return GET_RETURN_STATUS(env);
-}
-
-NAPI_EXTERN napi_status napi_unwrap_sendable(napi_env env, napi_value js_object, void** result)
-{
-    NAPI_PREAMBLE(env);
-    CHECK_ARG(env, js_object);
-    CHECK_ARG(env, result);
-
-    auto nativeValue = LocalValueFromJsValue(js_object);
-    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-    panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsSharedObject() || nativeValue->IsSharedFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
-    Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    Local<panda::ObjectRef> val = nativeObject->Get(vm, key);
-    auto ref = reinterpret_cast<NativeReference*>(val->GetNativePointerField(0));
-    *result = ref != nullptr ? ref->GetData() : nullptr;
-    return GET_RETURN_STATUS(env);
-}
-
-NAPI_EXTERN napi_status napi_remove_wrap_sendable(napi_env env, napi_value js_object, void** result)
-{
-    NAPI_PREAMBLE(env);
-    CHECK_ARG(env, js_object);
-    CHECK_ARG(env, result);
-
-    auto nativeValue = LocalValueFromJsValue(js_object);
-    auto engine = reinterpret_cast<NativeEngine*>(env);
-    auto vm = engine->GetEcmaVm();
-    panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsSharedObject() || nativeValue->IsSharedFunction(), napi_object_expected);
-    auto nativeObject = nativeValue->ToObject(vm);
-    Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    Local<panda::ObjectRef> val = nativeObject->Get(vm, key);
-    auto ref = reinterpret_cast<NativeReference*>(val->GetNativePointerField(0));
-    *result = ref != nullptr ? ref->GetData() : nullptr;
-
-    size_t nativeBindingSize = 0;
-    val->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, nativeBindingSize);
-    nativeObject->Set(vm, key, JSValueRef::Null(vm));
-    delete ref;
 
     return GET_RETURN_STATUS(env);
 }
@@ -2086,7 +1961,7 @@ NAPI_EXTERN napi_status napi_is_arraybuffer(napi_env env, napi_value value, bool
     CHECK_ARG(env, result);
 
     auto nativeValue = LocalValueFromJsValue(value);
-    *result = nativeValue->IsArrayBuffer() || nativeValue->IsSendableArrayBuffer();
+    *result = LIKELY(nativeValue->IsArrayBuffer()) || nativeValue->IsSendableArrayBuffer();
 
     return napi_clear_last_error(env);
 }
@@ -2160,7 +2035,7 @@ NAPI_EXTERN napi_status napi_get_arraybuffer_info(napi_env env,
     auto nativeValue = LocalValueFromJsValue(arraybuffer);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    if (nativeValue->IsArrayBuffer()) {
+    if (LIKELY(nativeValue->IsArrayBuffer())) {
         Local<panda::ArrayBufferRef> res(nativeValue);
         *data = res->GetBuffer();
         *byte_length = res->ByteLength(vm);
@@ -2398,7 +2273,7 @@ NAPI_EXTERN napi_status napi_create_sendable_typedarray(napi_env env,
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
     RETURN_STATUS_IF_FALSE(env, value->IsSendableArrayBuffer(), napi_status::napi_arraybuffer_expected);
-    Local<panda::ArrayBufferRef> arrayBuf = value->ToObject(vm);
+    Local<panda::SendableArrayBufferRef> arrayBuf(value);
     Local<panda::TypedArrayRef> sendableTypedArray(panda::JSValueRef::Undefined(vm));
 
     if (reinterpret_cast<NativeEngine*>(env)->NapiNewSendableTypedArray(typedArrayType, sendableTypedArray, vm,
@@ -2424,7 +2299,7 @@ NAPI_EXTERN napi_status napi_get_typedarray_info(napi_env env,
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    if (value->IsTypedArray()) {
+    if (LIKELY(value->IsTypedArray())) {
         Local<panda::TypedArrayRef> typedArray = Local<panda::TypedArrayRef>(value);
         if (type != nullptr) {
             *type = static_cast<napi_typedarray_type>(engine->GetTypedArrayType(typedArray));
@@ -3110,23 +2985,6 @@ NAPI_EXTERN napi_status napi_detach_arraybuffer(napi_env env, napi_value arraybu
     bool isArrayBuffer = false;
     nativeValue->DetachedArraybuffer(vm, isArrayBuffer);
     if (!isArrayBuffer) {
-        return napi_set_last_error(env, napi_invalid_arg);
-    }
-    return napi_clear_last_error(env);
-}
-
-NAPI_EXTERN napi_status napi_detach_sendable_arraybuffer(napi_env env, napi_value arraybuffer)
-{
-    CHECK_ENV(env);
-    CHECK_ARG(env, arraybuffer);
-
-    auto nativeValue = LocalValueFromJsValue(arraybuffer);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsSharedArrayBuffer(), napi_object_expected);
-    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-    Local<panda::ArrayBufferRef> bufObj = nativeValue->ToObject(vm);
-    if (!bufObj->IsDetach()) {
-        bufObj->Detach(vm);
-    } else {
         return napi_set_last_error(env, napi_invalid_arg);
     }
     return napi_clear_last_error(env);
