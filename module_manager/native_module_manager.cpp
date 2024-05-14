@@ -361,6 +361,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libohosadaptor.so",
         "libusb_ndk.z.so",
         "libvulkan.so",
+        "libteec.so",
     };
 
     size_t allowListLength = sizeof(allowList) / sizeof(char*);
