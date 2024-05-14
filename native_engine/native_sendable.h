@@ -42,6 +42,7 @@ private:
                                                                      const char* name,
                                                                      NapiNativeCallback cb,
                                                                      void* value);
+    static FunctionRef::SendableType GetSendableType(uint32_t attributes);
 };
 
 #endif
