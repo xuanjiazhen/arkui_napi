@@ -162,7 +162,7 @@ bool ArkNativeReference::GetFinalRun()
     return finalRun_;
 }
 
-napi_value ArkNativeReference::GetNapiValue()
+napi_value ArkNativeReference::GetNapiValue() __attribute__((no_sanitize("cfi")))
 {
     return Get();
 }
