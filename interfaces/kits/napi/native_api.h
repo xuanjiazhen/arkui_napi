@@ -41,6 +41,8 @@
 #endif
 #endif
 
+typedef struct napi_fast_native_scope__* napi_fast_native_scope;
+
 NAPI_INNER_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err);
 
 
@@ -182,9 +184,12 @@ NAPI_EXTERN napi_status napi_create_sendable_typedarray(napi_env env,
                                                         napi_value* result);
 
 NAPI_EXTERN napi_status napi_call_threadsafe_function_with_priority(napi_threadsafe_function func,
-                                                                    void *data,
+                                                                    void* data,
                                                                     napi_task_priority priority,
                                                                     bool isTail);
+
+NAPI_EXTERN napi_status napi_open_fast_native_scope(napi_env env, napi_fast_native_scope* scope);
+NAPI_EXTERN napi_status napi_close_fast_native_scope(napi_env env, napi_fast_native_scope scope);
 #ifdef __cplusplus
 }
 #endif
