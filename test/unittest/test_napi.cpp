@@ -5318,8 +5318,24 @@ HWTEST_F(NapiBasicTest, CreateSendableArray002, testing::ext::TestSize.Level1)
     res = napi_get_undefined(env, &undefined);
     ASSERT_EQ(res, napi_ok);
 
+    bool isExceptionPending = false;
+    napi_value exception = nullptr;
+
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_FALSE(isExceptionPending);
     res = napi_set_element(env, result, 0, undefined);
-    ASSERT_EQ(res, napi_ok);
+    ASSERT_NE(res, napi_ok);
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_TRUE(isExceptionPending);
+    napi_get_and_clear_last_exception(env, &exception);
+
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_FALSE(isExceptionPending);
+    res = napi_set_named_property(env, result, "0", undefined);
+    ASSERT_NE(res, napi_ok);
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_TRUE(isExceptionPending);
+    napi_get_and_clear_last_exception(env, &exception);
 }
 
 /**
@@ -5413,6 +5429,14 @@ HWTEST_F(NapiBasicTest, CreateSendableArrayWithLength003, testing::ext::TestSize
     ASSERT_EQ(res, napi_ok);
     ASSERT_EQ(ret, true);
 
+    res = napi_set_named_property(env, result, "1", boolTrue);
+    ASSERT_EQ(res, napi_ok);
+    res = napi_get_element(env, result, 1, &value);
+    ASSERT_EQ(res, napi_ok);
+    res = napi_get_value_bool(env, value, &ret);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(ret, true);
+
     res = napi_set_element(env, result, LENGTH - 1, boolTrue);
     ASSERT_EQ(res, napi_ok);
     res = napi_get_element(env, result, LENGTH - 1, &value);
@@ -5455,7 +5479,6 @@ HWTEST_F(NapiBasicTest, CreateSendableArrayWithLength004, testing::ext::TestSize
 
     napi_value value = nullptr;
     napi_value boolTrue = nullptr;
-    bool ret = false;
     res = napi_get_boolean(env, true, &boolTrue);
     ASSERT_EQ(res, napi_ok);
 
@@ -5466,13 +5489,16 @@ HWTEST_F(NapiBasicTest, CreateSendableArrayWithLength004, testing::ext::TestSize
     ASSERT_EQ(res, napi_ok);
     ASSERT_EQ(napi_undefined, napi_undefined);
 
+    bool isExceptionPending = false;
+    napi_value exception = nullptr;
+
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_FALSE(isExceptionPending);
     res = napi_set_element(env, result, LENGTH, boolTrue);
-    ASSERT_EQ(res, napi_ok);
-    res = napi_get_element(env, result, LENGTH, &value);
-    ASSERT_EQ(res, napi_ok);
-    res = napi_get_value_bool(env, value, &ret);
-    ASSERT_EQ(res, napi_ok);
-    ASSERT_EQ(ret, true);
+    ASSERT_NE(res, napi_ok);
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_TRUE(isExceptionPending);
+    napi_get_and_clear_last_exception(env, &exception);
 
     res = napi_get_element(env, result, LENGTH + 1, &value);
     ASSERT_EQ(res, napi_ok);
@@ -5480,6 +5506,36 @@ HWTEST_F(NapiBasicTest, CreateSendableArrayWithLength004, testing::ext::TestSize
     res = napi_typeof(env, value, &getType);
     ASSERT_EQ(res, napi_ok);
     ASSERT_EQ(getType, napi_undefined);
+}
+
+/**
+ * @tc.name: CreateSendableArrayWithLength005
+ * @tc.desc: Test napi_create_sendable_array_with_length.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateSendableArrayWithLength005, testing::ext::TestSize.Level1)
+{
+    static uint32_t LENGTH = 1024;
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_status res = napi_ok;
+
+    napi_value result = nullptr;
+    res = napi_create_sendable_array_with_length(env, LENGTH, &result);
+    ASSERT_EQ(res, napi_ok);
+
+    napi_value obj;
+    napi_create_object(env, &obj);
+
+    bool isExceptionPending = false;
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_FALSE(isExceptionPending);
+    res = napi_set_element(env, result, 0, obj);
+    ASSERT_NE(res, napi_ok);
+    napi_is_exception_pending(env, &isExceptionPending);
+    ASSERT_TRUE(isExceptionPending);
+    napi_value exception = nullptr;
+    napi_get_and_clear_last_exception(env, &exception);
 }
 
 /**
@@ -5747,9 +5803,10 @@ HWTEST_F(NapiBasicTest, SerializeDeSerializeSendableDataTest002, testing::ext::T
 {
     napi_env env = (napi_env) engine_;
 
+    int ARRAY_LENGTH = 10;
     napi_status res = napi_ok;
     napi_value sendableArray = nullptr;
-    napi_create_sendable_array(env, &sendableArray);
+    napi_create_sendable_array_with_length(env, ARRAY_LENGTH, &sendableArray);
     ASSERT_NE(sendableArray, nullptr);
     bool isShared = false;
     res = napi_is_sendable(env, sendableArray, &isShared);
@@ -5758,7 +5815,7 @@ HWTEST_F(NapiBasicTest, SerializeDeSerializeSendableDataTest002, testing::ext::T
     bool isArray = false;
     napi_is_array(env, sendableArray, &isArray);
     ASSERT_TRUE(isArray);
-    for (size_t i = 0; i < 10; i++) {
+    for (size_t i = 0; i < ARRAY_LENGTH; i++) {
         napi_value num = nullptr;
         napi_create_uint32(env, i, &num);
         napi_set_element(env, sendableArray, i, num);
