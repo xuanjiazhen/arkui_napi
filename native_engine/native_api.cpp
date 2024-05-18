@@ -1467,7 +1467,7 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
     NativeReference* ref = nullptr;
     if (reference != nullptr) {
         CHECK_ARG(env, callback);
-        ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+        ref = engine->CreateReference(js_object, 0, false, callback, native_object, finalize_hint);
         *reference = ref;
     } else {
         ref = engine->CreateReference(js_object, 0, true, callback, native_object,
@@ -1509,7 +1509,7 @@ NAPI_EXTERN napi_status napi_wrap_async_finalizer(napi_env env,
     NativeReference* ref = nullptr;
     if (reference != nullptr) {
         CHECK_ARG(env, callback);
-        ref = engine->CreateAsyncReference(js_object, 1, false, callback, native_object, finalize_hint);
+        ref = engine->CreateAsyncReference(js_object, 0, false, callback, native_object, finalize_hint);
         *reference = ref;
     } else {
         ref = engine->CreateAsyncReference(js_object, 0, true, callback, native_object,
@@ -1551,7 +1551,7 @@ NAPI_EXTERN napi_status napi_wrap_with_size(napi_env env,
     NativeReference* ref = nullptr;
     if (reference != nullptr) {
         CHECK_ARG(env, callback);
-        ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+        ref = engine->CreateReference(js_object, 0, false, callback, native_object, finalize_hint);
         *reference = ref;
     } else {
         ref = engine->CreateReference(js_object, 0, true, callback, native_object,
@@ -3245,7 +3245,7 @@ NAPI_EXTERN napi_status napi_add_finalizer(napi_env env,
     NativeReference* reference = nullptr;
     auto engine = reinterpret_cast<NativeEngine*>(env);
     if (result != nullptr) {
-        reference = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+        reference = engine->CreateReference(js_object, 0, false, callback, native_object, finalize_hint);
         *result = reinterpret_cast<napi_ref>(reference);
     } else {
         reference = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
