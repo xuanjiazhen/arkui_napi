@@ -1634,7 +1634,9 @@ HWTEST_F(NapiBasicTest, AsyncWorkTest001, testing::ext::TestSize.Level1)
         napi_value resourceName = nullptr;
         napi_create_string_utf8(env, "AsyncWorkTest", NAPI_AUTO_LENGTH, &resourceName);
         napi_create_async_work(
-            env, nullptr, resourceName, [](napi_env value, void* data) {},
+            env, nullptr, resourceName, [](napi_env value, void* data) {
+                sleep(1);
+            },
             [](napi_env env, napi_status status, void* data) {
                 AsyncWorkContext* asyncWorkContext = (AsyncWorkContext*)data;
                 ASSERT_EQ(status, napi_status::napi_cancelled);
@@ -4391,7 +4393,6 @@ static napi_value Func(napi_env env, napi_callback_info info)
     napi_unwrap_sendable(env, thisVar, reinterpret_cast<void**>(&data));
     if (*data == 'a') {
         g_funcCalled = true;
-        delete [] data;
     }
 
     return boolTrue;
@@ -4426,6 +4427,31 @@ HWTEST_F(NapiBasicTest, CreateSendableObjectWithPropertiesTest002, testing::ext:
     napi_get_value_bool(env, ret, &resultBool);
     ASSERT_EQ(resultBool, true);
     ASSERT_EQ(g_funcCalled, true);
+
+    napi_value undefined = nullptr;
+    napi_status res = napi_get_undefined(env, &undefined);
+    ASSERT_EQ(res, napi_ok);
+    void *result = nullptr;
+    res = napi_serialize(env, obj2, undefined, undefined, &result);
+    ASSERT_EQ(res, napi_ok);
+
+    napi_value obj1 = nullptr;
+    res = napi_deserialize(env, result, &obj1);
+    ASSERT_EQ(res, napi_ok);
+
+    g_funcCalled = false;
+    func = nullptr;
+    ret = nullptr;
+    res = napi_get_named_property(env, obj1, "func", &func);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(g_funcCalled, false);
+    res = napi_call_function(env, obj1, func, 0, nullptr, &ret);
+    ASSERT_EQ(res, napi_ok);
+    resultBool = false;
+    napi_get_value_bool(env, ret, &resultBool);
+    ASSERT_EQ(resultBool, true);
+    ASSERT_EQ(g_funcCalled, true);
+    delete [] data;
 }
 
 /**
