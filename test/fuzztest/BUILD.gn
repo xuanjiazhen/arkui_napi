@@ -13,6 +13,14 @@
 
 group("fuzztest") {
   testonly = true
+  deps = []
 
-  deps = [ "arknativeengine_fuzzer:fuzztest" ]
+  deps += [
+    "executejsbin_fuzzer:fuzztest",
+    "loadarkmodule_fuzzer:fuzztest",
+    "runactor_fuzzer:fuzztest",
+    "runbufferscript_fuzzer:fuzztest",
+    "runscriptbuffer_fuzzer:fuzztest",
+    "runscriptpath_fuzzer:fuzztest",
+  ]
 }
