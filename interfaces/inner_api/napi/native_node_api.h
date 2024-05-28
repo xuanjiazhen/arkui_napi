@@ -75,6 +75,7 @@ NAPI_EXTERN napi_status napi_is_arguments_object(napi_env env, napi_value value,
 NAPI_EXTERN napi_status napi_is_async_function(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_boolean_object(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_generator_function(napi_env env, napi_value value, bool* result);
+NAPI_EXTERN napi_status napi_is_concurrent_function(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_date(napi_env env, napi_value value, bool* result);
 
 NAPI_EXTERN napi_status napi_is_map_iterator(napi_env env, napi_value value, bool* result);
