@@ -376,12 +376,12 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                     isAppModule = ret->Value();
                 }
                 arkNativeEngine->isAppModule_ = isAppModule;
-                if (info->GetArgsNumber() == 3) { // 3:Determine if the number of parameters is equal to 3
+                if (info->GetArgsNumber() == 4) { // 4:Determine if the number of parameters is equal to 4
                     Local<StringRef> path(info->GetCallArgRef(2)); // 2:Take the second parameter
                     module =
                         moduleManager->LoadNativeModule(moduleName->ToString().c_str(), path->ToString().c_str(),
                             isAppModule, errInfo, false, "", arkNativeEngine->isLimitedWorker_);
-                } else if (info->GetArgsNumber() == 4) { // 4:Determine if the number of parameters is equal to 4
+                } else if (info->GetArgsNumber() == 5) { // 5:Determine if the number of parameters is equal to 5
                     Local<StringRef> path(info->GetCallArgRef(2)); // 2:Take the second parameter
                     Local<StringRef> relativePath(info->GetCallArgRef(3)); // 3:Take the second parameter
                     module =
@@ -420,7 +420,12 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                         } else {
                             buffer = static_cast<const void *>(module->jsCode);
                         }
-                        auto exportObject = arkNativeEngine->LoadArkModule(buffer, module->jsCodeLen, fileName);
+                        bool executeFromJob = false;
+                        if (info->GetArgsNumber() == 5) {
+                            Local<BooleanRef> ret(info->GetCallArgRef(5));
+                            executeFromJob = ret->Value();
+                        }
+                        auto exportObject = arkNativeEngine->LoadArkModule(buffer, module->jsCodeLen, fileName, executeFromJob);
                         if (exportObject->IsUndefined()) {
                             HILOG_ERROR("load module failed");
                             return scope.Escape(exports);
@@ -1777,7 +1782,7 @@ bool ArkNativeEngine::IsExecuteModuleInAbcFile(std::string bundleName, std::stri
 }
 
 panda::Local<panda::ObjectRef> ArkNativeEngine::LoadArkModule(const void* buffer,
-    int32_t len, const std::string& fileName)
+    int32_t len, const std::string& fileName, bool executeFromJob)
 {
     panda::EscapeLocalScope scope(vm_);
     Local<ObjectRef> undefObj(JSValueRef::Undefined(vm_));
@@ -1786,7 +1791,7 @@ panda::Local<panda::ObjectRef> ArkNativeEngine::LoadArkModule(const void* buffer
         return scope.Escape(undefObj);
     }
 
-    bool res = JSNApi::ExecuteModuleFromBuffer(vm_, buffer, len, fileName);
+    bool res = JSNApi::ExecuteModuleFromBuffer(vm_, buffer, len, fileName, executeFromJob);
     if (!res) {
         HILOG_ERROR("Execute module failed");
         return scope.Escape(undefObj);
