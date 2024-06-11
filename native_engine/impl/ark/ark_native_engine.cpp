@@ -1524,23 +1524,39 @@ void ArkNativeEngine::PostFinalizeTasks()
     if (pendingFinalizers_.empty()) {
         return;
     }
-    uv_work_t *syncWork = new uv_work_t;
     std::vector<RefFinalizer> *syncFinalizers = new std::vector<RefFinalizer>();
     syncFinalizers->swap(pendingFinalizers_);
-    syncWork->data = reinterpret_cast<void *>(syncFinalizers);
 
-    int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
-        std::vector<RefFinalizer> *finalizers = reinterpret_cast<std::vector<RefFinalizer> *>(syncWork->data);
+    uv_async_t* asyncHandler = new uv_async_t;
+    int ret = uv_async_init(GetUVLoop(), asyncHandler, [](uv_async_t *asyncWork) {
+        HILOG_DEBUG("uv_async_work running");
+        std::vector<RefFinalizer> *finalizers = reinterpret_cast<std::vector<RefFinalizer> *>(asyncWork->data);
         RunCallbacks(finalizers);
-        HILOG_DEBUG("uv_queue_work running");
-        delete syncWork;
+        uv_close(reinterpret_cast<uv_handle_t*>(asyncWork), [](uv_handle_t* asyncHandler) {
+            delete reinterpret_cast<uv_async_t*>(asyncHandler);
+        });
         delete finalizers;
-    }, uv_qos_t(napi_qos_background));
+        return;
+    });
+
+    auto runCallbacks = [](std::vector<RefFinalizer> *finalizers, uv_async_t* asyncWork) {
+        RunCallbacks(finalizers);
+        uv_close(reinterpret_cast<uv_handle_t*>(asyncWork), [](uv_handle_t* asyncHandler) {
+            delete reinterpret_cast<uv_async_t*>(asyncHandler);
+        });
+        delete finalizers;
+    };
+
     if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
-        RunCallbacks(syncFinalizers);
-        delete syncWork;
-        delete syncFinalizers;
+        HILOG_ERROR("uv async init fail ret '%{public}d'", ret);
+        return runCallbacks(syncFinalizers, asyncHandler);
+    }
+
+    asyncHandler->data = reinterpret_cast<void*>(syncFinalizers);
+    ret = uv_async_send(asyncHandler);
+    if (ret != 0) {
+        HILOG_ERROR("uv async send fail ret '%{public}d'", ret);
+        return runCallbacks(syncFinalizers, asyncHandler);
     }
 }
 
@@ -1565,24 +1581,40 @@ void ArkNativeEngine::PostAsyncTask(std::vector<NativePointerCallbackData>& call
     if (callbacks.empty()) {
         return;
     }
-    uv_work_t *syncWork = new uv_work_t;
     std::vector<NativePointerCallbackData> *asyncCallbacks = new std::vector<NativePointerCallbackData>();
     asyncCallbacks->swap(callbacks);
-    syncWork->data = reinterpret_cast<void *>(asyncCallbacks);
 
-    int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
+    uv_async_t* asyncHandler = new uv_async_t;
+    int ret = uv_async_init(GetUVLoop(), asyncHandler, [](uv_async_t *asyncWork) {
         std::vector<NativePointerCallbackData> *finalizers =
-            reinterpret_cast<std::vector<NativePointerCallbackData> *>(syncWork->data);
+            reinterpret_cast<std::vector<NativePointerCallbackData> *>(asyncWork->data);
+        HILOG_DEBUG("uv_async_work running");
         RunCallbacks(finalizers);
-        HILOG_DEBUG("uv_queue_work running");
-        delete syncWork;
+        uv_close(reinterpret_cast<uv_handle_t*>(asyncWork), [](uv_handle_t* asyncHandler) {
+            delete reinterpret_cast<uv_async_t*>(asyncHandler);
+        });
         delete finalizers;
-    }, uv_qos_t(napi_qos_background));
+        return;
+    });
+
+    auto runCallbacks = [](std::vector<NativePointerCallbackData> *finalizers, uv_async_t* asyncWork) {
+        RunCallbacks(finalizers);
+        uv_close(reinterpret_cast<uv_handle_t*>(asyncWork), [](uv_handle_t* asyncHandler) {
+            delete reinterpret_cast<uv_async_t*>(asyncHandler);
+        });
+        delete finalizers;
+    };
+
     if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
-        RunCallbacks(asyncCallbacks);
-        delete asyncCallbacks;
-        delete syncWork;
+        HILOG_ERROR("uv async init fail ret '%{public}d'", ret);
+        return runCallbacks(asyncCallbacks, asyncHandler);
+    }
+
+    asyncHandler->data = reinterpret_cast<void*>(asyncCallbacks);
+    ret = uv_async_send(asyncHandler);
+    if (ret != 0) {
+        HILOG_ERROR("uv async send fail ret '%{public}d'", ret);
+        return runCallbacks(asyncCallbacks, asyncHandler);
     }
 }
 
