@@ -12,7 +12,7 @@
 # limitations under the License.
 
 import("//build/test.gni")
-import("//foundation/arkui/napi/napi.gni")
+import("../../../../napi.gni")
 
 module_output_path = "ace_engine/napi"
 

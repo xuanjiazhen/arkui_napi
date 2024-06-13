@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import("//build/ohos.gni")
-import("//foundation/arkui/ace_engine/ace_config.gni")
 import("napi.gni")
 
 config("ace_napi_config") {
@@ -273,7 +272,7 @@ group("napi_packages") {
   }
 }
 
-if (!build_ohos_ndk && !is_arkui_x) {
+if (!build_ohos_ndk && !is_arkui_x && !ohos_indep_compiler_enable) {
   group("napi_packages_test") {
     testonly = true
 
@@ -290,10 +289,13 @@ if (!build_ohos_ndk && !is_arkui_x) {
   }
 }
 
-group("napi_host_performance_test") {
-  testonly = true
-  deps = []
-  if (host_os != "mac") {
-    deps += [ "test/performance:ark_napi_performance_test(${host_toolchain})" ]
+if (!ohos_indep_compiler_enable) {
+  group("napi_host_performance_test") {
+    testonly = true
+    deps = []
+    if (host_os != "mac") {
+      deps +=
+          [ "test/performance:ark_napi_performance_test(${host_toolchain})" ]
+    }
   }
 }

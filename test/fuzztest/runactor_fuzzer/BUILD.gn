@@ -15,7 +15,7 @@
 import("//build/config/features.gni")
 import("//build/ohos.gni")
 import("//build/test.gni")
-import("//foundation/arkui/napi/napi.gni")
+import("../../../napi.gni")
 ##################################fuzztest#####################################
 ohos_fuzztest("RunActorFuzzTest") {
   module_out_path = "arkui/napi"
@@ -26,15 +26,13 @@ ohos_fuzztest("RunActorFuzzTest") {
 
   configs = [ "../../..:ace_napi_config" ]
 
-  deps = [
-    "../../..:ace_napi",
-    "//third_party/libuv:uv",
-  ]
+  deps = [ "../../..:ace_napi" ]
 
   external_deps = [
     "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "ets_runtime:libark_jsruntime",
+    "libuv:uv",
   ]
 }
 

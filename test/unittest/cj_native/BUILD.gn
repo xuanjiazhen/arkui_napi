@@ -11,10 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("//foundation/arkui/napi/napi.gni")
+import("../../../napi.gni")
 
 import("//build/test.gni")
-import("//foundation/arkui/napi/test/unittest/ut.gni")
+import("../ut.gni")
 
 if (is_standard_system) {
   module_output_path = "ace_engine/napi"
@@ -38,7 +38,6 @@ ohos_unittest("test_ark_interop") {
   deps = [
     "../../..:ace_napi",
     "../../../interfaces/inner_api/cjffi/ark_interop:ark_interop",
-    "//third_party/libuv:uv",
   ]
   defines = []
   if (use_clang_coverage) {
@@ -48,6 +47,7 @@ ohos_unittest("test_ark_interop") {
   external_deps = [
     "ets_runtime:libark_jsruntime",
     "hilog:libhilog",
+    "libuv:uv",
   ]
 }
 

@@ -39,3 +39,5 @@ declare_args() {
   napi_enable_memleak_debug = true
   force_scope = false
 }
+
+is_ohos_standard_system = is_standard_system && !is_arkui_x
