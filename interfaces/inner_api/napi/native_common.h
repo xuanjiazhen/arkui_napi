@@ -66,6 +66,12 @@
             static_cast<napi_property_attributes>(NATIVE_INSTANCE | napi_writable), nullptr \
     }
 
+#define DECLARE_NAPI_INSTANCE_PROPERTY_WITH_TYPE(name, val)                       \
+    {                                                                             \
+        (name), nullptr, nullptr, nullptr, nullptr, nullptr,                      \
+            static_cast<napi_property_attributes>((val) | napi_writable), nullptr \
+    }
+
 #define DECLARE_NAPI_INSTANCE_OBJECT_PROPERTY(name)                                                \
     {                                                                                              \
         (name), nullptr, nullptr, nullptr, nullptr, nullptr,                                       \

@@ -34,12 +34,9 @@ FunctionRef::SendablePropertiesInfos NativeSendable::CreateSendablePropertiesInf
             InitSendablePropertiesInfo(env, infos.staticPropertiesInfo, properties[i]);
         } else if (properties[i].attributes & NATIVE_INSTANCE) {
             InitSendablePropertiesInfo(env, infos.instancePropertiesInfo, properties[i]);
-        } else if (properties[i].attributes & NATIVE_INSTANCE_OBJECT) {
-            InitSendablePropertiesInfo(env, infos.instancePropertiesInfo, properties[i],
-                                       FunctionRef::SendableType::OBJECT);
-        } else if (properties[i].attributes & NATIVE_INSTANCE_GENERIC) {
-            InitSendablePropertiesInfo(env, infos.instancePropertiesInfo, properties[i],
-                                       FunctionRef::SendableType::GENERIC);
+        } else if (properties[i].attributes & NATIVE_INSTANCE_TYPE) {
+            auto sendableType = GetSendableType(properties[i].attributes & NATIVE_INSTANCE_TYPE);
+            InitSendablePropertiesInfo(env, infos.instancePropertiesInfo, properties[i], sendableType);
         } else {
             InitSendablePropertiesInfo(env, infos.nonStaticPropertiesInfo, properties[i]);
         }
@@ -175,4 +172,45 @@ void NativeSendable::NapiDefineSendabledProperty(napi_env env,
         Local<JSValueRef> val = LocalValueFromJsValue(propertyDescriptor.value);
         result = obj->Set(vm, propertyName, val);
     }
+}
+
+FunctionRef::SendableType NativeSendable::GetSendableType(uint32_t attributes)
+{
+    if (attributes & NATIVE_INSTANCE_GENERIC) {
+        return FunctionRef::SendableType::GENERIC;
+    }
+    int count = 0;
+    while (attributes) {
+        attributes &= (attributes - 1);
+        count++;
+    }
+    if (count > 1) {
+        return FunctionRef::SendableType::GENERIC;
+    }
+    if (attributes & NATIVE_INSTANCE_OBJECT) {
+        return FunctionRef::SendableType::OBJECT;
+    }
+    if (attributes & NATIVE_INSTANCE_NUMBER) {
+        return FunctionRef::SendableType::NUMBER;
+    }
+    if (attributes & NATIVE_INSTANCE_STRING) {
+        return FunctionRef::SendableType::STRING;
+    }
+    if (attributes & NATIVE_INSTANCE_BOOLEAN) {
+        return FunctionRef::SendableType::BOOLEAN;
+    }
+    if (attributes & NATIVE_INSTANCE_BIG_INT) {
+        return FunctionRef::SendableType::BIG_INT;
+    }
+    if (attributes & NATIVE_INSTANCE_NULL_TYPE) {
+        return FunctionRef::SendableType::NULL_TYPE;
+    }
+    if (attributes & NATIVE_INSTANCE_UNDEFINED) {
+        return FunctionRef::SendableType::UNDEFINED;
+    }
+    if (attributes & NATIVE_INSTANCE_FUNCTION) {
+        return FunctionRef::SendableType::FUNCTION;
+    }
+    HILOG_FATAL("Unknown NATIVE_INSTANCE_TYPE");
+    return FunctionRef::SendableType::NONE;
 }
