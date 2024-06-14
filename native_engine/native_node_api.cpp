@@ -101,6 +101,18 @@ NAPI_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err)
     return napi_ok;
 }
 
+NAPI_EXTERN napi_status napi_is_termination_error(napi_env env, napi_value value, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    *result = nativeValue->IsTerminationError();
+
+    return napi_clear_last_error(env);
+}
+
 // Methods to manage simple async operations
 NAPI_EXTERN napi_status napi_create_async_work(napi_env env,
                                                napi_value async_resource,
