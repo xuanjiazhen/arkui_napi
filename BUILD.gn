@@ -160,8 +160,12 @@ if (is_arkui_x) {
 }
 
 #cj_ffi
+cutils_prefix = "//commonlibrary/c_utils"
 config("ffi_bind_native_config") {
-  include_dirs = [ "interfaces/inner_api/cjffi/native" ]
+  include_dirs = [
+    "interfaces/inner_api/cjffi/native",
+    "${cutils_prefix}/base/include",
+  ]
   cflags_cc = [ "-std=c++17" ]
 }
 
@@ -182,9 +186,7 @@ ohos_shared_library("cj_bind_native") {
   include_dirs = [ "interfaces/inner_api/cjffi" ]
 
   external_deps = [ "hilog:libhilog" ]
-  if (is_standard_system) {
-    external_deps += [ "c_utils:utils" ]
-  }
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "arkui"
   part_name = "napi"
@@ -232,9 +234,6 @@ ohos_shared_library("cj_bind_ffi") {
 
   external_deps = []
 
-  if (is_standard_system) {
-    external_deps += [ "c_utils:utils" ]
-  }
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "arkui"
   part_name = "napi"

@@ -24,7 +24,6 @@
         "ram": "10240KB",
         "deps": {
             "components": [
-                "c_utils",
                 "ets_runtime",
                 "eventhandler",
                 "faultloggerd",
