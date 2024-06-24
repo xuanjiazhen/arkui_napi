@@ -282,19 +282,6 @@ public:
         return workerVersion_.load() == target;
     }
 
-    void IncreaseSubEnvCounter()
-    {
-        subEnvCounter_++;
-    }
-    void DecreaseSubEnvCounter()
-    {
-        subEnvCounter_--;
-    }
-    bool HasSubEnv()
-    {
-        return subEnvCounter_.load() != 0;
-    }
-
     void SetCleanEnv(CleanEnv cleanEnv)
     {
         cleanEnv_ = cleanEnv;
@@ -345,6 +332,10 @@ public:
     void IncreaseListeningCounter();
     void DecreaseListeningCounter();
     bool HasListeningCounter();
+
+    void IncreaseSubEnvCounter();
+    void DecreaseSubEnvCounter();
+    bool HasSubEnv();
 
     static bool IsAlive(NativeEngine* env)
     {

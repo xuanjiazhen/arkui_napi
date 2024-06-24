@@ -729,6 +729,21 @@ bool NativeEngine::HasListeningCounter()
     return listeningCounter_.load() != 0;
 }
 
+void NativeEngine::IncreaseSubEnvCounter()
+{
+    subEnvCounter_++;
+}
+
+void NativeEngine::DecreaseSubEnvCounter()
+{
+    subEnvCounter_--;
+}
+
+bool NativeEngine::HasSubEnv()
+{
+    return subEnvCounter_.load() != 0;
+}
+
 void NativeEngine::RegisterWorkerFunction(const NativeEngine* engine)
 {
     if (engine == nullptr) {
