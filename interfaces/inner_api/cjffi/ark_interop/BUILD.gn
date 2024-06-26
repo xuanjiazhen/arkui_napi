@@ -14,7 +14,7 @@
 import("//build/ohos.gni")
 
 config("ark_interop_config") {
-  include_dirs = [ "../../.." ]
+  include_dirs = [ "../../../.." ]
   cflags = [
     "-std=c++17",
     "-Wno-gnu-zero-variadic-macro-arguments",

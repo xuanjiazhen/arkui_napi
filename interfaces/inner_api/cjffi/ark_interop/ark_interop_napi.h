@@ -112,6 +112,8 @@ EXPORT ARKTS_Value ARKTS_CreateBool(bool value);
 EXPORT bool ARKTS_IsBool(ARKTS_Value value);
 EXPORT bool ARKTS_GetValueBool(ARKTS_Value value);
 
+EXPORT void* ARKTS_GetNAPIEnvFromContext(ARKTS_Env env);
+
 EXPORT ARKTS_Value ARKTS_CreateObject(ARKTS_Env env);
 /**
  * js types excludes [number, boolean, null, undefined] are JSHeapObject
