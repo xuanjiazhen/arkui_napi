@@ -140,7 +140,6 @@ void NativeEngine::Init()
     tid_ = pthread_self();
     uv_async_init(loop_, &uvAsync_, nullptr);
     uv_sem_init(&uvSem_, 0);
-    CreateDefaultFunction();
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     if (getpid() == gettid()) {
         jsThreadType_ = JSThreadType::MAIN_THREAD;
@@ -148,6 +147,7 @@ void NativeEngine::Init()
         jsThreadType_ = JSThreadType::NATIVE_THREAD;
     }
 #endif
+    CreateDefaultFunction();
 }
 
 void NativeEngine::Deinit()
@@ -209,7 +209,6 @@ bool NativeEngine::ReinitUVLoop()
     tid_ = pthread_self();
     uv_async_init(loop_, &uvAsync_, nullptr);
     uv_sem_init(&uvSem_, 0);
-    CreateDefaultFunction();
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM)
     if (getpid() == gettid()) {
         jsThreadType_ = JSThreadType::MAIN_THREAD;
@@ -217,6 +216,7 @@ bool NativeEngine::ReinitUVLoop()
         jsThreadType_ = JSThreadType::NATIVE_THREAD;
     }
 #endif
+    CreateDefaultFunction();
     return true;
 }
 
