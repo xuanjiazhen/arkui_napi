@@ -411,7 +411,7 @@ napi_status NativeSafeAsyncWork::PostTask(void *data, int32_t priority, bool isT
 napi_status NativeSafeAsyncWork::SendEvent(const std::function<void()> &cb, napi_event_priority priority)
 {
 #ifdef ENABLE_EVENT_HANDLER
-    if (eventHandler_ && engine_->IsMainThread()) {
+    if (eventHandler_) {
         if (eventHandler_->PostTask(cb, static_cast<EventQueue::Priority>(priority)))
             return napi_status::napi_ok;
         else
