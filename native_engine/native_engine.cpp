@@ -141,8 +141,8 @@ void NativeEngine::Init()
     uv_async_init(loop_, &uvAsync_, nullptr);
     uv_sem_init(&uvSem_, 0);
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM) && !defined(LINUX_PLATFORM)
-    if (getpid() != gettid()) {
-        jsThreadType_ = JSThreadType::DEFAULT_THREAD;
+    if (getpid() == gettid()) {
+        jsThreadType_ = JSThreadType::MAIN_THREAD;
     }
 #endif
     CreateDefaultFunction();
@@ -209,7 +209,7 @@ bool NativeEngine::ReinitUVLoop()
     uv_sem_init(&uvSem_, 0);
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM) && !defined(LINUX_PLATFORM)
     if (getpid() != gettid()) {
-        jsThreadType_ = JSThreadType::DEFAULT_THREAD;
+        jsThreadType_ = JSThreadType::MAIN_THREAD;
     }
 #endif
     CreateDefaultFunction();
