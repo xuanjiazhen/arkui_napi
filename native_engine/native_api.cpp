@@ -1806,27 +1806,36 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
     size_t nativeBindingSize = 0;
     auto reference = reinterpret_cast<NativeReference**>(result);
     Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
-    if (native_object == nullptr && nativeObject->Has(vm, key)) {
+    if (nativeObject->Has(vm, key)) {
         Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
         auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, nativeBindingSize);
-        nativeObject->Delete(vm, key);
         delete ref;
-    } else {
-        Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
-        NativeReference* ref = nullptr;
+        if (native_object == nullptr) {
+            nativeObject->Delete(vm, key);
+            return GET_RETURN_STATUS(env);
+        }
         if (reference != nullptr) {
             ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
             *reference = ref;
         } else {
             ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
         }
-        object->SetNativePointerFieldCount(vm, 1);
-        object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
-        PropertyAttribute attr(object, true, false, true);
-        nativeObject->DefineProperty(vm, key, attr);
+        wrapper->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
+        return GET_RETURN_STATUS(env);
     }
+
+    Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
+    NativeReference* ref = nullptr;
+    if (reference != nullptr) {
+        ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+        *reference = ref;
+    } else {
+        ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
+    }
+    object->SetNativePointerFieldCount(vm, 1);
+    object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
+    PropertyAttribute attr(object, true, false, true);
+    nativeObject->DefineProperty(vm, key, attr);
     return GET_RETURN_STATUS(env);
 }
 
@@ -1855,8 +1864,6 @@ NAPI_EXTERN napi_status napi_wrap_async_finalizer(napi_env env,
     if (native_object == nullptr && nativeObject->Has(vm, key)) {
         Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
         auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, native_binding_size);
         nativeObject->Delete(vm, key);
         delete ref;
     } else {
@@ -1901,8 +1908,6 @@ NAPI_EXTERN napi_status napi_wrap_with_size(napi_env env,
     if (native_object == nullptr && nativeObject->Has(vm, key)) {
         Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
         auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(0));
-        // Try to remove native pointer from ArrayDataList
-        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, native_binding_size);
         nativeObject->Delete(vm, key);
         delete ref;
     } else {
@@ -3461,7 +3466,6 @@ NAPI_EXTERN napi_status napi_detach_arraybuffer(napi_env env, napi_value arraybu
 
     auto nativeValue = LocalValueFromJsValue(arraybuffer);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject(vm), napi_object_expected);
     bool isArrayBuffer = false;
     nativeValue->DetachedArraybuffer(vm, isArrayBuffer);
