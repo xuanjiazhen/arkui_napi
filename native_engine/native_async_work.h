@@ -60,15 +60,6 @@ public:
     virtual bool Cancel();
     virtual std::string GetTraceDescription();
     template<typename Inner, typename Outer>
-    static Outer* DereferenceOf(const Inner Outer::*field, const Inner* pointer)
-    {
-        if (field != nullptr && pointer != nullptr) {
-            auto fieldOffset = reinterpret_cast<uintptr_t>(&(static_cast<Outer*>(0)->*field));
-            auto outPointer = reinterpret_cast<Outer*>(reinterpret_cast<uintptr_t>(pointer) - fieldOffset);
-            return outPointer;
-        }
-        return nullptr;
-    }
 
 private:
     static void AsyncWorkCallback(uv_work_t* req);
