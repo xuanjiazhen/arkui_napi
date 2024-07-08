@@ -40,7 +40,7 @@ using namespace OHOS::AppExecFwk;
 void NativeSafeAsyncWork::AsyncCallback(uv_async_t* asyncHandler)
 {
     HILOG_DEBUG("NativeSafeAsyncWork::AsyncCallback called");
-    NativeSafeAsyncWork* that = NativeAsyncWork::DereferenceOf(&NativeSafeAsyncWork::asyncHandler_, asyncHandler);
+    NativeSafeAsyncWork* that = reinterpret_cast<NativeSafeAsyncWork*>(asyncHandler->data);
 
     that->ProcessAsyncHandle();
 }
@@ -128,6 +128,7 @@ bool NativeSafeAsyncWork::Init()
         return false;
     }
 
+    asyncHandler_.data = this;
     status_ = SafeAsyncStatus::SAFE_ASYNC_STATUS_INTE;
     return true;
 }
@@ -332,8 +333,7 @@ SafeAsyncCode NativeSafeAsyncWork::CloseHandles()
 
     // close async handler
     uv_close(reinterpret_cast<uv_handle_t*>(&asyncHandler_), [](uv_handle_t* handle) {
-        NativeSafeAsyncWork* that = NativeAsyncWork::DereferenceOf(&NativeSafeAsyncWork::asyncHandler_,
-            reinterpret_cast<uv_async_t*>(handle));
+    NativeSafeAsyncWork* that = reinterpret_cast<NativeSafeAsyncWork*>(handle->data);
         that->CleanUp();
     });
 
