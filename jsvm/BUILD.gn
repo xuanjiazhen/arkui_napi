@@ -74,4 +74,10 @@ action("build_libjsvm") {
     "--node_path",
     rebase_path("//third_party/node"),
   ]
+  if (is_debug) {
+    args += [
+      "--is_debug",
+      "true",
+    ]
+  }
 }

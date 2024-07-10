@@ -19,6 +19,7 @@ declare SYSROOT
 declare PREFIX
 declare TARGET_CPU
 declare TARGET_GEN_DIR
+declare IS_DEBUG
 
 export SCRIPT_PATCH=$(dirname $(readlink -f "$0"))
 
@@ -80,6 +81,10 @@ do_opt_process() {
             ;;
         --target_gen_dir)
             export TARGET_GEN_DIR=$2
+            shift
+            ;;
+        --is_debug)
+            export IS_DEBUG=$2
             shift
             ;;
         *)
