@@ -85,6 +85,9 @@ do_env() {
     argurment+=" -Wl,-z,relro"
     argurment+=" -Wl,-z,now"
     argurment+=" -pie"
+    if [[ "${IS_DEBUG}" = "true" ]]; then
+        argurment+=" -ggdb3"
+    fi
 
     if [[ "${TARGET_CPU}" = "arm" ]]; then
         cflags="  --target=arm-linux-ohos"
