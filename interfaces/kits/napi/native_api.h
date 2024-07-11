@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+ /**
+ * @file native_api.h
+ * @kit napi
+ */
+
 #ifndef FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_API_H
 #define FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_API_H
 
