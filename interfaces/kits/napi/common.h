@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+ /**
+ * @file common.h
+ * @kit ArkTS
+ */
+
 #ifndef FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_COMMON_H
 #define FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_COMMON_H
 
