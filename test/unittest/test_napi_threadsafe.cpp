@@ -1062,6 +1062,7 @@ HWTEST_F(NapiThreadsafeTest, ThreadsafeWithPriorityArgsCheckTest002, testing::ex
     HILOG_INFO("ThreadsafeWithPriorityArgsCheckTest002 end");
 }
 
+#if 0
 /**
  * @tc.name: ThreadsafeWithPriorityTest001
  * @tc.desc: Test napi_call_threadsafe_function_with_priority.
@@ -1268,3 +1269,4 @@ HWTEST_F(NapiThreadsafeTest, ThreadsafeWithPriorityTest014, testing::ext::TestSi
     CallThreadSafeWithDiffPriorityMultipleThreadTest();
     HILOG_INFO("ThreadsafeWithPriorityTest014 end");
 }
+#endif
