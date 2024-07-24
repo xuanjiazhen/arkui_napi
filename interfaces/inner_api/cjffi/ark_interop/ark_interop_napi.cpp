@@ -120,7 +120,9 @@ ARKTS_ValueType ARKTS_GetValueType(ARKTS_Env env, ARKTS_Value src)
 {
     ARKTS_ASSERT(src, "src is null", N_UNDEFINED);
     auto value = BIT_CAST(src, JSValueRef);
-    if (value.IsNull()) {
+    if (value.IsHole()) {
+        return N_UNDEFINED;
+    } else if (value.IsNull()) {
         return N_NULL;
     } else if (value.IsUndefined()) {
         return N_UNDEFINED;
@@ -333,17 +335,9 @@ bool ARKTS_IsCallable(ARKTS_Env env, ARKTS_Value value)
 
 static constexpr auto MAX_CALL_ARGS = 255;
 
-ARKTS_INLINE void FormatArguments(int32_t numArgs, ARKTS_Value args[], Local<JSValueRef>* result)
-{
-    for (int32_t i = 0;i < numArgs; ++i) {
-        result[i] = ARKTS_ToHandle<JSValueRef>(args[i]);
-    }
-}
-
 ARKTS_Value ARKTS_Call(ARKTS_Env env, ARKTS_Value func, ARKTS_Value thisArg, int32_t numArgs, ARKTS_Value args[])
 {
     ARKTS_ASSERT_P(env, "env is null");
-    ARKTS_ASSERT_P(func, "func is null");
     ARKTS_ASSERT_P(ARKTS_IsCallable(env, func), "func is not callable");
     ARKTS_ASSERT_P(numArgs <= MAX_CALL_ARGS, "too many arguments, 255 most");
 
@@ -353,7 +347,9 @@ ARKTS_Value ARKTS_Call(ARKTS_Env env, ARKTS_Value func, ARKTS_Value thisArg, int
     auto thisHandle = ARKTS_ToHandle<JSValueRef>(thisArg);
 
     Local<JSValueRef> formattedArgs[MAX_CALL_ARGS];
-    FormatArguments(numArgs, args, formattedArgs);
+    for (int32_t i = 0;i < numArgs; ++i) {
+        formattedArgs[i] = ARKTS_ToHandle<JSValueRef>(args[i]);
+    }
 
     auto result = funcHandle.Call(vm, thisHandle, formattedArgs, numArgs);
 
@@ -372,7 +368,9 @@ ARKTS_Value ARKTS_New(ARKTS_Env env, ARKTS_Value clazz, int32_t numArgs, ARKTS_V
     auto funcHandle = *P_CAST(clazz, FunctionRef*);
 
     Local<JSValueRef> formattedArgs[MAX_CALL_ARGS];
-    FormatArguments(numArgs, args, formattedArgs);
+    for (int32_t i = 0;i < numArgs; ++i) {
+        formattedArgs[i] = ARKTS_ToHandle<JSValueRef>(args[i]);
+    }
 
     auto result = funcHandle.Constructor(vm, formattedArgs, numArgs);
 
