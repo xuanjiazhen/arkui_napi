@@ -103,10 +103,14 @@ NativeSafeAsyncWork::NativeSafeAsyncWork(NativeEngine* engine,
         eventHandler_ = std::make_shared<EventHandler>(runner);
     }
 #endif
+    napi_add_async_cleanup_hook(reinterpret_cast<napi_env>(engine), CleanUpHook, this, &cleanupHandle_);
 }
 
 NativeSafeAsyncWork::~NativeSafeAsyncWork()
 {
+    if (cleanupHandle_ != nullptr) {
+        napi_remove_async_cleanup_hook(cleanupHandle_);
+    }
     if (ref_ != nullptr) {
         delete ref_;
         ref_ = nullptr;
@@ -326,6 +330,9 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
 SafeAsyncCode NativeSafeAsyncWork::CloseHandles()
 {
     HILOG_DEBUG("NativeSafeAsyncWork::CloseHandles called");
+
+    napi_remove_async_cleanup_hook(cleanupHandle_);
+    cleanupHandle_ = nullptr;
 
     if (status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSED) {
         HILOG_INFO("Close failed, thread is closed!");
