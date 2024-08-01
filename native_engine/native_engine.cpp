@@ -75,10 +75,6 @@ std::unordered_set<NativeEngine*> NativeEngine::g_alivedEngine_;
 NativeEngine::NativeEngine(void* jsEngine) : jsEngine_(jsEngine)
 {
     SetAlived();
-    if (memset_s(&timer_, sizeof(timer_), 0, sizeof(timer_)) != EOK) {
-        HILOG_ERROR("failed to init timer_");
-        return;
-    }
     if (memset_s(&uvAsync_, sizeof(uvAsync_), 0, sizeof(uvAsync_)) != EOK) {
         HILOG_ERROR("failed to init uvAsync_");
         return;
@@ -657,21 +653,9 @@ napi_status NativeEngine::RemoveCleanupHook(CleanupCallback fun, void* arg)
     return napi_generic_failure;
 }
 
-void NativeEngine::StartCleanupTimer()
-{
-    uv_timer_init(loop_, &timer_);
-    timer_.data = this;
-    uv_timer_start(&timer_, [](uv_timer_t* handle) {
-        HILOG_DEBUG("NativeEngine:: timer is end with timeout.");
-        reinterpret_cast<NativeEngine*>(handle->data)->cleanupTimeout_ = true;
-    }, DESTRUCTION_TIMEOUT, 0);
-    uv_unref(reinterpret_cast<uv_handle_t*>(&timer_));
-}
-
 void NativeEngine::RunCleanup()
 {
     HILOG_DEBUG("%{public}s, start.", __func__);
-    StartCleanupTimer();
     CleanupHandles();
     // sync clean up
     while (!cleanupHooks_.empty()) {
@@ -704,9 +688,41 @@ void NativeEngine::RunCleanup()
         CleanupHandles();
     }
 
-    while (uv_run(loop_, UV_RUN_NOWAIT) != 0 && !cleanupTimeout_) {}
-    uv_timer_stop(&timer_);
-    uv_close(reinterpret_cast<uv_handle_t*>(&timer_), nullptr);
+    HILOG_INFO("start to cancel works");
+    // waiting for ...
+    HILOG_INFO("start to close handles");
+    size_t handleCount = 0;
+    uv_walk(GetUVLoop(), [](uv_handle_t *handle, void *data) {
+        size_t count = *reinterpret_cast<size_t*>(data);
+        count++;
+        uv_close(handle, [](uv_handle_t *closedHandle){ });
+    }, &handleCount);
+    HILOG_INFO("napi will close %{public}zu unclosed handles", handleCount);
+
+    struct timeval startTime;
+    struct timeval curTime;
+    gettimeofday(&startTime, nullptr);
+    gettimeofday(&curTime, nullptr);
+    constexpr size_t timeUnit = 1000; // 1000000: count of ms in 1s
+    const time_t startTimeStamp = (startTime.tv_sec * timeUnit) + (startTime.tv_usec / timeUnit);
+    const time_t curTimeStamp = (curTime.tv_sec * timeUnit) + (curTime.tv_usec);
+    uint8_t optionLevel = 0;
+
+    while (uv_run(loop_, UV_RUN_NOWAIT) != 0) {
+        gettimeofday(&curTime, nullptr);
+        const time_t curTimeStamp = (curTime.tv_sec * timeUnit) + (curTime.tv_usec / timeUnit);
+        time_t timeDiff = curTimeStamp - startTimeStamp;
+        if (timeDiff >= optionLevel + 3) { // 3: step of upper level
+            if (optionLevel == 3) {  
+                HILOG_WARN("RunCleanup timeout, has run 3s");
+            } else if (optionLevel == 6) {
+                HILOG_ERROR("RunCleanup timeout, has run 6s");
+            } else if (optionLevel == 9) {
+        HILOG_ERROR("RunCleanup timeout, , has run 9s, force stop");
+                break;
+            }
+        }
+    }
     uv_run(loop_, UV_RUN_ONCE);
 
     if (cleanupTimeout_) {
