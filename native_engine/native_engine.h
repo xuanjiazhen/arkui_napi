@@ -469,7 +469,6 @@ public:
     napi_status SendEvent(const std::function<void()> &cb, napi_event_priority priority = napi_eprio_high);
 
 private:
-    void StartCleanupTimer();
     void CreateDefaultFunction(void);
     void DestoryDefaultFunction(void);
 
@@ -538,7 +537,6 @@ private:
     std::atomic_int subEnvCounter_ { 0 };
     std::atomic_bool isStopping_ { false };
     bool cleanupTimeout_ = false;
-    uv_timer_t timer_;
 
     std::mutex loopRunningMutex_;
     bool isLoopRunning_ = false;
