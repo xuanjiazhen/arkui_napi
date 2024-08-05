@@ -1585,6 +1585,9 @@ void ArkNativeEngine::SetAttribute(bool isLimitedWorker, panda::RuntimeOption &o
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     std::string bundleName = OHOS::system::GetParameter("persist.ark.arkbundlename", "");
     std::string memConfigProperty = OHOS::system::GetParameter("persist.ark.mem_config_property", "");
+    size_t heapDefaultSize = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.defaultsize", 0);
+    size_t heapSharedSize = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.sharedsize", 0);
+    size_t heapWorkerSize = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.workersize", 0);
     size_t gcThreadNum = OHOS::system::GetUintParameter<size_t>("persist.ark.gcthreads", 7);
     size_t longPauseTime = OHOS::system::GetUintParameter<size_t>("persist.ark.longpausetime", 40);
     bool asmInterpreterEnabled = OHOS::system::GetBoolParameter("persist.ark.asminterpreter", true);
@@ -1594,6 +1597,9 @@ void ArkNativeEngine::SetAttribute(bool isLimitedWorker, panda::RuntimeOption &o
     option.SetArkProperties(arkProperties);
     option.SetArkBundleName(bundleName);
     option.SetMemConfigProperty(memConfigProperty);
+    option.SetHeapDefaultSize(heapDefaultSize);
+    option.SetHeapSharedSize(heapSharedSize);
+    option.SetHeapWorkerSize(heapWorkerSize);
     option.SetGcThreadNum(gcThreadNum);
     option.SetLongPauseTime(longPauseTime);
     option.SetEnableAsmInterpreter(asmInterpreterEnabled);
