@@ -1047,8 +1047,13 @@ NAPI_EXTERN napi_status napi_set_element(napi_env env, napi_value object, uint32
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsObject(vm) || nativeValue->IsFunction(vm), napi_object_expected);
-    Local<panda::ObjectRef> obj = nativeValue->ToObject(vm);
-    obj->Set(vm, index, elementValue);
+    if (nativeValue->IsSharedArray(vm)) {
+        Local<panda::SendableArrayRef> arr(nativeValue);
+        panda::SendableArrayRef::SetProperty(vm, arr, index, elementValue);
+    } else {
+        Local<panda::ObjectRef> obj = nativeValue->ToObject(vm);
+        obj->Set(vm, index, elementValue);
+    }
 
     return GET_RETURN_STATUS(env);
 }
