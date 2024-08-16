@@ -4025,6 +4025,5 @@ NAPI_EXTERN napi_status napi_get_shared_array_buffer_info(napi_env env,
     } else {
         return napi_set_last_error(env, napi_arraybuffer_expected);
     }
-
     return napi_clear_last_error(env);
 }
