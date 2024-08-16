@@ -1235,28 +1235,28 @@ bool ArkNativeEngine::NapiNewSendableTypedArray(const EcmaVM* vm, NativeTypedArr
     Local<panda::SendableTypedArrayRef> typedArray;
     switch (typedArrayType) {
         case NATIVE_INT8_ARRAY:
-            typedArray = panda::SharedInt8ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SendableInt8ArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT8_ARRAY:
-            typedArray = panda::SharedUint8ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SendableUint8ArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
         case NATIVE_INT16_ARRAY:
-            typedArray = panda::SharedInt16ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SendableInt16ArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT16_ARRAY:
-            typedArray = panda::SharedUint16ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SendableUint16ArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
         case NATIVE_INT32_ARRAY:
-            typedArray = panda::SharedInt32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SendableInt32ArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT32_ARRAY:
-            typedArray = panda::SharedUint32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SendableUint32ArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
         case NATIVE_FLOAT32_ARRAY:
-            typedArray = panda::SharedFloat32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SendableFloat32ArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT8_CLAMPED_ARRAY:
-            typedArray = panda::SharedUint8ClampedArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SendableUint8ClampedArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
         default:
             *result = nullptr;
@@ -1299,21 +1299,21 @@ NativeTypedArrayType ArkNativeEngine::GetTypedArrayType(panda::Local<panda::Type
 NativeTypedArrayType ArkNativeEngine::GetSendableTypedArrayType(panda::Local<panda::SendableTypedArrayRef> typedArray)
 {
     NativeTypedArrayType thisType = NATIVE_INT8_ARRAY;
-    if (typedArray->IsJSSharedInt8Array(vm_)) {
+    if (typedArray->IsJSSendableInt8Array(vm_)) {
         thisType = NATIVE_INT8_ARRAY;
-    } else if (typedArray->IsJSSharedUint8Array(vm_)) {
+    } else if (typedArray->IsJSSendableUint8Array(vm_)) {
         thisType = NATIVE_UINT8_ARRAY;
-    } else if (typedArray->IsJSSharedInt16Array(vm_)) {
+    } else if (typedArray->IsJSSendableInt16Array(vm_)) {
         thisType = NATIVE_INT16_ARRAY;
-    } else if (typedArray->IsJSSharedUint16Array(vm_)) {
+    } else if (typedArray->IsJSSendableUint16Array(vm_)) {
         thisType = NATIVE_UINT16_ARRAY;
-    } else if (typedArray->IsJSSharedInt32Array(vm_)) {
+    } else if (typedArray->IsJSSendableInt32Array(vm_)) {
         thisType = NATIVE_INT32_ARRAY;
-    } else if (typedArray->IsJSSharedUint32Array(vm_)) {
+    } else if (typedArray->IsJSSendableUint32Array(vm_)) {
         thisType = NATIVE_UINT32_ARRAY;
-    } else if (typedArray->IsJSSharedFloat32Array(vm_)) {
+    } else if (typedArray->IsJSSendableFloat32Array(vm_)) {
         thisType = NATIVE_FLOAT32_ARRAY;
-    } else if (typedArray->IsJSSharedUint8ClampedArray(vm_)) {
+    } else if (typedArray->IsJSSendableUint8ClampedArray(vm_)) {
         thisType = NATIVE_UINT8_CLAMPED_ARRAY;
     }
 

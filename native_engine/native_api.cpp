@@ -1135,7 +1135,7 @@ NAPI_EXTERN napi_status napi_is_array(napi_env env, napi_value value, bool* resu
     panda::JsiFastNativeScope fastNativeScope(vm);
 
     auto nativeValue = LocalValueFromJsValue(value);
-    *result = nativeValue->IsJSArray(vm) || nativeValue->IsSharedArray(vm);
+    *result = nativeValue->IsJSArray(vm) || nativeValue->IsSendableArray(vm);
     return napi_clear_last_error(env);
 }
 
@@ -1152,7 +1152,7 @@ NAPI_EXTERN napi_status napi_get_array_length(napi_env env, napi_value value, ui
     if (LIKELY(nativeValue->IsJSArray(vm))) {
         Local<panda::ArrayRef> arr(nativeValue);
         *result = arr->Length(vm);
-    } else if (nativeValue->IsSharedArray(vm)) {
+    } else if (nativeValue->IsSendableArray(vm)) {
         Local<panda::SendableArrayRef> arr(nativeValue);
         *result = arr->Length(vm);
     } else {
@@ -1495,7 +1495,7 @@ NAPI_EXTERN napi_status napi_map_set_property(napi_env env, napi_value map, napi
     auto propValue = LocalValueFromJsValue(value);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
         mapRef->Set(vm, propKey, propValue);
@@ -1521,7 +1521,7 @@ NAPI_EXTERN napi_status napi_map_set_named_property(napi_env env,
     auto propVal = LocalValueFromJsValue(value);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     Local<panda::MapRef> mapRef(nativeValue);
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
@@ -1545,7 +1545,7 @@ NAPI_EXTERN napi_status napi_map_get_property(napi_env env, napi_value map, napi
     auto propKey = LocalValueFromJsValue(key);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     Local<JSValueRef> value;
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
@@ -1573,7 +1573,7 @@ NAPI_EXTERN napi_status napi_map_get_named_property(napi_env env,
     auto nativeValue = LocalValueFromJsValue(map);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     Local<JSValueRef> value;
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
@@ -1599,7 +1599,7 @@ NAPI_EXTERN napi_status napi_map_has_property(napi_env env, napi_value map, napi
     auto propKey = LocalValueFromJsValue(key);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     bool value;
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
@@ -1623,7 +1623,7 @@ NAPI_EXTERN napi_status napi_map_has_named_property(napi_env env, napi_value map
     auto nativeValue = LocalValueFromJsValue(map);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     bool value;
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
@@ -1647,7 +1647,7 @@ NAPI_EXTERN napi_status napi_map_delete_property(napi_env env, napi_value map, n
     auto propKey = LocalValueFromJsValue(key);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
         mapRef->Delete(vm, propKey);
@@ -1667,7 +1667,7 @@ NAPI_EXTERN napi_status napi_map_clear(napi_env env, napi_value map)
     auto nativeValue = LocalValueFromJsValue(map);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
         mapRef->Clear(vm);
@@ -1688,7 +1688,7 @@ NAPI_EXTERN napi_status napi_map_get_size(napi_env env, napi_value map, uint32_t
     auto nativeValue = LocalValueFromJsValue(map);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     uint32_t value;
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
@@ -1711,7 +1711,7 @@ NAPI_EXTERN napi_status napi_map_get_entries(napi_env env, napi_value map, napi_
     auto nativeValue = LocalValueFromJsValue(map);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
         Local<panda::ArrayRef> arrayVal = mapRef->GetEntries(vm);
@@ -1733,7 +1733,7 @@ NAPI_EXTERN napi_status napi_map_get_keys(napi_env env, napi_value map, napi_val
     auto nativeValue = LocalValueFromJsValue(map);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
         Local<panda::ArrayRef> arrayVal = mapRef->GetKeys(vm);
@@ -1755,7 +1755,7 @@ NAPI_EXTERN napi_status napi_map_get_values(napi_env env, napi_value map, napi_v
     auto nativeValue = LocalValueFromJsValue(map);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm), napi_object_expected);
     if (LIKELY(nativeValue->IsMap(vm))) {
         Local<panda::MapRef> mapRef(nativeValue);
         Local<panda::ArrayRef> arrayVal = mapRef->GetValues(vm);
@@ -1777,7 +1777,7 @@ NAPI_EXTERN napi_status napi_map_iterator_get_next(napi_env env, napi_value iter
     auto nativeValue = LocalValueFromJsValue(iterator);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMapIterator(vm) || nativeValue->IsSharedMapIterator(vm),
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsMapIterator(vm) || nativeValue->IsSendableMapIterator(vm),
                            napi_object_expected);
     Local<panda::JSValueRef> value;
     if (LIKELY(nativeValue->IsMapIterator(vm))) {
@@ -2506,7 +2506,7 @@ NAPI_EXTERN napi_status napi_is_typedarray(napi_env env, napi_value value, bool*
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    *result = nativeValue->IsTypedArray(vm) || nativeValue->IsSharedTypedArray(vm);
+    *result = nativeValue->IsTypedArray(vm) || nativeValue->IsSendableTypedArray(vm);
 
     return napi_clear_last_error(env);
 }
@@ -2769,7 +2769,7 @@ NAPI_EXTERN napi_status napi_get_typedarray_info(napi_env env,
         if (byte_offset != nullptr) {
             *byte_offset = typedArray->ByteOffset(vm);
         }
-    } else if (value->IsSharedTypedArray(vm)) {
+    } else if (value->IsSendableTypedArray(vm)) {
         Local<panda::SendableTypedArrayRef> typedArray = Local<panda::SendableTypedArrayRef>(value);
         if (type != nullptr) {
             *type = static_cast<napi_typedarray_type>(engine->GetSendableTypedArrayType(typedArray));
@@ -3188,7 +3188,7 @@ NAPI_EXTERN napi_status napi_is_map(napi_env env, napi_value value, bool* result
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    *result = nativeValue->IsMap(vm) || nativeValue->IsSharedMap(vm);
+    *result = nativeValue->IsMap(vm) || nativeValue->IsSendableMap(vm);
     return napi_clear_last_error(env);
 }
 
@@ -3202,7 +3202,7 @@ NAPI_EXTERN napi_status napi_is_set(napi_env env, napi_value value, bool* result
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    *result = nativeValue->IsSet(vm) || nativeValue->IsSharedSet(vm);
+    *result = nativeValue->IsSet(vm) || nativeValue->IsSendableSet(vm);
     return napi_clear_last_error(env);
 }
 
