@@ -150,12 +150,13 @@ void NativeEngine::Init()
     moduleManager_ = NativeModuleManager::GetInstance();
     referenceManager_ = new NativeReferenceManager();
     callbackScopeManager_ = new NativeCallbackScopeManager();
-    loop_ = uv_loop_new();
-    if (loop_ == nullptr) {
-        return;
-    }
+    loop_ = new uv_loop_t;
     tid_ = pthread_self();
-    uv_async_init(loop_, &uvAsync_, nullptr);
+    if (uv_async_init(loop_, &uvAsync_, nullptr) != 0) {
+        HILOG_ERROR("faild to init uv loop");
+        delete loop_;
+        loop_ = nullptr;
+    };
     uv_sem_init(&uvSem_, 0);
     CreateDefaultFunction();
 }
@@ -707,6 +708,10 @@ void NativeEngine::RunCleanup()
             cleanupHooks_.erase(data);
         }
         CleanupHandles();
+    }
+
+    if (loop_ == nullptr) {
+        return;
     }
 
     while (uv_run(loop_, UV_RUN_NOWAIT) != 0 && !cleanupTimeout_) {}
