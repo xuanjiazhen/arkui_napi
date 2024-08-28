@@ -84,6 +84,11 @@ private:
     void ProcessAsyncHandle();
     SafeAsyncCode CloseHandles();
     void CleanUp();
+    static void CleanUpHook(napi_async_cleanup_hook_handle handle, void* data)
+    {
+        NativeSafeAsyncWork* that = reinterpret_cast<NativeSafeAsyncWork*>(data);
+        that->CloseHandles();
+    };
     bool IsSameTid();
     bool IsMaxQueueSize();
 
@@ -100,6 +105,7 @@ private:
     NativeThreadSafeFunctionCallJs callJsCallback_ = nullptr;
     NativeAsyncContext asyncContext_;
     uv_async_t asyncHandler_;
+    napi_async_cleanup_hook_handle cleanupHandle_ = nullptr;
     std::mutex mutex_;
     std::queue<void*> queue_;
     std::condition_variable condition_;
