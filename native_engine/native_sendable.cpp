@@ -107,28 +107,13 @@ void NativeSendable::InitSendablePropertiesInfo(napi_env env,
 Local<JSValueRef> NativeSendable::NapiNativeCreateSendableFunction(napi_env env,
                                                                    const char* name,
                                                                    NapiNativeCallback cb,
-                                                                   void* value)
+                                                                   void* data)
 {
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_ERROR("funcInfo is nullptr");
-        return JSValueRef::Undefined(vm);
-    }
-    funcInfo->callback = cb;
-    funcInfo->data = value;
 
-    Local<FunctionRef> fn = FunctionRef::NewSendable(
-        vm, ArkNativeFunctionCallBack,
-        [](void* env, void* externalPointer, void* data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-            if (info != nullptr) {
-                delete info;
-            }
-        },
-        reinterpret_cast<void*>(funcInfo), true);
-    return fn;
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(cb), data);
+    return FunctionRef::NewSendable(vm, ArkNativeFunctionCallBack, &funcInfo);
 }
 
 void NativeSendable::NapiDefineSendabledProperty(napi_env env,

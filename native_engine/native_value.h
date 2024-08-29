@@ -51,15 +51,6 @@ struct NativeObjectInfo {
     void* hint = nullptr;
 };
 
-struct NapiFunctionInfo {
-    static NapiFunctionInfo* CreateNewInstance() { return new(std::nothrow) NapiFunctionInfo(); }
-    NapiNativeCallback callback = nullptr;
-    void* data = nullptr;
-#ifdef ENABLE_CONTAINER_SCOPE
-    int32_t scopeId = -1;
-#endif
-};
-
 typedef void (*NaitveFinalize)(NativeEngine* env, void* data, void* hint);
 
 // To be delete

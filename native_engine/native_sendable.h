@@ -41,7 +41,7 @@ private:
     static Local<panda::JSValueRef> NapiNativeCreateSendableFunction(napi_env env,
                                                                      const char* name,
                                                                      NapiNativeCallback cb,
-                                                                     void* value);
+                                                                     void* data);
 };
 
 #endif
