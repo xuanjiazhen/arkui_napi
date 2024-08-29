@@ -274,7 +274,7 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
     if (g_isLoadingModule || !strcmp(loadingModuleName_.c_str(), moduleName)) {
         if (!CreateTailNativeModule()) {
             HILOG_ERROR("create tail nativeModule failed");
-            delete moduleName;
+            free(moduleName);
             return;
         }
         tailNativeModule_->version = nativeModule->version;
@@ -294,6 +294,7 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
     } else {
         if (!CreateHeadNativeModule()) {
             HILOG_ERROR("create head nativeModule failed");
+            free(moduleName);
             return;
         }
         headNativeModule_->version = nativeModule->version;
@@ -618,6 +619,16 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
         nativeModule = FindNativeModuleByDisk(moduleName, prefix_.c_str(), relativePath,
             internal, isAppModule, errInfo, nativeModulePath);
 #endif
+    if (nativeModule != nullptr && strcmp(nativeModule->name, moduleName) != 0) {
+        // This could happen if .dll/.so has called napi_module_register several times
+        // (usually from function with __attribute__((constructor))) with different nm_modname,
+        // so returned nativeModule is not the expected module (but the first one)
+        NativeModule* newNativeModule = FindNativeModuleByCache(moduleName, nativeModulePath);
+        if (newNativeModule != nullptr) {
+            HILOG_DEBUG("requested module '%{public}s', found '%{public}s'", moduleName, nativeModule->name);
+            nativeModule = newNativeModule;
+        }
+    }
 
 #else
     nativeModule = FindNativeModuleByCache(moduleName, nativeModulePath);
