@@ -1486,15 +1486,15 @@ napi_value ArkNativeEngine::CreateInstance(napi_value constructor, napi_value co
 }
 
 NativeReference* ArkNativeEngine::CreateReference(napi_value value, uint32_t initialRefcount,
-    bool flag, NapiNativeFinalize callback, void* data, void* hint)
+    NapiNativeFinalize callback, void* data, void* hint)
 {
-    return new ArkNativeReference(this, value, initialRefcount, flag, callback, data, hint);
+    return new ArkNativeReference(this, value, initialRefcount, callback, data, hint);
 }
 
 NativeReference* ArkNativeEngine::CreateAsyncReference(napi_value value, uint32_t initialRefcount,
-    bool flag, NapiNativeFinalize callback, void* data, void* hint)
+    NapiNativeFinalize callback, void* data, void* hint)
 {
-    return new ArkNativeReference(this, value, initialRefcount, flag, callback, data, hint, true);
+    return new ArkNativeReference(this, value, initialRefcount, callback, data, hint, true);
 }
 
 __attribute__((optnone)) void ArkNativeEngine::RunCallbacks(std::vector<RefFinalizer> *finalizers)
