@@ -1824,10 +1824,10 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
         Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
         NativeReference* ref = nullptr;
         if (reference != nullptr) {
-            ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+            ref = engine->CreateReference(js_object, 1, callback, native_object, finalize_hint);
             *reference = ref;
         } else {
-            ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
+            ref = engine->CreateReference(js_object, 0, callback, native_object, finalize_hint);
         }
         object->SetNativePointerFieldCount(vm, 1);
         object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
@@ -1869,10 +1869,10 @@ NAPI_EXTERN napi_status napi_wrap_async_finalizer(napi_env env,
         Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
         NativeReference* ref = nullptr;
         if (reference != nullptr) {
-            ref = engine->CreateAsyncReference(js_object, 1, false, callback, native_object, finalize_hint);
+            ref = engine->CreateAsyncReference(js_object, 1, callback, native_object, finalize_hint);
             *reference = ref;
         } else {
-            ref = engine->CreateAsyncReference(js_object, 0, true, callback, native_object, finalize_hint);
+            ref = engine->CreateAsyncReference(js_object, 0, callback, native_object, finalize_hint);
         }
         object->SetNativePointerFieldCount(vm, 1);
         object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, native_binding_size);
@@ -1914,10 +1914,10 @@ NAPI_EXTERN napi_status napi_wrap_with_size(napi_env env,
         Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
         NativeReference* ref = nullptr;
         if (reference != nullptr) {
-            ref = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+            ref = engine->CreateReference(js_object, 1, callback, native_object, finalize_hint);
             *reference = ref;
         } else {
-            ref = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
+            ref = engine->CreateReference(js_object, 0, callback, native_object, finalize_hint);
         }
         object->SetNativePointerFieldCount(vm, 1);
         object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, native_binding_size);
@@ -1979,7 +1979,7 @@ NAPI_EXTERN napi_status napi_remove_wrap(napi_env env, napi_value js_object, voi
     } else {
         Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
         NativeReference* ref = nullptr;
-        ref = engine->CreateReference(js_object, 0, true, nullptr, nullptr, nullptr);
+        ref = engine->CreateReference(js_object, 0, nullptr, nullptr, nullptr);
         object->SetNativePointerFieldCount(vm, 1);
         object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
         PropertyAttribute attr(object, true, false, true);
@@ -2148,8 +2148,6 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
     if (refCount > 0 || reference->GetFinalRun()) {
         delete reference;
         reference = nullptr;
-    } else {
-        reference->SetDeleteSelf();
     }
 
     return napi_clear_last_error(env);
@@ -3671,10 +3669,10 @@ NAPI_EXTERN napi_status napi_add_finalizer(napi_env env,
     NativeReference* reference = nullptr;
     auto engine = reinterpret_cast<NativeEngine*>(env);
     if (result != nullptr) {
-        reference = engine->CreateReference(js_object, 1, false, callback, native_object, finalize_hint);
+        reference = engine->CreateReference(js_object, 1, callback, native_object, finalize_hint);
         *result = reinterpret_cast<napi_ref>(reference);
     } else {
-        reference = engine->CreateReference(js_object, 0, true, callback, native_object, finalize_hint);
+        reference = engine->CreateReference(js_object, 0, callback, native_object, finalize_hint);
     }
     return napi_clear_last_error(env);
 }

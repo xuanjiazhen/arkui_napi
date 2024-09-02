@@ -39,7 +39,6 @@ public:
     ArkNativeReference(ArkNativeEngine* engine,
                        napi_value value,
                        uint32_t initialRefcount,
-                       bool deleteSelf = false,
                        NapiNativeFinalize napiCallback = nullptr,
                        void* data = nullptr,
                        void* hint = nullptr,
@@ -60,25 +59,21 @@ public:
     napi_value Get(NativeEngine* engine) override;
     void* GetData() override;
     operator napi_value() override;
-    void SetDeleteSelf() override;
-    bool GetDeleteSelf() const override;
     uint32_t GetRefCount() override;
     bool GetFinalRun() override;
     napi_value GetNapiValue() override;
     void ResetFinalizer()  override;
 
 private:
-    inline void ArkNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf)
+    inline void ArkNativeReferenceConstructor(uint32_t initialRefCount)
     {
         if (initialRefCount == 0) {
             value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
         }
 
-        if (deleteSelf) {
-            NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
-            if (referenceManager != nullptr) {
-                referenceManager->CreateHandler(this);
-            }
+        NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
+        if (referenceManager != nullptr) {
+            referenceManager->CreateHandler(this);
         }
 
         engineId_ = engine_->GetId();
@@ -89,7 +84,6 @@ private:
 
     Global<JSValueRef> value_;
     uint32_t refCount_ {0};
-    bool deleteSelf_ {false};
     bool isAsyncCall_ {false};
     NapiNativeFinalize napiCallback_ {nullptr};
     void* data_ = nullptr;

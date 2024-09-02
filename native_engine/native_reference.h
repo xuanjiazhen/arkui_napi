@@ -33,11 +33,6 @@ public:
         return nullptr;
     }
     virtual operator napi_value() = 0;
-    virtual void SetDeleteSelf() = 0;
-    virtual bool GetDeleteSelf() const
-    {
-        return false;
-    }
     virtual uint32_t GetRefCount() = 0;
     virtual bool GetFinalRun() = 0;
     virtual napi_value GetNapiValue() = 0;

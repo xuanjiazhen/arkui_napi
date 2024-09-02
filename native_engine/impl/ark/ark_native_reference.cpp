@@ -27,7 +27,6 @@
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        napi_value value,
                                        uint32_t initialRefcount,
-                                       bool deleteSelf,
                                        NapiNativeFinalize napiCallback,
                                        void* data,
                                        void* hint,
@@ -35,13 +34,12 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
     : engine_(engine),
       value_(engine->GetEcmaVm(), LocalValueFromJsValue(value)),
       refCount_(initialRefcount),
-      deleteSelf_(deleteSelf),
       isAsyncCall_(isAsyncCall),
       napiCallback_(napiCallback),
       data_(data),
       hint_(hint)
 {
-    ArkNativeReferenceConstructor(initialRefcount, deleteSelf);
+    ArkNativeReferenceConstructor(initialRefcount);
 }
 
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
@@ -55,18 +53,17 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
     : engine_(engine),
       value_(engine->GetEcmaVm(), value),
       refCount_(initialRefcount),
-      deleteSelf_(deleteSelf),
       isAsyncCall_(isAsyncCall),
       napiCallback_(napiCallback),
       data_(data),
       hint_(hint)
 {
-    ArkNativeReferenceConstructor(initialRefcount, deleteSelf);
+    ArkNativeReferenceConstructor(initialRefcount);
 }
 
 ArkNativeReference::~ArkNativeReference()
 {
-    if (deleteSelf_ && engine_->GetReferenceManager()) {
+    if (engine_->GetReferenceManager()) {
         engine_->GetReferenceManager()->ReleaseHandler(this);
         prev_ = nullptr;
         next_ = nullptr;
@@ -166,7 +163,7 @@ void ArkNativeReference::FinalizeCallback(FinalizerState state)
     hint_ = nullptr;
     finalRun_ = true;
 
-    if (deleteSelf_ && !hasDelete_) {
+    if (!hasDelete_) {
         delete this;
     }
 }
@@ -181,16 +178,6 @@ void ArkNativeReference::NativeFinalizeCallBack(void* ref)
 {
     auto that = reinterpret_cast<ArkNativeReference*>(ref);
     that->FinalizeCallback(FinalizerState::COLLECTION);
-}
-
-void ArkNativeReference::SetDeleteSelf()
-{
-    deleteSelf_ = true;
-}
-
-bool ArkNativeReference::GetDeleteSelf() const
-{
-    return deleteSelf_;
 }
 
 uint32_t ArkNativeReference::GetRefCount()
