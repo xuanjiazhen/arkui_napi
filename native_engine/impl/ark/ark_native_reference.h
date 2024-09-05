@@ -32,9 +32,10 @@ using LocalScope = panda::LocalScope;
 enum class FinalizerState {
     DESTRUCTION,
     COLLECTION,
+    ENGINE_TEARDOWN,
 };
 
-class ArkNativeReference : public NativeReference {
+class ArkNativeReference : public NativeReference, public NativeContext {
 public:
     ArkNativeReference(ArkNativeEngine* engine,
                        napi_value value,
@@ -62,21 +63,31 @@ public:
     napi_value Get(NativeEngine* engine) override;
     void* GetData() override;
     operator napi_value() override;
-    void SetDeleteSelf() override;
-    bool GetDeleteSelf() const override;
+    void SetDeleteSelf() override
+    {
+        deleteSelf_ = true;
+    };
+    bool GetDeleteSelf() const override
+    {
+        return deleteSelf_;
+    };
     uint32_t GetRefCount() override;
     bool GetFinalRun() override;
     napi_value GetNapiValue() override;
     void ResetFinalizer()  override;
-
+    void TriggerFinalizeCallback() override
+    {
+        FinalizeCallback(FinalizerState::DESTRUCTION);
+    }
 private:
-    inline void ArkNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf)
+    inline void ArkNativeReferenceConstructor(uint32_t initialRefCount)
     {
         if (initialRefCount == 0) {
             value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
         }
 
-        if (deleteSelf) {
+        // native callback should be triggered before common reference
+        if (napiCallback_) {
             NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
             if (referenceManager != nullptr) {
                 referenceManager->CreateHandler(this);
@@ -91,18 +102,17 @@ private:
 
     Global<JSValueRef> value_;
     uint32_t refCount_ {0};
-    bool deleteSelf_ {false};
     bool isAsyncCall_ {false};
 
-    bool hasDelete_ {false};
+    bool deleteSelf_ {false};
     bool finalRun_ {false};
     NapiNativeFinalize napiCallback_ {nullptr};
     void* data_ {nullptr};
     void* hint_ {nullptr};
     size_t nativeBindingSize_ {0};
 
-    NativeReference* prev_ {nullptr};
-    NativeReference* next_ {nullptr};
+    ArkNativeReference* prev_ {nullptr};
+    ArkNativeReference* next_ {nullptr};
 
     void FinalizeCallback(FinalizerState state);
 

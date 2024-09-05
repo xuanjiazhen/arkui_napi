@@ -883,7 +883,7 @@ NAPI_EXTERN napi_status napi_has_property(napi_env env, napi_value object, napi_
     CHECK_ARG(env, object);
     CHECK_ARG(env, key);
     CHECK_ARG(env, result);
-    
+
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
     Local<panda::JSValueRef> hasResult = JSNApi::NapiHasProperty(vm, reinterpret_cast<uintptr_t>(object),
@@ -2143,7 +2143,10 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
 
     auto reference = reinterpret_cast<NativeReference*>(ref);
     uint32_t refCount = reference->GetRefCount();
-    if (refCount > 0 || reference->GetFinalRun()) {
+    if (refCount > 0 || reference->GetFinalRun() || reference->GetDeleteSelf()) {
+        if (!reference->GetFinalRun()) {
+            reference->TriggerFinalizeCallback();
+        }
         delete reference;
         reference = nullptr;
     } else {
