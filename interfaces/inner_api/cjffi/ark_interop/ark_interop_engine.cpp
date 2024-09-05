@@ -15,6 +15,9 @@
 
 #include <string>
 #include <unordered_map>
+#include <mutex>
+#include <condition_variable>
+#include <memory>
 
 #include "ark_interop_internal.h"
 #include "ark_interop_log.h"
@@ -32,7 +35,9 @@ struct ARKTS_Engine_ {
     std::unordered_map<std::string, std::string> loadedAbcs;
 #ifdef __OHOS__
     std::shared_ptr<OHOS::AppExecFwk::EventHandler> eventHandler;
+    std::shared_ptr<OHOS::AppExecFwk::EventRunner> newRunner;
 #endif
+    uint64_t threadId;
 };
 
 #ifdef __OHOS__
@@ -137,6 +142,9 @@ ARKTS_Engine ARKTS_CreateEngine()
     uint32_t events = OHOS::AppExecFwk::FILE_DESCRIPTOR_INPUT_EVENT | OHOS::AppExecFwk::FILE_DESCRIPTOR_OUTPUT_EVENT;
     result->eventHandler->AddFileDescriptorListener(fd, events, std::make_shared<UVLoopHandler>(loop), "uvLoopTask");
 #endif
+
+    result->threadId = ARKTS_GetPosixThreadId();
+
     return result;
 }
 
@@ -146,7 +154,7 @@ void* ARKTS_GetNAPIEnv(ARKTS_Engine engine)
     return engine->engine;
 }
 
-void ARKTS_DestroyEngine(ARKTS_Engine engine)
+static void ARKTSInnerDisposeEngine(ARKTS_Engine engine)
 {
     delete engine->engine;
     if (engine->vm) {
@@ -157,8 +165,31 @@ void ARKTS_DestroyEngine(ARKTS_Engine engine)
     }
     engine->engine = nullptr;
     engine->vm = nullptr;
+}
+
+void ARKTS_DestroyEngine(ARKTS_Engine engine)
+{
+    ARKTS_ASSERT_V(ARKTS_GetPosixThreadId() != ARKTS_GetThreadIdOfEngine(engine),
+        "can not destroy engine at it's running thread");
 #ifdef __OHOS__
+    std::condition_variable cv;
+    std::atomic<bool> isComplete = false;
+    engine->eventHandler->PostTask([engine, &cv, &isComplete] {
+        ARKTSInnerDisposeEngine(engine);
+        isComplete = true;
+        cv.notify_one();
+    });
+    std::mutex mutex;
+    std::unique_lock lock(mutex);
+    while (!isComplete) {
+        cv.wait_for(lock, std::chrono::seconds(1));
+    }
     engine->eventHandler->RemoveAllFileDescriptorListeners();
+    if (engine->newRunner) {
+        engine->newRunner->Stop();
+    }
+#else
+    ARKTSInnerDisposeEngine(engine);
 #endif
     delete engine;
 }
@@ -244,4 +275,47 @@ ARKTS_Value ARKTS_Require(
         ARKTS_Value args[] = { targetValue, ARKTS_CreateBool(isAppModule) };
         return ARKTS_Call(env, funcValue, ARKTS_CreateUndefined(), sizeof(args) / sizeof(ARKTS_Value), args);
     }
+}
+
+#ifdef __OHOS__
+ARKTS_Engine ARKTS_CreateEngineWithNewThread()
+{
+    ARKTS_Engine result = nullptr;
+    auto newRunner = OHOS::AppExecFwk::EventRunner::Create(true);
+    if (!newRunner) {
+        return nullptr;
+    }
+    auto handler = std::make_shared<OHOS::AppExecFwk::EventHandler>(newRunner);
+    if (!handler) {
+        newRunner->Stop();
+        return nullptr;
+    }
+    std::mutex mutex;
+    std::unique_lock lock(mutex);
+    std::condition_variable cv;
+    std::atomic<bool> createComplete = false;
+    auto postSuccess = handler->PostTask([&result, &cv, &createComplete] {
+        result = ARKTS_CreateEngine();
+        createComplete = true;
+        cv.notify_one();
+    });
+    if (!postSuccess) {
+        newRunner->Stop();
+        return nullptr;
+    }
+    while (!createComplete) {
+        cv.wait_for(lock, std::chrono::milliseconds(1));
+    }
+    if (!result) {
+        newRunner->Stop();
+        return nullptr;
+    }
+    result->newRunner = newRunner;
+    return result;
+}
+#endif
+
+uint64_t ARKTS_GetThreadIdOfEngine(ARKTS_Engine engine)
+{
+    return engine->threadId;
 }

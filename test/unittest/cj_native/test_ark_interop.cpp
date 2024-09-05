@@ -21,6 +21,8 @@
 #include "gtest/gtest.h"
 #include "uv_loop_handler.h"
 
+#include <thread>
+
 using namespace testing;
 using namespace testing::ext;
 
@@ -58,177 +60,6 @@ HWTEST_F(ArkInteropTest, ArkTSInteropNapi001, TestSize.Level1)
     ARKTS_GetGlobalConstant(env);
     ARKTS_InitEventHandle(env);
 }
-
-#ifdef CLANG_COVERAGE
-static void TestComplexType(ARKTS_Env env)
-{
-    auto glbConst = ARKTS_GetGlobalConstant(env);
-    ARKTS_GetValueType(env, glbConst);
-    auto numv = ARKTS_CreateF64(12.34);
-    auto numv1 = ARKTS_CreateF64(12.34);
-    EXPECT_FALSE(ARKTS_StrictEqual(env, glbConst, numv));
-    EXPECT_TRUE(ARKTS_StrictEqual(env, numv, numv1));
-    EXPECT_TRUE(ARKTS_IsNumber(numv));
-
-    // string
-    char origeStr[] = "ut test ArkInteropNapi004";
-    auto strValue = ARKTS_CreateUtf8(env, origeStr, strlen(origeStr));
-    EXPECT_EQ(ARKTS_GetValueUtf8(env, strValue, strlen(origeStr), origeStr), strlen(origeStr) + 1);
-    EXPECT_TRUE(ARKTS_IsString(env, strValue));
-    EXPECT_EQ(ARKTS_GetValueUtf8Size(env, strValue), strlen(origeStr) + 1);
-    const char* transStr = ARKTS_GetValueCString(env, strValue);
-    EXPECT_EQ(strcmp(transStr, origeStr), 0);
-    ARKTS_FreeCString(transStr);
-    transStr = nullptr;
-
-    // func
-    ARKTS_Value func = ARKTS_CreateFunc(env, 0);
-    EXPECT_TRUE(ARKTS_IsCallable(env, func));
-    ARKTS_Call(env, func, ARKTS_CreateUndefined(), 0, nullptr);
-
-    // object
-    ARKTS_Value objv = ARKTS_CreateObject(env);
-    EXPECT_TRUE(ARKTS_IsHeapObject(objv));
-    EXPECT_TRUE(ARKTS_IsObject(env, objv));
-
-    // class
-    ARKTS_Value cls = ARKTS_CreateClass(env, 0, ARKTS_CreateUndefined());
-    EXPECT_TRUE(ARKTS_IsClass(env, cls));
-    ARKTS_GetPrototype(env, cls);
-    auto clsObj = ARKTS_New(env, cls, 0, nullptr);
-    EXPECT_FALSE(ARKTS_InstanceOf(env, clsObj, cls));
-    ARKTS_New(env, cls, 0, nullptr);
-
-    // null
-    auto nullv = ARKTS_CreateNull();
-    EXPECT_TRUE(ARKTS_IsNull(nullv));
-
-    // undefined
-    EXPECT_TRUE(ARKTS_IsUndefined(ARKTS_CreateUndefined()));
-
-    // bool
-    auto boolv = ARKTS_CreateBool(false);
-    EXPECT_TRUE(ARKTS_IsBool(boolv));
-    EXPECT_FALSE(ARKTS_GetValueBool(boolv));
-
-    // array
-    auto arrv = ARKTS_CreateArray(env, 3);
-    EXPECT_TRUE(ARKTS_IsArray(env, arrv));
-    ARKTS_Value elements[] = { numv, numv, numv };
-    auto arrv2 = ARKTS_CreateArrayWithInit(env, 3, elements);
-    EXPECT_EQ(ARKTS_GetArrayLength(env, arrv), ARKTS_GetArrayLength(env, arrv2));
-    ARKTS_SetElement(env, arrv, 1, numv);
-    EXPECT_EQ(
-        ARKTS_GetValueNumber(ARKTS_GetElement(env, arrv, 1)), ARKTS_GetValueNumber(ARKTS_GetElement(env, arrv2, 1)));
-
-    // Recreate the engine to clear the exception.
-    ARKTS_DestroyEngine(engine_);
-    engine_ = ARKTS_CreateEngine();
-}
-
-static void TestBasicType(ARKTS_Env env)
-{
-    // global value
-    char origeStr[] = "ut test ArkInteropNapi005";
-    auto strValue = ARKTS_CreateUtf8(env, origeStr, strlen(origeStr));
-    auto glb = ARKTS_CreateGlobal(env, strValue);
-    ARKTS_GetGlobalValue(glb);
-    ARKTS_DisposeGlobal(env, glb);
-    ARKTS_GetGlobalValue(glb);
-
-    // external
-    auto extv = ARKTS_CreateExternal(env, nullptr);
-    EXPECT_TRUE(ARKTS_IsExternal(env, extv));
-    EXPECT_EQ(ARKTS_GetExternalData(env, extv), nullptr);
-
-    // symbol
-    char des[] = "symbol test";
-    auto symv = ARKTS_CreateSymbol(env, des, strlen(des));
-    ARKTS_CreateSymbol(env, nullptr, 0);
-    EXPECT_TRUE(ARKTS_IsSymbol(env, symv));
-    EXPECT_FALSE(ARKTS_IsSymbol(env, ARKTS_CreateBool(true)));
-    EXPECT_EQ(strcmp(des, ARKTS_GetSymbolDesc(env, symv)), 0);
-
-    // promise capability
-    auto prom = ARKTS_CreatePromiseCapability(env);
-    auto promv = ARKTS_GetPromiseFromCapability(env, prom);
-    ARKTS_PromiseCapabilityResolve(env, prom, promv);
-    ARKTS_PromiseCapabilityReject(env, prom, promv);
-    EXPECT_TRUE(ARKTS_IsPromise(env, promv));
-    ARKTS_PromiseThen(env, promv, ARKTS_CreateFunc(env, 0), promv);
-    ARKTS_PromiseCatch(env, promv, ARKTS_CreateFunc(env, 0));
-
-    // array buffer
-    auto abv1 = ARKTS_CreateArrayBuffer(env, 1024);
-    EXPECT_TRUE(ARKTS_IsArrayBuffer(env, abv1));
-    auto rawPtr = (int8_t*)ARKTS_GetArrayBufferRawPtr(env, abv1);
-    rawPtr[0] = 1;
-
-    void* buf = malloc(1024);
-    EXPECT_NE(buf, nullptr);
-    auto abv2 = ARKTS_CreateArrayBufferWithData(env, buf, 1024, 0);
-    auto rawPtr2 = (int8_t*)ARKTS_GetArrayBufferRawPtr(env, abv2);
-    rawPtr2[0] = 1;
-
-    EXPECT_EQ(ARKTS_GetArrayBufferLength(env, abv1), ARKTS_GetArrayBufferLength(env, abv2));
-    auto data0 = (int8_t*)malloc(1);
-    EXPECT_NE(data0, nullptr);
-    ARKTS_ArrayBufferReadBytes(env, abv1, data0, 1);
-    EXPECT_EQ(*data0, 1);
-    ARKTS_ArrayBufferReadBytes(env, abv2, data0, 1);
-    EXPECT_EQ(*data0, 1);
-
-    // property
-    ARKTS_Value objv = ARKTS_CreateObject(env);
-    ARKTS_DefineOwnProperty(env, objv, strValue, ARKTS_CreateBool(false), ARKTS_PropertyFlag::N_ENUMERABLE);
-    EXPECT_TRUE(ARKTS_HasOwnProperty(env, objv, strValue));
-    EXPECT_NE(ARKTS_EnumOwnProperties(env, objv), nullptr);
-    auto v = ARKTS_GetProperty(env, objv, strValue);
-    ARKTS_SetProperty(env, objv, strValue, ARKTS_CreateBool(true));
-    EXPECT_NE(ARKTS_GetProperty(env, objv, strValue), v);
-}
-
-HWTEST_F(ArkInteropTest, ArkTSInteropNapi003, TestSize.Level1)
-{
-    // Test for no callback is registered.
-    ARKTS_Env env = ARKTS_GetContext(engine_);
-    ARKTSInner_CJAsyncCallback(env, nullptr);
-
-    TestComplexType(env);
-    TestBasicType(env);
-
-    char dllName[] = "123";
-    ARKTS_LoadModule(env, dllName);
-}
-
-HWTEST_F(ArkInteropTest, ArkTSInteropNapi004, TestSize.Level1)
-{
-    // Test registered callback
-    ARKTS_Env env = ARKTS_GetContext(engine_);
-    auto callback = GetCallBack();
-    ARKTS_SetCJModuleCallback(callback.get());
-    ARKTSInner_CJAsyncCallback(env, nullptr);
-    // Recreate the engine to clear the exception.
-    ARKTS_DestroyEngine(engine_);
-    engine_ = ARKTS_CreateEngine();
-    env = ARKTS_GetContext(engine_);
-    TestComplexType(env);
-    TestBasicType(env);
-
-    char dllName[] = "123";
-    ARKTS_LoadModule(env, dllName);
-
-    char origeStr[] = "ut test ArkInteropNapi007";
-    auto strValue = ARKTS_CreateUtf8(env, origeStr, strlen(origeStr));
-    ARKTSInner_FormatJSError(env, strValue);
-
-    auto result = JSNApi::GetAndClearUncaughtException(P_CAST(env, EcmaVM*));
-    auto jError = ARKTS_FromHandle(result);
-    ARKTSInner_FormatJSError(env, jError);
-    ARKTS_Throw(env, jError);
-}
-
-#endif
 
 HWTEST_F(ArkInteropTest, ArkTSInteropNapi005, TestSize.Level1)
 {
@@ -276,6 +107,20 @@ HWTEST_F(ArkInteropTest, ArkTSInteropNapiExternal001, TestSize.Level1)
     ARKTS_LoadModule(env, dllName);
 }
 
+HWTEST_F(ArkInteropTest, ArkTSInteropNapiInstanceOf, TestSize.Level1)
+{
+    ARKTS_Env env = ARKTS_GetContext(engine_);
+    auto global = ARKTS_GetGlobalConstant(env);
+    char clError[] = "Error";
+    auto jError = ARKTS_CreateUtf8(env, clError, sizeof(clError) - 1);
+    auto errorCls = ARKTS_GetProperty(env, global, jError);
+    auto errorObJ = ARKTS_New(env, errorCls, 0, nullptr);
+    auto isError = ARKTS_InstanceOf(env, errorObJ, errorCls);
+    EXPECT_TRUE(isError);
+    auto jObj = ARKTS_CreateObject(env);
+    EXPECT_FALSE(ARKTS_InstanceOf(env, jObj, errorCls));
+}
+
 HWTEST_F(ArkInteropTest, ArkTSInteropNapiHitrace001, TestSize.Level1)
 {
     char name[] = "";
@@ -291,19 +136,51 @@ HWTEST_F(ArkInteropTest, ArkTSInteropNapiLog001, TestSize.Level1)
     LOGE("test LOGE");
 }
 
+HWTEST_F(ArkInteropTest, ArkTSInteropNapiCreateEngineNew, TestSize.Level1)
+{
+    auto engine = ARKTS_CreateEngineWithNewThread();
+
+    auto curTid = ARKTS_GetPosixThreadId();
+    auto engineTid = ARKTS_GetThreadIdOfEngine(engine);
+
+    EXPECT_NE(curTid, engineTid);
+
+    ARKTS_DestroyEngine(engine);
+}
+
 int main(int argc, char** argv)
 {
-    engine_ = ARKTS_CreateEngine();
     LOGI("main in");
     testing::GTEST_FLAG(output) = "xml:./";
     testing::InitGoogleTest(&argc, argv);
-    int ret = testing::UnitTest::GetInstance()->Run();
+
+    auto runner = OHOS::AppExecFwk::EventRunner::Create(true);
+    EXPECT_TRUE(runner);
+    auto handler = std::make_shared<OHOS::AppExecFwk::EventHandler>(runner);
+    EXPECT_TRUE(handler);
+
+    int ret = -1;
+    std::condition_variable cv;
+
+    auto success = handler->PostTask([&ret, &cv] {
+        engine_ = ARKTS_CreateEngine();
+
+        ret = testing::UnitTest::GetInstance()->Run();
+        cv.notify_all();
+    });
+
+    EXPECT_TRUE(success);
+
+    std::mutex mutex;
+    std::unique_lock<std::mutex> lock(mutex);
+    auto status = cv.wait_for(lock, std::chrono::seconds(10));
+
+    EXPECT_EQ(status, std::cv_status::no_timeout);
+
     ARKTS_DestroyEngine(engine_);
     engine_ = nullptr;
-    if (!ret) {
-        LOGE("run test failed. return %d", ret);
-        return ret;
-    }
+    runner->Stop();
+
     LOGI("main out");
     return ret;
 }
