@@ -44,3 +44,11 @@ declare_args() {
   napi_enable_memleak_debug = true
   force_scope = false
 }
+
+if (root_out_dir == "//out/generic_generic_arm_64only/hisi_all_pc_standard" ||
+    root_out_dir ==
+    "//out/generic_generic_arm_64only/general_all_pc_standard" ||
+    root_out_dir ==
+    "//out/generic_generic_arm_64only/general_all_pc_standard_2d") {
+  napi_enable_container_scope = true
+}
