@@ -136,7 +136,8 @@ private:
     NativeModule* FindNativeModuleByCache(const char* moduleName,
                                           char nativeModulePath[][NAPI_PATH_MAX],
                                           NativeModule*& cacheNativeModule,
-                                          NativeModuleHeadTailStruct& cacheHeadTailStruct);
+                                          NativeModuleHeadTailStruct& cacheHeadTailStruct,
+										  NativeModuleHeadTailStruct& cacheHeadTailStruct1);
     bool CheckModuleExist(const char* modulePath);
     LIBHANDLE LoadModuleLibrary(std::string& moduleKey, const char* path, const char* pathKey,
         const bool isAppModule, std::string& errInfo, uint32_t& errReason);
