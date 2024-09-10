@@ -238,7 +238,7 @@ std::string NativeModuleManager::GetModuleFileName(const char* moduleName, bool 
     NativeModule* cacheNativeModule = nullptr;
     NativeModuleHeadTailStruct cacheHeadTailNativeModule;
     NativeModule* module =
-        FindNativeModuleByCache(name.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule);
+        FindNativeModuleByCache(name.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule, cacheHeadTailNativeModule);
     if (module == nullptr) {
         HILOG_ERROR("get module file name failed");
         return loadPath;
@@ -590,7 +590,7 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
         return nullptr;
     }
     NativeModule* nativeModule =
-        FindNativeModuleByCache(strModule.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule);
+        FindNativeModuleByCache(strModule.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule, cacheHeadTailNativeModule);
 #else
     std::string key(moduleName);
     if (isAppModule) {
@@ -608,14 +608,14 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
         return nullptr;
     }
     NativeModule* nativeModule =
-        FindNativeModuleByCache(key.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule);
+        FindNativeModuleByCache(key.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule, cacheHeadTailNativeModule);
 #endif
     if (nativeModule == nullptr) {
         (void)pthread_mutex_lock(&mutex_);
         if (CheckNativeListChanged(cacheHeadTailNativeModule.headNativeModule,
                                    cacheHeadTailNativeModule.tailNativeModule)) {
             nativeModule =
-                FindNativeModuleByCache(key.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule);
+                FindNativeModuleByCache(key.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule, cacheHeadTailNativeModule);
         }
         if (nativeModule == nullptr) {
             prefix_ = prefixTmp;
@@ -635,7 +635,7 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
 
 #else
             nativeModule =
-                FindNativeModuleByCache(moduleName, nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule);
+                FindNativeModuleByCache(moduleName, nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule, cacheHeadTailNativeModule);
 #endif
             g_isLoadingModule = false;
         }
@@ -1165,7 +1165,8 @@ bool NativeModuleManager::RemoveNativeModuleByCache(const std::string& moduleKey
 NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleName,
                                                            char nativeModulePath[][NAPI_PATH_MAX],
                                                            NativeModule*& cacheNativeModule,
-                                                           NativeModuleHeadTailStruct& cacheHeadTailStruct)
+                                                           NativeModuleHeadTailStruct& cacheHeadTailStruct,
+														   NativeModuleHeadTailStruct& cacheHeadTailStruct1)
 {
     NativeModule* result = nullptr;
 
