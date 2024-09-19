@@ -2117,6 +2117,7 @@ void ArkNativeEngine::NotifyApplicationState(bool inBackground)
 {
     DFXJSNApi::NotifyApplicationState(vm_, inBackground);
     arkIdleMonitor_->NotifyChangeBackgroundState(inBackground);
+    interopAppState_.Notify(inBackground ? NAPI_APP_STATE_BACKGROUND : NAPI_APP_STATE_FOREGROUND);
 }
 
 void ArkNativeEngine::NotifyIdleStatusControl(std::function<void(bool)> callback)
@@ -2142,9 +2143,11 @@ void ArkNativeEngine::NotifyForceExpandState(int32_t value)
             break;
         case ForceExpandState::START_HIGH_SENSITIVE:
             DFXJSNApi::NotifyHighSensitive(vm_, true);
+            interopAppState_.Notify(NAPI_APP_STATE_SENSITIVE_START);
             break;
         case ForceExpandState::FINISH_HIGH_SENSITIVE:
             DFXJSNApi::NotifyHighSensitive(vm_, false);
+            interopAppState_.Notify(NAPI_APP_STATE_SENSITIVE_END);
             break;
         default:
             HILOG_ERROR("Invalid Force Expand State: %{public}d.", value);
@@ -2394,9 +2397,11 @@ void ArkNativeEngine::PostLooperTriggerIdleGCTask()
         switch (stage) {
             case OHOS::AppExecFwk::EventRunnerStage::STAGE_BEFORE_WAITING:
                 arkIdleMonitor->NotifyLooperIdleStart(info->timestamp, info->sleepTime);
+                interopAppState_.Notify(NAPI_APP_STATE_IDLE_START, info->timestamp);
                 break;
             case OHOS::AppExecFwk::EventRunnerStage::STAGE_AFTER_WAITING:
                 arkIdleMonitor->NotifyLooperIdleEnd(info->timestamp);
+                interopAppState_.Notify(NAPI_APP_STATE_IDLE_END, info->timestamp);
                 break;
             default:
                 HILOG_ERROR("this branch is unreachable");
@@ -2407,6 +2412,11 @@ void ArkNativeEngine::PostLooperTriggerIdleGCTask()
         static_cast<uint32_t>(OHOS::AppExecFwk::EventRunnerStage::STAGE_AFTER_WAITING));
     mainThreadRunner->GetEventQueue()->AddObserver(OHOS::AppExecFwk::Observer::ARKTS_GC, stage, callback);
 #endif
+}
+
+void ArkNativeEngine::RegisterAppStateCallback(NapiAppStateCallback callback)
+{
+    interopAppState_.SetCallback(callback);
 }
 
 int32_t ArkNativeEngine::GetObjectHash(napi_env env, napi_value src)
