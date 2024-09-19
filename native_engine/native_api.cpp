@@ -4132,3 +4132,14 @@ NAPI_EXTERN napi_status napi_encode(napi_env env, napi_value src, napi_value* re
 
     return napi_clear_last_error(env);
 }
+
+NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, callback);
+
+    auto *engine = reinterpret_cast<NativeEngine*>(env);
+    engine->RegisterAppStateCallback(callback);
+
+    return napi_clear_last_error(env);
+}
