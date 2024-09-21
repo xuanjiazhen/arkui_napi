@@ -374,6 +374,11 @@ public:
     }
     static constexpr size_t FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD = 500 * 1024 * 1024;  // 500 MB
 
+    ThreadId GetCurrentThreadId() const override
+    {
+        return panda::JSNApi::GetCurrentThreadId();
+    };
+
 private:
     inline NapiOptions *GetNapiOptions() const override
     {

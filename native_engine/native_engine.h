@@ -471,6 +471,8 @@ public:
 
     virtual bool IsCrossThreadCheckEnabled() const = 0;
 
+    virtual ThreadId GetCurrentThreadId() const = 0;
+
 private:
     void InitUvField();
     void CreateDefaultFunction(void);
