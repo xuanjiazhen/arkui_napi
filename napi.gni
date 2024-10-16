@@ -54,3 +54,12 @@ declare_args() {
 is_ohos_standard_system = is_standard_system && !is_arkui_x
 
 module_output_path = "arkcompiler/napi"
+
+napi_enable_pac_data_protect = false
+
+if (!is_ohos_standard_system && !is_emulator &&
+  target_cpu == "arm64" && 
+  defined(global_parts_info) &&
+  defined(global_parts_info.security_code_signature)) {
+  napi_enable_pac_data_protect = true
+}

@@ -14,6 +14,12 @@
 import("//build/ohos.gni")
 import("napi.gni")
 
+
+config("ace_napi_data_protect_config") {
+  cflags_cc = [ "-march=armv8.4-a" ]
+  defines = [ "NAPI_ENABLE_DATA_PROTECT" ]
+}
+
 config("ace_napi_config") {
   include_dirs = [
     ".",
@@ -71,6 +77,10 @@ ohos_source_set("ace_napi_static") {
 
   sources = napi_sources
 
+  if (napi_enable_pac_data_protect) {
+    configs += [ ":data_protect_configs" ]
+  }
+
   if (current_cpu == "arm64") {
     defines += [ "_ARM64_" ]
   }
@@ -95,11 +105,6 @@ ohos_source_set("ace_napi_static") {
       "hitrace:libhitracechain",
       "init:libbegetutil",
     ]
-
-    # macro in runtime_core in full repo will effect build napi
-    if (ohos_indep_compiler_enable) {
-      external_deps += [ "runtime_core:libarkbase_static" ]
-    }
 
     defines += [
       "ENABLE_HITRACE",

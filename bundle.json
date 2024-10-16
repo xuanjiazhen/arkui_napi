@@ -40,7 +40,6 @@
                 "ffrt",
                 "bounds_checking_function",
                 "init",
-                "runtime_core",
                 "ace_engine"
             ],
             "third_party": [
