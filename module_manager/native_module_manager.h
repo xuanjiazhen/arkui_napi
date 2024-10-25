@@ -142,7 +142,6 @@ private:
         const bool isAppModule, std::string& errInfo, uint32_t& errReason);
     const uint8_t* GetFileBuffer(const std::string& filePath, const std::string& moduleKey, size_t &len);
     bool UnloadModuleLibrary(LIBHANDLE handle);
-    bool CloseModuleLibrary(LIBHANDLE handle);
     void CreateLdNamespace(const std::string moduleName, const char* lib_ld_path, const bool& isSystemApp);
     bool IsExistedPath(const char* pathKey) const;
     void EmplaceModuleLib(const std::string moduleKey, LIBHANDLE lib);

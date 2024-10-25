@@ -90,7 +90,7 @@ NativeModuleManager::~NativeModuleManager()
     }
     std::map<std::string, char*>().swap(appLibPathMap_);
     appLibPathMapMutex_.unlock();
-    
+
     while (nativeEngineList_.size() > 0) {
         NativeEngine* wraper = nativeEngineList_.begin()->second;
         if (wraper != nullptr) {
@@ -1062,13 +1062,11 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName
         }
 
         // replace '.' and '/' with '_'
-        for (char* p = strchr(symbol, '.'); p != nullptr; p = strchr(p + 1, '.')) {
-            *p = '_';
+        for (char* p = symbol; p != nullptr; p = p + 1) {
+            if (*p == '.' || *p == '/') {
+                *p = '_';
+            }
         }
-        for (char* p = strchr(symbol, '/'); p != nullptr; p = strchr(p + 1, '/')) {
-            *p = '_';
-        }
-
         if (lib != nullptr) {
             auto getJSCode = reinterpret_cast<GetJSCodeCallback>(LIBSYM(lib, symbol));
             if (getJSCode == nullptr) {
