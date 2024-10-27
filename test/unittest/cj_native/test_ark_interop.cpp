@@ -131,8 +131,158 @@ HWTEST_F(ArkInteropTest, ArkTSInteropNapiHitrace001, TestSize.Level1)
 
 HWTEST_F(ArkInteropTest, ArkTSInteropNapiLog001, TestSize.Level1)
 {
-    LOGI("test LOGI");
-    LOGE("test LOGE");
+    EXPECT_TRUE(MockContext::GetInstance());
+    ARKTS_Env env = MockContext::GetInstance()->GetEnv();
+    EXPECT_TRUE(env);
+
+    bool called = false;
+    auto id = MockContext::GetInstance()->StoreFunc([&called](ARKTS_CallInfo info)->ARKTS_Value {
+        called = true;
+        EXPECT_EQ(ARKTS_GetArgCount(info), 0);
+        EXPECT_TRUE(ARKTS_IsUndefined(ARKTS_GetThisArg(info)));
+        return ARKTS_CreateUndefined();
+    });
+    auto func = ARKTS_CreateFunc(env, id);
+    EXPECT_TRUE(ARKTS_IsCallable(env, func));
+    EXPECT_EQ(ARKTS_GetValueType(env, func), N_FUNCTION);
+    ARKTS_Call(env, func, ARKTS_CreateUndefined(), 0, nullptr);
+    EXPECT_TRUE(called);
+    called = false;
+    ARKTS_Value args[] {
+        ARKTS_CreateNull(),
+        ARKTS_CreateBool(true),
+        ARKTS_CreateF64(45.1),
+        ARKTS_CreateObject(env)
+    };
+    static constexpr auto totalArgs = std::size(args);
+    id = MockContext::GetInstance()->StoreFunc([env, &called, origin = args](ARKTS_CallInfo info)->ARKTS_Value {
+        called = true;
+        auto self = ARKTS_GetThisArg(info);
+        EXPECT_TRUE(ARKTS_IsObject(env, self));
+        EXPECT_EQ(totalArgs, ARKTS_GetArgCount(info));
+        for (auto i = 0; i < totalArgs; i++) {
+            EXPECT_TRUE(ARKTS_StrictEqual(env, ARKTS_GetArg(info, i), origin[i]));
+        }
+        return ARKTS_CreateBool(true);
+    });
+    func = ARKTS_CreateFunc(env, id);
+    ARKTS_Call(env, func, ARKTS_CreateObject(env), std::size(args), args);
+    EXPECT_TRUE(called);
+}
+
+void ArkInteropTest::TestClass()
+{
+    EXPECT_TRUE(MockContext::GetInstance());
+    ARKTS_Env env = MockContext::GetInstance()->GetEnv();
+    EXPECT_TRUE(env);
+    auto id = MockContext::GetInstance()->StoreFunc([](ARKTS_CallInfo info)->ARKTS_Value {
+        return ARKTS_GetThisArg(info);
+    });
+    auto clazz = ARKTS_CreateClass(env, id, ARKTS_CreateUndefined());
+    EXPECT_TRUE(ARKTS_IsClass(env, clazz));
+    EXPECT_EQ(ARKTS_GetValueType(env, clazz), N_FUNCTION);
+    auto obj = ARKTS_New(env, clazz, 0, nullptr);
+    EXPECT_TRUE(ARKTS_IsObject(env, obj));
+    EXPECT_TRUE(ARKTS_InstanceOf(env, obj, clazz));
+}
+
+void ArkInteropTest::TestPromise()
+{
+    EXPECT_TRUE(MockContext::GetInstance());
+    ARKTS_Env env = MockContext::GetInstance()->GetEnv();
+    EXPECT_TRUE(env);
+    auto scope = ARKTS_OpenScope(env);
+
+    auto promiseCap = ARKTS_CreatePromiseCapability(env);
+    auto promise = ARKTS_GetPromiseFromCapability(env, promiseCap);
+    EXPECT_TRUE(ARKTS_IsPromise(env, promise));
+    EXPECT_EQ(ARKTS_GetValueType(env, promise), N_OBJECT);
+
+    bool resolved = false;
+    auto id = MockContext::GetInstance()->StoreFunc([&resolved](ARKTS_CallInfo info)->ARKTS_Value {
+        resolved = true;
+        EXPECT_EQ(ARKTS_GetArgCount(info), 1);
+        auto arg = ARKTS_GetArg(info, 0);
+        EXPECT_TRUE(ARKTS_IsUndefined(arg));
+        return ARKTS_CreateBool(true);
+    });
+    auto onResolved = ARKTS_CreateFunc(env, id);
+    ARKTS_PromiseThen(env, promise, onResolved, ARKTS_CreateUndefined());
+    ARKTS_PromiseCapabilityResolve(env, promiseCap, ARKTS_CreateUndefined());
+    EXPECT_TRUE(resolved);
+
+    ARKTS_CloseScope(env, scope);
+}
+
+void ArkInteropTest::TestArrayBuffer()
+{
+    EXPECT_TRUE(MockContext::GetInstance());
+    ARKTS_Env env = MockContext::GetInstance()->GetEnv();
+    EXPECT_TRUE(env);
+    auto scope = ARKTS_OpenScope(env);
+
+    uint8_t origin[] {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        'a', 'b', 'c', 'd', 'e', 'f', 'g'
+    };
+    auto arrSize = std::size(origin);
+    auto buffer = ARKTS_CreateArrayBuffer(env, arrSize);
+    EXPECT_TRUE(ARKTS_IsArrayBuffer(env, buffer));
+    EXPECT_EQ(ARKTS_GetValueType(env, buffer), N_OBJECT);
+    EXPECT_EQ(ARKTS_GetArrayBufferLength(env, buffer), arrSize);
+    auto dst = reinterpret_cast<uint8_t*>(ARKTS_GetArrayBufferRawPtr(env, buffer));
+    for (auto i = 0; i < arrSize; i++) {
+        dst[i] = origin[i];
+    }
+    uint8_t received[std::size(origin)];
+    auto endpoint = ARKTS_ArrayBufferReadBytes(env, buffer, received, arrSize);
+    EXPECT_EQ(endpoint, arrSize);
+
+    for (auto i = 0; i < arrSize; i++) {
+        EXPECT_EQ(origin[i], received[i]);
+    }
+
+    ARKTS_CloseScope(env, scope);
+}
+
+TEST_F(ArkInteropTest, Types)
+{
+    RunLocalTest();
+}
+
+TEST_F(ArkInteropTest, PromiseThen)
+{
+    MockContext local(ARKTS_CreateEngineWithNewThread());
+    auto env = local.GetEnv();
+    EXPECT_TRUE(env);
+
+    std::condition_variable cv;
+    bool isComplete = false;
+    auto funcId = local.StoreAsyncFunc([&local, &cv, &isComplete, env] {
+        auto scope = ARKTS_OpenScope(env);
+        auto promiseCap = ARKTS_CreatePromiseCapability(env);
+        auto promise = ARKTS_GetPromiseFromCapability(env, promiseCap);
+        auto funcId = local.StoreFunc([&cv, &isComplete](ARKTS_CallInfo info) {
+            isComplete = true;
+            cv.notify_one();
+            return ARKTS_CreateUndefined();
+        });
+        auto func = ARKTS_CreateFunc(env, funcId);
+        ARKTS_PromiseThen(env, promise, func, ARKTS_CreateUndefined());
+        ARKTS_PromiseCapabilityResolve(env, promiseCap, ARKTS_CreateUndefined());
+        ARKTS_CloseScope(env, scope);
+    });
+    ARKTS_CreateAsyncTask(env, funcId);
+    std::mutex mutex;
+    std::unique_lock lock(mutex);
+
+    constexpr int checkDuration = 10;
+    int waitTimes = 10; // set 100ms timeout
+    while (!isComplete && waitTimes--) {
+        cv.wait_for(lock, std::chrono::milliseconds(checkDuration));
+    }
+    // EXPECT no core dump, no timeout
+    EXPECT_TRUE(waitTimes > 0);
 }
 
 HWTEST_F(ArkInteropTest, ArkTSInteropNapiCreateEngineNew, TestSize.Level1)
