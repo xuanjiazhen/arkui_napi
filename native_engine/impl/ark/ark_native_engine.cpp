@@ -597,6 +597,12 @@ ArkNativeEngine::~ArkNativeEngine()
         delete arkIdleMonitor_;
         arkIdleMonitor_ = nullptr;
     }
+    
+    // free reference and deferred
+    if (contextManager_ != nullptr) {
+        delete contextManager_;
+        contextManager_ = nullptr;
+    }
 }
 
 #ifdef ENABLE_HITRACE
@@ -1610,7 +1616,7 @@ void ArkNativeEngine::PostFinalizeTasks()
         this->DecreasePendingFinalizersPackNativeBindingSize(totalNativeBindingSize);
     });
     IncreasePendingFinalizersPackNativeBindingSize(bindingSize);
-    
+
     syncWork->data = reinterpret_cast<void *>(finalizersPack);
     int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
         ArkFinalizersPack *finalizersPack = reinterpret_cast<ArkFinalizersPack*>(syncWork->data);

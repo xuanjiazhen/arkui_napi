@@ -35,6 +35,7 @@
 #include "native_engine/native_safe_async_work.h"
 #include "native_engine/native_value.h"
 #include "native_property.h"
+#include "context_manager/native_context_manager.h"
 #include "reference_manager/native_reference_manager.h"
 #include "utils/macros.h"
 #include "libpandafile/data_protect.h"
@@ -93,6 +94,10 @@ public:
 
     virtual NativeModuleManager* GetModuleManager();
     virtual NativeReferenceManager* GetReferenceManager();
+    inline NativeContextManager* GetContextManager() const
+    {
+        return contextManager_;
+    };
     virtual NativeCallbackScopeManager* GetCallbackScopeManager();
     virtual uv_loop_t* GetUVLoop() const;
     virtual pthread_t GetTid() const;
@@ -517,6 +522,7 @@ protected:
 
     NativeModuleManager* moduleManager_ = nullptr;
     NativeReferenceManager* referenceManager_ = nullptr;
+    NativeContextManager* contextManager_ = nullptr;
     NativeCallbackScopeManager* callbackScopeManager_ = nullptr;
 
     uv_loop_t* loop_ = nullptr;

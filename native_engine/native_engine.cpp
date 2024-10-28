@@ -24,6 +24,8 @@
 #endif
 
 #include "ecmascript/napi/include/jsnapi.h"
+
+#include "context_manager/native_context_manager.h"
 #include "native_engine/native_utils.h"
 #include "unicode/ucnv.h"
 #include "utils/log.h"
@@ -153,7 +155,10 @@ void NativeEngine::Init()
 {
     HILOG_DEBUG("NativeEngine::Init");
     moduleManager_ = NativeModuleManager::GetInstance();
+
     referenceManager_ = new NativeReferenceManager();
+    contextManager_ = new NativeContextManager();
+
     callbackScopeManager_ = new NativeCallbackScopeManager();
     tid_ = pthread_self();
     sysTid_ = GetCurSysTid();

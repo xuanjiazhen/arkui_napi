@@ -16,18 +16,22 @@
 #ifndef FOUNDATION_ACE_NAPI_REFERENCE_MANAGER_NATIVE_REFERENCE_MANAGER_H
 #define FOUNDATION_ACE_NAPI_REFERENCE_MANAGER_NATIVE_REFERENCE_MANAGER_H
 
-#include "native_engine/native_reference.h"
+#include <cstddef>
+#include <cstdint>
+
 #include "utils/macros.h"
+
+class ArkNativeReference;
 
 class NAPI_EXPORT NativeReferenceManager {
 public:
     NativeReferenceManager() = default;
     virtual ~NativeReferenceManager();
 
-    void CreateHandler(NativeReference* reference);
-    void ReleaseHandler(NativeReference* reference);
+    void CreateHandler(ArkNativeReference* reference);
+    void ReleaseHandler(ArkNativeReference* reference);
 
 private:
-    NativeReference *references_ {nullptr};
+    ArkNativeReference *head_ {nullptr};
 };
 #endif /* FOUNDATION_ACE_NAPI_REFERENCE_MANAGER_NATIVE_REFERENCE_MANAGER_H */

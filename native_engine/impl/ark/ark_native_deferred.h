@@ -17,6 +17,7 @@
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_DEFERRED_H
 
 #include "native_engine/native_value.h"
+#include "context_manager/native_context_manager.h"
 
 #include "native_engine/native_deferred.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -26,7 +27,7 @@ class ArkNativeEngine;
 using JSValueRef = panda::JSValueRef;
 using PromiseCapabilityRef = panda::PromiseCapabilityRef;
 
-class ArkNativeDeferred : public NativeDeferred {
+class ArkNativeDeferred : public NativeDeferred, public NativeContext {
 public:
     ArkNativeDeferred(ArkNativeEngine* engine, panda::Local<PromiseCapabilityRef> deferred);
     ~ArkNativeDeferred();

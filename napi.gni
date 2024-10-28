@@ -16,6 +16,7 @@ ets_runtime_path = "//arkcompiler/ets_runtime"
 
 napi_sources = [
   "callback_scope_manager/native_callback_scope_manager.cpp",
+  "context_manager/native_context_manager.cpp",
   "module_manager/module_checker_delegate.cpp",
   "module_manager/module_load_checker.cpp",
   "module_manager/native_module_manager.cpp",

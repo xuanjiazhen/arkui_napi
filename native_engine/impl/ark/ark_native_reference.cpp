@@ -34,17 +34,18 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        void* hint,
                                        bool isAsyncCall,
                                        size_t nativeBindingSize)
-    : engine_(engine),
+    : NativeContext(engine, ContextFinalizeCallback<ArkNativeReference>, this),
+      engine_(engine),
       value_(engine->GetEcmaVm(), LocalValueFromJsValue(value)),
       refCount_(initialRefcount),
-      deleteSelf_(deleteSelf),
       isAsyncCall_(isAsyncCall),
+      deleteSelf_(deleteSelf),
       napiCallback_(napiCallback),
       data_(data),
       hint_(hint),
       nativeBindingSize_(nativeBindingSize)
 {
-    ArkNativeReferenceConstructor(initialRefcount, deleteSelf);
+    ArkNativeReferenceConstructor(initialRefcount);
 }
 
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
@@ -56,22 +57,23 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        void* hint,
                                        bool isAsyncCall,
                                        size_t nativeBindingSize)
-    : engine_(engine),
+    : NativeContext(engine, ContextFinalizeCallback<ArkNativeReference>, this),
+      engine_(engine),
       value_(engine->GetEcmaVm(), value),
       refCount_(initialRefcount),
-      deleteSelf_(deleteSelf),
       isAsyncCall_(isAsyncCall),
+      deleteSelf_(deleteSelf),
       napiCallback_(napiCallback),
       data_(data),
       hint_(hint),
       nativeBindingSize_(nativeBindingSize)
 {
-    ArkNativeReferenceConstructor(initialRefcount, deleteSelf);
+    ArkNativeReferenceConstructor(initialRefcount);
 }
 
 ArkNativeReference::~ArkNativeReference()
 {
-    if (deleteSelf_ && engine_->GetReferenceManager()) {
+    if (napiCallback_ != nullptr && engine_->GetReferenceManager()) {
         engine_->GetReferenceManager()->ReleaseHandler(this);
         prev_ = nullptr;
         next_ = nullptr;
@@ -79,9 +81,7 @@ ArkNativeReference::~ArkNativeReference()
     if (value_.IsEmpty()) {
         return;
     }
-    hasDelete_ = true;
     value_.FreeGlobalHandleAddr();
-    FinalizeCallback(FinalizerState::DESTRUCTION);
 }
 
 uint32_t ArkNativeReference::Ref()
@@ -165,13 +165,16 @@ void ArkNativeReference::FinalizeCallback(FinalizerState state)
             napiCallback_(reinterpret_cast<napi_env>(engine_), data_, hint_);
         }
     }
+
     napiCallback_ = nullptr;
     data_ = nullptr;
     hint_ = nullptr;
     finalRun_ = true;
 
-    if (deleteSelf_ && !hasDelete_) {
+    if (deleteSelf_ || state == FinalizerState::ENGINE_TEARDOWN) {
         delete this;
+    } else {
+        deleteSelf_ = true;
     }
 }
 
@@ -185,16 +188,6 @@ void ArkNativeReference::NativeFinalizeCallBack(void* ref)
 {
     auto that = reinterpret_cast<ArkNativeReference*>(ref);
     that->FinalizeCallback(FinalizerState::COLLECTION);
-}
-
-void ArkNativeReference::SetDeleteSelf()
-{
-    deleteSelf_ = true;
-}
-
-bool ArkNativeReference::GetDeleteSelf() const
-{
-    return deleteSelf_;
 }
 
 uint32_t ArkNativeReference::GetRefCount()
