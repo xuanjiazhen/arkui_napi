@@ -306,9 +306,7 @@ NAPI_EXTERN napi_status napi_create_double(napi_env env, double value, napi_valu
     CHECK_ARG(env, result);
 
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-    Local<panda::NumberRef> object = panda::NumberRef::New(vm, value);
-    *result = JsValueFromLocalValue(object);
-
+    *result = reinterpret_cast<napi_value>(panda::NumberRef::NewDouble(vm, value));
     return napi_clear_last_error(env);
 }
 
@@ -342,9 +340,7 @@ NAPI_EXTERN napi_status napi_create_int64(napi_env env, int64_t value, napi_valu
     CHECK_ARG(env, result);
 
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-    Local<panda::NumberRef> object = panda::NumberRef::New(vm, value);
-    *result = JsValueFromLocalValue(object);
-
+    *result = reinterpret_cast<napi_value>(panda::NumberRef::NewInt64(vm, value));
     return napi_clear_last_error(env);
 }
 
