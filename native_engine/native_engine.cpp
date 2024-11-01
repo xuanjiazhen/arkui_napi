@@ -142,10 +142,9 @@ void NativeEngine::DestoryDefaultFunction(bool release)
     }
     if (release) {
         napi_release_threadsafe_function(defaultFunc_, napi_tsfn_abort);
-    } else {
-        NativeSafeAsyncWork* work = reinterpret_cast<NativeSafeAsyncWork*>(defaultFunc_);
-        delete work; // only free mem due to uv_loop is invalid
     }
+    NativeSafeAsyncWork* work = reinterpret_cast<NativeSafeAsyncWork*>(defaultFunc_);
+    delete work; // only free mem due to uv_loop is invalid
     defaultFunc_ = nullptr;
 }
 
