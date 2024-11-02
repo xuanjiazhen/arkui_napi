@@ -134,17 +134,13 @@ void NativeEngine::CreateDefaultFunction(void)
         nullptr, nullptr, nullptr, ThreadSafeCallback, &defaultFunc_);
 }
 
-void NativeEngine::DestoryDefaultFunction(bool release)
+void NativeEngine::DestoryDefaultFunction(void)
 {
     std::unique_lock<std::shared_mutex> writeLock(eventMutex_);
     if (!defaultFunc_) {
         return;
     }
-    if (release) {
-        napi_release_threadsafe_function(defaultFunc_, napi_tsfn_abort);
-    }
-    NativeSafeAsyncWork* work = reinterpret_cast<NativeSafeAsyncWork*>(defaultFunc_);
-    delete work; // only free mem due to uv_loop is invalid
+    napi_release_threadsafe_function(defaultFunc_, napi_tsfn_abort);
     defaultFunc_ = nullptr;
 }
 
@@ -177,7 +173,7 @@ void NativeEngine::Deinit()
 {
     HILOG_INFO("NativeEngine::Deinit");
     if (loop_ != nullptr) {
-        DestoryDefaultFunction(true);
+        DestoryDefaultFunction();
         uv_sem_destroy(&uvSem_);
         uv_close((uv_handle_t*)&uvAsync_, nullptr);
     }
@@ -239,11 +235,14 @@ ThreadId NativeEngine::GetCurSysTid()
 // should only be called if process is forked, other case would cause fd_leak
 bool NativeEngine::ReinitUVLoop()
 {
-    if (defaultFunc_ != nullptr) {
-        DestoryDefaultFunction(false);
-    }
-
     if (loop_ != nullptr) {
+        DestoryDefaultFunction();
+        uv_sem_destroy(&uvSem_);
+        uv_close((uv_handle_t*)&uvAsync_, nullptr);
+        uv_run(loop_, UV_RUN_ONCE);
+        if (uv_loop_close(loop_) != EOK) {
+            HILOG_WARN("%{public}s faild to close uv_loop!!!", __func__);
+        }
         delete loop_;  // only free mem due to uv_loop is invalid
         loop_ = nullptr;
     }
