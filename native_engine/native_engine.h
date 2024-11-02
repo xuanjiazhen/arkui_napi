@@ -495,7 +495,7 @@ public:
 private:
     void InitUvField();
     void CreateDefaultFunction(void);
-    void DestoryDefaultFunction(bool release);
+    void DestoryDefaultFunction(void);
 
     virtual NapiOptions *GetNapiOptions() const = 0;
 
