@@ -32,6 +32,7 @@ using LocalScope = panda::LocalScope;
 enum class FinalizerState {
     DESTRUCTION,
     COLLECTION,
+    ENV_TEARDOWN,
 };
 
 class ArkNativeReference : public NativeReference {
@@ -58,6 +59,7 @@ public:
 
     uint32_t Ref() override;
     uint32_t Unref() override;
+    void Delete() override;
     napi_value Get() override;
     napi_value Get(NativeEngine* engine) override;
     void* GetData() override;
@@ -94,15 +96,14 @@ private:
     bool deleteSelf_ {false};
     bool isAsyncCall_ {false};
 
-    bool hasDelete_ {false};
     bool finalRun_ {false};
     NapiNativeFinalize napiCallback_ {nullptr};
     void* data_ {nullptr};
     void* hint_ {nullptr};
     size_t nativeBindingSize_ {0};
 
-    NativeReference* prev_ {nullptr};
-    NativeReference* next_ {nullptr};
+    ArkNativeReference* prev_ {nullptr};
+    ArkNativeReference* next_ {nullptr};
 
     void FinalizeCallback(FinalizerState state);
 
