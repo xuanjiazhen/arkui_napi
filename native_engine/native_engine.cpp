@@ -235,37 +235,8 @@ ThreadId NativeEngine::GetCurSysTid()
 // should only be called if process is forked, other case would cause fd_leak
 bool NativeEngine::ReinitUVLoop()
 {
-    if (loop_ != nullptr) {
-        DestoryDefaultFunction();
-        uv_sem_destroy(&uvSem_);
-        uv_close((uv_handle_t*)&uvAsync_, nullptr);
-        uv_run(loop_, UV_RUN_ONCE);
-        if (uv_loop_close(loop_) != EOK) {
-            HILOG_WARN("%{public}s faild to close uv_loop!!!", __func__);
-        }
-        delete loop_;  // only free mem due to uv_loop is invalid
-        loop_ = nullptr;
-    }
-
     tid_ = pthread_self();
     sysTid_ = GetCurSysTid();
-
-    loop_ = new (std::nothrow)uv_loop_t;
-    if (loop_ == nullptr) {
-        HILOG_ERROR("failed to create uv_loop, async task interface would not work");
-        return false;
-    }
-    if (uv_loop_init(loop_) != EOK) {
-        HILOG_ERROR("failed to init uv_loop, async task interface would not work");
-        delete loop_;
-        loop_ = nullptr;
-        return false;
-    }
-
-    uv_async_init(loop_, &uvAsync_, nullptr);
-    uv_sem_init(&uvSem_, 0);
-    CreateDefaultFunction();
-
     return true;
 }
 
@@ -806,6 +777,7 @@ void NativeEngine::RunCleanup()
 
 void NativeEngine::CleanupHandles()
 {
+    uv_run(loop_, UV_RUN_ONCE);
     while (requestWaiting_.load() > 0) {
         HILOG_INFO("%{public}s, request waiting:%{public}d.", __func__,
             requestWaiting_.load(std::memory_order_relaxed));
