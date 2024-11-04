@@ -251,10 +251,6 @@ SafeAsyncCode NativeSafeAsyncWork::Release(NativeThreadSafeFunctionReleaseMode m
         if (checkRet != SafeAsyncCode::SAFE_ASYNC_OK) {
             return checkRet;
         }
-        if (IsSameTid()) {
-            CloseHandles();
-            return SafeAsyncCode::SAFE_ASYNC_OK;
-        }
         // trigger async handle
         auto ret = uv_async_send(&asyncHandler_);
         if (ret != 0) {
