@@ -235,8 +235,33 @@ ThreadId NativeEngine::GetCurSysTid()
 // should only be called if process is forked, other case would cause fd_leak
 bool NativeEngine::ReinitUVLoop()
 {
-    tid_ = pthread_self();
-    sysTid_ = GetCurSysTid();
+    if (defaultFunc_ != nullptr) {
+        DestoryDefaultFunction();
+    }
+
+    if (loop_ != nullptr) {
+        delete loop_;  // only free mem due to uv_loop is invalid
+        loop_ = nullptr;
+    }
+
+     tid_ = pthread_self();
+     sysTid_ = GetCurSysTid();
+
+    loop_ = new (std::nothrow)uv_loop_t;
+    if (loop_ == nullptr) {
+        HILOG_ERROR("failed to create uv_loop, async task interface would not work");
+        return false;
+    }
+    if (uv_loop_init(loop_) != EOK) {
+        HILOG_ERROR("failed to init uv_loop, async task interface would not work");
+        delete loop_;
+        loop_ = nullptr;
+        return false;
+    }
+
+    uv_async_init(loop_, &uvAsync_, nullptr);
+    uv_sem_init(&uvSem_, 0);
+    CreateDefaultFunction();
     return true;
 }
 
