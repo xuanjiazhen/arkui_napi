@@ -35,6 +35,23 @@ config("ace_napi_config") {
     ]
   }
 
+  if (current_cpu == "arm64" || current_cpu == "aarch64") {
+    defines += [ "NAPI_TARGET_ARM64" ]
+    defines += [ "NAPI_TARGET_64" ]
+  } else if (current_cpu == "x86_64" || current_cpu == "amd64" ||
+             current_cpu == "x64") {
+    defines += [ "NAPI_TARGET_AMD64" ]
+    defines += [ "NAPI_TARGET_64" ]
+  } else if (current_cpu == "arm") {
+    defines += [ "NAPI_TARGET_ARM32" ]
+    defines += [ "NAPI_TARGET_32" ]
+  } else if(current_cpu == "x86") {
+    defines += [ "NAPI_TARGET_x86" ]
+    defines += [ "NAPI_TARGET_32" ]
+  } else {
+    defines += [ "NAPI_TARGET_UNKNOWN" ]
+  }
+
   if (current_os == "ohos" && current_cpu == "x86_64") {
     defines += [ "SIMULATOR" ]
   }

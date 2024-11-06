@@ -14,6 +14,7 @@
  */
 
 #include "ark_native_engine.h"
+#include <cstdint>
 
 #ifdef ENABLE_HITRACE
 #include <sys/prctl.h>
@@ -24,6 +25,7 @@
 #if !defined(is_arkui_x) && defined(OHOS_PLATFORM)
 #include "unwinder.h"
 #endif
+#include "ark_finalizers_pack.h"
 #include "ark_native_reference.h"
 #include "native_engine/native_property.h"
 #include "native_engine/native_utils.h"
@@ -1543,10 +1545,9 @@ __attribute__((optnone)) void ArkNativeEngine::RunAsyncCallbacks(std::vector<Ref
     StartTrace(HITRACE_TAG_ACE, "RunFinalizeCallbacks:" + std::to_string(finalizers->size()));
 #endif
     for (auto iter : (*finalizers)) {
-        NapiNativeFinalize callback = iter.first;
         std::tuple<NativeEngine*, void*, void*> &param = iter.second;
-        callback(reinterpret_cast<napi_env>(std::get<0>(param)),
-                 std::get<1>(param), std::get<2>(param)); // 2 is the param.
+        MarkedCallback(iter.first, reinterpret_cast<napi_env>(std::get<0>(param)),
+            std::get<1>(param), std::get<2>(param)); // 2 is the param.
     }
 #ifdef ENABLE_HITRACE
     FinishTrace(HITRACE_TAG_ACE);
