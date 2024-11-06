@@ -66,11 +66,33 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
       hint_(hint),
       nativeBindingSize_(nativeBindingSize)
 {
+    uintptr_t ptr = *reinterpret_cast<uintptr_t*>(&value_);
+    HILOG_ERROR("chenhantao ArkNativeReference 1111111111111111, "
+                "ownerid: %{public}" PRIu64, engineId_);
+    HILOG_ERROR("chenhantao ArkNativeReference 1111111111111111, "
+                ", current engineId_: %{public}" PRIu64, engine->GetId());
+    HILOG_ERROR("chenhantao ArkNativeReference 1111111111111111, "
+                ", ptr: %{public}zu", ptr);
+    HILOG_ERROR("chenhantao ArkNativeReference 1111111111111111, "
+                ", value: %{public}p", *value_);
+    HILOG_ERROR("chenhantao ArkNativeReference 1111111111111111, "
+                ", this: %{public}p", this);
     ArkNativeReferenceConstructor(initialRefcount, deleteSelf);
 }
 
 ArkNativeReference::~ArkNativeReference()
 {
+    uintptr_t ptr = *reinterpret_cast<uintptr_t*>(&value_);
+    HILOG_ERROR("chenhantao ArkNativeReference 2222222222222222, "
+                "ownerid: %{public}" PRIu64, engineId_);
+    HILOG_ERROR("chenhantao ArkNativeReference 2222222222222222, "
+                ", current engineId_: %{public}" PRIu64, engine_->GetId());
+    HILOG_ERROR("chenhantao ArkNativeReference 2222222222222222, "
+                ", ptr: %{public}zu", ptr);
+    HILOG_ERROR("chenhantao ArkNativeReference 2222222222222222, "
+                ", value: %{public}p", *value_);
+    HILOG_ERROR("chenhantao ArkNativeReference 2222222222222222, "
+                ", this: %{public}p", this);
     if (deleteSelf_ && engine_->GetReferenceManager()) {
         engine_->GetReferenceManager()->ReleaseHandler(this);
         prev_ = nullptr;
