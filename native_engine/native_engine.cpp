@@ -134,18 +134,13 @@ void NativeEngine::CreateDefaultFunction(void)
         nullptr, nullptr, nullptr, ThreadSafeCallback, &defaultFunc_);
 }
 
-void NativeEngine::DestoryDefaultFunction(bool release)
+void NativeEngine::DestoryDefaultFunction(void)
 {
     std::unique_lock<std::shared_mutex> writeLock(eventMutex_);
     if (!defaultFunc_) {
         return;
     }
-    if (release) {
-        napi_release_threadsafe_function(defaultFunc_, napi_tsfn_abort);
-    } else {
-        NativeSafeAsyncWork* work = reinterpret_cast<NativeSafeAsyncWork*>(defaultFunc_);
-        delete work; // only free mem due to uv_loop is invalid
-    }
+    napi_release_threadsafe_function(defaultFunc_, napi_tsfn_abort);
     defaultFunc_ = nullptr;
 }
 
@@ -178,7 +173,7 @@ void NativeEngine::Deinit()
 {
     HILOG_INFO("NativeEngine::Deinit");
     if (loop_ != nullptr) {
-        DestoryDefaultFunction(true);
+        DestoryDefaultFunction();
         uv_sem_destroy(&uvSem_);
         uv_close((uv_handle_t*)&uvAsync_, nullptr);
     }
@@ -241,7 +236,7 @@ ThreadId NativeEngine::GetCurSysTid()
 bool NativeEngine::ReinitUVLoop()
 {
     if (defaultFunc_ != nullptr) {
-        DestoryDefaultFunction(false);
+        DestoryDefaultFunction();
     }
 
     if (loop_ != nullptr) {
@@ -249,8 +244,8 @@ bool NativeEngine::ReinitUVLoop()
         loop_ = nullptr;
     }
 
-    tid_ = pthread_self();
-    sysTid_ = GetCurSysTid();
+     tid_ = pthread_self();
+     sysTid_ = GetCurSysTid();
 
     loop_ = new (std::nothrow)uv_loop_t;
     if (loop_ == nullptr) {
@@ -267,7 +262,6 @@ bool NativeEngine::ReinitUVLoop()
     uv_async_init(loop_, &uvAsync_, nullptr);
     uv_sem_init(&uvSem_, 0);
     CreateDefaultFunction();
-
     return true;
 }
 

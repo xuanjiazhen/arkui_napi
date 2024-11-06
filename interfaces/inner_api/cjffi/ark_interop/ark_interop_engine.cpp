@@ -129,12 +129,9 @@ ARKTS_Engine ARKTS_CreateEngine()
 #endif
     auto loop = engine->GetUVLoop();
     if (loop == nullptr) {
-        if (!engine->ReinitUVLoop()) {
-            LOGE("init uv loop failed");
-            ARKTS_DestroyEngine(result);
-            return nullptr;
-        }
-        loop = engine->GetUVLoop();
+        LOGE("init uv loop failed");
+        ARKTS_DestroyEngine(result);
+        return nullptr;
     }
     panda::JSNApi::SetLoop(vm, loop);
 
