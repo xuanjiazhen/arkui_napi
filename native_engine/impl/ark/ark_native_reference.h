@@ -32,6 +32,7 @@ using LocalScope = panda::LocalScope;
 enum class FinalizerState {
     DESTRUCTION,
     COLLECTION,
+    ENV_TEARDOWN,
 };
 
 class ArkNativeReference : public NativeReference {
@@ -76,7 +77,7 @@ private:
             value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
         }
 
-        if (deleteSelf) {
+        if (napiCallback_) {
             NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
             if (referenceManager != nullptr) {
                 referenceManager->CreateHandler(this);
@@ -101,9 +102,10 @@ private:
     void* hint_ {nullptr};
     size_t nativeBindingSize_ {0};
 
-    NativeReference* prev_ {nullptr};
-    NativeReference* next_ {nullptr};
+    ArkNativeReference* prev_ {nullptr};
+    ArkNativeReference* next_ {nullptr};
 
+    void ResetJsObjectField();
     void FinalizeCallback(FinalizerState state);
 
     static void FreeGlobalCallBack(void* ref);
