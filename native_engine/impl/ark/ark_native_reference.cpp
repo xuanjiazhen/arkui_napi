@@ -150,10 +150,30 @@ void* ArkNativeReference::GetData()
     return data_;
 }
 
-void ArkNativeReference::FinalizeCallback(FinalizerState state)
+void ArkNativeReference::ResetJsObjectField()
+{
+    if (value_.IsEmpty()) {
+        return;
+    }
+    auto vm = engine_->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+    Local<JSValueRef> value = value_.ToLocal(engine_->GetEcmaVm());
+    bool isObj = value->IsObject((vm));
+    bool isFunc = value->IsFunction((vm));
+    if (!(isObj || isFunc)) {
+        return;
+    }
+    auto obj = isObj ? Local<panda::ObjectRef>(value) : value->ToObject((vm));
+    Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
+    if (obj->Has(vm, key)) {
+        obj->Delete(vm, key);
+    }
+}
+
+void ArkNativeReference::FinalizeCallback(FinalizerState mode)
 {
     if (napiCallback_ != nullptr && !engine_->IsInDestructor()) {
-        if (state == FinalizerState::COLLECTION) {
+        if (mode == FinalizerState::COLLECTION) {
             std::tuple<NativeEngine*, void*, void*> tuple = std::make_tuple(engine_, data_, hint_);
             RefFinalizer finalizer = std::make_pair(napiCallback_, tuple);
             if (isAsyncCall_) {
@@ -170,7 +190,11 @@ void ArkNativeReference::FinalizeCallback(FinalizerState state)
     hint_ = nullptr;
     finalRun_ = true;
 
-    if (deleteSelf_ && !hasDelete_) {
+    if (mode == FinalizerState::ENV_TEARDOWN) {
+        ResetJsObjectField();
+    }
+
+    if ((deleteSelf_ || mode == FinalizerState::ENV_TEARDOWN)&& !hasDelete_) {
         delete this;
     }
 }
