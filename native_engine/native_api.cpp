@@ -1149,10 +1149,9 @@ NAPI_EXTERN napi_status napi_get_array_length(napi_env env, napi_value value, ui
 
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     bool isArrayOrSharedArray = false;
-    auto nativeValue = reinterpret_cast<panda::JSValueRef *>(value);
+    panda::Local<panda::JSValueRef> nativeValue = LocalValueFromJsValue(value);
     nativeValue->TryGetArrayLength(vm, &isArrayOrSharedArray, result);
     if (!isArrayOrSharedArray) {
-        HILOG_ERROR("argument is not type of array or sharedarray");
         return napi_set_last_error(env, napi_array_expected);
     }
     return napi_clear_last_error(env);
@@ -2418,6 +2417,9 @@ NAPI_EXTERN napi_status napi_create_arraybuffer(napi_env env, size_t byte_length
     Local<panda::ArrayBufferRef> res = panda::ArrayBufferRef::New(vm, byte_length);
     if (values != nullptr) {
         *values = reinterpret_cast<uint8_t*>(res->GetBuffer(vm));
+        if (UNLIKELY(*values == nullptr && byte_length > 0)) {
+            HILOG_WARN("Allocate ArrayBuffer failed, maybe size is too large, request size: %{public}zu", byte_length);
+        }
     }
     *result = JsValueFromLocalValue(res);
 
@@ -3837,14 +3839,14 @@ NAPI_EXTERN napi_status napi_get_hybrid_stack_trace(napi_env env, std::string& s
 {
     CHECK_ENV(env);
 
-#if defined(OHOS_PLATFORM) && !defined(is_arkui_x)
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
-    stack = DumpHybridStack(vm);
-#else
-    HILOG_WARN("GetHybridStacktrace env get hybrid stack failed");
-#endif
-    return napi_clear_last_error(env);
+    if (DumpHybridStack(vm, stack, 3)) { // 3: skiped frames
+        return napi_ok;
+    } else {
+        HILOG_WARN("GetHybridStacktrace env get hybrid stack failed");
+        return napi_generic_failure;
+    }
 }
 
 NAPI_EXTERN napi_status napi_object_get_keys(napi_env env, napi_value data, napi_value* result)

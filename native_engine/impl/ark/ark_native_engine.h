@@ -21,20 +21,19 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #endif
-#include <unistd.h>
+#include <iostream>
 #include <map>
 #include <mutex>
-#include <thread>
-#include <iostream>
 #include <regex>
+#include <thread>
+#include <unistd.h>
 
+#include "ark_idle_monitor.h"
+#include "ark_native_options.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_engine/impl/ark/ark_finalizers_pack.h"
 #include "native_engine/native_engine.h"
-#include "ark_idle_monitor.h"
-#include "ark_native_options.h"
-
 
 namespace panda::ecmascript {
 struct JsHeapDumpWork;
@@ -80,9 +79,6 @@ NAPI_EXPORT panda::Local<panda::JSValueRef> NapiValueToLocalValue(napi_value v);
 NAPI_EXPORT napi_value LocalValueToLocalNapiValue(panda::Local<panda::JSValueRef> local);
 #ifdef ENABLE_CONTAINER_SCOPE
 void FunctionSetContainerId(const EcmaVM *vm, panda::Local<panda::JSValueRef> &local);
-#endif
-#if !defined(is_arkui_x) && defined(OHOS_PLATFORM)
-std::string DumpHybridStack(const EcmaVM* vm);
 #endif
 panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, NapiNativeCallback callback,
                                                 void* data, const NapiPropertyDescriptor* properties, size_t length);
@@ -147,7 +143,7 @@ public:
     // ArkNativeEngine destructor
     ~ArkNativeEngine() override;
 
-    inline NAPI_EXPORT const EcmaVM* GetEcmaVm() const
+    NAPI_EXPORT const EcmaVM* GetEcmaVm() const override
     {
         return vm_;
     }
@@ -398,6 +394,7 @@ private:
         pendingFinalizersPackNativeBindingSize_ -= nativeBindingSize;
     }
 
+    EcmaVM* vm_ = nullptr;
     bool needStop_ = false;
     panda::LocalScope topScope_;
     NapiConcurrentCallback concurrentCallbackFunc_ { nullptr };
@@ -415,6 +412,6 @@ private:
     // napi options and its cache
     NapiOptions* options_ { nullptr };
     bool crossThreadCheck_ { false };
-    ArkIdleMonitor *arkIdleMonitor_ {nullptr};
+    std::shared_ptr<ArkIdleMonitor> arkIdleMonitor_;
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */

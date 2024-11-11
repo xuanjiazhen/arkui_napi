@@ -89,7 +89,6 @@ using JsFrameInfo = panda::ecmascript::JsFrameInfo;
 class NAPI_EXPORT NativeEngine {
 public:
     explicit NativeEngine(void* jsEngine);
-    NativeEngine(void* jsEngine, EcmaVM* vm);
     virtual ~NativeEngine();
 
     virtual NativeModuleManager* GetModuleManager();
@@ -118,10 +117,7 @@ public:
 #endif
     virtual void* GetJsEngine();
 
-    inline NAPI_EXPORT const EcmaVM* GetEcmaVm() const
-    {
-        return vm_;
-    }
+    virtual const EcmaVM* GetEcmaVm() const = 0;
     virtual bool NapiNewTypedArray(const EcmaVM* vm, NativeTypedArrayType typedArrayType,
                                    panda::Local<panda::ArrayBufferRef> arrayBuf, size_t byte_offset,
                                    size_t length, napi_value* result) = 0;
@@ -211,14 +207,14 @@ public:
 
     NativeErrorExtendedInfo* GetLastError();
     void SetLastError(int errorCode, uint32_t engineErrorCode = 0, void* engineReserved = nullptr);
-    inline void ClearLastError()
+    void ClearLastError()
     {
         lastError_.errorCode = 0;
         lastError_.engineErrorCode = 0;
         lastError_.message = nullptr;
         lastError_.reserved = nullptr;
     }
-    void EncodeToUtf8(napi_value value, char* buffer, int32_t* written, size_t bufferSize, int32_t* nchars);
+    void EncodeToUtf8(napi_value value, char* buffer, uint32_t* written, size_t bufferSize, int32_t* nchars);
     void EncodeToChinese(napi_value value, std::string& buffer, const std::string& encoding);
     NativeEngine(NativeEngine&) = delete;
     virtual NativeEngine& operator=(NativeEngine&) = delete;
@@ -536,7 +532,6 @@ protected:
 #endif
     NativeEngine* hostEngine_ {nullptr};
     bool isAppModule_ = false;
-    EcmaVM* vm_ {nullptr};
 
 public:
     uint64_t openHandleScopes_ = 0;
@@ -592,6 +587,8 @@ private:
     static std::mutex g_mainThreadEngineMutex_;
     static NativeEngine* g_mainThreadEngine_;
 };
+
+bool DumpHybridStack(const EcmaVM* vm, std::string &stack, uint32_t ignored = 0, int32_t deepth = -1);
 
 class TryCatch : public panda::TryCatch {
 public:
