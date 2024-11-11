@@ -1100,6 +1100,24 @@ HWTEST_F(NapiSendableTest, CreateSendableTypedArray001, testing::ext::TestSize.L
 
     res = napi_create_sendable_typedarray(env, napi_float32_array, LENGTH / 2, nullptr, 1, &result);
     ASSERT_EQ(res, napi_invalid_arg);
+
+    // res = napi_create_sendable_typedarray(env, napi_float64_array, LENGTH / 2, nullptr, 1, &result);
+    // ASSERT_EQ(res, napi_invalid_arg);
+
+    // res = napi_create_sendable_typedarray(env, napi_float64_array, LENGTH / 2, nullptr, 1, &result);
+    // ASSERT_EQ(res, napi_invalid_arg);
+
+    // res = napi_create_sendable_typedarray(env, napi_bigint64_array, LENGTH / 2, nullptr, 1, &result);
+    // ASSERT_EQ(res, napi_invalid_arg);
+
+    // res = napi_create_sendable_typedarray(env, napi_bigint64_array, LENGTH / 2, nullptr, 1, &result);
+    // ASSERT_EQ(res, napi_invalid_arg);
+
+    // res = napi_create_sendable_typedarray(env, napi_biguint64_array, LENGTH / 2, nullptr, 1, &result);
+    // ASSERT_EQ(res, napi_invalid_arg);
+
+    // res = napi_create_sendable_typedarray(env, napi_biguint64_array, LENGTH / 2, nullptr, 1, &result);
+    // ASSERT_EQ(res, napi_invalid_arg);
 }
 
 /**
@@ -1751,6 +1769,159 @@ HWTEST_F(NapiSendableTest, CreateSendableTypedArray018, testing::ext::TestSize.L
         ASSERT_EQ(isTypedArray, true);
     }
 }
+
+// /**
+//  * @tc.name: CreateSendableTypedArray019
+//  * @tc.desc: Test napi_create_sendable_arraybuffer.
+//  * @tc.type: FUNC
+//  */
+// HWTEST_F(NapiSendableTest, CreateSendableTypedArray019, testing::ext::TestSize.Level1)
+// {
+//     static size_t LENGTH = 1024;
+//     static size_t OFFSET = 128;
+//     ASSERT_NE(engine_, nullptr);
+//     napi_env env = reinterpret_cast<napi_env>(engine_);
+//     napi_status res = napi_ok;
+
+//     void *data;
+//     napi_value arraybuffer = nullptr;
+//     res = napi_create_sendable_arraybuffer(env, LENGTH, &data, &arraybuffer);
+//     ASSERT_EQ(res, napi_ok);
+
+//     napi_value result = nullptr;
+//     res = napi_create_sendable_typedarray(env, napi_float64_array, LENGTH / 2, arraybuffer, OFFSET, &result);
+//     ASSERT_EQ(res, napi_ok);
+
+//     bool isShared = false;
+//     res = napi_is_sendable(env, result, &isShared);
+//     ASSERT_EQ(res, napi_ok);
+//     ASSERT_EQ(isShared, true);
+
+//     bool isTypedArray = false;
+//     res = napi_is_typedarray(env, result, &isTypedArray);
+//     ASSERT_EQ(res, napi_ok);
+//     ASSERT_EQ(isTypedArray, true);
+
+//     napi_typedarray_type type = napi_uint8_array;
+//     size_t length = 0;
+//     void *getData = nullptr;
+//     napi_value getArrayBuffer = nullptr;
+//     size_t byteOffset = 0;
+//     res = napi_get_typedarray_info(env, result, &type, &length, &getData, &getArrayBuffer, &byteOffset);
+//     ASSERT_EQ(res, napi_ok);
+
+//     bool isEqual = false;
+//     res = napi_strict_equals(env, arraybuffer, getArrayBuffer, &isEqual);
+//     ASSERT_EQ(res, napi_ok);
+
+//     ASSERT_EQ(type, napi_float64_array);
+//     ASSERT_EQ(length, LENGTH / 2);
+//     ASSERT_EQ(reinterpret_cast<size_t>(getData), reinterpret_cast<size_t>(data) + OFFSET);
+//     ASSERT_EQ(isEqual, true);
+//     ASSERT_EQ(byteOffset, OFFSET);
+// }
+
+// /**
+//  * @tc.name: CreateSendableTypedArray020
+//  * @tc.desc: Test napi_create_sendable_arraybuffer.
+//  * @tc.type: FUNC
+//  */
+// HWTEST_F(NapiSendableTest, CreateSendableTypedArray020, testing::ext::TestSize.Level1)
+// {
+//     static size_t LENGTH = 1024;
+//     static size_t OFFSET = 128;
+//     ASSERT_NE(engine_, nullptr);
+//     napi_env env = reinterpret_cast<napi_env>(engine_);
+//     napi_status res = napi_ok;
+
+//     void *data;
+//     napi_value arraybuffer = nullptr;
+//     res = napi_create_sendable_arraybuffer(env, LENGTH, &data, &arraybuffer);
+//     ASSERT_EQ(res, napi_ok);
+
+//     napi_value result = nullptr;
+//     res = napi_create_sendable_typedarray(env, napi_bigint64_array, LENGTH / 2, arraybuffer, OFFSET, &result);
+//     ASSERT_EQ(res, napi_ok);
+
+//     bool isShared = false;
+//     res = napi_is_sendable(env, result, &isShared);
+//     ASSERT_EQ(res, napi_ok);
+//     ASSERT_EQ(isShared, true);
+
+//     bool isTypedArray = false;
+//     res = napi_is_typedarray(env, result, &isTypedArray);
+//     ASSERT_EQ(res, napi_ok);
+//     ASSERT_EQ(isTypedArray, true);
+
+//     napi_typedarray_type type = napi_uint8_array;
+//     size_t length = 0;
+//     void *getData = nullptr;
+//     napi_value getArrayBuffer = nullptr;
+//     size_t byteOffset = 0;
+//     res = napi_get_typedarray_info(env, result, &type, &length, &getData, &getArrayBuffer, &byteOffset);
+//     ASSERT_EQ(res, napi_ok);
+
+//     bool isEqual = false;
+//     res = napi_strict_equals(env, arraybuffer, getArrayBuffer, &isEqual);
+//     ASSERT_EQ(res, napi_ok);
+
+//     ASSERT_EQ(type, napi_bigint64_array);
+//     ASSERT_EQ(length, LENGTH / 2);
+//     ASSERT_EQ(reinterpret_cast<size_t>(getData), reinterpret_cast<size_t>(data) + OFFSET);
+//     ASSERT_EQ(isEqual, true);
+//     ASSERT_EQ(byteOffset, OFFSET);
+// }
+
+// /**
+//  * @tc.name: CreateSendableTypedArray021
+//  * @tc.desc: Test napi_create_sendable_arraybuffer.
+//  * @tc.type: FUNC
+//  */
+// HWTEST_F(NapiSendableTest, CreateSendableTypedArray021, testing::ext::TestSize.Level1)
+// {
+//     static size_t LENGTH = 1024;
+//     static size_t OFFSET = 128;
+//     ASSERT_NE(engine_, nullptr);
+//     napi_env env = reinterpret_cast<napi_env>(engine_);
+//     napi_status res = napi_ok;
+
+//     void *data;
+//     napi_value arraybuffer = nullptr;
+//     res = napi_create_sendable_arraybuffer(env, LENGTH, &data, &arraybuffer);
+//     ASSERT_EQ(res, napi_ok);
+
+//     napi_value result = nullptr;
+//     res = napi_create_sendable_typedarray(env, napi_biguint64_array, LENGTH / 2, arraybuffer, OFFSET, &result);
+//     ASSERT_EQ(res, napi_ok);
+
+//     bool isShared = false;
+//     res = napi_is_sendable(env, result, &isShared);
+//     ASSERT_EQ(res, napi_ok);
+//     ASSERT_EQ(isShared, true);
+
+//     bool isTypedArray = false;
+//     res = napi_is_typedarray(env, result, &isTypedArray);
+//     ASSERT_EQ(res, napi_ok);
+//     ASSERT_EQ(isTypedArray, true);
+
+//     napi_typedarray_type type = napi_uint8_array;
+//     size_t length = 0;
+//     void *getData = nullptr;
+//     napi_value getArrayBuffer = nullptr;
+//     size_t byteOffset = 0;
+//     res = napi_get_typedarray_info(env, result, &type, &length, &getData, &getArrayBuffer, &byteOffset);
+//     ASSERT_EQ(res, napi_ok);
+
+//     bool isEqual = false;
+//     res = napi_strict_equals(env, arraybuffer, getArrayBuffer, &isEqual);
+//     ASSERT_EQ(res, napi_ok);
+
+//     ASSERT_EQ(type, napi_biguint64_array);
+//     ASSERT_EQ(length, LENGTH / 2);
+//     ASSERT_EQ(reinterpret_cast<size_t>(getData), reinterpret_cast<size_t>(data) + OFFSET);
+//     ASSERT_EQ(isEqual, true);
+//     ASSERT_EQ(byteOffset, OFFSET);
+// }
 
 /**
  * @tc.name: IsDetachedSendableArrayBufferTest001
