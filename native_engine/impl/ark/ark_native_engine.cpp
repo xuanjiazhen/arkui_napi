@@ -1392,10 +1392,6 @@ ModuleTypes ArkNativeEngine::CheckLoadType(const std::string &path)
 
 napi_value ArkNativeEngine::NapiLoadModule(const char* path, const char* module_info)
 {
-    if (path == nullptr) {
-        HILOG_ERROR("ArkNativeEngine:The module name is empty");
-        return nullptr;
-    }
     panda::EscapeLocalScope scope(vm_);
     Local<JSValueRef> undefObj = JSValueRef::Undefined(vm_);
     Local<ObjectRef> exportObj(undefObj);
@@ -1427,10 +1423,6 @@ napi_value ArkNativeEngine::NapiLoadModule(const char* path, const char* module_
 
 napi_value ArkNativeEngine::NapiLoadModuleWithInfo(const char* path, const char* module_info)
 {
-    if (path == nullptr) {
-        HILOG_ERROR("ArkNativeEngine:The module name is empty");
-        return nullptr;
-    }
     panda::EscapeLocalScope scope(vm_);
     Local<JSValueRef> undefObj = JSValueRef::Undefined(vm_);
     Local<ObjectRef> exportObj(undefObj);

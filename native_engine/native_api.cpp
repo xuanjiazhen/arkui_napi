@@ -2983,6 +2983,7 @@ NAPI_EXTERN napi_status napi_run_actor(napi_env env,
 NAPI_EXTERN napi_status napi_load_module(napi_env env, const char* path, napi_value* result)
 {
     NAPI_PREAMBLE(env);
+    CHECK_ARG(env, path);
     CHECK_ARG(env, result);
     auto engine = reinterpret_cast<NativeEngine*>(env);
     *result = engine->NapiLoadModule(path, nullptr);
@@ -2995,6 +2996,7 @@ NAPI_EXTERN napi_status napi_load_module_with_info(napi_env env,
                                                    napi_value* result)
 {
     NAPI_PREAMBLE(env);
+    CHECK_ARG(env, path);
     CHECK_ARG(env, result);
     auto engine = reinterpret_cast<NativeEngine*>(env);
     *result = engine->NapiLoadModuleWithInfo(path, module_info);
