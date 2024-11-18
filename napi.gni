@@ -11,8 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if (!defined(ark_standalone_build)) {
+  ark_standalone_build = false
+}
+
 napi_path = "//foundation//arkui/napi"
 ets_runtime_path = "//arkcompiler/ets_runtime"
+if (ark_standalone_build && !defined(ark_third_party_root)) {
+  ark_third_party_root = "//arkcompiler/toolchain/build/third_party_gn"
+}
 
 napi_sources = [
   "callback_scope_manager/native_callback_scope_manager.cpp",
