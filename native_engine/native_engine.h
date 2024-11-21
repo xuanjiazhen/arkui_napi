@@ -492,6 +492,10 @@ public:
         }
     }
 
+    static bool IncrementJSThreadCount();
+    static void DecrementJSThreadCount();
+    static bool IncrementArkRuntimeCount();
+    static void DecrementArkRuntimeCount();
 private:
     void InitUvField();
     void CreateDefaultFunction(void);
