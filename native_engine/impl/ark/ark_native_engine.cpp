@@ -137,29 +137,19 @@ void FunctionSetContainerId(const EcmaVM *vm, panda::Local<panda::JSValueRef> &v
         return;
     }
 
-    auto extraInfo = funcValue->GetData(vm);
-    if (extraInfo != nullptr) {
+    // NAPI created function has already extraInfo set.
+    auto [hasExtraInfo, _] = funcValue->GetExtraData(vm);
+    if (hasExtraInfo) {
         return;
     }
 
-    NapiFunctionInfo *funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_ERROR("funcInfo is nullptr");
-        return;
-    }
-    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
-    funcValue->SetData(vm, reinterpret_cast<void*>(funcInfo),
-        [](void* env, void *externalPointer, void *data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-            if (info != nullptr) {
-                delete info;
-                info = nullptr;
-            }
-        }, true);
+    // Non-NAPI created function, e.g. ArkTS one, has no extraInfo set, but it need no callback
+    // or data to keep, so we just set extra data only.
+    funcValue->SetExtraData(vm, OHOS::Ace::ContainerScope::CurrentId());
 }
 #endif
 
-panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, NapiNativeCallback callback,
+panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, NapiNativeCallback cb,
     void* data, const NapiPropertyDescriptor* properties, size_t length)
 {
     auto vm = const_cast<EcmaVM*>(reinterpret_cast<NativeEngine*>(env)->GetEcmaVm());
@@ -168,25 +158,14 @@ panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, 
         className = ArkNativeEngine::tempModuleName_ + "." + name;
     }
 
-    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_ERROR("funcInfo is nullptr");
-        return panda::JSValueRef::Undefined(vm);
-    }
-    funcInfo->callback = callback;
-    funcInfo->data = data;
 #ifdef ENABLE_CONTAINER_SCOPE
-    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    int32_t scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(cb), data, scopeId);
+#else
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(cb), data);
 #endif
-
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentClassFunction(vm, ArkNativeFunctionCallBack,
-        [](void* env, void* externalPointer, void* data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-                if (info != nullptr) {
-                    delete info;
-                }
-            },
-        reinterpret_cast<void*>(funcInfo), true);
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewClassFunction(vm,
+        ArkNativeFunctionCallBack, &funcInfo);
 
     Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, className.c_str());
     fn->SetName(vm, fnName);
@@ -215,27 +194,13 @@ panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, 
 Local<panda::JSValueRef> NapiNativeCreateSendableFunction(napi_env env,
                                                           const char* name,
                                                           NapiNativeCallback cb,
-                                                          void* value)
+                                                          void* data)
 {
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_ERROR("funcInfo is nullptr");
-        return JSValueRef::Undefined(vm);
-    }
-    funcInfo->callback = cb;
-    funcInfo->data = value;
 
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewSendable(
-        vm, ArkNativeFunctionCallBack,
-        [](void* env, void* externalPointer, void* data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-            if (info != nullptr) {
-                delete info;
-            }
-        },
-        reinterpret_cast<void*>(funcInfo), true);
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(cb), data);
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewSendable(vm, ArkNativeFunctionCallBack, &funcInfo);
     return fn;
 }
 
@@ -248,13 +213,6 @@ panda::Local<panda::JSValueRef> NapiDefineSendableClass(napi_env env,
                                                         napi_value parent)
 {
     const EcmaVM* vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_FATAL("funcInfo is nullptr");
-        return JSValueRef::Undefined(vm);
-    }
-    funcInfo->callback = callback;
-    funcInfo->data = data;
 
     std::string className(name);
     if (ArkNativeEngine::napiProfilerEnabled) {
@@ -267,17 +225,10 @@ panda::Local<panda::JSValueRef> NapiDefineSendableClass(napi_env env,
         localParent = LocalValueFromJsValue(parent);
     }
 
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(callback), data);
     auto infos = NativeSendable::CreateSendablePropertiesInfos(env, properties, propertiesLength);
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewSendableClassFunction(
-        vm, ArkNativeFunctionCallBack,
-        [](void* env, void* externalPointer, void* data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-            if (info != nullptr) {
-                delete info;
-            }
-        },
-        reinterpret_cast<void*>(funcInfo), fnName, infos, localParent, true);
-
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewSendableClassFunction(vm, ArkNativeFunctionCallBack,
+        &funcInfo, fnName, infos, localParent);
     return fn;
 }
 
@@ -298,8 +249,8 @@ void* ArkNativeEngine::GetNativePtrCallBack(void* data)
         HILOG_ERROR("data is nullptr");
         return nullptr;
     }
-    auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-    auto cb = reinterpret_cast<void*>(info->callback);
+    auto info = reinterpret_cast<panda::NapiFunctionInfo*>(data);
+    auto cb = reinterpret_cast<void*>(info->GetCallback());
     return cb;
 }
 
@@ -716,10 +667,9 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
     panda::LocalScope scope(vm);
     bool getStackBeforeCallNapiSuccess = false;
     JSNApi::GetStackBeforeCallNapiSuccess(vm, getStackBeforeCallNapiSuccess);
-    auto info = reinterpret_cast<NapiFunctionInfo*>(runtimeInfo->GetData());
     auto env = reinterpret_cast<napi_env>(JSNApi::GetEnv(vm));
     auto engine = reinterpret_cast<NativeEngine*>(env);
-    auto cb = info->callback;
+    auto cb = reinterpret_cast<NapiNativeCallback>(panda::NapiFunctionInfo::GetCallback(runtimeInfo));
     if (engine == nullptr) {
         HILOG_ERROR("native engine is null");
         return **JSValueRef::Undefined(vm);
@@ -766,31 +716,17 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
 }
 
 static Local<panda::JSValueRef> NapiNativeCreateFunction(napi_env env, const char* name,
-                                                         NapiNativeCallback cb, void* value)
+                                                         NapiNativeCallback cb, void* data)
 {
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_ERROR("funcInfo is nullptr");
-        return JSValueRef::Undefined(vm);
-    }
-    funcInfo->callback = cb;
-    funcInfo->data = value;
 #ifdef ENABLE_CONTAINER_SCOPE
-    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    int32_t scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(cb), data, scopeId);
+#else
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(cb), data);
 #endif
-
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(
-        vm, ArkNativeFunctionCallBack,
-        [](void* env, void* externalPointer, void* data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-            if (info != nullptr) {
-                delete info;
-            }
-        },
-        reinterpret_cast<void*>(funcInfo), true
-    );
+    Local<panda::FunctionRef> fn = panda::FunctionRef::New(vm, ArkNativeFunctionCallBack, &funcInfo);
     Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, name);
     fn->SetName(vm, fnName);
     return fn;

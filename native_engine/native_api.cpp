@@ -450,29 +450,15 @@ NAPI_EXTERN napi_status napi_create_function(napi_env env,
     auto vm = const_cast<EcmaVM*>(reinterpret_cast<NativeEngine*>(env)->GetEcmaVm());
     panda::JsiFastNativeScope fastNativeScope(vm);
     EscapeLocalScope scope(vm);
-    auto callback = reinterpret_cast<NapiNativeCallback>(cb);
     const char* name = "defaultName";
-    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_ERROR("funcInfo is nullptr");
-        return napi_set_last_error(env, napi_invalid_arg);
-    }
-    funcInfo->callback = callback;
-    funcInfo->data = data;
 #ifdef ENABLE_CONTAINER_SCOPE
-    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    int32_t scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(cb), data, scopeId);
+#else
+    panda::NapiFunctionInfo funcInfo(reinterpret_cast<panda::NativeFunctionCallback>(cb), data);
 #endif
 
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(
-        vm, ArkNativeFunctionCallBack,
-        [](void* env, void* externalPointer, void* data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-            if (info != nullptr) {
-                delete info;
-            }
-        },
-        reinterpret_cast<void*>(funcInfo), true
-    );
+    Local<panda::FunctionRef> fn = panda::FunctionRef::New(vm, ArkNativeFunctionCallBack, &funcInfo);
     Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, utf8name != nullptr ? utf8name : name);
     fn->SetName(vm, fnName);
     *result = JsValueFromLocalValue(scope.Escape(fn));
@@ -1213,9 +1199,9 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     panda::FunctionRef* function = reinterpret_cast<panda::FunctionRef *>(func);
 #ifdef ENABLE_CONTAINER_SCOPE
     int32_t scopeId = OHOS::Ace::ContainerScope::CurrentId();
-    auto funcInfo = reinterpret_cast<NapiFunctionInfo *>(function->GetData(vm));
-    if (funcInfo != nullptr) {
-        scopeId = funcInfo->scopeId;
+    auto [hasExtraInfo, extraData] = function->GetExtraData(vm);
+    if (hasExtraInfo) {
+        scopeId = extraData;
     }
     OHOS::Ace::ContainerScope containerScope(scopeId);
 #endif
@@ -1330,10 +1316,7 @@ NAPI_EXTERN napi_status napi_get_cb_info(napi_env env,              // [in] NAPI
         *this_arg = JsValueFromLocalValue(info->GetThisRef());
     }
     if (data != nullptr) {
-        auto funcInfo = static_cast<NapiFunctionInfo*>(info->GetData());
-        if (funcInfo != nullptr) {
-            *data = funcInfo->data;
-        }
+        *data = panda::NapiFunctionInfo::GetData(info);
     }
 
     return napi_clear_last_error(env);
