@@ -73,6 +73,12 @@ std::unordered_set<NativeEngine*> NativeEngine::g_alivedEngine_;
 uint64_t NativeEngine::g_lastEngineId_ = 1;
 std::mutex NativeEngine::g_mainThreadEngineMutex_;
 NativeEngine* NativeEngine::g_mainThreadEngine_;
+static constexpr auto MAX_JS_THREAD_COUNT = 80;
+static std::mutex g_jsThreadCountMutex;
+static std::atomic<uint32_t> g_jsThreadCount{0};
+static constexpr size_t MAX_ARK_RUNTIME_COUNT = 64;
+static std::atomic<uint32_t> g_arkRuntimeCount{0};
+static std::mutex g_arkRuntimeMutex;
 
 NativeEngine::NativeEngine(void* jsEngine) : jsEngine_(jsEngine)
 {
@@ -1096,4 +1102,40 @@ napi_status NativeEngine::SendEvent(const std::function<void()> &cb, napi_event_
         HILOG_ERROR("default function is nullptr!");
         return napi_status::napi_generic_failure;
     }
+}
+
+bool NativeEngine::IncrementJSThreadCount()
+{
+    std::lock_guard<std::mutex> lock(g_jsThreadCountMutex);
+    if (g_jsThreadCount >= MAX_JS_THREAD_COUNT) {
+        HILOG_ERROR("reach MAX_JS_THREAD_COUNT");
+        return false;
+    } else {
+        g_jsThreadCount ++;
+        return true;
+    }
+}
+
+void NativeEngine::DecrementJSThreadCount()
+{
+    std::lock_guard<std::mutex> lock(g_jsThreadCountMutex);
+    g_jsThreadCount --;
+}
+
+bool NativeEngine::IncrementArkRuntimeCount()
+{
+    std::lock_guard<std::mutex> lock(g_arkRuntimeMutex);
+    if (g_arkRuntimeCount >= MAX_ARK_RUNTIME_COUNT) {
+        HILOG_ERROR("reach MAX_ARK_RUNTIME_COUNT");
+        return false;
+    } else {
+        g_arkRuntimeCount ++;
+        return true;
+    }
+}
+
+void NativeEngine::DecrementArkRuntimeCount()
+{
+    std::lock_guard<std::mutex> lock(g_arkRuntimeMutex);
+    g_arkRuntimeCount --;
 }
