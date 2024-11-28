@@ -37,6 +37,7 @@
 #ifdef ENABLE_HITRACE
 #include "hitrace_meter.h"
 #endif
+#include <memory>
 
 using panda::ArrayRef;
 using panda::ArrayBufferRef;
@@ -4152,5 +4153,18 @@ NAPI_EXTERN napi_status napi_is_bitvector(napi_env env, napi_value value, bool* 
 
     *result = nativeValue->IsBitVector(vm);
 
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_vms_handshake(napi_env env, void* inputIface, void** outputIface)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, inputIface);
+    CHECK_ARG(env, outputIface);
+    RETURN_STATUS_IF_FALSE(env, panda::ExternalVMController::IsControllerCorrect(inputIface), napi_invalid_arg);
+    
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::ExternalVMController::SetOtherVMController(const_cast<EcmaVM*>(vm), inputIface);
+    *outputIface = panda::ExternalVMController::GetThisVMController(vm);
     return napi_clear_last_error(env);
 }
