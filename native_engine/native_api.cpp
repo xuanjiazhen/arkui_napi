@@ -2133,6 +2133,22 @@ NAPI_EXTERN napi_status napi_create_reference(napi_env env,
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_create_proxy_reference(napi_env env,
+                                              napi_value value,
+                                              uint32_t initial_refcount,
+                                              napi_ref* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    bool isProxyReference = true
+    auto ref = new ArkNativeReference(engine, value, initial_refcount, isProxyReference);
+
+    *result = reinterpret_cast<napi_ref>(ref);
+    return napi_clear_last_error(env);
+}
+
 // Deletes a reference. The referenced value is released, and may
 // be GC'd unless there are other references to it.
 NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)

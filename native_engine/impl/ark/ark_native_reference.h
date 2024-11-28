@@ -46,6 +46,16 @@ public:
                        bool isAsyncCall = false,
                        size_t nativeBindingSize = 0);
     ArkNativeReference(ArkNativeEngine* engine,
+                       napi_value value,
+                       uint32_t initialRefcount,
+                       bool isProxyReference,
+                       bool deleteSelf = false,
+                       NapiNativeFinalize napiCallback = nullptr,
+                       void* data = nullptr,
+                       void* hint = nullptr,
+                       bool isAsyncCall = false,
+                       size_t nativeBindingSize = 0);
+    ArkNativeReference(ArkNativeEngine* engine,
                        Local<JSValueRef> value,
                        uint32_t initialRefcount,
                        bool deleteSelf,

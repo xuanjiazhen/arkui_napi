@@ -47,6 +47,30 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
     ArkNativeReferenceConstructor(initialRefcount, deleteSelf);
 }
 
+
+ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
+                                       napi_value value,
+                                       uint32_t initialRefcount,
+                                       bool isProxyReference,
+                                       bool deleteSelf,
+                                       NapiNativeFinalize napiCallback,
+                                       void* data,
+                                       void* hint,
+                                       bool isAsyncCall,
+                                       size_t nativeBindingSize)
+    : engine_(engine),
+      value_(engine->GetEcmaVm(), LocalValueFromJsValue(value), isProxyReference),
+      refCount_(initialRefcount),
+      deleteSelf_(deleteSelf),
+      isAsyncCall_(isAsyncCall),
+      napiCallback_(napiCallback),
+      data_(data),
+      hint_(hint),
+      nativeBindingSize_(nativeBindingSize)
+{
+    ArkNativeReferenceConstructor(initialRefcount, deleteSelf);
+}
+
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        Local<JSValueRef> value,
                                        uint32_t initialRefcount,
