@@ -26,18 +26,19 @@
 #include<atomic>
 #endif
 
-#include "callback_scope_manager/native_callback_scope_manager.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "module_manager/native_module_manager.h"
+
+#include "callback_scope_manager/native_callback_scope_manager.h"
 #include "native_engine/native_async_work.h"
+#include "module_manager/native_module_manager.h"
 #include "native_engine/native_deferred.h"
 #include "native_engine/native_reference.h"
 #include "native_engine/native_safe_async_work.h"
 #include "native_engine/native_value.h"
 #include "native_property.h"
 #include "reference_manager/native_reference_manager.h"
+#include "utils/data_protect.h"
 #include "utils/macros.h"
-#include "libpandafile/data_protect.h"
 
 namespace panda::ecmascript {
     class EcmaVM;
@@ -85,6 +86,14 @@ using SourceMapTranslateCallback = std::function<bool(std::string& url, int& lin
 using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
 using EcmaVM = panda::ecmascript::EcmaVM;
 using JsFrameInfo = panda::ecmascript::JsFrameInfo;
+
+enum class JSThreadType {
+    MAIN_THREAD,
+    WORKER_THREAD,
+    TASKPOOL_THREAD,
+    RESTRICTEDWORKER_THREAD,
+    NATIVE_THREAD,
+};
 
 class NAPI_EXPORT NativeEngine {
 public:
@@ -552,8 +561,7 @@ private:
     int32_t apiVersion_ = 8;
 
     // the old worker api use before api9, the new worker api start with api9
-    enum JSThreadType { MAIN_THREAD, WORKER_THREAD, TASKPOOL_THREAD, RESTRICTEDWORKER_THREAD, NATIVE_THREAD };
-    panda::panda_file::DataProtect jsThreadType_ {panda::panda_file::DataProtect(uintptr_t(JSThreadType::MAIN_THREAD))};
+    DataProtect jsThreadType_ { DataProtect(uintptr_t(JSThreadType::MAIN_THREAD)) };
     // current is hostengine, can create old worker, new worker, or no workers on hostengine
     std::atomic<WorkerVersion> workerVersion_ { WorkerVersion::NONE };
 
