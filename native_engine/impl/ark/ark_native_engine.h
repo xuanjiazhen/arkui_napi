@@ -30,6 +30,7 @@
 
 #include "ark_idle_monitor.h"
 #include "ark_native_options.h"
+#include "ark_native_task_runner.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_engine/impl/ark/ark_finalizers_pack.h"
@@ -139,7 +140,8 @@ class NAPI_EXPORT ArkNativeEngine : public NativeEngine {
 friend struct MoudleNameLocker;
 public:
     // ArkNativeEngine constructor
-    ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker = false);
+    ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker = false,
+                    std::shared_ptr<TaskRunner> taskRunner = nullptr);
     // ArkNativeEngine destructor
     ~ArkNativeEngine() override;
 
@@ -405,6 +407,7 @@ private:
     NapiUncaughtExceptionCallback napiUncaughtExceptionCallback_ { nullptr };
     SourceMapCallback SourceMapCallback_ { nullptr };
     static bool napiProfilerParamReaded;
+    std::shared_ptr<TaskRunner> taskRunner_;
     bool isLimitedWorker_ = false;
     size_t pendingFinalizersPackNativeBindingSize_ {0};
     ArkFinalizersPack arkFinalizersPack_ {};
