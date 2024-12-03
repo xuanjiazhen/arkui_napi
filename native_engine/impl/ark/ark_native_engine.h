@@ -369,6 +369,10 @@ public:
     {
         return crossThreadCheck_;
     }
+    inline void SetCrossThreadCheckStatus(bool status) override
+    {
+        crossThreadCheck_ = status;
+    }
     static constexpr size_t FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD = 500 * 1024 * 1024;  // 500 MB
 
 private:

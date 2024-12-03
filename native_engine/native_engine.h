@@ -470,6 +470,7 @@ public:
     napi_status SendEvent(const std::function<void()> &cb, napi_event_priority priority = napi_eprio_high);
 
     virtual bool IsCrossThreadCheckEnabled() const = 0;
+    virtual void SetCrossThreadCheckStatus(bool status) = 0;
 
     bool IsInDestructor() const
     {
