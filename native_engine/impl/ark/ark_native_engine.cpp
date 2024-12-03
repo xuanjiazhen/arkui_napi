@@ -2276,12 +2276,22 @@ void ArkNativeEngine::RegisterNapiUncaughtExceptionHandler(NapiUncaughtException
 
 void ArkNativeEngine::HandleUncaughtException()
 {
-    if (napiUncaughtExceptionCallback_ == nullptr) {
-        return;
-    }
     LocalScope scope(vm_);
     lastException_.Empty();
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm_);
+    if (!exception.IsEmpty() && !exception->IsHole()) {
+        for (auto callback : NativeEngine::GetOnAllErrorCallback()) {
+            if (callback.second != nullptr) {
+                callback.second(reinterpret_cast<napi_env>(this), callback.first,
+                    ArkValueToNapiValue(reinterpret_cast<napi_env>(this), exception),
+                    this->GetWorkerName(), this->GetJSThreadTypeInt());
+            }
+        }
+    }
+
+    if (napiUncaughtExceptionCallback_ == nullptr) {
+        return;
+    }
     if (!exception.IsEmpty() && !exception->IsHole()) {
         if (napiUncaughtExceptionCallback_ != nullptr) {
             napiUncaughtExceptionCallback_(ArkValueToNapiValue(reinterpret_cast<napi_env>(this), exception));

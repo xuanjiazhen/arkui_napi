@@ -73,6 +73,8 @@ std::unordered_set<NativeEngine*> NativeEngine::g_alivedEngine_;
 uint64_t NativeEngine::g_lastEngineId_ = 1;
 std::mutex NativeEngine::g_mainThreadEngineMutex_;
 NativeEngine* NativeEngine::g_mainThreadEngine_;
+std::mutex NativeEngine::g_onErrorCbsMutex_;
+std::unordered_map<void*, NapiOnErrorCallback> NativeEngine::g_onErrorCbs_;
 
 NativeEngine::NativeEngine(void* jsEngine) : jsEngine_(jsEngine)
 {
