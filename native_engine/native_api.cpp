@@ -3875,7 +3875,9 @@ NAPI_EXTERN napi_status napi_queue_async_work_with_qos(napi_env env, napi_async_
     CHECK_ARG(env, work);
 
     auto asyncWork = reinterpret_cast<NativeAsyncWork*>(work);
-    asyncWork->QueueWithQos(qos);
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+
+    asyncWork->QueueWithQos(engine, qos);
     return napi_status::napi_ok;
 }
 
