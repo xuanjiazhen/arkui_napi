@@ -69,6 +69,7 @@ static constexpr size_t MAX_BYTE_LENGTH = 2097152;
 static constexpr size_t ONEMIB_BYTE_SIZE = 1048576;
 static constexpr size_t SMALL_STRING_SIZE = 16;
 
+
 class HandleScopeWrapper {
 public:
     explicit HandleScopeWrapper(NativeEngine* engine) : scope_(engine->GetEcmaVm()) {}
