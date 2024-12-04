@@ -85,6 +85,8 @@ using SourceMapTranslateCallback = std::function<bool(std::string& url, int& lin
 using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
 using EcmaVM = panda::ecmascript::EcmaVM;
 using JsFrameInfo = panda::ecmascript::JsFrameInfo;
+using NapiOnErrorCallback = std::function<void(napi_env env, void* observer,
+    napi_value result, std::string name, uint32_t type)>;
 
 class NAPI_EXPORT NativeEngine {
 public:
@@ -492,6 +494,40 @@ public:
         }
     }
 
+    static void RegisterOnErrorCallback(void* observer, NapiOnErrorCallback callback)
+    {
+        std::lock_guard<std::mutex> lock(g_onErrorCbsMutex_);
+        g_onErrorCbs_.emplace(observer, callback);
+    }
+
+    static void UnRegisterOnErrorCallback(void* observer)
+    {
+        std::lock_guard<std::mutex> lock(g_onErrorCbsMutex_);
+        g_onErrorCbs_.erase(observer);
+    }
+
+    static std::unordered_map<void*, NapiOnErrorCallback> &GetOnAllErrorCallback()
+    {
+        std::lock_guard<std::mutex> lock(g_onErrorCbsMutex_);
+        return g_onErrorCbs_;
+    }
+
+    int32_t GetJSThreadTypeInt()
+    {
+        return GetJSThreadType();
+    }
+
+    std::string GetWorkerName()
+    {
+        return workerName_;
+    }
+
+    void SetWorkerName(std::string &name)
+    {
+        workerName_ = name;
+    }
+
+
 private:
     void InitUvField();
     void CreateDefaultFunction(void);
@@ -538,6 +574,7 @@ public:
     panda::Local<panda::ObjectRef> lastException_;
 
 private:
+    std::string workerName_ = "";
     std::string moduleName_;
     std::string moduleFileName_;
     std::mutex instanceDataLock_;
@@ -556,6 +593,10 @@ private:
     panda::panda_file::DataProtect jsThreadType_ {panda::panda_file::DataProtect(uintptr_t(JSThreadType::MAIN_THREAD))};
     // current is hostengine, can create old worker, new worker, or no workers on hostengine
     std::atomic<WorkerVersion> workerVersion_ { WorkerVersion::NONE };
+    JSThreadType GetJSThreadType()
+    {
+        return static_cast<JSThreadType>(jsThreadType_.GetOriginPointer());
+    }
 
 #if !defined(PREVIEW)
     static void UVThreadRunner(void* nativeEngine);
@@ -586,6 +627,8 @@ private:
     static uint64_t g_lastEngineId_;
     static std::mutex g_mainThreadEngineMutex_;
     static NativeEngine* g_mainThreadEngine_;
+    static std::mutex g_onErrorCbsMutex_;
+    static std::unordered_map<void*, NapiOnErrorCallback> g_onErrorCbs_;
 };
 
 bool DumpHybridStack(const EcmaVM* vm, std::string &stack, uint32_t ignored = 0, int32_t deepth = -1);
