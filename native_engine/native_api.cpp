@@ -14,6 +14,7 @@
  */
 #ifndef NAPI_EXPERIMENTAL
 #define NAPI_EXPERIMENTAL
+#include "impl/ark/ark_native_reference.h"
 #endif
 
 #ifdef ENABLE_HITRACE
@@ -1993,7 +1994,7 @@ NAPI_EXTERN napi_status napi_remove_wrap(napi_env env, napi_value js_object, voi
         Local<panda::ObjectRef> wrapper = val;
         auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(vm, 0));
         nativeObject->Delete(vm, key);
-        delete ref;
+        reinterpret_cast<ArkNativeReference*>(ref)->Delete();
     } else {
         Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
         NativeReference* ref = nullptr;
@@ -2162,13 +2163,7 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
     CHECK_ARG(env, ref);
 
     auto reference = reinterpret_cast<NativeReference*>(ref);
-    uint32_t refCount = reference->GetRefCount();
-    if (refCount > 0 || reference->GetFinalRun()) {
-        delete reference;
-        reference = nullptr;
-    } else {
-        reference->SetDeleteSelf();
-    }
+    reference->Delete();
 
     return napi_clear_last_error(env);
 }

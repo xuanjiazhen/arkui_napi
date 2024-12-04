@@ -23,6 +23,7 @@ public:
     virtual ~NativeReference() {}
     virtual uint32_t Ref() = 0;
     virtual uint32_t Unref() = 0;
+    virtual void Delete() = 0;
     virtual napi_value Get(NativeEngine* engine)
     {
         return Get();

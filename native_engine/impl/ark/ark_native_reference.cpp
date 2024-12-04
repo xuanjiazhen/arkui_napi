@@ -79,9 +79,7 @@ ArkNativeReference::~ArkNativeReference()
     if (value_.IsEmpty()) {
         return;
     }
-    hasDelete_ = true;
     value_.FreeGlobalHandleAddr();
-    FinalizeCallback(FinalizerState::DESTRUCTION);
 }
 
 uint32_t ArkNativeReference::Ref()
@@ -106,6 +104,19 @@ uint32_t ArkNativeReference::Unref()
         value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
     }
     return refCount_;
+}
+
+void ArkNativeReference::Delete()
+{
+    if (finalRun_) {
+        if (deleteSelf_ || refCount_ > 0) {
+            delete this;
+        } else {
+            deleteSelf_ = true;
+        }
+    } else {
+        FinalizeCallback(FinalizerState::DESTRUCTION);
+    }
 }
 
 napi_value ArkNativeReference::Get(NativeEngine* engine)
@@ -150,10 +161,10 @@ void* ArkNativeReference::GetData()
     return data_;
 }
 
-void ArkNativeReference::FinalizeCallback(FinalizerState state)
+void ArkNativeReference::FinalizeCallback(FinalizerState mode)
 {
     if (napiCallback_ != nullptr && !engine_->IsInDestructor()) {
-        if (state == FinalizerState::COLLECTION) {
+        if (mode == FinalizerState::COLLECTION) {
             std::tuple<NativeEngine*, void*, void*> tuple = std::make_tuple(engine_, data_, hint_);
             RefFinalizer finalizer = std::make_pair(napiCallback_, tuple);
             if (isAsyncCall_) {
@@ -170,8 +181,32 @@ void ArkNativeReference::FinalizeCallback(FinalizerState state)
     hint_ = nullptr;
     finalRun_ = true;
 
-    if (deleteSelf_ && !hasDelete_) {
-        delete this;
+    if (mode == FinalizerState::ENV_TEARDOWN || mode == FinalizerState::DESTRUCTION) {
+        napi_value val = Get(engine_);
+        if (val != nullptr) {
+            auto nativeValue = LocalValueFromJsValue(val);
+            auto vm = engine_->GetEcmaVm();
+            Local<panda::StringRef> key = panda::StringRef::GetNapiWrapperString(vm);
+            bool isObj = nativeValue->IsObject(vm);
+            bool isFunc = nativeValue->IsFunction(vm);
+            if (isObj || isFunc) {
+                Local<panda::ObjectRef> nativeObj;
+                if (isObj) {
+                    nativeObj = Local<panda::ObjectRef>(nativeValue);
+                } else {
+                    nativeObj = nativeValue->ToObject(vm);
+                }
+                if(nativeObj->Get(vm, key)->IsObject(vm)) {
+                    nativeObj->Delete(vm, key);
+                }
+            }
+        }
+    }
+
+    if (deleteSelf_ || mode == FinalizerState::ENV_TEARDOWN) {
+        Delete();
+    } else {
+        deleteSelf_ = true;
     }
 }
 
