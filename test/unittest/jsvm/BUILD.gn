@@ -17,11 +17,16 @@ import("//foundation/arkui/napi/napi.gni")
 
 ohos_unittest("test_jsvm") {
   module_out_path = "node/unittest"
-  include_dirs = []
+  include_dirs = [
+    "//third_party/node/src",
+  ]
 
   cflags = [ "-g3" ]
 
-  sources = [ "test_jsvm.cpp" ]
+  sources = [
+    "test_jsvm.cpp",
+    "jsvm_utils.cpp",
+  ]
   deps = [ "../../../jsvm:libjsvm" ]
   defines = []
   if (use_clang_coverage) {
