@@ -571,6 +571,14 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
         });
         arkIdleMonitor_->SetStartTimerCallback();
         PostLooperTriggerIdleGCTask();
+
+        JSNApi::SetPostTaskToMainThreadCallback(vm, [](PostToMainThreadTask task,
+                                                       std::string name, uint64_t delayTime) {
+            std::shared_ptr<OHOS::AppExecFwk::EventHandler> mainThreadHandler =
+                std::make_shared<OHOS::AppExecFwk::EventHandler>(OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
+            int64_t delayTimeToInt = std::max(static_cast<int64_t>(delayTime), static_cast<int64_t>(0));
+            mainThreadHandler->PostTask(task, name, delayTimeToInt, OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
+        });
     }
 #endif
 }
