@@ -4009,10 +4009,26 @@ NAPI_EXTERN napi_status napi_create_ark_runtime(napi_env* env)
         HILOG_ERROR("invalid create callback");
         return napi_status::napi_invalid_arg;
     }
+
+    bool success = NativeEngine::IncrementJSThreadCount();
+    if (!success) {
+        HILOG_ERROR("reach max JSThread count limit");
+        return napi_status::napi_create_ark_runtime_too_many_envs;
+    }
+    success = NativeEngine::IncrementArkRuntimeCount();
+    if (!success) {
+        HILOG_ERROR("reach max ARKRuntime count limit");
+        NativeEngine::DecrementJSThreadCount();
+        return napi_status::napi_create_ark_runtime_too_many_envs;
+    }
+
     napi_status result = NativeCreateEnv::g_createNapiEnvCallback(env);
     if (result == napi_ok) {
         auto vm = reinterpret_cast<NativeEngine*>(*env)->GetEcmaVm();
         panda::JSNApi::SetExecuteBufferMode(vm);
+    } else {
+        NativeEngine::DecrementArkRuntimeCount();
+        NativeEngine::DecrementJSThreadCount();
     }
     return result;
 }
@@ -4023,7 +4039,13 @@ NAPI_EXTERN napi_status napi_destroy_ark_runtime(napi_env* env)
         HILOG_ERROR("invalid destroy callback");
         return napi_status::napi_invalid_arg;
     }
-    return NativeCreateEnv::g_destroyNapiEnvCallback(env);
+
+    napi_status result = NativeCreateEnv::g_destroyNapiEnvCallback(env);
+    if (result == napi_status::napi_ok) {
+        NativeEngine::DecrementArkRuntimeCount();
+        NativeEngine::DecrementJSThreadCount();
+    }
+    return result;
 }
 
 NAPI_EXTERN napi_status napi_is_concurrent_function(napi_env env, napi_value value, bool* result)
