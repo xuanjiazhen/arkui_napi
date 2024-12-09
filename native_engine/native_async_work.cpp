@@ -130,6 +130,80 @@ bool NativeAsyncWork::Queue()
     return true;
 }
 
+bool NativeAsyncWork::Queue(NativeEngine* engine)
+{
+    if (engine != engine_) {
+        LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
+                       "param env is not equal to its owner");
+    } else if (engineId_ != engine_->GetId()) {
+        LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
+                       "owner env has been destroyed, "
+                       "owner id: %{public}" PRIu64 ", current env id: %{public}" PRIu64,
+                       engineId_, engine_->GetId());
+    }
+
+    uv_loop_t* loop = engine_->GetUVLoop();
+    if (loop == nullptr) {
+        HILOG_ERROR("Get loop failed");
+        return false;
+    }
+    engine_->IncreaseWaitingRequestCounter();
+#ifdef ENABLE_HITRACE
+    StartTrace(HITRACE_TAG_ACE, "Napi queue, " + this->GetTraceDescription());
+    HiTraceId taskId = taskTraceId_;
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, taskId, "%s", TRACE_POINT_QUEUE.c_str());
+#endif
+    int status = uv_queue_work(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback);
+#ifdef ENABLE_HITRACE
+    HiTraceChain::Tracepoint(HITRACE_TP_CR, taskId, "%s", TRACE_POINT_QUEUE.c_str());
+    FinishTrace(HITRACE_TAG_ACE);
+#endif
+    if (status != 0) {
+        HILOG_ERROR("uv_queue_work failed");
+        engine_->DecreaseWaitingRequestCounter();
+        return false;
+    }
+    HILOG_DEBUG("uv_queue_work succeed");
+    return true;
+}
+
+bool NativeAsyncWork::QueueWithQos(NativeEngine* engine, napi_qos_t qos)
+{
+    if (engine != engine_) {
+        LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
+                       "param env is not equal to its owner");
+    } else if (engineId_ != engine_->GetId()) {
+        LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
+                       "param env is not equal to its owner, "
+                       "owner id: %{public}" PRIu64 ", current env id: %{public}" PRIu64,
+                       engineId_, engine_->GetId());
+    }
+
+    uv_loop_t* loop = engine_->GetUVLoop();
+    if (loop == nullptr) {
+        HILOG_ERROR("Get loop failed");
+        return false;
+    }
+    engine_->IncreaseWaitingRequestCounter();
+#ifdef ENABLE_HITRACE
+    StartTrace(HITRACE_TAG_ACE, "Napi queueWithQos, " + this->GetTraceDescription());
+    HiTraceId taskId = taskTraceId_;
+    HiTraceChain::Tracepoint(HITRACE_TP_CS, taskId, "%s", TRACE_POINT_QUEUE_WITH_QOS.c_str());
+#endif
+    int status = uv_queue_work_with_qos(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback, uv_qos_t(qos));
+#ifdef ENABLE_HITRACE
+    HiTraceChain::Tracepoint(HITRACE_TP_CR, taskId, "%s", TRACE_POINT_QUEUE_WITH_QOS.c_str());
+    FinishTrace(HITRACE_TAG_ACE);
+#endif
+    if (status != 0) {
+        HILOG_ERROR("uv_queue_work_with_qos failed");
+        engine_->DecreaseWaitingRequestCounter();
+        return false;
+    }
+    HILOG_DEBUG("uv_queue_work_with_qos succeed");
+    return true;
+}
+
 bool NativeAsyncWork::QueueWithQos(napi_qos_t qos)
 {
     if (engineId_ != engine_->GetId()) {
@@ -167,6 +241,25 @@ bool NativeAsyncWork::QueueWithQos(napi_qos_t qos)
 bool NativeAsyncWork::Cancel()
 {
     if (engineId_ != engine_->GetId()) {
+        LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
+                       "param env is not equal to its owner, "
+                       "owner id: %{public}" PRIu64 ", current env id: %{public}" PRIu64,
+                       engineId_, engine_->GetId());
+    }
+
+    int status = uv_cancel((uv_req_t*)&work_);
+    if (status != 0) {
+        HILOG_ERROR("uv_cancel failed");
+        return false;
+    }
+    return true;
+}
+
+bool NativeAsyncWork::Cancel(NativeEngine* engine)
+{
+    if (engine != engine_) {
+        LOG_IF_SPECIAL(engine, engine->IsCrossThreadCheckEnabled(), "param env is not equal to its owner");
+    } else if (engineId_ != engine_->GetId()) {
         LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
                        "param env is not equal to its owner, "
                        "owner id: %{public}" PRIu64 ", current env id: %{public}" PRIu64,

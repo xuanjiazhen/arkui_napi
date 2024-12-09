@@ -56,8 +56,11 @@ public:
 
     virtual ~NativeAsyncWork();
     virtual bool Queue();
+    virtual bool Queue(NativeEngine* engine);
     virtual bool QueueWithQos(napi_qos_t qos);
+    virtual bool QueueWithQos(NativeEngine* engine, napi_qos_t qos);
     virtual bool Cancel();
+    virtual bool Cancel(NativeEngine* engine);
     virtual std::string GetTraceDescription();
     template<typename Inner, typename Outer>
     static Outer* DereferenceOf(const Inner Outer::*field, const Inner* pointer)
