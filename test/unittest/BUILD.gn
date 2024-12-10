@@ -125,6 +125,9 @@ group("unittest") {
   if (target_cpu == "arm64") {
     deps += [ "jsvm:jsvm_unittest" ]
   }
+  if (target_cpu == "arm64" || target_cpu == "x86_64") {
+    deps += [ "cj_native:cj_native_unittest" ]
+  }
 }
 
 #jerry tdd test for phone running

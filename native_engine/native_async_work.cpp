@@ -37,8 +37,8 @@ using OHOS::Ace::ContainerScope;
 #endif
 
 #ifdef ENABLE_HITRACE
-bool g_napiTraceIdEnabled = false;
-bool g_ParamUpdated = false;
+std::atomic<bool> g_napiTraceIdEnabled(false);
+std::atomic<bool> g_ParamUpdated(false);
 constexpr size_t TRACE_BUFFER_SIZE = 120;
 constexpr size_t TRACEID_PARAM_SIZE = 10;
 const std::string TRACE_POINT_QUEUE = "napi::NativeAsyncWork::Queue";
@@ -57,19 +57,19 @@ NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
     work_.data = this;
     (void)asyncResourceName;
 #ifdef ENABLE_HITRACE
-    if (!g_ParamUpdated) {
+    if (!g_ParamUpdated.load()) {
         char napiTraceIdEnabled[TRACEID_PARAM_SIZE] = {0};
         int ret = GetParameter("persist.hiviewdfx.napitraceid.enabled", "false",
             napiTraceIdEnabled, sizeof(napiTraceIdEnabled));
         if (ret > 0 && strcmp(napiTraceIdEnabled, "true") == 0) {
-            g_napiTraceIdEnabled = true;
+            g_napiTraceIdEnabled.store(true);
         }
-        g_ParamUpdated = true;
+        g_ParamUpdated.store(true);
     }
     bool createdTraceId = false;
 
     HiTraceId thisId = HiTraceChain::GetId();
-    if (g_napiTraceIdEnabled && (!thisId.IsValid())) {
+    if (g_napiTraceIdEnabled.load() && (!thisId.IsValid())) {
         thisId = HiTraceChain::Begin("New NativeAsyncWork", 0);
         createdTraceId = true;
     }
@@ -93,14 +93,9 @@ NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
 
 NativeAsyncWork::~NativeAsyncWork() = default;
 
-bool NativeAsyncWork::Queue()
+bool NativeAsyncWork::Queue(NativeEngine* engine)
 {
-    if (engineId_ != engine_->GetId()) {
-        LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
-                       "owner env has been destroyed, "
-                       "owner id: %{public}" PRIu64 ", current env id: %{public}" PRIu64,
-                       engineId_, engine_->GetId());
-    }
+    VALID_ENGINE_CHECK(engine, engine_, engineId_);
 
     uv_loop_t* loop = engine_->GetUVLoop();
     if (loop == nullptr) {
@@ -127,14 +122,9 @@ bool NativeAsyncWork::Queue()
     return true;
 }
 
-bool NativeAsyncWork::QueueWithQos(napi_qos_t qos)
+bool NativeAsyncWork::QueueWithQos(NativeEngine* engine, napi_qos_t qos)
 {
-    if (engineId_ != engine_->GetId()) {
-        LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
-                       "param env is not equal to its owner, "
-                       "owner id: %{public}" PRIu64 ", current env id: %{public}" PRIu64,
-                       engineId_, engine_->GetId());
-    }
+    VALID_ENGINE_CHECK(engine, engine_, engineId_);
 
     uv_loop_t* loop = engine_->GetUVLoop();
     if (loop == nullptr) {
@@ -161,14 +151,9 @@ bool NativeAsyncWork::QueueWithQos(napi_qos_t qos)
     return true;
 }
 
-bool NativeAsyncWork::Cancel()
+bool NativeAsyncWork::Cancel(NativeEngine* engine)
 {
-    if (engineId_ != engine_->GetId()) {
-        LOG_IF_SPECIAL(engine_, UNLIKELY(engine_->IsCrossThreadCheckEnabled()),
-                       "param env is not equal to its owner, "
-                       "owner id: %{public}" PRIu64 ", current env id: %{public}" PRIu64,
-                       engineId_, engine_->GetId());
-    }
+    VALID_ENGINE_CHECK(engine, engine_, engineId_);
 
     int status = uv_cancel((uv_req_t*)&work_);
     if (status != 0) {
