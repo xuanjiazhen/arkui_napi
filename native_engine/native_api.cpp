@@ -475,6 +475,8 @@ NAPI_EXTERN napi_status napi_create_function(napi_env env,
     );
     Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, utf8name != nullptr ? utf8name : name);
     fn->SetName(vm, fnName);
+    const char* fname = utf8name != nullptr ? utf8name : name;
+    HILOG_INFO("Create Function. Name: '%{public}s'", fname);
     *result = JsValueFromLocalValue(scope.Escape(fn));
     return GET_RETURN_STATUS(env);
 }
