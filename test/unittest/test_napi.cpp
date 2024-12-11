@@ -5749,6 +5749,39 @@ HWTEST_F(NapiBasicTest, NapiGetNewTargetTest002, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_invalid_arg);
 }
 
+HWTEST_F(NapiBasicTest, NapiGetNewTargetTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_callback_info info = napi_callback_info(nullptr);;
+    napi_value result = nullptr;
+    napi_create_int32(env, INT_ONE, &result);
+
+    napi_status status = napi_get_new_target(env, info, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiBasicTest, NapiGetNewTargetTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_callback_info info = napi_callback_info(nullptr);;
+    napi_value result = nullptr;
+    napi_create_double(env, TEST_DOUBLE, &result);
+
+    napi_status status = napi_get_new_target(env, info, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiBasicTest, NapiGetNewTargetTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_callback_info info = napi_callback_info(nullptr);;
+    napi_value result = nullptr;
+    napi_create_string_utf8(env, TEST_STRING, 4, &result);
+
+    napi_status status = napi_get_new_target(env, info, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
 HWTEST_F(NapiBasicTest, NapiNewInstanceTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
