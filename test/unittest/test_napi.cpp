@@ -158,6 +158,17 @@ static napi_value TestAttachCallback(napi_env env, void* nativeObject, void* hin
     return object;
 }
 
+void AssertFalse()
+{
+    ASSERT_TRUE(false);
+}
+
+napi_value TestAbort(napi_env env, napi_callback_info info)
+{
+    AssertFalse();
+    return nullptr;
+}
+
 /**
  * @tc.name: ToNativeBindingObjectTest001
  * @tc.desc: Test nativeBinding object type.
@@ -4969,6 +4980,21 @@ HWTEST_F(NapiBasicTest, NapiStrictEqualsTest004, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, false);
 }
 
+HWTEST_F(NapiBasicTest, NapiStrictEqualsTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value lhs;
+    napi_value rhs;
+    bool result;
+    napi_create_int32(env, INT_ZERO, &lhs);
+    napi_create_int32(env, INT_ONE, &rhs);
+    napi_strict_equals(env, lhs, rhs, &result);
+    ASSERT_FALSE(result);
+    napi_create_int32(env, INT_ZERO, &rhs);
+    napi_strict_equals(env, lhs, rhs, &result);
+    ASSERT_TRUE(result);
+}
+
 HWTEST_F(NapiBasicTest, NapiGetPropertyNamesTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -4995,6 +5021,17 @@ HWTEST_F(NapiBasicTest, NapiGetPropertyNamesTest003, testing::ext::TestSize.Leve
     napi_value result;
     napi_status status = napi_create_double(env, TEST_DOUBLE, &value);
     status = napi_get_property_names(env, value, &result);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
+HWTEST_F(NapiBasicTest, NapiGetPropertyNamesTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value value;
+    napi_value result;
+    napi_status status = napi_create_int32(env, INT_ZERO, &value);
+    status = napi_get_property_names(env, value, &result);
+    ASSERT_NE(value, result);
     ASSERT_EQ(status, napi_object_expected);
 }
 
@@ -5047,6 +5084,20 @@ HWTEST_F(NapiBasicTest, NapiSetPropertyTest004, testing::ext::TestSize.Level1)
     napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
     napi_create_int32(env, INT_ONE, &key);
     napi_create_int32(env, INT_TWO, &value);
+    status = napi_set_property(env, obj, key, value);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
+HWTEST_F(NapiBasicTest, NapiSetPropertyTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value key;
+    napi_value value;
+
+    napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_ZERO, &key);
+    napi_create_int32(env, INT_THREE, &value);
     status = napi_set_property(env, obj, key, value);
     ASSERT_EQ(status, napi_object_expected);
 }
