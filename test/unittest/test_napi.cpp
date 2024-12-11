@@ -5238,6 +5238,23 @@ HWTEST_F(NapiBasicTest, NapiHasOwnPropertyTest004, testing::ext::TestSize.Level1
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiBasicTest, NapiHasOwnPropertyTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value key;
+    napi_value value;
+    bool result;
+
+    napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_ONE, &key);
+    napi_create_int32(env, INT_ONE, &value);
+    napi_set_property(env, obj, key, value);
+    napi_status status = napi_has_own_property(env, obj, key, &result);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
 HWTEST_F(NapiBasicTest, NapiSetNamedPropertyTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -5285,6 +5302,18 @@ HWTEST_F(NapiBasicTest, NapiSetNamedPropertyTest004, testing::ext::TestSize.Leve
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiBasicTest, NapiSetNamedPropertyTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value value;
+
+    napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_THREE, &value);
+    status = napi_set_named_property(env, obj, TEST_STRING, value);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
 HWTEST_F(NapiBasicTest, NapiGetNamedPropertyTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -5326,6 +5355,21 @@ HWTEST_F(NapiBasicTest, NapiGetNamedPropertyTest004, testing::ext::TestSize.Leve
 
     napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
     status = napi_get_named_property(env, obj, TEST_STRING, &value);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
+HWTEST_F(NapiBasicTest, NapiGetNamedPropertyTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value value;
+
+    napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_THREE, &value);
+    status = napi_set_named_property(env, obj, TEST_STRING, value);
+    napi_value res;
+    status = napi_get_named_property(env, obj, TEST_STRING, &res);
+    ASSERT_NE(res, value);
     ASSERT_EQ(status, napi_object_expected);
 }
 
