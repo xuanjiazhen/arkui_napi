@@ -5603,6 +5603,17 @@ HWTEST_F(NapiBasicTest, NapiTypeTagObjectTest003, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiBasicTest, NapiTypeTagObjectTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_type_tag tag;
+    napi_create_int32(env, INT_ONE, &obj);
+
+    napi_status status = napi_type_tag_object(env, obj, &tag);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
 HWTEST_F(NapiBasicTest, NapiCheckObjectTypeTagTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -5636,6 +5647,20 @@ HWTEST_F(NapiBasicTest, NapiCheckObjectTypeTagTest003, testing::ext::TestSize.Le
 
     napi_status status = napi_check_object_type_tag(env, obj, &tag, result);
     ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiBasicTest, NapiCheckObjectTypeTagTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_type_tag tag;
+    napi_create_int32(env, INT_ONE, &obj);
+
+    napi_status status = napi_type_tag_object(env, obj, &tag);
+    bool result;
+    status = napi_check_object_type_tag(env, obj, &tag, &result);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(status, napi_object_expected);
 }
 
 HWTEST_F(NapiBasicTest, NapiCallFunctionTest001, testing::ext::TestSize.Level1)
@@ -6007,6 +6032,17 @@ HWTEST_F(NapiBasicTest, NapiCreateAsyncWorkTest004, testing::ext::TestSize.Level
     napi_async_work* work = nullptr;
     napi_value resourceName = nullptr;
     napi_create_string_utf8(env, "AsyncWorkTest", NAPI_AUTO_LENGTH, &resourceName);
+    napi_status status = napi_create_async_work(env, nullptr, resourceName, [](napi_env value, void* data) {},
+                           nullptr, nullptr, work);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiBasicTest, NapiCreateAsyncWorkTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_async_work* work = nullptr;
+    napi_value resourceName = nullptr;
+    napi_create_string_utf8(env, TEST_STRING, NAPI_AUTO_LENGTH, &resourceName);
     napi_status status = napi_create_async_work(env, nullptr, resourceName, [](napi_env value, void* data) {},
                            nullptr, nullptr, work);
     ASSERT_EQ(status, napi_invalid_arg);
