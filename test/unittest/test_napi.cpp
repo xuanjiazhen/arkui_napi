@@ -5373,6 +5373,20 @@ HWTEST_F(NapiBasicTest, NapiHasNamedPropertyTest004, testing::ext::TestSize.Leve
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiBasicTest, NapiHasNamedPropertyTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value value;
+
+    napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_THREE, &value);
+    napi_set_named_property(env, obj, TEST_STRING, value);
+    bool result;
+    napi_status status = napi_has_named_property(env, obj, TEST_STRING, &result);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
 HWTEST_F(NapiBasicTest, NapiSetElementTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -5410,6 +5424,18 @@ HWTEST_F(NapiBasicTest, NapiSetElementTest003, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiBasicTest, NapiSetElementTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value value;
+
+    napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_TWO, &value);
+    status = napi_set_element(env, obj, INT_ONE, value);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
 HWTEST_F(NapiBasicTest, NapiGetElementTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -5442,6 +5468,22 @@ HWTEST_F(NapiBasicTest, NapiGetElementTest003, testing::ext::TestSize.Level1)
 
     napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
     status = napi_get_element(env, obj, index, &value);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
+HWTEST_F(NapiBasicTest, NapiGetElementTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value value;
+
+    napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
+    ASSERT_EQ(status, napi_ok);
+    napi_create_int32(env, INT_TWO, &value);
+    napi_set_element(env, obj, INT_ONE, value);
+    napi_value res;
+    status = napi_get_element(env, obj, INT_ONE, &res);
+    ASSERT_NE(value, res);
     ASSERT_EQ(status, napi_object_expected);
 }
 
