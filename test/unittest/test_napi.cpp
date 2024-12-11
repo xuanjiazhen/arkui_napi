@@ -5101,6 +5101,22 @@ HWTEST_F(NapiBasicTest, NapiGetPropertyTest004, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiBasicTest, NapiGetPropertyTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value key;
+    napi_value value;
+    napi_value result;
+    napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_ZERO, &key);
+    napi_create_int32(env, INT_THREE, &value);
+    napi_set_property(env, obj, key, value);
+    napi_status status = napi_get_property(env, obj, key, &result);
+    ASSERT_NE(value, result);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
 HWTEST_F(NapiBasicTest, NapiHasPropertyTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -5151,6 +5167,22 @@ HWTEST_F(NapiBasicTest, NapiHasPropertyTest004, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiBasicTest, NapiHasPropertyTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value key;
+    napi_value value;
+    bool result;
+
+    napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_ZERO, &key);
+    napi_create_int32(env, INT_ONE, &value);
+    napi_set_property(env, obj, key, value);
+    napi_has_property(env, obj, key, &result);
+    ASSERT_FALSE(result);
+}
+
 HWTEST_F(NapiBasicTest, NapiDeletePropertyTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -5185,6 +5217,23 @@ HWTEST_F(NapiBasicTest, NapiDeletePropertyTest004, testing::ext::TestSize.Level1
     napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
     napi_create_int32(env, INT_ONE, &key);
     status = napi_delete_property(env, obj, key, &result);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
+HWTEST_F(NapiBasicTest, NapiDeletePropertyTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value key;
+    napi_value value;
+    bool result;
+
+    napi_create_double(env, TEST_DOUBLE, &obj);
+    napi_create_int32(env, INT_ZERO, &key);
+    napi_create_int32(env, INT_TWO, &value);
+    napi_set_property(env, obj, key, value);
+    napi_status status = napi_delete_property(env, obj, key, &result);
+    ASSERT_FALSE(result);
     ASSERT_EQ(status, napi_object_expected);
 }
 
