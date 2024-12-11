@@ -5480,6 +5480,21 @@ HWTEST_F(NapiBasicTest, NapiHasElementTest003, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiBasicTest, NapiHasElementTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value value;
+
+    napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
+    ASSERT_EQ(status, napi_ok);
+    napi_create_int32(env, INT_TWO, &value);
+    napi_set_element(env, obj, INT_ONE, value);
+    bool res;
+    status = napi_has_element(env, obj, INT_ONE, &res);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
 HWTEST_F(NapiBasicTest, NapiDeleteElementTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -5500,6 +5515,21 @@ HWTEST_F(NapiBasicTest, NapiDeleteElementTest002, testing::ext::TestSize.Level1)
 
     napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
     status = napi_delete_element(env, obj, index, &result);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
+HWTEST_F(NapiBasicTest, NapiDeleteElementTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_value value;
+
+    napi_status status = napi_create_double(env, TEST_DOUBLE, &obj);
+    ASSERT_EQ(status, napi_ok);
+    napi_create_int32(env, INT_THREE, &value);
+    napi_set_element(env, obj, INT_ONE, value);
+    bool res;
+    status = napi_delete_element(env, obj, INT_ONE, &res);
     ASSERT_EQ(status, napi_object_expected);
 }
 
@@ -5569,6 +5599,23 @@ HWTEST_F(NapiBasicTest, NapiDefinePropertiesTest005, testing::ext::TestSize.Leve
 
     napi_status status = napi_define_properties(env, result, INT_ONE, desc);
     ASSERT_EQ(status, napi_name_expected);
+}
+
+HWTEST_F(NapiBasicTest, NapiDefinePropertiesTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value func1 = nullptr;
+    napi_status status = napi_create_function(env, "testAbort", NAPI_AUTO_LENGTH,
+                                              TestAbort, nullptr, &func1);
+    ASSERT_TRUE(status == napi_ok);
+    napi_property_descriptor properties[] = {
+        // napi_default_jsproperty = napi_writable | napi_enumerable | napi_configurable
+        {"testAbort", nullptr, nullptr, nullptr, nullptr, func1, napi_default, nullptr}
+    };
+    napi_value globalObj = nullptr;
+    napi_get_global(env, &globalObj);
+    status = napi_define_properties(env, globalObj, sizeof(properties) / sizeof(properties[0]), properties);
+    ASSERT_TRUE(status == napi_ok);
 }
 
 HWTEST_F(NapiBasicTest, NapiTypeTagObjectTest001, testing::ext::TestSize.Level1)
