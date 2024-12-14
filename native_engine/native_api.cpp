@@ -1832,6 +1832,50 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
     return GET_RETURN_STATUS(env);
 }
 
+NAPI_EXTERN napi_status napi_wrap_proxy(napi_env env,
+                                        napi_value js_object,
+                                        void* native_object,
+                                        napi_finalize finalize_cb,
+                                        napi_ref* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, js_object);
+    CHECK_ARG(env, native_object);
+    CHECK_ARG(env, finalize_cb);
+
+    auto nativeValue = LocalValueFromJsValue(js_object);
+    auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+    CHECK_AND_CONVERT_TO_OBJECT(env, vm, nativeValue, nativeObject);
+    size_t nativeBindingSize = 0;
+    auto reference = reinterpret_cast<NativeReference**>(result);
+    Local<panda::StringRef> key = panda::StringRef::GetProxyNapiWrapperString(vm);
+    if (native_object == nullptr && nativeObject->Has(vm, key)) {
+        Local<panda::ObjectRef> wrapper = nativeObject->Get(vm, key);
+        auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(vm, 0));
+        // Try to remove native pointer from ArrayDataList
+        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, nativeBindingSize);
+        nativeObject->Delete(vm, key);
+        delete ref;
+    } else {
+        Local<panda::ObjectRef> object = panda::ObjectRef::NewJSObjectProxy(vm);
+        NativeReference* ref = nullptr;
+        if (reference != nullptr) {
+            ref = engine->CreateProxyReference(js_object, 1, false, callback, native_object);
+            *reference = ref;
+        } else {
+            ref = engine->CreateProxyReference(js_object, 0, true, callback, native_object);
+        }
+        object->SetNativePointerFieldCount(vm, 1);
+        object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
+        PropertyAttribute attr(object, true, false, true);
+        nativeObject->DefineProperty(vm, key, attr);
+    }
+    return GET_RETURN_STATUS(env);
+}
+
 // Ensure thread safety! Async finalizer will be called on the async thread.
 NAPI_EXTERN napi_status napi_wrap_async_finalizer(napi_env env,
                                                   napi_value js_object,
