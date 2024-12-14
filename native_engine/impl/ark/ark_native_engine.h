@@ -63,6 +63,7 @@ using AsyncNativeCallbacksPack = panda::AsyncNativeCallbacksPack;
 using TriggerGCTaskCallback = panda::TriggerGCTaskCallback;
 using TriggerGCData = panda::TriggerGCData;
 using ArkIdleMonitor = panda::ecmascript::ArkIdleMonitor;
+using PostToMainThreadTask = panda::PostToMainThreadTask;
 
 // indirect used by ace_engine and(or) ability_runtime
 using panda::Local;
