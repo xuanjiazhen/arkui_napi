@@ -313,7 +313,7 @@ HWTEST_F(JSVMTest, JSVMIsObject001, TestSize.Level1)
     bool result = false;
     JSVM_CALL(OH_JSVM_IsObject(env, obj, &result));
     ASSERT_TRUE(result);
-    
+
     JSVM_CALL(OH_JSVM_CreateSymbol(env, nullptr, &obj));
     result = false;
     JSVM_CALL(OH_JSVM_IsObject(env, obj, &result));
@@ -641,4 +641,176 @@ HWTEST_F(JSVMTest, JSVMCreateEnvFromSnapshot001, TestSize.Level1)
     JSVM_Env env2 = nullptr;
     JSVM_Status status = OH_JSVM_CreateEnvFromSnapshot(vm, 0, &env2);
     ASSERT_EQ(status, JSVM_GENERIC_FAILURE);
+}
+
+static std::string fakelog = "";
+
+static JSVM_Value LogFunc(JSVM_Env env, JSVM_CallbackInfo info)
+{
+    size_t argc = 1;
+    JSVM_Value argv[1];
+    JSVMTEST_CALL(OH_JSVM_GetCbInfo(env, info, &argc, argv, NULL, NULL));
+    return jsvm::Str("log");
+}
+
+HWTEST_F(JSVMTest, test_function_private, TestSize.Level1)
+{
+    JSVM_Data key;
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, nullptr, &key));
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_SetPrivate(env, obj, key, jsvm::Str("a")));
+    static JSVM_CallbackStruct cb = {LogFunc, NULL};
+    JSVM_Value log;
+    JSVMTEST_CALL(OH_JSVM_CreateFunction(env, "log", JSVM_AUTO_LENGTH, &cb, &log));
+    JSVMTEST_CALL(OH_JSVM_SetPrivate(env, obj, key, log));
+    JSVM_Value result;
+    JSVMTEST_CALL(OH_JSVM_GetPrivate(env, obj, key, &result));
+    auto ret = jsvm::Call(result);
+    ASSERT_TRUE(jsvm::Equals(ret, jsvm::Str("log")));
+}
+
+HWTEST_F(JSVMTest, test_str_private, TestSize.Level1)
+{
+    JSVM_Data key;
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, nullptr, &key));
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_SetPrivate(env, obj, key, jsvm::Str("a")));
+    static JSVM_CallbackStruct cb = {LogFunc, NULL};
+    JSVMTEST_CALL(OH_JSVM_SetPrivate(env, obj, key, jsvm::Str("log")));
+    JSVM_Value result;
+    JSVMTEST_CALL(OH_JSVM_GetPrivate(env, obj, key, &result));
+    ASSERT_TRUE(jsvm::Equals(result, jsvm::Str("log")));
+}
+
+HWTEST_F(JSVMTest, test_different_private_with_same_key, TestSize.Level1)
+{
+    JSVM_Data key;
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, jsvm::Str("a"), &key));
+    JSVM_Data key1;
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, jsvm::Str("a"), &key1));
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_SetPrivate(env, obj, key, jsvm::Str("a")));
+    JSVMTEST_CALL(OH_JSVM_SetPrivate(env, obj, key1, jsvm::Str("b")));
+    JSVM_Value result;
+    JSVMTEST_CALL(OH_JSVM_GetPrivate(env, obj, key, &result));
+    JSVM_Value result1;
+    JSVMTEST_CALL(OH_JSVM_GetPrivate(env, obj, key1, &result1));
+    ASSERT_TRUE(!jsvm::Equals(result, result1));
+}
+
+HWTEST_F(JSVMTest, test_set_private_with_nullptr_key, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::Object();
+    auto status = OH_JSVM_SetPrivate(env, obj, key, jsvm::Str("a"));
+    ASSERT_TRUE(status == JSVM_INVALID_ARG);
+}
+
+HWTEST_F(JSVMTest, test_set_private_with_nullptr_value, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, jsvm::Str("a"), &key));
+    auto status = OH_JSVM_SetPrivate(env, obj, key, nullptr);
+    ASSERT_TRUE(status == JSVM_INVALID_ARG);
+}
+
+HWTEST_F(JSVMTest, test_set_private_with_non_object, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::True();
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, jsvm::Str("a"), &key));
+    auto status = OH_JSVM_SetPrivate(env, obj, key, jsvm::Str("a"));
+    ASSERT_TRUE(status == JSVM_OBJECT_EXPECTED);
+}
+
+HWTEST_F(JSVMTest, test_set_private_with_non_private, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_CreateSymbol(env, jsvm::Str("a"), (JSVM_Value *)&key));
+    auto status = OH_JSVM_SetPrivate(env, obj, key, jsvm::Str("a"));
+    ASSERT_TRUE(status == JSVM_INVALID_ARG);
+}
+
+HWTEST_F(JSVMTest, test_get_non_exist_private, TestSize.Level1)
+{
+    JSVM_Data key;
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, nullptr, &key));
+    auto obj = jsvm::Object();
+    JSVM_Value result;
+    JSVMTEST_CALL(OH_JSVM_GetPrivate(env, obj, key, &result));
+    ASSERT_TRUE(jsvm::Equals(result, jsvm::Undefined()));
+}
+
+HWTEST_F(JSVMTest, test_get_private_with_nullptr_key, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::Object();
+    JSVM_Value value;
+    auto status = OH_JSVM_GetPrivate(env, obj, key, &value);
+    ASSERT_TRUE(status == JSVM_INVALID_ARG);
+}
+
+HWTEST_F(JSVMTest, test_get_private_with_nullptr_value, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, jsvm::Str("a"), &key));
+    auto status = OH_JSVM_GetPrivate(env, obj, key, nullptr);
+    ASSERT_TRUE(status == JSVM_INVALID_ARG);
+}
+
+HWTEST_F(JSVMTest, test_get_private_with_non_object, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::True();
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, jsvm::Str("a"), &key));
+    JSVM_Value value;
+    auto status = OH_JSVM_GetPrivate(env, obj, key, &value);
+    ASSERT_TRUE(status == JSVM_OBJECT_EXPECTED);
+}
+
+HWTEST_F(JSVMTest, test_get_private_with_non_private, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_CreateSymbol(env, jsvm::Str("a"), (JSVM_Value *)&key));
+    JSVM_Value value;
+    auto status = OH_JSVM_GetPrivate(env, obj, key, &value);
+    ASSERT_TRUE(status == JSVM_INVALID_ARG);
+}
+
+HWTEST_F(JSVMTest, test_delete_non_exist_private, TestSize.Level1)
+{
+    JSVM_Data key;
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, nullptr, &key));
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_DeletePrivate(env, obj, key));
+}
+
+HWTEST_F(JSVMTest, test_delete_nullptr_key, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::Object();
+    auto status = OH_JSVM_DeletePrivate(env, obj, key);
+    ASSERT_TRUE(status == JSVM_INVALID_ARG);
+}
+
+HWTEST_F(JSVMTest, test_delete_with_non_object, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::True();
+    JSVMTEST_CALL(OH_JSVM_CreatePrivate(env, jsvm::Str("a"), &key));
+    auto status = OH_JSVM_DeletePrivate(env, obj, key);
+    ASSERT_TRUE(status == JSVM_OBJECT_EXPECTED);
+}
+
+HWTEST_F(JSVMTest, test_delete_private_with_non_private, TestSize.Level1)
+{
+    JSVM_Data key = nullptr;
+    auto obj = jsvm::Object();
+    JSVMTEST_CALL(OH_JSVM_CreateSymbol(env, jsvm::Str("a"), (JSVM_Value *)&key));
+    auto status = OH_JSVM_DeletePrivate(env, obj, key);
+    ASSERT_TRUE(status == JSVM_INVALID_ARG);
 }
