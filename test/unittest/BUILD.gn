@@ -66,6 +66,7 @@ ohos_unittest("test_ark_unittest_threadsafe") {
   external_deps = [ "bounds_checking_function:libsec_shared" ]
 
   external_deps += [
+    "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
   ]
@@ -90,7 +91,10 @@ ohos_unittest("test_ark_api_allowlist") {
   deps += [ "../..:ace_napi" ]
   deps += [ "${form_render_service_path}/..:formrender" ]
 
-  external_deps = [ "bounds_checking_function:libsec_shared" ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+  ]
 
   external_deps += [ "hilog:libhilog" ]
   external_deps += [ "ets_runtime:libark_jsruntime" ]
