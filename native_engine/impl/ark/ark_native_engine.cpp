@@ -345,10 +345,11 @@ void ArkNativeEngine::CopyPropertyApiFilter(const std::unique_ptr<ApiAllowListCh
     }
 }
 
-ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker) : NativeEngine(jsEngine),
-                                                                                     vm_(vm),
-                                                                                     topScope_(vm),
-                                                                                     isLimitedWorker_(isLimitedWorker)
+ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker,
+                                 std::shared_ptr<TaskRunner> taskRunner) : NativeEngine(jsEngine),
+                                                                           vm_(vm),
+                                                                           topScope_(vm),
+                                                                           isLimitedWorker_(isLimitedWorker)
 {
     HILOG_DEBUG("ArkNativeEngine::ArkNativeEngine");
     panda::JSNApi::SetEnv(vm, this);
@@ -557,6 +558,12 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
     JSNApi::SetUnloadNativeModuleCallback(vm, func);
     Init();
     panda::JSNApi::SetLoop(vm, loop_);
+    if (taskRunner != nullptr) {
+        panda::JSNApi::SetTaskRunner(vm, taskRunner);
+    } else {
+        taskRunner_ = std::make_shared<ArkNativeTaskRunner>(loop_);
+        panda::JSNApi::SetTaskRunner(vm, taskRunner_);
+    }
     panda::JSNApi::SetWeakFinalizeTaskCallback(vm, [this] () -> void {
         this->PostFinalizeTasks();
     });
@@ -581,6 +588,10 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 ArkNativeEngine::~ArkNativeEngine()
 {
     HILOG_DEBUG("ArkNativeEngine::~ArkNativeEngine");
+    if (taskRunner_ != nullptr) {
+        ArkNativeTaskRunner *arkNativeTaskRunner = static_cast<ArkNativeTaskRunner *>(taskRunner_.get());
+        arkNativeTaskRunner->Shutdown();
+    }
     Deinit();
     if (JSNApi::IsJSMainThreadOfEcmaVM(vm_)) {
         ArkIdleMonitor::GetInstance()->SetMainThreadEcmaVM(nullptr);
