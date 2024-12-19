@@ -13,18 +13,10 @@
  * limitations under the License.
  */
 
-#include <cinttypes>
 
 #include "native_safe_async_work.h"
 
-#include "ecmascript/napi/include/jsnapi.h"
-#include "napi/native_api.h"
 #include "native_api_internal.h"
-#include "native_async_work.h"
-#include "native_engine.h"
-#include "native_value.h"
-#include "securec.h"
-#include "utils/log.h"
 
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
