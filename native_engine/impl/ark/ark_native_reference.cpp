@@ -13,17 +13,11 @@
  * limitations under the License.
  */
 
-#include <cinttypes>
 
 #include "ark_native_reference.h"
 
-#ifdef ENABLE_HITRACE
-#include "hitrace/trace.h"
-#include "hitrace_meter.h"
-#endif
 #include "native_engine/native_api_internal.h"
 #include "native_engine/native_utils.h"
-#include "utils/log.h"
 
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        napi_value value,
