@@ -14,7 +14,6 @@
  */
 #include "utils/log.h"
 
-#include <cstdint>
 
 [[maybe_unused]] static void StripFormatString(const std::string& prefix, std::string& str)
 {
@@ -25,7 +24,6 @@
 
 #if defined(ANDROID_PLATFORM)
 
-#include <android/log.h>
 
 #define LOG_TAG "NAPI"
 

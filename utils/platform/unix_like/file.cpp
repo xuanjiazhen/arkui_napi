@@ -13,11 +13,7 @@
  * limitations under the License.
  */
 
-#include <cerrno>
-#include <cstring>
 #include <securec.h>
-
-#include "utils/file.h"
 #include "utils/log.h"
 
 bool RealPath(const char *path, char *resolvedPath, size_t bufferSize)
