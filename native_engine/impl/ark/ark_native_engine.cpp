@@ -563,6 +563,23 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
     JSNApi::SetAsyncCleanTaskCallback(vm, [this] (AsyncNativeCallbacksPack *callbacksPack) {
         this->PostAsyncTask(callbacksPack);
     });
+    RegisterNapiUncaughtExceptionHandler([this] (napi_value exception) -> void {
+        if (!NativeEngine::IsAlive(this)) {
+            return;
+        }
+        std::string name = "";
+        if (this->IsWorkerThread()) {
+            name = this->getWorkerNameCallback_(this->worker_);
+        } else if (this->IsTaskPoolThread()) {
+            name = this->GetTaskName();
+            this->SetTaskName("");
+        }
+        auto callback = NapiErrorManager::GetInstance()->GetOnAllErrorCallback();
+        if (callback) {
+            callback(reinterpret_cast<napi_env>(this), exception,
+                name, this->GetJSThreadTypeInt());
+        }
+    });
 #if defined(ENABLE_EVENT_HANDLER)
     if (JSNApi::IsJSMainThreadOfEcmaVM(vm)) {
         ArkIdleMonitor::GetInstance()->SetMainThreadEcmaVM(vm);
@@ -2278,9 +2295,24 @@ void ArkNativeEngine::SetMockModuleList(const std::map<std::string, std::string>
     JSNApi::SetMockModuleList(vm_, list);
 }
 
+static void OnAllErrorCallbackForThreadFunc(Local<ObjectRef> value, void *data)
+{
+    if (data == nullptr) {
+        return;
+    }
+    auto engine = static_cast<ArkNativeEngine *>(data);
+    auto napiUncaughtExceptionCallback = engine->GetNapiUncaughtExceptionCallback();
+    if (napiUncaughtExceptionCallback == nullptr) {
+        return;
+    }
+    napi_env env = reinterpret_cast<napi_env>(engine);
+    napiUncaughtExceptionCallback(ArkNativeEngine::ArkValueToNapiValue(env, static_cast<Local<JSValueRef>>(value)));
+}
+
 void ArkNativeEngine::RegisterNapiUncaughtExceptionHandler(NapiUncaughtExceptionCallback callback)
 {
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
+    JSNApi::SetOnAllErrorCallbackForThread(vm_, OnAllErrorCallbackForThreadFunc, static_cast<void *>(this));
     napiUncaughtExceptionCallback_ = callback;
 }
 
