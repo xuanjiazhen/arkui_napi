@@ -15,18 +15,12 @@
 
 #include "native_module_manager.h"
 
-#include <cstring>
-#include <dirent.h>
 #include <fstream>
-#include <iostream>
-#include <mutex>
-#include <sstream>
 #include <unistd.h>
 
 #ifdef ENABLE_HITRACE
 #include "hitrace_meter.h"
 #endif
-#include "module_load_checker.h"
 #include "native_engine/native_engine.h"
 #include "securec.h"
 #include "utils/log.h"
