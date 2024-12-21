@@ -1181,9 +1181,9 @@ void ArkNativeEngine::ClearCurrentTaskInfo()
     JSNApi::ClearCurrentTaskInfo(vm_);
 }
 
-void ArkNativeEngine::TerminateExecution() const
+void ArkNativeEngine::TerminateExecution(uintptr_t task) const
 {
-    DFXJSNApi::TerminateExecution(vm_);
+    DFXJSNApi::TerminateExecution(vm_, task);
 }
 
 void ArkNativeEngine::NotifyTaskBegin() const

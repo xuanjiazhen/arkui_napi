@@ -136,7 +136,7 @@ public:
     virtual bool IsProfiling() const = 0;
     virtual bool IsExecutingPendingJob() const = 0;
     virtual void* GetCurrentTaskInfo() const = 0;
-    virtual void TerminateExecution() const = 0;
+    virtual void TerminateExecution(uintptr_t task = 0) const = 0;
     virtual void NotifyTaskBegin() const = 0;
     virtual void NotifyTaskFinished() const = 0;
 
