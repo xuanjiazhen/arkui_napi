@@ -137,7 +137,7 @@ void NativeEngine::CreateDefaultFunction(void)
     if (ret) {
         defaultFunc_ = reinterpret_cast<napi_threadsafe_function>(safeAsyncWork);
     } else {
-        delete safeAsyncWork = nullptr;
+        delete safeAsyncWork;
     }
 }
 
@@ -1116,7 +1116,7 @@ napi_status NativeEngine::SendCancelableEvent(const std::function<void(void*)> &
                                               uint64_t* handleId)
 {
     std::shared_lock<std::shared_mutex> readLock(eventMutex_);
-    if (!defaultFunc) {
+    if (!defaultFunc_) {
         HILOG_ERROR("default function is nullptr!");
         return napi_status::napi_generic_failure;
     }
@@ -1127,7 +1127,7 @@ napi_status NativeEngine::SendCancelableEvent(const std::function<void(void*)> &
 napi_status NativeEngine::CancelEvent(const char* name, uint64_t handleId)
 {
     std::shared_lock<std::shared_mutex> readLock(eventMutex_);
-    if (!defaultFunc) {
+    if (!defaultFunc_) {
         HILOG_ERROR("default function is nullptr!");
         return napi_status::napi_generic_failure;
     }
