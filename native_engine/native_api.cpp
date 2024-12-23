@@ -4122,10 +4122,6 @@ NAPI_EXTERN napi_status napi_send_event(napi_env env, const std::function<void()
 #endif
             } else {
                 HILOG_ERROR("napi_send_event callBack is null");
-#ifdef ENABLE_HITRACE
-                StartTrace(HITRACE_TAG_ACE, "napi_send_event callBack is null");
-                FinishTrace(HITRACE_TAG_ACE);
-#endif
             }
         };
         uint64_t handleId = 0;
@@ -4154,11 +4150,7 @@ NAPI_EXTERN napi_status napi_send_cancelable_event(napi_env env,
     }
     NativeEngine *eng = reinterpret_cast<NativeEngine *>(env);
     if (NativeEngine::IsAlive(eng)) {
-        if (name == nullptr) {
-            return eng->SendCancelableEvent(cb, data, priority, "defaultName", handleId);
-        } else {
-            return eng->SendCancelableEvent(cb, data, priority, name, handleId);
-        }
+        return  eng->SendCancelableEvent(cb, data, priority, (name == nullptr)? "defaultName": name, handleId);
     } else {
         HILOG_ERROR("call NativeEngine not alive");
         return napi_status::napi_closing;

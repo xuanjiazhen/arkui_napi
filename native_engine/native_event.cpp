@@ -17,14 +17,15 @@
 
 #if defined(ENABLE_EVENT_HANDLER)
 #include "event_handler.h"
-using namespace OHOS::AppExecFwk;
 #endif
 #ifdef ENABLE_HITRACE
 #include "hitrace_meter.h"
 #endif
 #include "native_engine.h"
 #include "utils/log.h"
-
+#if defined(ENABLE_EVENT_HANDLER)
+using namespace OHOS::AppExecFwk;
+#endif
 class TraceLogClass {
 #ifdef ENABLE_HITRACE
     uint64_t traceLable = HITRACE_TAG_ACE;
@@ -58,8 +59,8 @@ NativeEvent::NativeEvent(NativeEngine* engine,
                          void* context,
                          NativeThreadSafeFunctionCallJs callJsCallback)
                          :NativeSafeAsyncWork(engine, func, asyncResource, asyncResourceName,
-                                              maxQueueSize, threadCount, finalizeData, finalizeCallback,
-                                              context, callJsCallback)
+                             maxQueueSize, threadCount, finalizeData, finalizeCallback,
+                             context, callJsCallback)
 {
 }
 
@@ -76,8 +77,6 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
                                              uint64_t* handleId)
 {
     uint64_t eventId = GenerateUniqueID();
-    auto tc = TraceLogClass("Send Cancelable Event:" + std::string(name) + "|handleId:" + std::to_string(eventId));
-
     auto task = [eng = engine_, callback, data, eventId]() {
         auto tcin = TraceLogClass("Cancelable Event callback:handleId:" + std::to_string(eventId));
         auto vm = eng->GetEcmaVm();
@@ -86,7 +85,7 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     };
 #ifdef ENABLE_EVENT_HANDLER
     if (eventHandler_) {
-        auto evt = TraceLogClass("eventHandler Send task");
+        auto evt = TraceLogClass("eventHandler Send task:" + std::string(name) + "|handleId:" + std::to_string(eventId));
         if (eventHandler_->PostTask(task,
                                     std::to_string(eventId),
                                     0,
@@ -100,7 +99,7 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
         }
     }
 #endif
-    auto uvt = TraceLogClass("uv Send task");
+    auto uvt = TraceLogClass("uv Send task:" + std::string(name) + "|handleId:" + std::to_string(eventId));
     std::function<void()> cb = task;
     CallbackWrapper *cbw = new (std::nothrow) CallbackWrapper();
     if (!cbw) {
@@ -197,13 +196,12 @@ napi_status NativeEvent::SendConvertStatus2NapiStatus(void *data, NativeThreadSa
 
 uint64_t NativeEvent::GenerateUniqueID()
 {
-    uint64_t current_sequence = sequence_.fetch_add(1, std::memory_order_relaxed);
-    
+    uint64_t currentSequence = sequence_.fetch_add(1, std::memory_order_relaxed); 
     // if sequence_ max, store 1
-    if (current_sequence == std::numeric_limits<uint64_t>::max()) {
+    if (currentSequence == std::numeric_limits<uint64_t>::max()) {
         sequence_.store(1, std::memory_order_relaxed);
         return 1;
     } else {
-        return current_sequence;
+        return currentSequence;
     }
 }

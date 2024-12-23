@@ -14,6 +14,7 @@
  */
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_EVENT_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_EVENT_H
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include "native_safe_async_work.h"
