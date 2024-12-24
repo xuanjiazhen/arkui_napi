@@ -29,6 +29,7 @@ constexpr size_t NAME_BUFFER_SIZE = 64;
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 static constexpr int32_t API11 = 11;
 static constexpr int32_t API_VERSION_MASK = 1000;
+static constexpr int64_t INVALID_EVENT_ID = std::numeric_limits<uint64_t>::max();
 
 using panda::JSValueRef;
 using panda::Local;
@@ -112,7 +113,12 @@ static void ThreadSafeCallback(napi_env env, napi_value jsCallback, void* contex
 {
     if (data != nullptr) {
         CallbackWrapper *cbw = static_cast<CallbackWrapper *>(data);
-        cbw->cb();
+        uint64_t expected = cbw->handleId.load(std::memory_order_acquire);
+        if (expected != INVALID_EVENT_ID &&
+            cbw->handleId.compare_exchange_strong(expected, INVALID_EVENT_ID, 
+                                                  std::memory_order_acq_rel, std::memory_order_relaxed)) {
+            cbw->cb();
+        } 
         delete cbw;
     }
 }

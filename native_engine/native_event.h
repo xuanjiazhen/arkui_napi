@@ -21,7 +21,7 @@
 
 typedef struct CallbackWrapper_ {
     std::function<void()> cb;
-    uint64_t handleId = 0;
+    std::atomic<uint64_t> handleId;
 } CallbackWrapper;
 
 class NativeEvent : public NativeSafeAsyncWork {

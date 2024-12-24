@@ -26,6 +26,9 @@
 #if defined(ENABLE_EVENT_HANDLER)
 using namespace OHOS::AppExecFwk;
 #endif
+
+static constexpr int64_t INVALID_EVENT_ID = std::numeric_limits<uint64_t>::max();
+
 class TraceLogClass {
 #ifdef ENABLE_HITRACE
     uint64_t traceLable = HITRACE_TAG_ACE;
@@ -103,14 +106,13 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     }
 #endif
     auto uvt = TraceLogClass("uv Send task:" + std::string(name) + "|handleId:" + std::to_string(eventId));
-    std::function<void()> cb = task;
     CallbackWrapper *cbw = new (std::nothrow) CallbackWrapper();
     if (!cbw) {
         HILOG_ERROR("malloc failed!");
         return napi_status::napi_generic_failure;
     }
-    cbw->cb = cb;
-    cbw->handleId = eventId;
+    cbw->cb = task;
+    cbw->handleId.store(eventId, std::memory_order_release);
     napi_status status = SendConvertStatus2NapiStatus(reinterpret_cast<void *>(cbw), NATIVE_TSFUNC_NONBLOCKING);
     *handleId = eventId;
     if (status != napi_status::napi_ok) {
@@ -160,8 +162,9 @@ SafeAsyncCode NativeEvent::UvCancelEvent(uint64_t handleId)
     for (auto& current : queue_) {
         if (current != nullptr) {
             CallbackWrapper *cbw = static_cast<CallbackWrapper *>(current);
-            if (cbw->handleId == handleId) {
-                current = nullptr;
+            if (cbw->handleId.load(std::memory_order_relaxed) == handleId) {
+                cbw->handleId.compare_exchange_strong(handleId, INVALID_EVENT_ID, 
+                                                      std::memory_order_acq_rel, std::memory_order_relaxed);
                 break;
             }
         }
@@ -201,7 +204,7 @@ uint64_t NativeEvent::GenerateUniqueID()
 {
     uint64_t currentSequence = sequence_.fetch_add(1, std::memory_order_relaxed);
     // if sequence_ max, store 1
-    if (currentSequence == std::numeric_limits<uint64_t>::max()) {
+    if (currentSequence == INVALID_EVENT_ID - 1) {
         sequence_.store(1, std::memory_order_relaxed);
         return 1;
     } else {
