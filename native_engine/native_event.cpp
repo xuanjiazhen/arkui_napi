@@ -85,7 +85,10 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     };
 #ifdef ENABLE_EVENT_HANDLER
     if (eventHandler_) {
-        auto evt = TraceLogClass("eventHandler Send task:" + std::string(name) + "|handleId:" + std::to_string(eventId));
+        auto evt = TraceLogClass(
+            "eventHandler Send task: " + std::string(name) +
+            " | handleId: " + std::to_string(eventId)
+        );
         if (eventHandler_->PostTask(task,
                                     std::to_string(eventId),
                                     0,
@@ -196,7 +199,7 @@ napi_status NativeEvent::SendConvertStatus2NapiStatus(void *data, NativeThreadSa
 
 uint64_t NativeEvent::GenerateUniqueID()
 {
-    uint64_t currentSequence = sequence_.fetch_add(1, std::memory_order_relaxed); 
+    uint64_t currentSequence = sequence_.fetch_add(1, std::memory_order_relaxed);
     // if sequence_ max, store 1
     if (currentSequence == std::numeric_limits<uint64_t>::max()) {
         sequence_.store(1, std::memory_order_relaxed);
