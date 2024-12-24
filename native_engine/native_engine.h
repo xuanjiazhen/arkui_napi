@@ -33,6 +33,7 @@
 #include "native_engine/native_deferred.h"
 #include "native_engine/native_reference.h"
 #include "native_engine/native_safe_async_work.h"
+#include "native_engine/native_event.h"
 #include "native_engine/native_value.h"
 #include "native_property.h"
 #include "reference_manager/native_reference_manager.h"
@@ -171,6 +172,9 @@ public:
                                              NativeAsyncCompleteCallback complete,
                                              void* data);
     virtual NativeSafeAsyncWork* CreateSafeAsyncWork(napi_value func, napi_value asyncResource,
+        napi_value asyncResourceName, size_t maxQueueSize, size_t threadCount, void* finalizeData,
+        NativeFinalize finalizeCallback, void* context, NativeThreadSafeFunctionCallJs callJsCallback);
+    NativeEvent* CreateNativeEvent(napi_value func, napi_value asyncResource,
         napi_value asyncResourceName, size_t maxQueueSize, size_t threadCount, void* finalizeData,
         NativeFinalize finalizeCallback, void* context, NativeThreadSafeFunctionCallJs callJsCallback);
     virtual void* CreateRuntime(bool isLimitedWorker = false) = 0;
@@ -467,7 +471,13 @@ public:
      */
     napi_status StopEventLoop();
 
-    napi_status SendEvent(const std::function<void()> &cb, napi_event_priority priority = napi_eprio_high);
+    napi_status SendCancelableEvent(const std::function<void(void*)> &callback,
+                                    void *data,
+                                    int32_t priority,
+                                    const char* name,
+                                    uint64_t* handleId);
+    
+    napi_status CancelEvent(const char* name, uint64_t handleId);
 
     virtual bool IsCrossThreadCheckEnabled() const = 0;
 
