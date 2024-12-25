@@ -163,7 +163,7 @@ SafeAsyncCode NativeEvent::UvCancelEvent(uint64_t handleId)
         if (current != nullptr) {
             CallbackWrapper *cbw = static_cast<CallbackWrapper *>(current);
             if (cbw->handleId.load(std::memory_order_relaxed) == handleId) {
-                cbw->handleId.compare_exchange_strong(handleId, INVALID_EVENT_ID, 
+                cbw->handleId.compare_exchange_strong(handleId, INVALID_EVENT_ID,
                                                       std::memory_order_acq_rel, std::memory_order_relaxed);
                 break;
             }

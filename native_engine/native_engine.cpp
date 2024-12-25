@@ -115,10 +115,10 @@ static void ThreadSafeCallback(napi_env env, napi_value jsCallback, void* contex
         CallbackWrapper *cbw = static_cast<CallbackWrapper *>(data);
         uint64_t expected = cbw->handleId.load(std::memory_order_acquire);
         if (expected != INVALID_EVENT_ID &&
-            cbw->handleId.compare_exchange_strong(expected, INVALID_EVENT_ID, 
+            cbw->handleId.compare_exchange_strong(expected, INVALID_EVENT_ID,
                                                   std::memory_order_acq_rel, std::memory_order_relaxed)) {
             cbw->cb();
-        } 
+        }
         delete cbw;
     }
 }
