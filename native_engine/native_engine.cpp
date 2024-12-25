@@ -21,7 +21,9 @@
 #ifdef IOS_PLATFORM
 #include <sys/event.h>
 #endif
-
+#ifdef ENABLE_HITRACE
+#include "hitrace_meter.h"
+#endif
 #include "native_engine/native_utils.h"
 #include "unicode/ucnv.h"
 
@@ -29,7 +31,7 @@ constexpr size_t NAME_BUFFER_SIZE = 64;
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 static constexpr int32_t API11 = 11;
 static constexpr int32_t API_VERSION_MASK = 1000;
-static constexpr int64_t INVALID_EVENT_ID = std::numeric_limits<uint64_t>::max();
+static constexpr uint64_t INVALID_EVENT_ID = std::numeric_limits<uint64_t>::max();
 
 using panda::JSValueRef;
 using panda::Local;
@@ -117,7 +119,13 @@ static void ThreadSafeCallback(napi_env env, napi_value jsCallback, void* contex
         if (expected != INVALID_EVENT_ID &&
             cbw->handleId.compare_exchange_strong(expected, INVALID_EVENT_ID,
                                                   std::memory_order_acq_rel, std::memory_order_relaxed)) {
+#ifdef ENABLE_HITRACE
+            StartTrace(HITRACE_TAG_ACE, "callBack excute");
+#endif
             cbw->cb();
+#ifdef ENABLE_HITRACE
+            FinishTrace(HITRACE_TAG_ACE);
+#endif
         }
         delete cbw;
     }

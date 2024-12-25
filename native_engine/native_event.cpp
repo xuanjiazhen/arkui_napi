@@ -27,7 +27,7 @@
 using namespace OHOS::AppExecFwk;
 #endif
 
-static constexpr int64_t INVALID_EVENT_ID = std::numeric_limits<uint64_t>::max();
+static constexpr uint64_t INVALID_EVENT_ID = std::numeric_limits<uint64_t>::max();
 
 class TraceLogClass {
 #ifdef ENABLE_HITRACE
