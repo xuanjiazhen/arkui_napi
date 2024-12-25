@@ -93,10 +93,11 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
                                           0,
                                           static_cast<EventQueue::Priority>(priority),
                                           {});
+        std::string res = (pr == true? "ok": "fail");
         auto evt = TraceLogClass(
             "eventHandler Send task: " + std::string(name) +
             " | handleId: " + std::to_string(eventId) +
-            " | postRes: " + std::to_string(pr)
+            " | postRes: " + res
         );
         if (pr) {
             *handleId = eventId;
