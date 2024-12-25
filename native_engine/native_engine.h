@@ -31,6 +31,7 @@
 #include "module_manager/native_module_manager.h"
 #include "native_engine/native_async_work.h"
 #include "native_engine/native_deferred.h"
+#include "native_engine/native_inner_symbols.h"
 #include "native_engine/native_reference.h"
 #include "native_engine/native_safe_async_work.h"
 #include "native_engine/native_event.h"
@@ -546,6 +547,14 @@ public:
     {
         return workerThreadState_;
     }
+public:
+#define DECLARE_INNER_SYMBOL_GETTER(lower, upper) \
+    virtual const panda::Local<panda::SymbolRef> Get##upper##Key() const = 0
+
+    // napi inner symbols
+    NAPI_INNER_SYMBOL(DECLARE_INNER_SYMBOL_GETTER);
+
+#undef DECLARE_INNER_SYMBOL_GETTER
 
 private:
     void InitUvField();
