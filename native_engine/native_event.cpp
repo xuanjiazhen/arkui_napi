@@ -119,10 +119,7 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     *handleId = eventId;
     std::string res = (status == napi_status::napi_ok? "ok": "fail");
     auto uvt = TraceLogClass(
-        "uv Send task:" + std::string(name) +
-        " | handleId:" + std::to_string(eventId) +
-        " | postRes: " + res
-    );
+        "uv Send task:" + std::string(name) + " | handleId:" + std::to_string(eventId) + " | postRes: " + res);
     if (status != napi_status::napi_ok) {
         HILOG_ERROR("send event failed(%{public}d)", status);
         delete cbw;
@@ -146,7 +143,7 @@ napi_status NativeEvent::CancelEvent(const char* name, uint64_t handleId)
     }
 #endif
     auto code = UvCancelEvent(handleId);
-    std::string res = (code == SafeAsyncCode::SAFE_ASYNC_OK? "ok": "fail");
+    std::string res = (code == SafeAsyncCode::SAFE_ASYNC_OK ? "ok" : "fail");
     auto uvt = TraceLogClass("uv remove task res:" + res);
     napi_status status = napi_status::napi_ok;
     if (code == SafeAsyncCode::SAFE_ASYNC_FAILED || code == SafeAsyncCode::SAFE_ASYNC_CLOSED) {
@@ -167,6 +164,7 @@ SafeAsyncCode NativeEvent::UvCancelEvent(uint64_t handleId)
         return SafeAsyncCode::SAFE_ASYNC_FAILED;
     }
 
+    SafeAsyncCode code = SafeAsyncCode::SAFE_ASYNC_FAILED;
     for (auto& current : queue_) {
         if (current == nullptr) {
             continue;
@@ -177,11 +175,11 @@ SafeAsyncCode NativeEvent::UvCancelEvent(uint64_t handleId)
         }
         if (cbw->handleId.compare_exchange_strong(handleId, INVALID_EVENT_ID,
                                                   std::memory_order_acq_rel, std::memory_order_relaxed)) {
-            break;
+            code = SafeAsyncCode::SAFE_ASYNC_OK;
         }
-        return SafeAsyncCode::SAFE_ASYNC_FAILED;
+        return code;
     }
-    return SafeAsyncCode::SAFE_ASYNC_OK;
+    return code;
 }
 
 napi_status NativeEvent::SendConvertStatus2NapiStatus(void *data, NativeThreadSafeFunctionCallMode mode)
