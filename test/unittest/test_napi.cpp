@@ -28,10 +28,8 @@
 #include "napi/native_common.h"
 #include "securec.h"
 #include "utils/log.h"
-#include "native_engine/impl/ark/ark_native_engine.h"
 #include "napi/native_engine/native_create_env.h"
 
-using panda::RuntimeOption;
 
 static constexpr int MAX_BUFFER_SIZE = 2;
 static constexpr int BUFFER_SIZE_FIVE = 5;
@@ -83,46 +81,6 @@ public:
     }
 private:
     napi_handle_scope scope_ = nullptr;
-};
-
-class NativeEngineProxy {
-public:
-    NativeEngineProxy()
-    {
-        // Setup
-        RuntimeOption option;
-        option.SetGcType(RuntimeOption::GC_TYPE::GEN_GC);
-        const int64_t poolSize = 0x1000000;  // 16M
-        option.SetGcPoolSize(poolSize);
-        option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
-        option.SetDebuggerLibraryPath("");
-        vm_ = panda::JSNApi::CreateJSVM(option);
-        if (vm_ == nullptr) {
-            return;
-        }
-
-        engine_ = new ArkNativeEngine(vm_, nullptr);
-    }
-
-    ~NativeEngineProxy()
-    {
-        delete engine_;
-        panda::JSNApi::DestroyJSVM(vm_);
-    }
-
-    inline ArkNativeEngine* operator->() const
-    {
-        return engine_;
-    }
-
-    inline operator napi_env() const
-    {
-        return reinterpret_cast<napi_env>(engine_);
-    }
-
-private:
-    EcmaVM* vm_ {nullptr};
-    ArkNativeEngine* engine_ {nullptr};
 };
 
 static const napi_type_tag typeTags[5] = { // 5:array element size is 5.
