@@ -572,6 +572,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
             name = this->GetTaskName();
             this->SetTaskName("");
         }
+        
         auto hasAllErrorCallback = NapiErrorManager::GetInstance()->GetHasAllErrorCallback();
         if (!hasAllErrorCallback) {
             return;
