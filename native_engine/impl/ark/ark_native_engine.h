@@ -135,6 +135,27 @@ private:
     size_t size_;
 };
 
+class NativeInnerSymbols {
+public:
+    NativeInnerSymbols(ArkNativeEngine* engine);
+    ~NativeInnerSymbols();
+
+#define DECLARE_GETTER(lower, upper) \
+    panda::Local<panda::SymbolRef> Get##upper##Key() const;
+
+    NAPI_INNER_SYMBOL(DECLARE_GETTER)
+#undef DECLARE_GETTER 
+
+private:
+    ArkNativeEngine* engine_ { nullptr };
+
+#define DECLARE_FIELD(lower, upper) \
+    panda::Global<panda::SymbolRef> lower##Key_;
+
+    NAPI_INNER_SYMBOL(DECLARE_FIELD)
+#undef DECLARE_FIELD 
+};
+
 class NAPI_EXPORT ArkNativeEngine : public NativeEngine {
 friend struct MoudleNameLocker;
 public:
@@ -370,6 +391,13 @@ public:
         return crossThreadCheck_;
     }
     static constexpr size_t FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD = 500 * 1024 * 1024;  // 500 MB
+#define OVERRIDE_INNER_SYMBOL_GETTER(lower, upper)                               \
+    inline const panda::Local<panda::SymbolRef> Get##upper##Key() const override \
+    {                                                                            \
+        return innerSymbols_->Get##upper##Key();                                 \
+    }
+    NAPI_INNER_SYMBOL(OVERRIDE_INNER_SYMBOL_GETTER);
+#undef OVERRIDE_INNER_SYMBOL_GETTER
 
 private:
     inline NapiOptions *GetNapiOptions() const override
@@ -413,5 +441,6 @@ private:
     NapiOptions* options_ { nullptr };
     bool crossThreadCheck_ { false };
     std::shared_ptr<ArkIdleMonitor> arkIdleMonitor_;
+    NativeInnerSymbols* innerSymbols_ { nullptr };
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */
