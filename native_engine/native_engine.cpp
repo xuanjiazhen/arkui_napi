@@ -1123,7 +1123,7 @@ void NativeEngine::ThrowException(const char* msg)
 }
 
 napi_status NativeEngine::SendCancelableEvent(const std::function<void(void*)> &callback,
-                                              void *data,
+                                              void* data,
                                               int32_t priority,
                                               const char* name,
                                               uint64_t* handleId)
