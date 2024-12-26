@@ -58,6 +58,7 @@ static constexpr size_t MAX_BYTE_LENGTH = 2097152;
 static constexpr size_t ONEMIB_BYTE_SIZE = 1048576;
 static constexpr size_t SMALL_STRING_SIZE = 16;
 static constexpr int32_t API_VERSION_FOURTEEN = 14;
+static constexpr const char DEFAULT_NAME[] = "defaultName";
 
 class HandleScopeWrapper {
 public:
@@ -4107,7 +4108,7 @@ NAPI_EXTERN napi_status napi_send_event(napi_env env, const std::function<void()
             }
         };
         uint64_t handleId = 0;
-        return eng->SendCancelableEvent(realCb, nullptr, priority, "defaultName", &handleId);
+        return eng->SendCancelableEvent(realCb, nullptr, priority, DEFAULT_NAME, &handleId);
     } else {
         HILOG_ERROR("napi_send_event call NativeEngine not alive");
         return napi_status::napi_closing;
@@ -4132,7 +4133,7 @@ NAPI_EXTERN napi_status napi_send_cancelable_event(napi_env env,
     }
     NativeEngine *eng = reinterpret_cast<NativeEngine *>(env);
     if (NativeEngine::IsAlive(eng)) {
-        return  eng->SendCancelableEvent(cb, data, priority, (name == nullptr)? "defaultName": name, handleId);
+        return  eng->SendCancelableEvent(cb, data, priority, (name == nullptr)? DEFAULT_NAME: name, handleId);
     } else {
         HILOG_ERROR("call NativeEngine not alive");
         return napi_status::napi_closing;

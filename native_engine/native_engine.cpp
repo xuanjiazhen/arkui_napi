@@ -122,7 +122,7 @@ static void ThreadSafeCallback(napi_env env, napi_value jsCallback, void* contex
             cbw->handleId.compare_exchange_strong(expected, INVALID_EVENT_ID,
                                                   std::memory_order_acq_rel, std::memory_order_relaxed)) {
 #ifdef ENABLE_HITRACE
-            StartTrace(HITRACE_TAG_ACE, "callBack excute");
+            StartTrace(HITRACE_TAG_ACE, "ThreadSafeCallback excute");
 #endif
             cbw->cb();
 #ifdef ENABLE_HITRACE

@@ -88,18 +88,18 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     };
 #ifdef ENABLE_EVENT_HANDLER
     if (eventHandler_) {
-        bool pr = eventHandler_->PostTask(task,
+        bool postRes = eventHandler_->PostTask(task,
                                           std::to_string(eventId),
                                           0,
                                           static_cast<EventQueue::Priority>(priority),
                                           {});
-        std::string res = (pr == true? "ok": "fail");
+        std::string res = (postRes? "ok": "fail");
         auto evt = TraceLogClass(
             "eventHandler Send task: " + std::string(name) +
             " | handleId: " + std::to_string(eventId) +
             " | postRes: " + res
         );
-        if (pr) {
+        if (postRes) {
             *handleId = eventId;
             return napi_status::napi_ok;
         } else {
@@ -123,7 +123,6 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     if (status != napi_status::napi_ok) {
         HILOG_ERROR("send event failed(%{public}d)", status);
         delete cbw;
-        cbw = nullptr;
         *handleId = 0;
     }
     return status;
@@ -164,22 +163,21 @@ SafeAsyncCode NativeEvent::UvCancelEvent(uint64_t handleId)
         return SafeAsyncCode::SAFE_ASYNC_FAILED;
     }
 
-    SafeAsyncCode code = SafeAsyncCode::SAFE_ASYNC_FAILED;
-    for (auto& current : queue_) {
+    for (const auto &current : queue_) {
         if (current == nullptr) {
             continue;
         }
-        CallbackWrapper *cbw = static_cast<CallbackWrapper *>(current);
+        CallbackWrapper *cbw = reinterpret_cast<CallbackWrapper *>(current);
         if (cbw->handleId.load(std::memory_order_relaxed) != handleId) {
             continue;
         }
         if (cbw->handleId.compare_exchange_strong(handleId, INVALID_EVENT_ID,
                                                   std::memory_order_acq_rel, std::memory_order_relaxed)) {
-            code = SafeAsyncCode::SAFE_ASYNC_OK;
+            return SafeAsyncCode::SAFE_ASYNC_OK;
         }
-        return code;
+        return SafeAsyncCode::SAFE_ASYNC_FAILED;
     }
-    return code;
+    return SafeAsyncCode::SAFE_ASYNC_FAILED;
 }
 
 napi_status NativeEvent::SendConvertStatus2NapiStatus(void *data, NativeThreadSafeFunctionCallMode mode)
@@ -203,7 +201,7 @@ napi_status NativeEvent::SendConvertStatus2NapiStatus(void *data, NativeThreadSa
             status = napi_status::napi_generic_failure;
             break;
         default:
-            HILOG_FATAL("this branch is unreachable, code is %{public}d", code);
+            HILOG_ERROR("this branch is unreachable, code is %{public}d", code);
             status = napi_status::napi_generic_failure;
             break;
     }
