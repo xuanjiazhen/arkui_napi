@@ -88,26 +88,37 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     };
 #ifdef ENABLE_EVENT_HANDLER
     if (eventHandler_) {
-        bool postRes = eventHandler_->PostTask(task,
-                                          std::to_string(eventId),
-                                          0,
-                                          static_cast<EventQueue::Priority>(priority),
-                                          {});
-        std::string res = (postRes? "ok": "fail");
-        auto evt = TraceLogClass(
-            "eventHandler Send task: " + std::string(name) +
-            " | handleId: " + std::to_string(eventId) +
-            " | postRes: " + res
-        );
-        if (postRes) {
-            *handleId = eventId;
-            return napi_status::napi_ok;
-        } else {
-            *handleId = 0;
-            return napi_status::napi_generic_failure;
-        }
+        return SendEventByEVNotNull(task, eventId, priority, handleId);
     }
 #endif
+    return SendEventByUv(task, eventId, handleId);
+}
+
+napi_status NativeEvent::SendEventByEVNotNull(const std::function<void> &task, uint64_t eventId,
+                                              int32_t priority, uint64_t* handleId)
+{
+    bool postRes = eventHandler_->PostTask(task,
+                                           std::to_string(eventId),
+                                           0,
+                                           static_cast<EventQueue::Priority>(priority),
+                                           {});
+    std::string res = (postRes? "ok": "fail");
+    auto evt = TraceLogClass(
+        "eventHandler Send task: " + std::string(name) +
+        " | handleId: " + std::to_string(eventId) +
+        " | postRes: " + res
+    );
+    if (postRes) {
+        *handleId = eventId;
+        return napi_status::napi_ok;
+    } else {
+        *handleId = 0;
+        return napi_status::napi_generic_failure;
+    }
+}
+
+napi_status NativeEvent::SendEventByUv(const std::function<void> &task, uint64_t eventId, uint64_t* handleId)
+{
     CallbackWrapper *cbw = new (std::nothrow) CallbackWrapper();
     if (!cbw) {
         HILOG_ERROR("malloc failed!");
