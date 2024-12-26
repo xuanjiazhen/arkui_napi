@@ -38,7 +38,7 @@ public:
                 NativeThreadSafeFunctionCallJs callJsCallback);
     bool Init() override;
     virtual napi_status SendCancelableEvent(const std::function<void(void*)> &callback,
-                                            void *data,
+                                            void* data,
                                             int32_t priority,
                                             const char* name,
                                             uint64_t* handleId);
@@ -48,11 +48,11 @@ protected:
     //unique key for event
     std::atomic<uint64_t> sequence_;
     uint64_t GenerateUniqueID();
-    napi_status SendEventByEVNotNull(std::function<void()> &task, uint64_t eventId,
-                                     int32_t priority, const char* name, uint64_t* handleId);
-    napi_status SendEventByUv(std::function<void()> &task, uint64_t eventId,
+    napi_status SendEventByEventHandler(const std::function<void()> &task, uint64_t eventId,
+                                               int32_t priority, const char* name, uint64_t* handleId);
+    napi_status SendEventByUv(const std::function<void()> &task, uint64_t eventId,
                               const char* name, uint64_t* handleId);
-    napi_status SendConvertStatus2NapiStatus(void *data, NativeThreadSafeFunctionCallMode mode);
+    napi_status SendConvertStatus2NapiStatus(void* data, NativeThreadSafeFunctionCallMode mode);
 
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_EVENT_H */

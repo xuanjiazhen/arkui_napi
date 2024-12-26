@@ -74,7 +74,7 @@ bool NativeEvent::Init()
 }
 
 napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &callback,
-                                             void *data,
+                                             void* data,
                                              int32_t priority,
                                              const char* name,
                                              uint64_t* handleId)
@@ -87,16 +87,21 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
         callback(data);
     };
 #ifdef ENABLE_EVENT_HANDLER
-    if (eventHandler_) {
-        return SendEventByEVNotNull(task, eventId, priority, name, handleId);
+    napi_status sentEventRes = SendEventByEventHandler(task, eventId, priority, name, handleId);
+    if (sentEventRes != napi_status::napi_invalid_arg) {
+        return sentEventRes;
     }
 #endif
     return SendEventByUv(task, eventId, name, handleId);
 }
 
-napi_status NativeEvent::SendEventByEVNotNull(std::function<void()> &task, uint64_t eventId,
-                                              int32_t priority, const char* name, uint64_t* handleId)
+napi_status NativeEvent::SendEventByEventHandler(const std::function<void()> &task, uint64_t eventId,
+                                                 int32_t priority, const char* name, uint64_t* handleId)
 {
+    if (!eventHandler_) {
+        // Internal temporary code
+        return napi_status::napi_invalid_arg;
+    }
     bool postRes = eventHandler_->PostTask(task,
                                            std::to_string(eventId),
                                            0,
@@ -111,16 +116,15 @@ napi_status NativeEvent::SendEventByEVNotNull(std::function<void()> &task, uint6
     if (postRes) {
         *handleId = eventId;
         return napi_status::napi_ok;
-    } else {
-        *handleId = 0;
-        return napi_status::napi_generic_failure;
     }
+    *handleId = 0;
+    return napi_status::napi_generic_failure;
 }
 
-napi_status NativeEvent::SendEventByUv(std::function<void()> &task, uint64_t eventId,
+napi_status NativeEvent::SendEventByUv(const std::function<void()> &task, uint64_t eventId,
                                        const char* name, uint64_t* handleId)
 {
-    CallbackWrapper *cbw = new (std::nothrow) CallbackWrapper();
+    CallbackWrapper* cbw = new (std::nothrow) CallbackWrapper();
     if (!cbw) {
         HILOG_ERROR("malloc failed!");
         return napi_status::napi_generic_failure;
@@ -179,7 +183,7 @@ SafeAsyncCode NativeEvent::UvCancelEvent(uint64_t handleId)
         if (current == nullptr) {
             continue;
         }
-        CallbackWrapper *cbw = reinterpret_cast<CallbackWrapper *>(current);
+        CallbackWrapper* cbw = reinterpret_cast<CallbackWrapper *>(current);
         if (cbw->handleId.load(std::memory_order_relaxed) != handleId) {
             continue;
         }
@@ -192,7 +196,7 @@ SafeAsyncCode NativeEvent::UvCancelEvent(uint64_t handleId)
     return SafeAsyncCode::SAFE_ASYNC_FAILED;
 }
 
-napi_status NativeEvent::SendConvertStatus2NapiStatus(void *data, NativeThreadSafeFunctionCallMode mode)
+napi_status NativeEvent::SendConvertStatus2NapiStatus(void* data, NativeThreadSafeFunctionCallMode mode)
 {
     auto code = Send(data, mode);
     napi_status status = napi_status::napi_ok;
