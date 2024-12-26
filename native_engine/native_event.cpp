@@ -88,10 +88,10 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     };
 #ifdef ENABLE_EVENT_HANDLER
     if (eventHandler_) {
-        return SendEventByEVNotNull(task, eventId, priority, handleId);
+        return SendEventByEVNotNull(task, eventId, priority, name, handleId);
     }
 #endif
-    return SendEventByUv(task, eventId, handleId);
+    return SendEventByUv(task, eventId, name, handleId);
 }
 
 napi_status NativeEvent::SendEventByEVNotNull(std::function<void()> &task, uint64_t eventId,
