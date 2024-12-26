@@ -86,18 +86,19 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
         panda::LocalScope scope(vm);
         callback(data);
     };
-#ifdef ENABLE_EVENT_HANDLER
+
     napi_status sentEventRes = SendEventByEventHandler(task, eventId, priority, name, handleId);
     if (sentEventRes != napi_status::napi_invalid_arg) {
         return sentEventRes;
     }
-#endif
+
     return SendEventByUv(task, eventId, name, handleId);
 }
 
 napi_status NativeEvent::SendEventByEventHandler(const std::function<void()> &task, uint64_t eventId,
                                                  int32_t priority, const char* name, uint64_t* handleId)
 {
+#ifdef ENABLE_EVENT_HANDLER
     if (!eventHandler_) {
         // Internal temporary code
         return napi_status::napi_invalid_arg;
@@ -119,6 +120,9 @@ napi_status NativeEvent::SendEventByEventHandler(const std::function<void()> &ta
     }
     *handleId = 0;
     return napi_status::napi_generic_failure;
+#endif
+    // Internal temporary code
+    return napi_status::napi_invalid_arg;
 }
 
 napi_status NativeEvent::SendEventByUv(const std::function<void()> &task, uint64_t eventId,
