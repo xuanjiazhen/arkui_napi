@@ -80,7 +80,7 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
                                              uint64_t* handleId)
 {
     uint64_t eventId = GenerateUniqueID();
-    auto task = [eng = engine_, callback, data, eventId]() {
+    std::function<void()> task = [eng = engine_, callback, data, eventId]() {
         auto tcin = TraceLogClass("Cancelable Event callback:handleId:" + std::to_string(eventId));
         auto vm = eng->GetEcmaVm();
         panda::LocalScope scope(vm);
@@ -94,8 +94,8 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     return SendEventByUv(task, eventId, handleId);
 }
 
-napi_status NativeEvent::SendEventByEVNotNull(const std::function<void> &task, uint64_t eventId,
-                                              int32_t priority, uint64_t* handleId)
+napi_status NativeEvent::SendEventByEVNotNull(std::function<void()> &task, uint64_t eventId,
+                                              int32_t priority, const char* name, uint64_t* handleId)
 {
     bool postRes = eventHandler_->PostTask(task,
                                            std::to_string(eventId),
@@ -117,7 +117,8 @@ napi_status NativeEvent::SendEventByEVNotNull(const std::function<void> &task, u
     }
 }
 
-napi_status NativeEvent::SendEventByUv(const std::function<void> &task, uint64_t eventId, uint64_t* handleId)
+napi_status NativeEvent::SendEventByUv(std::function<void()> &task, uint64_t eventId,
+                                       const char* name, uint64_t* handleId)
 {
     CallbackWrapper *cbw = new (std::nothrow) CallbackWrapper();
     if (!cbw) {
