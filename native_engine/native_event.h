@@ -49,7 +49,7 @@ protected:
     std::atomic<uint64_t> sequence_;
     uint64_t GenerateUniqueID();
     napi_status SendEventByEventHandler(const std::function<void()> &task, uint64_t eventId,
-                                               int32_t priority, const char* name, uint64_t* handleId);
+                                        int32_t priority, const char* name, uint64_t* handleId);
     napi_status SendEventByUv(const std::function<void()> &task, uint64_t eventId,
                               const char* name, uint64_t* handleId);
     napi_status SendConvertStatus2NapiStatus(void* data, NativeThreadSafeFunctionCallMode mode);
