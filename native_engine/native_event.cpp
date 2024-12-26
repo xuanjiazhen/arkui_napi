@@ -107,7 +107,7 @@ napi_status NativeEvent::SendEventByEventHandler(const std::function<void()> &ta
                                            0,
                                            static_cast<EventQueue::Priority>(priority),
                                            {});
-    std::string res = (postRes? "ok": "fail");
+    std::string res = (postRes ? "ok" : "fail");
     auto evt = TraceLogClass(
         "eventHandler Send task: " + std::string(name) +
         " | handleId: " + std::to_string(eventId) +

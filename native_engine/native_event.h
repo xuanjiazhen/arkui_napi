@@ -53,6 +53,5 @@ protected:
     napi_status SendEventByUv(const std::function<void()> &task, uint64_t eventId,
                               const char* name, uint64_t* handleId);
     napi_status SendConvertStatus2NapiStatus(void* data, NativeThreadSafeFunctionCallMode mode);
-
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_EVENT_H */
