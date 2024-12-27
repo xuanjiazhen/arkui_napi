@@ -1416,7 +1416,7 @@ NativeTypedArrayType ArkNativeEngine::GetSendableTypedArrayType(panda::Local<pan
     } else if (typedArray->IsJSSharedBigUint64Array(vm_)) {
         thisType = NATIVE_BIGUINT64_ARRAY;
     }
-
+    
     return thisType;
 }
 
