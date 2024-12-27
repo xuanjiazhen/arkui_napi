@@ -57,6 +57,8 @@ using panda::ecmascript::EcmaVM;
 static constexpr size_t MAX_BYTE_LENGTH = 2097152;
 static constexpr size_t ONEMIB_BYTE_SIZE = 1048576;
 static constexpr size_t SMALL_STRING_SIZE = 16;
+static constexpr int32_t API_VERSION_FOURTEEN = 14;
+static constexpr const char DEFAULT_NAME[] = "defaultName";
 
 class HandleScopeWrapper {
 public:
@@ -4072,15 +4074,66 @@ NAPI_EXTERN napi_status napi_call_threadsafe_function_with_priority(napi_threads
 NAPI_EXTERN napi_status napi_send_event(napi_env env, const std::function<void()> cb, napi_event_priority priority)
 {
     CHECK_ENV(env);
-
     if (priority < napi_eprio_vip || priority > napi_eprio_idle) {
         HILOG_ERROR("invalid priority %{public}d", static_cast<int32_t>(priority));
         return napi_status::napi_invalid_arg;
     }
     NativeEngine *eng = reinterpret_cast<NativeEngine *>(env);
     if (NativeEngine::IsAlive(eng)) {
-        return eng->SendEvent(cb, priority);
+        // Prevent cb from becoming a floating pointer
+        auto realCb = [cbIn = cb](void *data) {
+            if (cbIn != nullptr) {
+                HILOG_DEBUG("napi_send_event callBack called");
+                cbIn();
+            } else {
+                HILOG_ERROR("napi_send_event callBack is null");
+            }
+        };
+        uint64_t handleId = 0;
+        return eng->SendCancelableEvent(realCb, nullptr, priority, DEFAULT_NAME, &handleId);
     } else {
+        HILOG_ERROR("napi_send_event call NativeEngine not alive");
+        return napi_status::napi_closing;
+    }
+}
+
+NAPI_EXTERN napi_status napi_send_cancelable_event(napi_env env,
+                                                   const std::function<void(void*)> cb,
+                                                   void* data,
+                                                   napi_event_priority priority,
+                                                   uint64_t* handleId,
+                                                   const char* name)
+{
+    CHECK_ENV(env);
+    if (priority < napi_eprio_vip || priority > napi_eprio_idle) {
+        HILOG_ERROR("invalid priority %{public}d", static_cast<int32_t>(priority));
+        return napi_status::napi_invalid_arg;
+    }
+    if (handleId == nullptr) {
+        HILOG_ERROR("invalid handleId");
+        return napi_status::napi_invalid_arg;
+    }
+    NativeEngine *eng = reinterpret_cast<NativeEngine *>(env);
+    if (NativeEngine::IsAlive(eng)) {
+        return  eng->SendCancelableEvent(cb, data, priority, (name == nullptr)? DEFAULT_NAME: name, handleId);
+    } else {
+        HILOG_ERROR("call NativeEngine not alive");
+        return napi_status::napi_closing;
+    }
+}
+
+NAPI_EXTERN napi_status napi_cancel_event(napi_env env, uint64_t handleId, const char* name)
+{
+    CHECK_ENV(env);
+    if (handleId == 0) {
+        HILOG_ERROR("invalid handleId 0");
+        return napi_status::napi_invalid_arg;
+    }
+    NativeEngine *eng = reinterpret_cast<NativeEngine *>(env);
+    if (NativeEngine::IsAlive(eng)) {
+        return eng->CancelEvent(name, handleId);
+    } else {
+        HILOG_ERROR("call NativeEengine not alive");
         return napi_status::napi_closing;
     }
 }
