@@ -38,7 +38,7 @@
 #include "native_property.h"
 #include "reference_manager/native_reference_manager.h"
 #include "utils/macros.h"
-#include "libpandafile/data_protect.h"
+#include "utils/data_protect.h"
 
 namespace panda::ecmascript {
     class EcmaVM;
@@ -65,6 +65,40 @@ enum class DumpFormat {
 
 enum class WorkerVersion {
     NONE, OLD, NEW
+};
+
+class WorkerThreadState {
+public:
+    void CheckIdleState()
+    {
+        if (!isRunning_.load() && taskCount_ == lastTaskCount_) {
+            checkCount_++;
+            return;
+        }
+        checkCount_ = 0;
+        lastTaskCount_ = taskCount_;
+    }
+
+    uint32_t GetCheckCount()
+    {
+        return checkCount_;
+    }
+
+    void NoityTaskStart()
+    {
+        taskCount_ ++;
+        isRunning_.store(true);
+    }
+
+    void NotifyTaskEnd()
+    {
+        isRunning_.store(false);
+    }
+private:
+    std::atomic<bool> isRunning_ {false};
+    uint32_t taskCount_ {0};
+    uint32_t lastTaskCount_ {0};
+    uint32_t checkCount_ {0};
 };
 
 using CleanupCallback = void (*)(void*);
@@ -252,23 +286,23 @@ public:
     }
     bool IsWorkerThread() const
     {
-        return static_cast<JSThreadType>(jsThreadType_.GetOriginPointer()) == JSThreadType::WORKER_THREAD;
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::WORKER_THREAD;
     }
     bool IsRestrictedWorkerThread() const
     {
-        return static_cast<JSThreadType>(jsThreadType_.GetOriginPointer()) == JSThreadType::RESTRICTEDWORKER_THREAD;
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::RESTRICTEDWORKER_THREAD;
     }
     bool IsTaskPoolThread() const
     {
-        return static_cast<JSThreadType>(jsThreadType_.GetOriginPointer()) == JSThreadType::TASKPOOL_THREAD;
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::TASKPOOL_THREAD;
     }
     bool IsMainThread() const
     {
-        return static_cast<JSThreadType>(jsThreadType_.GetOriginPointer()) == JSThreadType::MAIN_THREAD;
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::MAIN_THREAD;
     }
     bool IsNativeThread() const
     {
-        return static_cast<JSThreadType>(jsThreadType_.GetOriginPointer()) == JSThreadType::NATIVE_THREAD;
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::NATIVE_THREAD;
     }
 
     bool CheckAndSetWorkerVersion(WorkerVersion expected, WorkerVersion desired)
@@ -329,7 +363,6 @@ public:
     virtual NativeEngine* GetHostEngine() const;
     virtual void SetApiVersion(int32_t apiVersion);
     virtual int32_t GetApiVersion();
-    virtual int32_t GetRealApiVersion() const;
     virtual bool IsApplicationApiVersionAPI11Plus();
 
     virtual napi_status AddCleanupHook(CleanupCallback fun, void* arg);
@@ -538,6 +571,11 @@ public:
         }
     }
 
+    WorkerThreadState* GetWorkerThreadState()
+    {
+        return workerThreadState_;
+    }
+
 private:
     void InitUvField();
     void CreateDefaultFunction(void);
@@ -580,6 +618,7 @@ protected:
 #endif
     NativeEngine* hostEngine_ {nullptr};
     bool isAppModule_ = false;
+    WorkerThreadState* workerThreadState_;
 
 public:
     uint64_t openHandleScopes_ = 0;
@@ -598,16 +637,15 @@ private:
     uv_sem_t uvSem_;
     // Application's sdk version
     int32_t apiVersion_ = 8;
-    int32_t realApiVersion_ = 8;
 
     // the old worker api use before api9, the new worker api start with api9
     enum JSThreadType { MAIN_THREAD, WORKER_THREAD, TASKPOOL_THREAD, RESTRICTEDWORKER_THREAD, NATIVE_THREAD };
-    panda::panda_file::DataProtect jsThreadType_ {panda::panda_file::DataProtect(uintptr_t(JSThreadType::MAIN_THREAD))};
+    DataProtect jsThreadType_ {DataProtect(uintptr_t(JSThreadType::MAIN_THREAD))};
     // current is hostengine, can create old worker, new worker, or no workers on hostengine
     std::atomic<WorkerVersion> workerVersion_ { WorkerVersion::NONE };
     JSThreadType GetJSThreadType()
     {
-        return static_cast<JSThreadType>(jsThreadType_.GetOriginPointer());
+        return static_cast<JSThreadType>(jsThreadType_.GetData());
     }
 
 #if !defined(PREVIEW)
@@ -699,5 +737,22 @@ public:
     }
 private:
    NativeEngine* engine_ = nullptr;
+};
+
+class WorkerRunningScope {
+public:
+    explicit WorkerRunningScope(napi_env env) : env_(env)
+    {
+        auto engine = reinterpret_cast<NativeEngine*>(env_);
+        engine->GetWorkerThreadState()->NoityTaskStart();
+    }
+
+    ~WorkerRunningScope()
+    {
+        auto engine = reinterpret_cast<NativeEngine*>(env_);
+        engine->GetWorkerThreadState()->NotifyTaskEnd();
+    }
+private:
+    napi_env env_;
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ENGINE_H */

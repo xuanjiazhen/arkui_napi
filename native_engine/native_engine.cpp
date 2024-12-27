@@ -82,6 +82,7 @@ NativeEngine::NativeEngine(void* jsEngine) : jsEngine_(jsEngine)
     SetMainThreadEngine(this);
     SetAlived();
     InitUvField();
+    workerThreadState_ = new WorkerThreadState();
 }
 
 void NativeEngine::InitUvField()
@@ -108,6 +109,9 @@ NativeEngine::~NativeEngine()
     isInDestructor_ = true;
     if (cleanEnv_ != nullptr) {
         cleanEnv_();
+    }
+    if (workerThreadState_ != nullptr) {
+        delete workerThreadState_;
     }
     std::lock_guard<std::mutex> insLock(instanceDataLock_);
     FinalizerInstanceData();
@@ -722,17 +726,11 @@ NativeEngine* NativeEngine::GetHostEngine() const
 void NativeEngine::SetApiVersion(int32_t apiVersion)
 {
     apiVersion_ = apiVersion;
-    realApiVersion_ = apiVersion % API_VERSION_MASK;
 }
 
 int32_t NativeEngine::GetApiVersion()
 {
     return apiVersion_;
-}
-
-int32_t NativeEngine::GetRealApiVersion() const
-{
-    return realApiVersion_;
 }
 
 bool NativeEngine::IsApplicationApiVersionAPI11Plus()
