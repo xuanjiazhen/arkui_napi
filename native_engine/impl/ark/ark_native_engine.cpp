@@ -1343,15 +1343,6 @@ bool ArkNativeEngine::NapiNewSendableTypedArray(const EcmaVM* vm, NativeTypedArr
         case NATIVE_UINT8_CLAMPED_ARRAY:
             typedArray = panda::SharedUint8ClampedArrayRef::New(vm, arrayBuf, byte_offset, length);
             break;
-        case NATIVE_FLOAT64_ARRAY:
-            typedArray = panda::SharedFloat64ArrayRef::New(vm, arrayBuf, byte_offset, length);
-            break;
-        case NATIVE_BIGINT64_ARRAY:
-            typedArray = panda::SharedBigInt64ArrayRef::New(vm, arrayBuf, byte_offset, length);
-            break;
-        case NATIVE_BIGUINT64_ARRAY:
-            typedArray = panda::SharedBigUint64ArrayRef::New(vm, arrayBuf, byte_offset, length);
-            break;
         default:
             *result = nullptr;
             return false;
