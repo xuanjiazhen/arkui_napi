@@ -33,6 +33,10 @@
 #ifdef OHOS_STANDARD_PLATFORM
 #include "unwinder.h"
 #endif
+#if defined(ENABLE_FFRT)
+#include "ffrt_inner.h"
+#include "c/executor_task.h"
+#endif
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
 #endif
@@ -573,6 +577,12 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
     JSNApi::SetAsyncCleanTaskCallback(vm, [this] (AsyncNativeCallbacksPack *callbacksPack) {
         this->PostAsyncTask(callbacksPack);
     });
+#if defined(ENABLE_FFRT)
+    JSNApi::SetFFRTTaskCallback(vm, [this] (TaskCallback &callback) {
+        this->PostFFRTTask(callback);
+    });
+#endif
+
     JSNApi::SetHostPromiseRejectionTracker(vm_, reinterpret_cast<void*>(PromiseRejectCallback),
                                            reinterpret_cast<void*>(this));
     if (IsMainThread()) {
@@ -584,6 +594,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
             NapiErrorManager::GetInstance()->NotifyUnhandledRejection(reinterpret_cast<napi_env>(this), args, "", 0);
         });
     }
+
 #if defined(ENABLE_EVENT_HANDLER)
     if (JSNApi::IsJSMainThreadOfEcmaVM(vm)) {
         ArkIdleMonitor::GetInstance()->SetMainThreadEcmaVM(vm);
@@ -1598,38 +1609,44 @@ __attribute__((optnone)) void ArkNativeEngine::RunAsyncCallbacks(std::vector<Ref
 #endif
 }
 
+#if defined(ENABLE_FFRT)
+void ArkNativeEngine::PostFFRTTask(TaskCallback &task)
+{
+    ffrt::task_attr task_attr;
+    (void)ffrt_task_attr_init(&task_attr);
+    ffrt_task_attr_set_name(&task_attr, "Ark_Run_Callbacks");
+    ffrt_task_attr_set_qos(&task_attr, ffrt_qos_background);
+    ffrt::submit(task, {}, {}, task_attr);
+}
+#endif
+
 void ArkNativeEngine::PostFinalizeTasks()
 {
     if (IsInDestructor()) {
         return;
     }
     if (!pendingAsyncFinalizers_.empty()) {
-        uv_work_t *asynWork = new uv_work_t;
         std::vector<RefFinalizer> *asyncFinalizers = new std::vector<RefFinalizer>();
         asyncFinalizers->swap(pendingAsyncFinalizers_);
-        asynWork->data = reinterpret_cast<void *>(asyncFinalizers);
-
-        int ret = uv_queue_work_with_qos(GetUVLoop(), asynWork, [](uv_work_t *asynWork) {
-            std::vector<RefFinalizer> *finalizers = reinterpret_cast<std::vector<RefFinalizer> *>(asynWork->data);
-            RunAsyncCallbacks(finalizers);
-            HILOG_DEBUG("uv_queue_work async running ");
-            delete finalizers;
-        }, [](uv_work_t *asynWork, int32_t) {
-            delete asynWork;
-        }, uv_qos_t(napi_qos_background));
-        if (ret != 0) {
-            HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
+#if defined(ENABLE_FFRT)
+        TaskCallback task = [asyncFinalizers]() {
             RunAsyncCallbacks(asyncFinalizers);
-            delete asynWork;
             delete asyncFinalizers;
-        }
+        };
+        PostFFRTTask(task);
+#else
+        panda::JsiNativeScope nativeScope(vm_);
+        RunAsyncCallbacks(asyncFinalizers);
+        delete asyncFinalizers;
+#endif
     }
     if (arkFinalizersPack_.Empty()) {
         return;
     }
     ArkFinalizersPack *finalizersPack = new ArkFinalizersPack();
     std::swap(arkFinalizersPack_, *finalizersPack);
-    if (!IsMainThread()) {
+    if (!JSNApi::IsJSMainThreadOfEcmaVM(vm_)) {
+        panda::LocalScope scope(this->GetEcmaVm());
         panda::JsiNativeScope nativeScope(vm_);
         RunCallbacks(finalizersPack);
         delete finalizersPack;
@@ -1640,30 +1657,27 @@ void ArkNativeEngine::PostFinalizeTasks()
         bindingSize > 0) {
         HILOG_DEBUG("Pending Finalizers NativeBindingSize '%{public}zu' large than '%{public}zu', process sync.",
             pendingFinalizersPackNativeBindingSize_, FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD);
+        panda::LocalScope scope(this->GetEcmaVm());
         panda::JsiNativeScope nativeScope(vm_);
         RunCallbacks(finalizersPack);
         delete finalizersPack;
         return;
     }
-    uv_work_t *syncWork = new uv_work_t;
+
     finalizersPack->RegisterFinishNotify([this] (size_t totalNativeBindingSize) {
         this->DecreasePendingFinalizersPackNativeBindingSize(totalNativeBindingSize);
     });
     IncreasePendingFinalizersPackNativeBindingSize(bindingSize);
-
-    syncWork->data = reinterpret_cast<void *>(finalizersPack);
-    int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
-        ArkFinalizersPack *finalizersPack = reinterpret_cast<ArkFinalizersPack*>(syncWork->data);
+    auto task = [this, finalizersPack]() {
+        panda::LocalScope scope(this->GetEcmaVm());
         RunCallbacks(finalizersPack);
-        HILOG_DEBUG("uv_queue_work running");
-        delete syncWork;
         delete finalizersPack;
-    }, uv_qos_t(napi_qos_background));
-    if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
+    };
+    napi_status result = napi_send_event(reinterpret_cast<napi_env>(this), task, napi_eprio_idle);
+    if (result != napi_status::napi_ok) {
+        panda::LocalScope scope(this->GetEcmaVm());
         panda::JsiNativeScope nativeScope(vm_);
         RunCallbacks(finalizersPack);
-        delete syncWork;
         delete finalizersPack;
     }
 }
@@ -1685,22 +1699,18 @@ void ArkNativeEngine::PostAsyncTask(AsyncNativeCallbacksPack *callBacksPack)
         delete callBacksPack;
         return;
     }
-    uv_work_t *syncWork = new uv_work_t;
-    syncWork->data = reinterpret_cast<void *>(callBacksPack);
+    auto task = [this, callBacksPack]() {
+        panda::LocalScope scope(this->GetEcmaVm());
+        RunCallbacks(callBacksPack);
+        delete callBacksPack;
+    };
+    napi_status result = napi_send_event(reinterpret_cast<napi_env>(this), task, napi_eprio_idle);
 
-    int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
-        AsyncNativeCallbacksPack *finalizers = reinterpret_cast<AsyncNativeCallbacksPack*>(syncWork->data);
-        RunCallbacks(finalizers);
-        HILOG_DEBUG("uv_queue_work running");
-        delete syncWork;
-        delete finalizers;
-    }, uv_qos_t(napi_qos_background));
-    if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
+    if (result != napi_status::napi_ok) {
+        panda::LocalScope scope(this->GetEcmaVm());
         panda::JsiNativeScope nativeScope(vm_);
         RunCallbacks(callBacksPack);
         delete callBacksPack;
-        delete syncWork;
     }
 }
 
