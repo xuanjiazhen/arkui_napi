@@ -60,10 +60,10 @@ using JsiRuntimeCallInfo = panda::JsiRuntimeCallInfo;
 using PropertyAttribute = panda::PropertyAttribute;
 using NativePointerCallbackData = panda::NativePointerCallbackData;
 using AsyncNativeCallbacksPack = panda::AsyncNativeCallbacksPack;
+using TaskCallback = panda::TaskCallback;
 using TriggerGCTaskCallback = panda::TriggerGCTaskCallback;
 using TriggerGCData = panda::TriggerGCData;
 using ArkIdleMonitor = panda::ecmascript::ArkIdleMonitor;
-
 // indirect used by ace_engine and(or) ability_runtime
 using panda::Local;
 
@@ -283,8 +283,10 @@ public:
 
     void PostFinalizeTasks();
     void PostAsyncTask(AsyncNativeCallbacksPack *callbacksPack);
+#if defined(ENABLE_FFRT)
+    void PostFFRTTask(TaskCallback &task);
+#endif
     void PostTriggerGCTask(TriggerGCData& data);
-
     ArkFinalizersPack &GetArkFinalizersPack()
     {
         return arkFinalizersPack_;
@@ -417,5 +419,8 @@ private:
     // napi options and its cache
     NapiOptions* options_ { nullptr };
     bool crossThreadCheck_ { false };
+#if defined(ENABLE_EVENT_HANDLER)
+    std::shared_ptr<OHOS::AppExecFwk::EventHandler> mainThreadHandler_ {};
+#endif
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */
