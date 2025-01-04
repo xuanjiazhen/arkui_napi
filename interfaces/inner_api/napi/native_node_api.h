@@ -130,6 +130,13 @@ NAPI_EXTERN napi_status napi_get_shared_array_buffer_info(napi_env env,
 NAPI_EXTERN napi_status napi_encode(napi_env env, napi_value src, napi_value* result);
 NAPI_EXTERN napi_status napi_set_stackinfo(napi_env env, napi_stack_info *napi_info);
 NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, napi_stack_info *result);
+typedef enum {
+    napi_direction_invalid = 0,
+    napi_direction_js_to_sts = 1, // JS object references the STS object
+    napi_direction_sts_to_js = 2, // STS object references the JS object
+    napi_direction_hybrid = 3, // STS object and the JS object references each other
+} napi_xref_direction;
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 // XGC specific internal API
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env, void* inputIface, void** outputIface);
@@ -138,7 +145,8 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
                                        napi_value js_object,
                                        void* native_object,
                                        napi_finalize finalize_cb,
-                                       napi_ref* result);
+                                       napi_ref* result,
+                                       napi_xref_direction refer_direction);
 NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, void** result);
 
 #endif  // PANDA_JS_ETS_HYBRID_MODE
