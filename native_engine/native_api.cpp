@@ -1837,7 +1837,8 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
                                        napi_value js_object,
                                        void* native_object,
                                        napi_finalize finalize_cb,
-                                       napi_ref* result)
+                                       napi_ref* result,
+                                       napi_xref_direction refer_direction)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
@@ -1853,9 +1854,25 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
     size_t nativeBindingSize = 0;
     auto reference = reinterpret_cast<NativeReference**>(result);
     Local<panda::StringRef> key = panda::StringRef::GetProxyNapiWrapperString(vm);
-    Local<panda::ObjectRef> object = panda::ObjectRef::New(vm);
     NativeReference* ref = nullptr;
-    ref = engine->CreateXRefReference(js_object, 0, false, callback, native_object);
+    Local<panda::ObjectRef> object;
+    switch (refer_direction) {
+        case napi_xref_direction::napi_direction_js_to_sts:
+            object = panda::ObjectRef::NewJSXRefObject(vm);
+            ref = engine->CreateReference(js_object, 0, false, callback, native_object, nullptr);
+            break;
+        case napi_xref_direction::napi_direction_sts_to_js:
+            object = panda::ObjectRef::New(vm);
+            ref = engine->CreateXRefReference(js_object, 0, false, callback, native_object);
+            break;
+        case napi_xref_direction::napi_direction_hybrid:
+            object = panda::ObjectRef::New(vm);
+            ref = engine->CreateReference(js_object, 0, false, callback, native_object, nullptr);
+            break;
+        default:
+            HILOG_ERROR("[napi_xref_wrap] invalid refer_direction!");
+            return napi_set_last_error(env, napi_invalid_arg);
+    }
     if (reference != nullptr) {
         *reference = ref;
     }
