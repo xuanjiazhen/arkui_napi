@@ -102,6 +102,7 @@ NativeSafeAsyncWork::NativeSafeAsyncWork(NativeEngine* engine,
     if (runner != nullptr) {
         eventHandler_ = std::make_shared<EventHandler>(runner);
     }
+    safeAsyncWorkGuard_ = std::make_shared<bool>();
 #endif
 }
 
@@ -400,8 +401,26 @@ napi_status NativeSafeAsyncWork::PostTask(void *data, int32_t priority, bool isT
         HILOG_ERROR("post task failed due to nullptr engine or eventHandler");
         return napi_status::napi_generic_failure;
     }
+
+    if (status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSED ||
+        status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSING) {
+        HILOG_ERROR("NativeSafeAsyncWork is closing or closed.");
+        return napi_status::napi_closing;
+    } 
+
+    if (!NativeEngine::IsAlive(engine_)) {
+        HILOG_ERROR("NativeSafeAsyncWork has been destroyed.");
+        return napi_status::napi_closing;
+    }
+
     // the task will be execute at main thread or worker thread
-    auto task = [this, data]() {
+    std::weak_ptr<bool> weakGuard = safeAsyncWorkGuard_;
+    auto task = [weakGuard, this, data]() {
+        auto strongGuard = weakGuard.lock();
+        if (strongGuard == nullptr) {
+            HILOG_ERROR("NativeSafeAsyncWork has been destroyed.");
+            return;
+        }
         HILOG_DEBUG("The task is executing in main thread or worker thread");
         panda::LocalScope scope(this->engine_->GetEcmaVm());
         napi_value func_ = (this->ref_ == nullptr) ? nullptr : this->ref_->Get(engine_);
