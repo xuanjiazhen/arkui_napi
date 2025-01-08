@@ -2271,7 +2271,7 @@ NAPI_EXTERN napi_status napi_escape_handle(napi_env env,
 // Methods to support error handling
 NAPI_EXTERN napi_status napi_throw(napi_env env, napi_value error)
 {
-    CHECK_ENV(env);
+    NAPI_PREAMBLE(env);
     CHECK_ARG(env, error);
 
     auto nativeValue = LocalValueFromJsValue(error);
@@ -2280,12 +2280,13 @@ NAPI_EXTERN napi_status napi_throw(napi_env env, napi_value error)
 
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsError(vm), napi_invalid_arg);
     panda::JSNApi::ThrowException(vm, nativeValue);
+    // return napi_ok instead of napi_pending_exception
     return napi_clear_last_error(env);
 }
 
 NAPI_EXTERN napi_status napi_throw_error(napi_env env, const char* code, const char* msg)
 {
-    CHECK_ENV(env);
+    NAPI_PREAMBLE(env);
     CHECK_ARG(env, msg);
 
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
@@ -2299,12 +2300,13 @@ NAPI_EXTERN napi_status napi_throw_error(napi_env env, const char* code, const c
         errorObj->Set(vm, codeKey, codeValue);
     }
     panda::JSNApi::ThrowException(vm, error);
+    // return napi_ok instead of napi_pending_exception
     return napi_clear_last_error(env);
 }
 
 NAPI_EXTERN napi_status napi_throw_type_error(napi_env env, const char* code, const char* msg)
 {
-    CHECK_ENV(env);
+    NAPI_PREAMBLE(env);
     CHECK_ARG(env, msg);
 
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
@@ -2318,12 +2320,13 @@ NAPI_EXTERN napi_status napi_throw_type_error(napi_env env, const char* code, co
         errorObj->Set(vm, codeKey, codeValue);
     }
     panda::JSNApi::ThrowException(vm, error);
+    // return napi_ok instead of napi_pending_exception
     return napi_clear_last_error(env);
 }
 
 NAPI_EXTERN napi_status napi_throw_range_error(napi_env env, const char* code, const char* msg)
 {
-    CHECK_ENV(env);
+    NAPI_PREAMBLE(env);
     CHECK_ARG(env, msg);
 
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
@@ -2337,6 +2340,7 @@ NAPI_EXTERN napi_status napi_throw_range_error(napi_env env, const char* code, c
         errorObj->Set(vm, codeKey, codeValue);
     }
     panda::JSNApi::ThrowException(vm, error);
+    // return napi_ok instead of napi_pending_exception
     return napi_clear_last_error(env);
 }
 
