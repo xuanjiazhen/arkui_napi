@@ -15,9 +15,54 @@
 
 #ifndef FOUNDATION_ACE_NAPI_TEST_UNITTEST_TEST_H
 #define FOUNDATION_ACE_NAPI_TEST_UNITTEST_TEST_H
+#include "ark_native_engine.h"
 #include "event_handler.h"
 #include "native_engine.h"
 #include "test_common.h"
+
+using panda::RuntimeOption;
+
+class NativeEngineProxy {
+public:
+    NativeEngineProxy()
+    {
+        //Setup
+        panda::RuntimeOption option;
+        option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
+        const int64_t poolSize = 0x1000000;
+        option.SetGcPoolSize(poolSize);
+        option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::ERROR);
+        option.SetDebuggerLibraryPath("");
+        vm_ = panda::JSNApi::CreateJSVM(option);
+        if (vm_ == nullptr) {
+            return;
+        }
+
+        engine_ = new ArkNativeEngine(vm_, nullptr);
+    }
+
+    ~NativeEngineProxy()
+    {
+        delete engine_;
+        panda::JSNApi::DestroyJSVM(vm_);
+        engine_ = nullptr;
+        vm_ = nullptr;
+    }
+
+    inline ArkNativeEngine* operator->() const
+    {
+        return engine_;
+    }
+
+    inline operator napi_env() const
+    {
+        return reinterpret_cast<napi_env>(engine_);
+    }
+
+private:
+    EcmaVM* vm_ {nullptr};
+    ArkNativeEngine* engine_ {nullptr};
+};
 
 class NativeEngineTest : public testing::Test {
 public:

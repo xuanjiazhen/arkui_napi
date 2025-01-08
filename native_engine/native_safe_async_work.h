@@ -105,7 +105,6 @@ private:
     std::condition_variable condition_;
     SafeAsyncStatus status_ = SafeAsyncStatus::UNKNOW;
 #if defined(ENABLE_EVENT_HANDLER)
-    std::mutex eventHandlerMutex_;
     std::shared_ptr<OHOS::AppExecFwk::EventHandler> eventHandler_ = nullptr;
 #endif
 
