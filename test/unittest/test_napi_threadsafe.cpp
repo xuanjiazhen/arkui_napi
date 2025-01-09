@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#define private public
+
 #include "test.h"
 
 #include <chrono>
@@ -22,6 +24,7 @@
 #include "event_runner.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
+#include "napi/native_engine/native_safe_async_work.h"
 #include "securec.h"
 #include "utils/log.h"
 
@@ -509,9 +512,7 @@ public:
 
 void NapiThreadsafeTest::AttachEventHandler()
 {
-    if (eventHandler_ != nullptr) {
-        return;
-    }
+    EXPECT_EQ(eventHandler_, nullptr);
     auto uvLoop = engine_->GetUVLoop();
     auto fd = uvLoop != nullptr ? uv_backend_fd(uvLoop) : -1;
     EXPECT_GE(fd, 0);
@@ -1496,4 +1497,85 @@ HWTEST_F(NapiThreadsafeTest, ThreadsafeTest013, testing::ext::TestSize.Level1)
         callbackData, &callbackData->work);
     napi_queue_async_work(env, callbackData->work);
     HILOG_INFO("ThreadsafeTest013 end");
+}
+
+static void AttachEventHandlerWithLoop(uv_loop_t* uvLoop, std::shared_ptr<OHOS::AppExecFwk::EventHandler> &eventHandler)
+{
+    EXPECT_EQ(eventHandler, nullptr);
+    auto fd = uvLoop != nullptr ? uv_backend_fd(uvLoop) : -1;
+    EXPECT_GE(fd, 0);
+    uv_run(uvLoop, UV_RUN_NOWAIT);
+    auto runner = OHOS::AppExecFwk::EventRunner::Create(false);
+    EXPECT_NE(runner, nullptr);
+    eventHandler = std::make_shared<OHOS::AppExecFwk::EventHandler>(runner);
+    EXPECT_NE(eventHandler, nullptr);
+    uint32_t events = OHOS::AppExecFwk::FILE_DESCRIPTOR_INPUT_EVENT | OHOS::AppExecFwk::FILE_DESCRIPTOR_OUTPUT_EVENT;
+    eventHandler->AddFileDescriptorListener(fd, events, std::make_shared<UnitLoopHandler>(uvLoop), "uvLoopTask");
+    HILOG_INFO("AttachEventHandler is completed!");
+}
+
+HWTEST_F(NapiThreadsafeTest, ThreadsafeTest014, testing::ext::TestSize.Level1)
+{
+    HILOG_INFO("ThreadsafeTest014 start");
+    CallbackCountData *callbackData = new CallbackCountData();
+    std::thread([callbackData]() {
+        NativeEngineProxy engine;
+        EXPECT_NE(engine, nullptr);
+        napi_env env = (napi_env) engine;
+        std::shared_ptr<OHOS::AppExecFwk::EventHandler> eventHandler = nullptr;
+        AttachEventHandlerWithLoop(engine->GetUVLoop(), eventHandler);
+        EXPECT_NE(eventHandler, nullptr);
+        napi_value resourceName = 0;
+        napi_create_string_latin1(env, __func__, NAPI_AUTO_LENGTH, &resourceName);
+        auto task = [env, callbackData, resourceName]() {
+            auto status = napi_create_threadsafe_function(env, nullptr, nullptr, resourceName,
+            0, 1, callbackData, ThreadFanalize, callbackData, CallJs, &callbackData->tsfn);
+            EXPECT_EQ(status, napi_ok);
+            auto safeAsyncWork = reinterpret_cast<NativeSafeAsyncWork *>(callbackData->tsfn);
+            safeAsyncWork->status_ = SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSED;
+            status = napi_call_threadsafe_function_with_priority(callbackData->tsfn,
+                         nullptr, napi_priority_immediate, true);
+            ASSERT_EQ(status, napi_closing);
+            StopCurrentRunner();
+        };
+        eventHandler->PostTask(task);
+        auto runner = eventHandler->GetEventRunner();
+        EXPECT_NE(runner, nullptr);
+        runner->Run();
+    }).join();
+    
+    HILOG_INFO("ThreadsafeTest014 end");
+}
+
+HWTEST_F(NapiThreadsafeTest, ThreadsafeTest015, testing::ext::TestSize.Level1)
+{
+    HILOG_INFO("ThreadsafeTest015 start");
+    CallbackCountData *callbackData = new CallbackCountData();
+    std::thread([callbackData]() {
+        NativeEngineProxy engine;
+        EXPECT_NE(engine, nullptr);
+        napi_env env = (napi_env) engine;
+        std::shared_ptr<OHOS::AppExecFwk::EventHandler> eventHandler = nullptr;
+        AttachEventHandlerWithLoop(engine->GetUVLoop(), eventHandler);
+        EXPECT_NE(eventHandler, nullptr);
+        napi_value resourceName = 0;
+        napi_create_string_latin1(env, __func__, NAPI_AUTO_LENGTH, &resourceName);
+        auto task = [env, callbackData, resourceName]() {
+            auto status = napi_create_threadsafe_function(env, nullptr, nullptr, resourceName,
+            0, 1, callbackData, ThreadFanalize, callbackData, CallJs, &callbackData->tsfn);
+            EXPECT_EQ(status, napi_ok);
+            auto safeAsyncWork = reinterpret_cast<NativeSafeAsyncWork *>(callbackData->tsfn);
+            safeAsyncWork->status_ = SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSING;
+            status = napi_call_threadsafe_function_with_priority(callbackData->tsfn,
+                         nullptr, napi_priority_immediate, true);
+            ASSERT_EQ(status, napi_closing);
+            StopCurrentRunner();
+        };
+        eventHandler->PostTask(task);
+        auto runner = eventHandler->GetEventRunner();
+        EXPECT_NE(runner, nullptr);
+        runner->Run();
+    }).join();
+    
+    HILOG_INFO("ThreadsafeTest015 end");
 }
