@@ -102,6 +102,7 @@ NativeSafeAsyncWork::NativeSafeAsyncWork(NativeEngine* engine,
     if (runner != nullptr) {
         eventHandler_ = std::make_shared<EventHandler>(runner);
     }
+    safeAsyncWorkGuard_ = std::make_shared<bool>();
 #endif
 }
 
@@ -401,7 +402,12 @@ napi_status NativeSafeAsyncWork::PostTask(void *data, int32_t priority, bool isT
         return napi_status::napi_generic_failure;
     }
     // the task will be execute at main thread or worker thread
-    auto task = [this, data]() {
+    std::weak_ptr<bool> weakGuard = safeAsyncWorkGuard_;
+    auto task = [weakGuard, this, data]() {
+        auto strongGuard = weakGuard.lock();
+        if (strongGuard == nullptr) {
+            HILOG_ERROR("NativeSafeAsyncWork has been destroyed.");
+        }
         HILOG_DEBUG("The task is executing in main thread or worker thread");
         panda::LocalScope scope(this->engine_->GetEcmaVm());
         napi_value func_ = (this->ref_ == nullptr) ? nullptr : this->ref_->Get(engine_);
