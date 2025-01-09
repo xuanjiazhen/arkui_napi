@@ -15,7 +15,7 @@
 
 #include "ark_native_deferred.h"
 
-
+#include "native_engine/native_utils.h"
 #include "ark_native_engine.h"
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
@@ -51,4 +51,13 @@ void ArkNativeDeferred::Reject(napi_value reason)
 #endif
     auto vm = engine_->GetEcmaVm();
     deferred_->Reject(vm, reinterpret_cast<uintptr_t>(reason));
+}
+
+void ArkNativeDeferred::RejectInner(napi_value reason)
+{
+#ifdef ENABLE_CONTAINER_SCOPE
+    OHOS::Ace::ContainerScope containerScope(scopeId_);
+#endif
+    auto vm = engine_->GetEcmaVm();
+    deferred_->RejectInner(vm, LocalValueFromJsValue(reason));
 }

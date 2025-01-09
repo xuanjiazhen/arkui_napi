@@ -32,6 +32,7 @@ public:
     ~ArkNativeDeferred();
     void Resolve(napi_value data) override;
     void Reject(napi_value reason) override;
+    void RejectInner(napi_value reason) override;
 
 private:
     ArkNativeEngine* engine_;

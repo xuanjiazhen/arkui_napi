@@ -2908,6 +2908,18 @@ NAPI_EXTERN napi_status napi_reject_deferred(napi_env env, napi_deferred deferre
     return GET_RETURN_STATUS(env);
 }
 
+NAPI_EXTERN napi_status napi_reject_deferred_inner(napi_env env, napi_deferred deferred, napi_value rejection)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, deferred);
+    CHECK_ARG(env, rejection);
+
+    auto nativeDeferred = reinterpret_cast<NativeDeferred*>(deferred);
+    nativeDeferred->RejectInner(rejection);
+    delete nativeDeferred;
+    return GET_RETURN_STATUS(env);
+}
+
 NAPI_EXTERN napi_status napi_is_promise(napi_env env, napi_value value, bool* is_promise)
 {
     CHECK_ENV(env);
