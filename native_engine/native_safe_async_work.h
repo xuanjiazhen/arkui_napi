@@ -102,6 +102,7 @@ protected:
 #if defined(ENABLE_EVENT_HANDLER)
     std::mutex eventHandlerMutex_;
     std::shared_ptr<OHOS::AppExecFwk::EventHandler> eventHandler_ = nullptr;
+    std::shared_ptr<bool> safeAsyncWorkGuard_ = nullptr;
 #endif
 
 #ifdef ENABLE_CONTAINER_SCOPE
