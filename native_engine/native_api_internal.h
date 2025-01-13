@@ -68,6 +68,11 @@ static inline napi_status napi_set_last_error(napi_env env,
         return status;                         \
     }
 
+#define CHECK_AND_RETURN(condition, status)   \
+    if (condition) {                          \
+        return status;                        \
+    }
+
 #define CHECK_AND_CONVERT_TO_OBJECT(env, vm, nativeValue, obj)                 \
     bool isObj = (nativeValue)->IsObject((vm));                                \
     bool isFunc = (nativeValue)->IsFunction((vm));                             \
