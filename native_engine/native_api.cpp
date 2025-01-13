@@ -4230,6 +4230,17 @@ NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, napi_stack_info *result
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, callback);
+
+    auto *engine = reinterpret_cast<NativeEngine*>(env);
+    engine->RegisterAppStateCallback(callback);
+
+    return napi_clear_last_error(env);
+}
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env,
     [[maybe_unused]] void* inputIface,
@@ -4253,4 +4264,5 @@ NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref)
     reference->MarkFromObject();
     return napi_clear_last_error(env);
 }
+
 #endif  // PANDA_JS_ETS_HYBRID_MODE
