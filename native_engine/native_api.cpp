@@ -4248,10 +4248,15 @@ NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, ref);
-    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
-    auto vm = engine->GetEcmaVm();
     ArkNativeReference* reference = reinterpret_cast<ArkNativeReference*>(ref);
     reference->MarkFromObject();
     return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_get_data_from_ref(napi_ref ref, void** data)
+{
+    ArkNativeReference* reference = reinterpret_cast<ArkNativeReference*>(ref);
+    *data = reference->GetData();
+    return napi_ok;
 }
 #endif  // PANDA_JS_ETS_HYBRID_MODE
