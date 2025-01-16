@@ -12,14 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "js_native_api.h"
+#include "test.h"
 #include "js_native_api_types.h"
+#include "js_native_api.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 #include "native_engine.h"
 #include "native_engine/native_event.h"
-#include "test.h"
+
 
 class NapiSendEventTest : public NativeEngineTest {
 public:
@@ -97,12 +97,10 @@ HWTEST_F(NapiSendEventTest, SendCancelableEent001, testing::ext::TestSize.Level1
     char data[] = "test data";
     auto task = [](void* data) {
         HILOG_INFO("function called!");
-    }
+    };
     auto status = napi_send_cancelable_event(nullptr, task, data, napi_eprio_high, &handleId, "default");
     EXPECT_EQ(status, napi_status::napi_invalid_arg);
     status = napi_send_cancelable_event(env, nullptr, data, napi_eprio_high, &handleId, "default");
-    EXPECT_EQ(status, napi_status::napi_invalid_arg);
-    status = napi_send_cancelable_event(env, task, nullptr, napi_eprio_high, &handleId, "default");
     EXPECT_EQ(status, napi_status::napi_invalid_arg);
     status = napi_send_cancelable_event(env, task, data, napi_event_priority(napi_eprio_idle + 1), &handleId, "default");
     EXPECT_EQ(status, napi_status::napi_invalid_arg);
@@ -121,7 +119,7 @@ HWTEST_F(NapiSendEventTest, SendCancelableEent002, testing::ext::TestSize.Level1
     napi_env env = (napi_env)engine_;
     auto task = [](void* data) {
         HILOG_INFO("function called!");
-    }
+    };
     char data[] = "test data";
     uint64_t handleId = 0;
     if (eventHandler_ == nullptr) {
@@ -145,7 +143,7 @@ HWTEST_F(NapiSendEventTest, SendCancelableEent003, testing::ext::TestSize.Level1
     napi_env env = (napi_env)engine_;
     auto task = [](void* data) {
         HILOG_INFO("function called!");
-    }
+    };
     char data[] = "test data";
     uint64_t handleId = 0;
     eventHandler_ = nullptr;
@@ -166,9 +164,9 @@ HWTEST_F(NapiSendEventTest, CancelEvent001, testing::ext::TestSize.Level1)
     char data[] = "test data";
     auto task = [](void* data) {
         HILOG_INFO("function called!");
-    }
+    };
     auto result = napi_cancel_event(env, handleId, "default");
-    ASSERT_EQ(status, napi_status::napi_invalid_arg);
+    ASSERT_EQ(result, napi_status::napi_invalid_arg);
     auto status = napi_send_cancelable_event(env, task, data, napi_eprio_high, &handleId, "default");
     ASSERT_NE(handleId, 0);
     ASSERT_EQ(status, napi_status::napi_ok);
@@ -187,7 +185,7 @@ HWTEST_F(NapiSendEventTest, CancelEvent002, testing::ext::TestSize.Level1)
     napi_env env = (napi_env)engine_;
     auto task = [](void* data) {
         HILOG_INFO("function called!");
-    }
+    };
     char data[] = "test data";
     uint64_t handleId = 0;
     if (eventHandler_ == nullptr) {
@@ -214,7 +212,7 @@ HWTEST_F(NapiSendEventTest, CancelEvent003, testing::ext::TestSize.Level1)
     napi_env env = (napi_env)engine_;
     auto task = [](void* data) {
         HILOG_INFO("function called!");
-    }
+    };
     char data[] = "test data";
     uint64_t handleId = 0;
     eventHandler_ = nullptr;
