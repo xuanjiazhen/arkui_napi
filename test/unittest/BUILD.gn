@@ -77,11 +77,7 @@ ohos_unittest("test_unittest_sendevent") {
 
   include_dirs = ark_include
 
-  cflags = [ 
-    "-g3" ,
-    "-Dprivate=public",
-    "-Dprotected=public",
-    ]
+  cflags = ["-g3"]
 
   sources = [
     "engine/test_ark.cpp",
