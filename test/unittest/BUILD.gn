@@ -72,6 +72,37 @@ ohos_unittest("test_ark_unittest_threadsafe") {
   external_deps += [ "ets_runtime:libark_jsruntime" ]
 }
 
+ohos_unittest("test_unittest_sendevent") {
+  module_out_path = module_output_path
+
+  include_dirs = ark_include
+
+  cflags = [ 
+    "-g3" ,
+    "-Dprivate=public",
+    "-Dprotected=public",
+    ]
+
+  sources = [
+    "engine/test_ark.cpp",
+    "test_napi_sendevent.cpp",
+  ]
+
+  defines = [ "NAPI_TEST" ]
+
+  deps = ark_deps
+  deps += [ "../..:ace_napi" ]
+
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+  external_deps += [
+    "eventhandler:libeventhandler",
+    "hilog:libhilog",
+  ]
+  external_deps += [ "ets_runtime:libark_jsruntime" ]
+}
+
+
 ohos_unittest("test_ark_api_allowlist") {
   module_out_path = module_output_path
 
@@ -121,6 +152,7 @@ group("unittest") {
     ":test_ark_unittest_base",
     ":test_ark_unittest_threadsafe",
     ":test_worker_manager",
+    ":test_unittest_sendevent",
   ]
   if (target_cpu == "arm64") {
     deps += [ "jsvm:jsvm_unittest" ]
