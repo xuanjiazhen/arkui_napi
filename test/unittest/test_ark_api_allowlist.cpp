@@ -144,9 +144,6 @@ HWTEST_F(ArkApiAllowlistTest, CopyPropertyApiFilterTest001, testing::ext::TestSi
     ArkNativeEngine* arkNativeEngine = static_cast<ArkNativeEngine*>(engine_);
     const EcmaVM* vm = arkNativeEngine->GetEcmaVm();
     napi_env env = reinterpret_cast<napi_env>(arkNativeEngine);
-    std::unique_ptr<ApiAllowListChecker> apiAllowListFilter = nullptr;
-    std::shared_ptr<FormModuleChecker> formChecker = std::make_shared<FormModuleChecker>();
-    formChecker->CheckModuleLoadable("i18n", apiAllowListFilter);
 
     napi_property_descriptor systemProperties[] = {
         DECLARE_NAPI_FUNCTION("getSystemLanguage", TestFunction),
@@ -169,13 +166,6 @@ HWTEST_F(ArkApiAllowlistTest, CopyPropertyApiFilterTest001, testing::ext::TestSi
 
     Local<ObjectRef> exportCopy = ObjectRef::New(vm);
 
-    if (apiAllowListFilter != nullptr) {
-        std::string apiPath = "i18n";
-        if ((*apiAllowListFilter)(apiPath)) {
-            ArkNativeEngine::CopyPropertyApiFilter(apiAllowListFilter, vm, i18nObj, exportCopy, apiPath);
-        }
-    }
-
     uint32_t filter = NATIVE_DEFAULT;
     Local<ArrayRef> propertyNamesArrayVal = i18nObj->GetAllPropertyNames(vm, filter);
     for (uint32_t i = 0; i < propertyNamesArrayVal->Length(vm); ++i) {
@@ -196,9 +186,6 @@ HWTEST_F(ArkApiAllowlistTest, CopyPropertyApiFilterTest002, testing::ext::TestSi
     ArkNativeEngine* arkNativeEngine = static_cast<ArkNativeEngine*>(engine_);
     const EcmaVM* vm = arkNativeEngine->GetEcmaVm();
     napi_env env = reinterpret_cast<napi_env>(arkNativeEngine);
-    std::unique_ptr<ApiAllowListChecker> apiAllowListFilter = nullptr;
-    std::shared_ptr<FormModuleChecker> formChecker = std::make_shared<FormModuleChecker>();
-    formChecker->CheckModuleLoadable("intl", apiAllowListFilter);
 
     napi_property_descriptor l2Properties[] = {
         DECLARE_NAPI_FUNCTION("function001", TestFunction),
@@ -222,13 +209,6 @@ HWTEST_F(ArkApiAllowlistTest, CopyPropertyApiFilterTest002, testing::ext::TestSi
     Local<ObjectRef> intlObj = LocalValueFromJsValue(intl);
 
     Local<ObjectRef> exportCopy = ObjectRef::New(vm);
-
-    if (apiAllowListFilter != nullptr) {
-        std::string apiPath = "intl";
-        if ((*apiAllowListFilter)(apiPath)) {
-            ArkNativeEngine::CopyPropertyApiFilter(apiAllowListFilter, vm, intlObj, exportCopy, apiPath);
-        }
-    }
 
     uint32_t filter = NATIVE_DEFAULT;
     Local<ArrayRef> propertyNamesArrayVal = intlObj->GetAllPropertyNames(vm, filter);
