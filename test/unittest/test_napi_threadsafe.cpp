@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#define private public
+
 #include "test.h"
 
 #include <chrono>
@@ -22,6 +24,7 @@
 #include "event_runner.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
+#include "napi/native_engine/native_safe_async_work.h"
 #include "securec.h"
 #include "utils/log.h"
 
@@ -39,6 +42,7 @@ struct CallbackData {
     napi_threadsafe_function tsfn;
     napi_async_work work;
     napi_task_priority priority;
+    int32_t taskSize;
 };
 
 static constexpr int32_t SEND_DATA_TEST = 11;
@@ -455,6 +459,7 @@ static void CallJsWithDiffPriority(napi_env env, napi_value jsCb, void *context,
     EXPECT_NE(env, nullptr);
     auto ctx = reinterpret_cast<CallbackData *>(context);
     g_receiveCnt++;
+    ctx->taskSize--;
     napi_release_threadsafe_function(ctx->tsfn, napi_tsfn_release);
     if (g_receiveCnt == FIRST_RECEIVER) {
         return;
@@ -503,6 +508,7 @@ public:
 
     void CallThreadSafeWithSamePriorityTest(napi_task_priority priority);
     void CallThreadSafeWithDiffPriorityTest();
+    void CallThreadSafeWithDiffPriorityTest01();
     void CallThreadSafeWithDiffPriorityMultipleThreadTest();
     void AttachEventHandler();
 };
@@ -645,6 +651,74 @@ void NapiThreadsafeTest::CallThreadSafeWithDiffPriorityTest()
         CallThreadSafeFunc(callbackData->tsfn, tsfn, napi_priority_high);
         CallThreadSafeFunc(callbackData->tsfn, tsfn, napi_priority_low);
         CallThreadSafeFunc(callbackData->tsfn, tsfn, napi_priority_idle);
+        tsfn.CancelRelease();
+    }, env, callbackData).join();
+}
+
+static void CallThreadSafeFuncWithCtx(void* context, napi_task_priority priority)
+{
+    CallbackData* callbackData = (CallbackData*)context;
+    AutoTsfn autoTsfn(callbackData->tsfn);
+    char *testData = (char *)malloc(DATA_LENGTH);
+    if (testData == nullptr) {
+        return;
+    }
+    memset_s(testData, DATA_LENGTH, 0, DATA_LENGTH);
+    if (priority == napi_priority_immediate) {
+        strcpy_s(testData, DATA_LENGTH, "hello world from A");
+    } else if (priority == napi_priority_high) {
+        strcpy_s(testData, DATA_LENGTH, "hello world from B");
+    } else if (priority == napi_priority_low) {
+        strcpy_s(testData, DATA_LENGTH, "hello world from C");
+    } else if (priority == napi_priority_idle) {
+        strcpy_s(testData, DATA_LENGTH, "hello world from D");
+    }
+    autoTsfn.Acquire();
+    callbackData->taskSize++;
+    auto status = napi_call_threadsafe_function_with_priority(callbackData->tsfn, testData, priority, true);
+    if (status != napi_ok) {
+        autoTsfn.Release();
+    }
+    EXPECT_EQ(status, napi_ok);
+}
+
+static void finalizeCallBackWithPriority(napi_env env, void* finalizeData, void* hint)
+{
+    CallbackData *callbackData = reinterpret_cast<CallbackData *>(finalizeData);
+#if defined(ENABLE_EVENT_HANDLER)
+    auto safeAsyncWork = reinterpret_cast<NativeSafeAsyncWork *>(callbackData->tsfn);
+    EXPECT_EQ(callbackData->taskSize, safeAsyncWork->taskSize_);
+#endif
+    StopCurrentRunner();
+    delete callbackData;
+}
+
+void NapiThreadsafeTest::CallThreadSafeWithDiffPriorityTest01()
+{
+    napi_env env = (napi_env)engine_;
+    napi_value resourceName = 0;
+    napi_create_string_latin1(env, __func__, NAPI_AUTO_LENGTH, &resourceName);
+    CallbackData *callbackData = new CallbackData();
+
+    auto status = napi_create_threadsafe_function(env, nullptr, nullptr, resourceName,
+        0, 1, callbackData, finalizeCallBackWithPriority, callbackData, CallJsWithDiffPriority, &callbackData->tsfn);
+    EXPECT_EQ(status, napi_ok);
+    AutoTsfn tsfn(callbackData->tsfn);
+    tsfn.Acquire();
+    g_receiveCnt = 0;
+    callbackData->taskSize++;
+    status =
+        napi_call_threadsafe_function_with_priority(callbackData->tsfn, nullptr, napi_priority_immediate,
+            true);
+    EXPECT_EQ(status, napi_ok);
+
+    std::thread([](napi_env env, void* data) {
+        CallbackData* callbackData = (CallbackData*)data;
+        AutoTsfn tsfn(callbackData->tsfn);
+        CallThreadSafeFuncWithCtx(data, napi_priority_immediate);
+        CallThreadSafeFuncWithCtx(data, napi_priority_high);
+        CallThreadSafeFuncWithCtx(data, napi_priority_low);
+        CallThreadSafeFuncWithCtx(data, napi_priority_idle);
         tsfn.CancelRelease();
     }, env, callbackData).join();
 }
@@ -1394,6 +1468,26 @@ HWTEST_F(NapiThreadsafeTest, ThreadsafeWithPriorityTest014, testing::ext::TestSi
     EXPECT_NE(runner, nullptr);
     runner->Run();
     HILOG_INFO("ThreadsafeWithPriorityTest014 end");
+}
+
+/**
+ * @tc.name: ThreadsafeWithPriorityTest015
+ * @tc.desc: Test napi_call_threadsafe_function_with_priority.
+ * @tc.type: FUNC
+ * @tc.require: I99QUH
+ */
+HWTEST_F(NapiThreadsafeTest, ThreadsafeWithPriorityTest015, testing::ext::TestSize.Level1)
+{
+    HILOG_INFO("ThreadsafeWithPriorityTest015 start");
+    auto task = [test = this]() {
+        test->CallThreadSafeWithDiffPriorityTest01();
+    };
+    EXPECT_NE(eventHandler_, nullptr);
+    eventHandler_->PostTask(task);
+    auto runner = eventHandler_->GetEventRunner();
+    EXPECT_NE(runner, nullptr);
+    runner->Run();
+    HILOG_INFO("ThreadsafeWithPriorityTest015 end");
 }
 
 /**
