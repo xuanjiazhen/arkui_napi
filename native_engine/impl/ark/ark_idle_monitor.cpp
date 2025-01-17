@@ -296,6 +296,9 @@ bool ArkIdleMonitor::CheckIntervalIdle(int64_t timestamp, int64_t idleDuration)
             triggeredGC_ = JSNApi::NotifyLooperIdleStart(mainVM_, 0, 0);
             needCheckIntervalIdle_ = false;
             handlerWaitToStopCount_++;
+            if (!triggeredGC_) {
+                recordedIdleNotifyInterval_.Reset();
+            }
         };
         mainThreadHandler_->PostTask(task, "ARKTS_IDLE_NOTIFY", 0, OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
     }
