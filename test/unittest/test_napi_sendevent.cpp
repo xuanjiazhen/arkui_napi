@@ -18,7 +18,6 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 #include "native_engine.h"
-#include "native_engine/native_event.h"
 
 
 class NapiSendEventTest : public NativeEngineTest {
