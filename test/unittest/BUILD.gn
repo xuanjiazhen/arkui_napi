@@ -78,10 +78,9 @@ ohos_unittest("test_unittest_sendevent") {
   include_dirs = [
     "./common",
     "./engine",
-    "//foundation/arkui/napi",
-    "//foundation/arkui/napi/interfaces/inner_api",
-    "//foundation/arkui/napi/interfaces/kits",
-    "//foundation/arkui/napi/native_engine",
+    "../../interfaces/inner_api",
+    "../../interfaces/kits",
+    "../../native_engine",
   ]
 
   cflags = ["-g3"]
