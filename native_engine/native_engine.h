@@ -26,7 +26,6 @@
 #include<atomic>
 #endif
 
-#include "callback_scope_manager/native_callback_scope_manager.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "module_manager/native_module_manager.h"
 #include "native_engine/native_async_work.h"
@@ -104,6 +103,7 @@ private:
 using CleanupCallback = void (*)(void*);
 using ThreadId = uint32_t;
 class NapiOptions;
+class NativeCallbackScopeManager;
 using PostTask = std::function<void(bool needSync)>;
 using CleanEnv = std::function<void()>;
 using InitWorkerFunc = std::function<void(NativeEngine* engine)>;

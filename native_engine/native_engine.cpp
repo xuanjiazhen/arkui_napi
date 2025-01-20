@@ -22,6 +22,7 @@
 #include <sys/event.h>
 #endif
 
+#include "callback_scope_manager/native_callback_scope_manager.h"
 #include "native_engine/native_utils.h"
 #include "unicode/ucnv.h"
 
