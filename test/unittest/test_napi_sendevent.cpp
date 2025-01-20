@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "test.h"
 #include "js_native_api_types.h"
 #include "js_native_api.h"
