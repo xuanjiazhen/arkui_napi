@@ -83,7 +83,7 @@ ohos_unittest("test_unittest_sendevent") {
     "../../native_engine",
   ]
 
-  cflags = ["-g3"]
+  cflags = [ "-g3" ]
 
   sources = [
     "engine/test_ark.cpp",
@@ -94,14 +94,14 @@ ohos_unittest("test_unittest_sendevent") {
 
   deps = [ "../..:ace_napi" ]
 
-  external_deps = [ 
+  external_deps = [
     "ets_runtime:libark_jsruntime",
     "eventhandler:libeventhandler",
     "googletest:gtest",
     "googletest:gtest_main",
     "hilog:libhilog",
     "libuv:uv",
-   ]
+  ]
 }
 
 ohos_unittest("test_ark_api_allowlist") {
@@ -152,8 +152,8 @@ group("unittest") {
     ":test_ark_api_allowlist",
     ":test_ark_unittest_base",
     ":test_ark_unittest_threadsafe",
-    ":test_worker_manager",
     ":test_unittest_sendevent",
+    ":test_worker_manager",
   ]
   if (target_cpu == "arm64") {
     deps += [ "jsvm:jsvm_unittest" ]
