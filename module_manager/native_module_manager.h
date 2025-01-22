@@ -159,6 +159,8 @@ private:
     bool CheckNativeListChanged(const NativeModule* cacheHeadNativeModule, const NativeModule* cacheTailNativeModule);
     void MoveApiAllowListCheckerPtr(
         std::unique_ptr<ApiAllowListChecker>& apiAllowListChecker, NativeModule* nativeModule);
+    char* GetPathForCheckModuleLoadable(const bool isAppModule, const std::string& pathKey,
+        char nativeModulePath[][NAPI_PATH_MAX]);
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
     void CreateSharedLibsSonames();

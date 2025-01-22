@@ -556,13 +556,6 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
     HILOG_DEBUG("moduleName is %{public}s, path is %{public}s, relativePath is %{public}s",
         moduleName, path, relativePath);
 
-    std::unique_ptr<ApiAllowListChecker> apiAllowListChecker = nullptr;
-    if (moduleLoadChecker_ && !moduleLoadChecker_->DiskCheckOnly() &&
-        !moduleLoadChecker_->CheckModuleLoadable(moduleName, apiAllowListChecker)) {
-        errInfo = "module " + std::string(moduleName) + " is in blocklist, loading prohibited";
-        HILOG_ERROR("%{public}s", errInfo.c_str());
-        return nullptr;
-    }
     std::string prefixTmp;
 #if defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
     std::string strModule(moduleName);
@@ -583,7 +576,6 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
         }
     }
 #endif
-
     char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
     nativeModulePath[0][0] = 0;
     nativeModulePath[1][0] = 0;
@@ -594,6 +586,14 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
     if (!GetNativeModulePath(strCutName.c_str(), path, relativePath, isAppModule, nativeModulePath, NAPI_PATH_MAX)) {
         errInfo = "failed to get native file path of module " + std::string(moduleName);
         HILOG_WARN("%{public}s", errInfo.c_str());
+        return nullptr;
+    }
+    std::unique_ptr<ApiAllowListChecker> apiAllowListChecker = nullptr;
+    if (moduleLoadChecker_ && !moduleLoadChecker_->DiskCheckOnly() &&
+        !moduleLoadChecker_->CheckModuleLoadable(moduleName, apiAllowListChecker,
+            GetPathForCheckModuleLoadable(isAppModule, path, nativeModulePath))) {
+        errInfo = "module " + std::string(moduleName) + " is in blocklist, loading prohibited";
+        HILOG_ERROR("%{public}s", errInfo.c_str());
         return nullptr;
     }
     NativeModule* nativeModule =
@@ -612,6 +612,14 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
                              NAPI_PATH_MAX)) {
         errInfo = "failed to get native file path of module " + std::string(moduleName);
         HILOG_WARN("%{public}s", errInfo.c_str());
+        return nullptr;
+    }
+    std::unique_ptr<ApiAllowListChecker> apiAllowListChecker = nullptr;
+    if (moduleLoadChecker_ && !moduleLoadChecker_->DiskCheckOnly() &&
+        !moduleLoadChecker_->CheckModuleLoadable(
+            moduleName, apiAllowListChecker, GetPathForCheckModuleLoadable(isAppModule, prefixTmp, nativeModulePath))) {
+        errInfo = "module " + std::string(moduleName) + " is in blocklist, loading prohibited";
+        HILOG_ERROR("%{public}s", errInfo.c_str());
         return nullptr;
     }
 #ifdef ENABLE_HITRACE
@@ -663,6 +671,20 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
 #endif
     HILOG_DEBUG("load native module %{public}s", (nativeModule == nullptr) ? "failed" : "success");
     return nativeModule;
+}
+
+char* NativeModuleManager::GetPathForCheckModuleLoadable(const bool isAppModule, const std::string& pathKey,
+    char nativeModulePath[][NAPI_PATH_MAX])
+{
+    if (isAppModule && IsExistedPath(pathKey.c_str())) {
+        std::lock_guard<std::mutex> guard(appLibPathMapMutex_);
+        return appLibPathMap_[pathKey];
+    }
+    
+    if (nativeModulePath == nullptr) {
+        return nullptr;
+    }
+    return nativeModulePath[0];
 }
 
 bool NativeModuleManager::CheckNativeListChanged(
@@ -771,6 +793,10 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
             }
         }
         prefix = sysPrefix.c_str();
+        if (prefix.find("../") != std::string::npos) {
+            HILOG_ERROR("get path error,path contains ../, moduleName:%{public}s", moduleName);
+            return false;
+        }
         for (int32_t i = 0; i < lengthOfModuleName; i++) {
             dupModuleName[i] = tolower(dupModuleName[i]);
         }
@@ -1031,7 +1057,9 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName
     char nativeModulePath[][NAPI_PATH_MAX], NativeModule* cacheNativeModule)
 {
     std::unique_ptr<ApiAllowListChecker> apiAllowListChecker = nullptr;
-    if (moduleLoadChecker_ && !moduleLoadChecker_->CheckModuleLoadable(moduleName, apiAllowListChecker)) {
+    if (moduleLoadChecker_ &&
+        !moduleLoadChecker_->CheckModuleLoadable(moduleName, apiAllowListChecker,
+            GetPathForCheckModuleLoadable(isAppModule, path, nativeModulePath))) {
         errInfo = "module " + std::string(moduleName) + " is in blocklist, loading prohibited";
         HILOG_WARN("%{public}s", errInfo.c_str());
         return nullptr;
