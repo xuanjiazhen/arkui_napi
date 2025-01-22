@@ -10492,5 +10492,3 @@ HWTEST_F(NapiBasicTest, NapiEncodeTest002, testing::ext::TestSize.Level1)
     auto ret = napi_encode(env, undefined, &result);
     ASSERT_EQ(ret, napi_string_expected);
 }
-
-
