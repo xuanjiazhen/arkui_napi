@@ -662,6 +662,10 @@ public:
     inline static std::mutex& GetAliveEngineMutex() {
         return g_alivedEngineMutex_;
     }
+
+    inline static std::unordered_set<NativeEngine*> GetAliveEngine() {
+        return g_alivedEngine_;
+    }
 };
 
 class NapiErrorManager {

@@ -307,3 +307,20 @@ HWTEST_F(NativeEngineTest, RegisterWorkerEnvTest001, testing::ext::TestSize.Leve
     delete workerEngine1;
     delete workerEngine2;
 }
+
+/**
+ * @tc.name: NotifyForceExpandStateTest001
+ * @tc.desc: Test interface of ArkNativeEngine
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, NotifyForceExpandStateTest001, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+    uint64_t id = g_nativeEngine.GetId();
+    Heap *heap = g_nativeEngine->GetEcmaVm()->GetHeap();
+    ArkNativeEngine::NotifyForceExpandState(id, ForceExpandState::START_HIGH_SENSITIVE);
+    ASSERT_TRUE(heap->InSensitiveStatus() == true);
+    ArkNativeEngine::NotifyForceExpandState(id, ForceExpandState::FINISH_HIGH_SENSITIVE);
+    ASSERT_TRUE(heap->InSensitiveStatus() == true);
+}

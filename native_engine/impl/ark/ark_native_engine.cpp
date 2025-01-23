@@ -2194,6 +2194,16 @@ void ArkNativeEngine::NotifyMemoryPressure(bool inHighMemoryPressure)
     DFXJSNApi::NotifyMemoryPressure(vm_, inHighMemoryPressure);
 }
 
+NativeEngine* ArkNativeEngine::GetArkNativeEngineByID(uint64_t id)
+{
+    for (auto engine : GetAliveEngine()) {
+        if (engine->GetId() == id) {
+            return engine;
+        }
+    }
+    return nullptr;
+}
+
 void ArkNativeEngine::NotifyForceExpandState(int32_t value)
 {
     switch (ForceExpandState(value)) {
@@ -2205,6 +2215,30 @@ void ArkNativeEngine::NotifyForceExpandState(int32_t value)
             break;
         case ForceExpandState::FINISH_HIGH_SENSITIVE:
             DFXJSNApi::NotifyHighSensitive(vm_, false);
+            break;
+        default:
+            HILOG_ERROR("Invalid Force Expand State: %{public}d.", value);
+            break;
+    }
+}
+
+void ArkNativeEngine::NotifyForceExpandState(uint64_t id, int32_t value)
+{
+    NativeEngine *nativeEngine = GetArkNativeEngineByID(id);
+    if (nativeEngine == nullptr) {
+        HILOG_WARN("NativeEngine of ID:%" PRIu64 "is not exist.", id);
+        return;
+    }
+    auto vm = const_cast<EcmaVM *> (nativeEngine->GetEcmaVm());
+    switch (ForceExpandState(value)) {
+        case ForceExpandState::FINISH_COLD_START:
+            DFXJSNApi::NotifyFinishColdStart(vm, true);
+            break;
+        case ForceExpandState::START_HIGH_SENSITIVE:
+            DFXJSNApi::NotifyHighSensitive(vm, true);
+            break;
+        case ForceExpandState::FINISH_HIGH_SENSITIVE:
+            DFXJSNApi::NotifyHighSensitive(vm, false);
             break;
         default:
             HILOG_ERROR("Invalid Force Expand State: %{public}d.", value);

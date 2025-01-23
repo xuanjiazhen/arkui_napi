@@ -267,6 +267,8 @@ public:
     void NotifyIdleTime(int idleMicroSec) override;
     void NotifyMemoryPressure(bool inHighMemoryPressure = false) override;
     void NotifyForceExpandState(int32_t value) override;
+    static void NotifyForceExpandState(uint64_t id, int32_t value);
+    static NativeEngine* GetArkNativeEngineByID(uint64_t id);
 
     void AllowCrossThreadExecution() const override;
     static void PromiseRejectCallback(void* values);
