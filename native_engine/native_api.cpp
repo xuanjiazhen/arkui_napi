@@ -4230,6 +4230,23 @@ NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, napi_stack_info *result
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_load_module_with_path_host(napi_env env, const char* path,
+                                                        const char *entry, napi_value* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, path);
+    CHECK_ARG(env, entry);
+    CHECK_ARG(env, result);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    auto ret = panda::JSNApi::GetModuleNameSpaceWithPath(vm, path, entry);
+    if (panda::JSNApi::HasPendingException(vm)) {
+        *result = nullptr;
+    } else {
+        *result = JsValueFromLocalValue(ret);
+    }
+    return GET_RETURN_STATUS(env);
+}
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env,
     [[maybe_unused]] void* inputIface,
