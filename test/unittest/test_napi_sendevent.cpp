@@ -22,6 +22,7 @@
 
 static char default_name[] = "defaultName";
 static char default_data[] = "testData";
+
 static void Task(void* data)
 {
 }
