@@ -1863,7 +1863,7 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
             break;
         case NapiXRefDirection::NAPI_DIRECTION_STATIC_TO_DYNAMIC:
             object = panda::ObjectRef::New(vm);
-            ref = engine->CreateXRefReference(js_object, 0, false, callback, native_object);
+            ref = engine->CreateXRefReference(js_object, 1, false, callback, native_object);
             break;
         case NapiXRefDirection::NAPI_DIRECTION_HYBRID:
             // Hybrid object may only exist in cross-language inherence case.
