@@ -587,6 +587,7 @@ protected:
     NativeEngine* hostEngine_ {nullptr};
     bool isAppModule_ = false;
     WorkerThreadState* workerThreadState_;
+    static std::unordered_set<NativeEngine*> g_alivedEngine_;
 
 public:
     uint64_t openHandleScopes_ = 0;
@@ -638,7 +639,6 @@ private:
 
     // protect alived engine set and last engine id
     static std::mutex g_alivedEngineMutex_;
-    static std::unordered_set<NativeEngine*> g_alivedEngine_;
     static uint64_t g_lastEngineId_;
     static std::mutex g_mainThreadEngineMutex_;
     static NativeEngine* g_mainThreadEngine_;

@@ -2194,6 +2194,16 @@ void ArkNativeEngine::NotifyMemoryPressure(bool inHighMemoryPressure)
     DFXJSNApi::NotifyMemoryPressure(vm_, inHighMemoryPressure);
 }
 
+NativeEngine* ArkNativeEngine::GetArkNativeEngineByID(uint64_t tid)
+{
+    for (auto engine : g_alivedEngine_) {
+        if (engine->GetTid() == tid) {
+            return engine;
+        }
+    }
+    return nullptr;
+}
+
 void ArkNativeEngine::NotifyForceExpandState(int32_t value)
 {
     switch (ForceExpandState(value)) {
@@ -2210,6 +2220,17 @@ void ArkNativeEngine::NotifyForceExpandState(int32_t value)
             HILOG_ERROR("Invalid Force Expand State: %{public}d.", value);
             break;
     }
+}
+
+void ArkNativeEngine::NotifyForceExpandState(uint64_t tid, int32_t value)
+{
+    std::lock_guard<std::mutex> alivedEngLock(GetAliveEngineMutex());
+    NativeEngine *nativeEngine = GetArkNativeEngineByID(tid);
+    if (nativeEngine == nullptr) {
+        HILOG_WARN("NativeEngine of Tid:%" PRIu64 "is not exist.", tid);
+        return;
+    }
+    nativeEngine->NotifyForceExpandState(value);
 }
 #else
 void ArkNativeEngine::PrintStatisticResult()
@@ -2298,6 +2319,12 @@ void ArkNativeEngine::NotifyApplicationState([[maybe_unused]] bool inBackground)
     HILOG_WARN("ARK does not support dfx on windows");
 }
 
+bool ArkNativeEngine::InSensitiveStatus()
+{
+    HILOG_WARN("ARK does not support dfx on windows");
+    return false;
+}
+
 void ArkNativeEngine::NotifyIdleStatusControl([[maybe_unused]] std::function<void(bool)> callback)
 {
     HILOG_WARN("ARK does not support dfx on windows");
@@ -2314,6 +2341,17 @@ void ArkNativeEngine::NotifyMemoryPressure([[maybe_unused]] bool inHighMemoryPre
 }
 
 void ArkNativeEngine::NotifyForceExpandState([[maybe_unused]] int32_t value)
+{
+    HILOG_WARN("ARK does not support dfx on windows");
+}
+
+NativeEngine* ArkNativeEngine::GetArkNativeEngineByID([[maybe_unused]] uint64_t id)
+{
+    HILOG_WARN("ARK does not support dfx on windows");
+    return nullptr;
+}
+
+void ArkNativeEngine::NotifyForceExpandState([[maybe_unused]] uint64_t id, [[maybe_unused]] int32_t value)
 {
     HILOG_WARN("ARK does not support dfx on windows");
 }
