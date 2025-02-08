@@ -1152,6 +1152,7 @@ NAPI_EXTERN napi_status napi_get_array_length(napi_env env, napi_value value, ui
     CHECK_ENV((env));
     RETURN_STATUS_IF_FALSE(env, (reinterpret_cast<NativeEngine*>(env))->lastException_.IsEmpty(),
         napi_pending_exception);
+    napi_clear_last_error((env));
     CHECK_ARG(env, value);
     CHECK_ARG(env, result);
 
@@ -1162,7 +1163,14 @@ NAPI_EXTERN napi_status napi_get_array_length(napi_env env, napi_value value, ui
     if (!isArrayOrSharedArray) {
         return napi_set_last_error(env, napi_array_expected);
     }
-    return napi_clear_last_error(env);
+    if (UNLIKELY(panda::JSNApi::HasPendingException(vm))) {
+        HILOG_ERROR("pending exception before napi_get_array_length called, print exception info: ");
+        panda::JSNApi::PrintExceptionInfo(vm);
+        *result = 0;
+        reinterpret_cast<NativeEngine *>(env)->lastException_ = panda::JSNApi::GetUncaughtException(vm);
+        return napi_set_last_error(env, napi_pending_exception);
+    }
+    return napi_ok;
 }
 
 NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* result)
