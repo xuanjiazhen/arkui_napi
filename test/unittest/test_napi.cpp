@@ -9960,6 +9960,23 @@ HWTEST_F(NapiBasicTest, NapiGetArrayLengthTest002, testing::ext::TestSize.Level1
 }
 
 /**
+ * @tc.name: NapiGetArrayLengthTest
+ * @tc.desc: Test interface of napi_get_array_length
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetArrayLengthTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value arr = nullptr;
+    uint32_t arrayLength = 0;
+    ASSERT_CHECK_CALL(napi_create_array(env, &arr));
+    ASSERT_CHECK_CALL(napi_throw_error(env, "500", "Common error"));
+    napi_status status = napi_get_array_length(env, arr, &arrayLength);
+    ASSERT_EQ(status, napi_pending_exception);
+}
+
+/**
  * @tc.name: NapiGetArraybufferInfoTest
  * @tc.desc: Test interface of napi_get_arraybuffer_info
  * @tc.type: FUNC
