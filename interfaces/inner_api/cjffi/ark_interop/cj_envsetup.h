@@ -19,6 +19,7 @@
 #include <string>
 
 namespace OHOS {
+using UpdateStackInfoFuncType = void(*)(unsigned long long, void *, unsigned int);
 struct CJEnvMethods {
     void (*initCJAppNS)(const std::string& path) = nullptr;
     void (*initCJSDKNS)(const std::string& path) = nullptr;
@@ -29,6 +30,8 @@ struct CJEnvMethods {
     void* (*loadCJModule)(const char* dllName) = nullptr;
     void* (*loadLibrary)(uint32_t kind, const char* dllName) = nullptr;
     void* (*getSymbol)(void* handle, const char* symbol) = nullptr;
+    void (*registerArkVMInRuntime)(unsigned long long arkVM) = nullptr;
+    void (*registerStackInfoCallbacks)(UpdateStackInfoFuncType uFunc) = nullptr;
 };
 
 class CJEnv {
