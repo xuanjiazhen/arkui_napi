@@ -19,7 +19,7 @@
 #include "napi/native_node_api.h"
 #include "module_checker_delegate.h"
 #include "ark_native_engine.h"
-#include "native_engine/native_utils.h"
+#include "native_utils.h"
 #include "securec.h"
 #include "test.h"
 #include "test_common.h"
