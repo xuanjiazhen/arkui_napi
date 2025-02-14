@@ -157,6 +157,12 @@ do_env() {
         cflags+=" -mfpu=neon"
         cflags_host="-m64"
         ARCH="aarch64"
+    elif [[ "${TARGET_CPU}" = "loongarch64" ]]; then
+        cflags="  --target=loongarch64-linux-ohos"
+        cflags+=" --sysroot=${SYSROOT}"
+        cflags+=" -march=loongarch64"
+        cflags_host="-m64"
+        ARCH="loongarch64"
     elif [[ "${TARGET_CPU}" = "x86_64" ]]; then
         export CC="${CCACHE_EXEC} gcc"
         export CXX="${CCACHE_EXEC} g++"

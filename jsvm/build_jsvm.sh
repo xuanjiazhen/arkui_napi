@@ -35,7 +35,7 @@ usage() {
     echo "-h|--help"
     echo "--sysroot <path>            Sysroot path."
     echo "--prefix <perfix>           Cross-compiler prefix."
-    echo "--target_cpu <arm/arm64>    Cross-compile CPU types."
+    echo "--target_cpu <arm/arm64/loongarch64>    Cross-compile CPU types."
     echo "--target_gen_dir <output path>"
     echo "          if target_gen_dir not set, will install only to the default path."
     exit 0

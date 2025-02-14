@@ -135,6 +135,8 @@ ohos_shared_library("cjLibLoader") {
     defines += [ "USE_LIBS_ARM" ]
   } else if (current_cpu == "x86_64") {
     defines += [ "USE_LIBS_x86_64" ]
+  } else if (current_cpu == "loongarch64") {
+    defines += [ "USE_LIBS_LoongArch64" ]
   } else {
     print("unsupported cpu ${current_cpu}")
     assert(false)
