@@ -187,6 +187,7 @@ private:
     bool CheckLowRunningDurationState() const;
     void IntervalMonitor();
     void NotifyMainThreadTryCompressGC();
+    void NotifyMainThreadTryReduceGCThreadNumber();
     void NotifyOneWorkerThreadTryCompressGC();
     void ClearIdleStats();
     void TryTriggerGC(TriggerGCType gcType);
@@ -203,6 +204,8 @@ private:
 
     static constexpr uint32_t IDLE_CHECK_LENGTH = 15;
     static constexpr uint32_t IDLE_INBACKGROUND_CHECK_LENGTH = 4;
+    static constexpr uint32_t IDLE_THREADNUM_CHECK_LENGTH_FOREGROUND = IDLE_CHECK_LENGTH + 1;
+    static constexpr uint32_t IDLE_THREADNUM_CHECK_LENGTH_BACKGROUND = IDLE_INBACKGROUND_CHECK_LENGTH + 1;
     static constexpr int IDLE_CHECK_INTERVAL_LENGTH = 4;
     static constexpr int MIN_TRIGGER_FULLGC_INTERVAL = 90;
     static constexpr int LOW_IDLE_NOTIFY_THRESHOLD = 10;
