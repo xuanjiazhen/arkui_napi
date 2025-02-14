@@ -97,11 +97,19 @@ static napi_value LoadCJModule(napi_env env, napi_callback_info info)
         return result;
     }
     auto runtime = OHOS::CJEnv::LoadInstance();
+#if defined(__aarch64__)
     runtime->initCJChipSDKNS("/system/lib64/chipset-pub-sdk");
     runtime->initCJAppNS("/data/storage/el1/bundle/libs/arm64");
     runtime->initCJSDKNS("/data/storage/el1/bundle/libs/arm64/ohos:"
                                  "/data/storage/el1/bundle/libs/arm64/runtime");
     runtime->initCJSysNS("/system/lib64:/system/lib64/platformsdk:/system/lib64/module:/system/lib64/ndk");
+#elif defined(__loongarch_lp64)
+    runtime->initCJChipSDKNS("/system/lib64/chipset-pub-sdk");
+    runtime->initCJAppNS("/data/storage/el1/bundle/libs/loongarch64");
+    runtime->initCJSDKNS("/data/storage/el1/bundle/libs/loongarch64/ohos:"
+                                 "/data/storage/el1/bundle/libs/loongarch64/runtime");
+    runtime->initCJSysNS("/system/lib64:/system/lib64/platformsdk:/system/lib64/module:/system/lib64/ndk");
+#endif
     if (!runtime->startRuntime()) {
         LOGE("start cjruntime failed");
         return result;
