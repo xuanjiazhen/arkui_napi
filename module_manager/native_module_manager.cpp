@@ -417,6 +417,8 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libnative_avscreen_capture.so",
         "libavplayer.so",
         "libavrecorder.so",
+        "libavimage_generator.so",
+        "libavmetadata_extractor.so",
         // adaptor library
         "libohosadaptor.so",
         "libusb_ndk.z.so",
