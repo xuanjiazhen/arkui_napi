@@ -57,6 +57,7 @@ using panda::ecmascript::EcmaVM;
 static constexpr size_t MAX_BYTE_LENGTH = 2097152;
 static constexpr size_t ONEMIB_BYTE_SIZE = 1048576;
 static constexpr size_t SMALL_STRING_SIZE = 16;
+static constexpr char NAME_SPACE_TAG = '@';
 
 class HandleScopeWrapper {
 public:
@@ -4280,3 +4281,75 @@ NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, napi_stack_info *result
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_throw_jsvalue(napi_env env, napi_value error)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, error);
+
+    auto nativeValue = LocalValueFromJsValue(error);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+
+    panda::JSNApi::ThrowException(vm, nativeValue);
+    return napi_clear_last_error(env);
+}
+
+// This interface is always used for load module on host
+NAPI_EXTERN napi_status napi_load_module_with_path(napi_env env, const char* path,
+                                                   napi_value* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, path);
+    CHECK_ARG(env, result);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    auto ret = panda::JSNApi::GetModuleNameSpaceWithPath(vm, path);
+    if (panda::JSNApi::HasPendingException(vm)) {
+        *result = nullptr;
+    } else {
+        *result = JsValueFromLocalValue(ret);
+    }
+    return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_load_module_with_module_request(napi_env env, const char* request_name,
+                                                             napi_value* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, request_name);
+    CHECK_ARG(env, result);
+
+    if (request_name[0] == NAME_SPACE_TAG) {
+        // load module with OhmUrl
+        auto [path, module_info] = panda::JSNApi::ResolveOhmUrl(request_name);
+        napi_load_module_with_info(env, path.c_str(), module_info.c_str(), result);
+    } else {
+        napi_load_module_with_path(env, request_name, result);
+    }
+
+    return GET_RETURN_STATUS(env);
+}
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+NAPI_EXTERN napi_status napi_vm_handshake(napi_env env,
+    [[maybe_unused]] void* inputIface,
+    [[maybe_unused]] void** outputIface)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, inputIface);
+    CHECK_ARG(env, outputIface);
+
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::HandshakeHelper::DoHandshake(const_cast<EcmaVM*>(vm), inputIface, outputIface);
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, ref);
+    ArkNativeReference* reference = reinterpret_cast<ArkNativeReference*>(ref);
+    reference->MarkFromObject();
+    return napi_clear_last_error(env);
+}
+#endif  // PANDA_JS_ETS_HYBRID_MODE
