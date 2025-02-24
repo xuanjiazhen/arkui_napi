@@ -232,6 +232,7 @@ if (is_arkui_x) {
     ]
     if (!ark_standalone_build) {
       public_external_deps = [
+        "ets_runtime:libark_jsruntime",
         "libuv:uv",
         "node:node_header_notice",
       ]
