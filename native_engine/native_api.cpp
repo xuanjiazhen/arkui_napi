@@ -4302,4 +4302,20 @@ NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref)
     reference->MarkFromObject();
     return napi_clear_last_error(env);
 }
+
+NAPI_EXTERN napi_status napi_create_xref(napi_env env,
+                                         napi_value value,
+                                         uint32_t initial_refcount,
+                                         napi_ref* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    ArkNativeReferenceConfig conf(initial_refcount, true);
+    auto ref = new ArkNativeReference(engine, value, conf);
+
+    *result = reinterpret_cast<napi_ref>(ref);
+    return napi_clear_last_error(env);
+}
 #endif  // PANDA_JS_ETS_HYBRID_MODE

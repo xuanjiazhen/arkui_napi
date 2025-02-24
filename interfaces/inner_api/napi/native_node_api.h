@@ -152,7 +152,8 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
                                        NapiXRefDirection ref_direction,
                                        napi_ref* result);
 NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, void** result);
-
+NAPI_EXTERN napi_status napi_create_xref(napi_env env, napi_value value, uint32_t initial_refcount,
+                                         napi_ref* result);
 NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref);
 #endif  // PANDA_JS_ETS_HYBRID_MODE
 
