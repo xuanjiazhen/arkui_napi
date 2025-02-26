@@ -30,6 +30,7 @@ class ARKTS_ScopeManager final {
 public:
     static ARKTS_Scope OpenScope(panda::ecmascript::EcmaVM* vm);
     static bool CloseScope(ARKTS_Scope target);
+    static bool CloseAndEscape(ARKTS_Scope target, ARKTS_Value& result);
 };
 }
 

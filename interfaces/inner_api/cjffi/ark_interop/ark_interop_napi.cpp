@@ -696,16 +696,13 @@ void ARKTS_CloseScope(ARKTS_Env env, ARKTS_Scope scope)
 
 panda::JSValueRef* ARKTSInner_Escape(ARKTS_Env env, ARKTS_Scope scope, ARKTS_Value ret)
 {
-    if (!CJ::ARKTS_ScopeManager::CloseScope(scope)) {
+    if (!CJ::ARKTS_ScopeManager::CloseAndEscape(scope, ret)) {
         ARKTSInner_ReportNativeError("exit scope of unknown");
     }
 
-    auto vm = P_CAST(env, EcmaVM*);
-    auto value = ARKTS_ToValue(ret);
+    auto value = ARKTS_ToHandle<JSValueRef>(ret);
 
-    auto result = JSNApi::CreateLocal(vm, value);
-
-    return BIT_CAST(result, JSValueRef*);
+    return BIT_CAST(value, JSValueRef*);
 }
 
 void ARKTS_Throw(ARKTS_Env env, ARKTS_Value error)

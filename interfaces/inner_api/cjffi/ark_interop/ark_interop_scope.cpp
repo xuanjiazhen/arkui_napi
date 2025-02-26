@@ -15,17 +15,32 @@
 
 #include "ark_interop_scope.h"
 
+#include "ark_interop_internal.h"
+
 namespace CJ {
 ARKTS_Scope ARKTS_ScopeManager::OpenScope(panda::ecmascript::EcmaVM* vm)
 {
-    auto scopeId = new panda::LocalScope(vm);
+    auto scopeId = new panda::EscapeLocalScope(vm);
     return P_CAST(scopeId, ARKTS_Scope);
 }
 
 bool ARKTS_ScopeManager::CloseScope(ARKTS_Scope target)
 {
-    auto targetScope = P_CAST(target, panda::LocalScope*);
+    auto targetScope = P_CAST(target, panda::EscapeLocalScope*);
     delete targetScope;
     return true;
 }
+
+bool ARKTS_ScopeManager::CloseAndEscape(ARKTS_Scope target, ARKTS_Value& result)
+{
+    auto targetScope = P_CAST(target, panda::EscapeLocalScope*);
+    if (!targetScope) {
+        return false;
+    }
+    auto local = ARKTS_ToHandle<panda::JSValueRef>(result);
+    local = targetScope->Escape(local);
+    result = ARKTS_FromHandle(local);
+    return true;
+}
+
 }
