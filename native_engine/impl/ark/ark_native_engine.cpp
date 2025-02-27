@@ -291,6 +291,36 @@ struct MoudleNameLocker {
     }
 };
 
+NativeInnerSymbols::NativeInnerSymbols(ArkNativeEngine* engine) : engine_(engine)
+{
+    const EcmaVM* vm = engine_->GetEcmaVm();
+    LocalScope scope(vm);
+#define INIT_FIELD(lower, upper)                                          \
+    {                                                                     \
+        auto description = StringRef::NewFromUtf8(vm, #lower, -1);        \
+        Local<SymbolRef> symbol = panda::SymbolRef::New(vm, description); \
+        lower##Key_ = Global<SymbolRef>(vm, symbol);                      \
+    }
+    NAPI_INNER_SYMBOL(INIT_FIELD);
+#undef INIT_FIELD
+}
+
+NativeInnerSymbols::~NativeInnerSymbols()
+{
+#define DEINIT_FIELD(lower, upper)      \
+    lower##Key_.FreeGlobalHandleAddr(); \
+    NAPI_INNER_SYMBOL(DEINIT_FIELD);
+#undef DEINIT_FIELD
+}
+
+#define INIT_INNER_SYMBOL_GETTER(lower, upper)                   \
+    Local<SymbolRef> NativeInnerSymbols::Get##upper##Key() const \
+    {                                                            \
+        return lower##Key_.ToLocal(engine_->GetEcmaVm());        \
+    }
+NAPI_INNER_SYMBOL(INIT_INNER_SYMBOL_GETTER)
+#undef INIT_INNER_SYMBOL_GETTER
+
 void* ArkNativeEngine::GetNativePtrCallBack(void* data)
 {
     if (data == nullptr) {
@@ -368,6 +398,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 
     options_ = new NapiOptions();
     crossThreadCheck_ = JSNApi::IsMultiThreadCheckEnabled(vm);
+    innerSymbols_ = new NativeInnerSymbols(this);
 #if defined(OHOS_PLATFORM) && !defined(IOS_PLATFORM) && !defined(ANDROID_PLATFORM)
     int napiProperties = OHOS::system::GetIntParameter<int>("persist.ark.napi.properties", -1);
     if (options_ != nullptr) {
@@ -622,6 +653,10 @@ ArkNativeEngine::~ArkNativeEngine()
     if (options_ != nullptr) {
         delete options_;
         options_ = nullptr;
+    }
+    if (innerSymbols_ != nullptr) {
+        delete innerSymbols_;
+        innerSymbols_ = nullptr;
     }
 }
 
@@ -1100,7 +1135,7 @@ panda::Local<panda::ObjectRef> ArkNativeEngine::LoadModuleByName(const std::stri
         paramProperty.utf8name = "param";
         paramProperty.value = paramValue;
         Local<ObjectRef> instanceValue = ObjectRef::New(vm_);
-        Local<StringRef> key = StringRef::GetNapiWrapperString(vm_);
+        Local<SymbolRef> key = GetNapiWrapperKey();
         if (instance == nullptr && instanceValue->Has(vm_, key)) {
             Local<ObjectRef> wrapper = instanceValue->Get(vm_, key);
             auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(vm_, 0));
