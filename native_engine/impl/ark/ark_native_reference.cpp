@@ -354,3 +354,32 @@ bool ArkNativeReference::IsValidHeapObject()
     return value_.IsValidHeapObject();
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
+
+ArkSendableNativeReference::ArkSendableNativeReference(ArkNativeEngine* engine, napi_value value)
+    : value_(engine->GetEcmaVm(), LocalValueFromJsValue(value))
+
+{
+}
+
+ArkSendableNativeReference::ArkSendableNativeReference(ArkNativeEngine* engine, Local<JSValueRef> value)
+    : value_(engine->GetEcmaVm(), value)
+{
+}
+
+ArkSendableNativeReference::~ArkSendableNativeReference()
+{
+    if (value_.IsEmpty()) {
+        return;
+    }
+    value_.FreeGlobalHandleAddr();
+}
+
+napi_value ArkSendableNativeReference::Get(NativeEngine* engine)
+{
+    std::lock_guard<std::mutex> lock { mutex_ };
+    if (value_.IsEmpty()) {
+        return nullptr;
+    }
+    Local<JSValueRef> value = value_.ToLocal(engine->GetEcmaVm());
+    return JsValueFromLocalValue(value);
+}
