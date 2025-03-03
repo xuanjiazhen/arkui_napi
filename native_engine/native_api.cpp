@@ -2289,6 +2289,82 @@ NAPI_EXTERN napi_status napi_get_reference_value(napi_env env, napi_ref ref, nap
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_create_sendable_reference(napi_env env,
+                                                       napi_value value,
+                                                       uint32_t initial_refcount,
+                                                       napi_ref* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    auto ref = new ArkSendableNativeReference(engine, value, initial_refcount);
+
+    *result = reinterpret_cast<napi_ref>(ref);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_delete_sendable_reference(napi_env env, napi_ref ref)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+
+    auto reference = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    uint32_t refCount = reference->GetRefCount();
+    if (refCount > 0 || reference->GetFinalRun()) {
+        delete reference;
+        reference = nullptr;
+    } else {
+        reference->SetDeleteSelf();
+    }
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_sendable_reference_ref(napi_env env, napi_ref ref, uint32_t* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+
+    auto reference = reinterpret_cast<NativeReference*>(ref);
+    uint32_t refCount = reference->Ref();
+
+    if (result) {
+        *result = refCount;
+    }
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_sendable_reference_unref(napi_env env, napi_ref ref, uint32_t* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+
+    auto reference = reinterpret_cast<NativeReference*>(ref);
+    uint32_t unrefCount = reference->Unref();
+
+    if (result) {
+        *result = unrefCount;
+    }
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_sendable_reference_value(napi_env env, napi_ref ref, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+
+    auto reference = reinterpret_cast<NativeReference*>(ref);
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+
+    *result = reference->Get(engine);
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result)
 {
     CHECK_ENV(env);

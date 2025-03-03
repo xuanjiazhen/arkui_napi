@@ -18,6 +18,7 @@
 
 #include "ark_native_engine.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "jsnapi_expo.h"
 #include "native_engine/native_reference.h"
 #include "native_engine/native_value.h"
 
@@ -109,6 +110,44 @@ private:
     static void FreeGlobalCallBack(void* ref);
     static void NativeFinalizeCallBack(void* ref);
     friend class NativeReferenceManager;
+};
+
+class ArkSendableNativeReference : public NativeReference {
+public:
+    ArkSendableNativeReference(ArkNativeEngine* engine, napi_value value, uint32_t initialRefcount);
+    ArkSendableNativeReference(ArkNativeEngine* engine, Local<JSValueRef> value, uint32_t initialRefcount);
+    ~ArkSendableNativeReference() override;
+
+    uint32_t Ref() override;
+    uint32_t Unref() override;
+    napi_value Get() override;
+    napi_value Get(NativeEngine* engine) override;
+    operator napi_value() override;
+    void SetDeleteSelf() override;
+    bool GetDeleteSelf() const override;
+    uint32_t GetRefCount() override;
+    bool GetFinalRun() override;
+    napi_value GetNapiValue() override;
+
+private:
+    inline void ArkSendableNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf = false)
+    {
+        if (initialRefCount == 0) {
+            value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
+        }
+    }
+
+    ArkNativeEngine* engine_;
+    panda::SendableGlobal<JSValueRef> value_;
+    uint32_t refCount_ { 0 };
+    bool deleteSelf_ { false };
+    bool hasDelete_ { false };
+    bool finalRun_ { false };
+
+    void FinalizeCallback();
+
+    static void FreeGlobalCallBack(void* ref);
+    static void NativeFinalizeCallBack(void* ref);
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H */

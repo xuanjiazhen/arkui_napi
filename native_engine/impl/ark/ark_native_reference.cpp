@@ -200,3 +200,119 @@ void ArkNativeReference::ResetFinalizer()
     data_ = nullptr;
     hint_ = nullptr;
 }
+
+ArkSendableNativeReference::ArkSendableNativeReference(ArkNativeEngine* engine,
+                                                       napi_value value,
+                                                       uint32_t initialRefcount)
+    : engine_(engine), value_(engine->GetEcmaVm(), LocalValueFromJsValue(value)), refCount_(initialRefcount)
+
+{
+    ArkSendableNativeReferenceConstructor(initialRefcount);
+}
+
+ArkSendableNativeReference::ArkSendableNativeReference(ArkNativeEngine* engine,
+                                                       Local<JSValueRef> value,
+                                                       uint32_t initialRefcount)
+    : engine_(engine), value_(engine->GetEcmaVm(), value), refCount_(initialRefcount)
+{
+    ArkSendableNativeReferenceConstructor(initialRefcount);
+}
+
+ArkSendableNativeReference::~ArkSendableNativeReference()
+{
+    if (value_.IsEmpty()) {
+        return;
+    }
+    hasDelete_ = true;
+    value_.FreeGlobalHandleAddr();
+    FinalizeCallback();
+}
+
+uint32_t ArkSendableNativeReference::Ref()
+{
+    ++refCount_;
+    if (refCount_ == 1) {
+        value_.ClearWeak();
+    }
+    return refCount_;
+}
+
+uint32_t ArkSendableNativeReference::Unref()
+{
+    if (refCount_ == 0) {
+        return refCount_;
+    }
+    --refCount_;
+    if (value_.IsEmpty()) {
+        return refCount_;
+    }
+    if (refCount_ == 0) {
+        value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
+    }
+    return refCount_;
+}
+
+napi_value ArkSendableNativeReference::Get(NativeEngine* engine)
+{
+    if (value_.IsEmpty()) {
+        return nullptr;
+    }
+    Local<JSValueRef> value = value_.ToLocal(engine->GetEcmaVm());
+    return JsValueFromLocalValue(value);
+}
+
+napi_value ArkSendableNativeReference::Get()
+{
+    return Get(engine_);
+}
+
+ArkSendableNativeReference::operator napi_value()
+{
+    return Get(engine_);
+}
+
+void ArkSendableNativeReference::FinalizeCallback()
+{
+    finalRun_ = true;
+
+    if (deleteSelf_ && !hasDelete_) {
+        delete this;
+    }
+}
+
+void ArkSendableNativeReference::FreeGlobalCallBack(void* ref)
+{
+    auto that = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    that->value_.FreeGlobalHandleAddr();
+}
+
+void ArkSendableNativeReference::NativeFinalizeCallBack(void* ref)
+{
+    auto that = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    that->FinalizeCallback();
+}
+
+void ArkSendableNativeReference::SetDeleteSelf()
+{
+    deleteSelf_ = true;
+}
+
+bool ArkSendableNativeReference::GetDeleteSelf() const
+{
+    return deleteSelf_;
+}
+
+uint32_t ArkSendableNativeReference::GetRefCount()
+{
+    return refCount_;
+}
+
+bool ArkSendableNativeReference::GetFinalRun()
+{
+    return finalRun_;
+}
+
+napi_value ArkSendableNativeReference::GetNapiValue()
+{
+    return Get();
+}
