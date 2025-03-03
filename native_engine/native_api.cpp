@@ -2438,6 +2438,46 @@ NAPI_EXTERN napi_status napi_get_reference_value(napi_env env, napi_ref ref, nap
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_create_sendable_reference(napi_env env,
+                                                       napi_value value,
+                                                       napi_ref* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    auto ref = new ArkSendableNativeReference(engine, value);
+
+    *result = reinterpret_cast<napi_ref>(ref);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_delete_sendable_reference(napi_env env, napi_ref ref)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+
+    auto reference = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    delete reference;
+    reference = nullptr;
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_sendable_reference_value(napi_env env, napi_ref ref, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+
+    auto reference = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+
+    *result = reference->Get(engine);
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result)
 {
     CHECK_ENV_AND_STATUS(env);

@@ -18,6 +18,7 @@
 
 #include "ark_native_engine.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "jsnapi_expo.h"
 #include "native_engine/native_reference.h"
 #include "native_engine/native_value.h"
 
@@ -155,6 +156,24 @@ protected:
 private:
     static void FreeGlobalCallBack(void* ref);
     friend class NativeReferenceManager;
+};
+
+enum class ReferenceReleaseReason : uint8_t {
+    DELETE_REFERENCE,
+    FINALIZE,
+};
+
+class ArkSendableNativeReference {
+public:
+    ArkSendableNativeReference(ArkNativeEngine* engine, napi_value value);
+    ArkSendableNativeReference(ArkNativeEngine* engine, Local<JSValueRef> value);
+    ~ArkSendableNativeReference();
+
+    napi_value Get(NativeEngine* engine);
+
+private:
+    panda::SendableGlobal<JSValueRef> value_;
+    std::mutex mutex_;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H */
