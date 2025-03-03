@@ -197,6 +197,16 @@ NAPI_EXTERN napi_status napi_wrap_sendable_with_size(napi_env env,
                                                      size_t native_binding_size);
 NAPI_EXTERN napi_status napi_unwrap_sendable(napi_env env, napi_value js_object, void** result);
 NAPI_EXTERN napi_status napi_remove_wrap_sendable(napi_env env, napi_value js_object, void** result);
+
+NAPI_EXTERN napi_status napi_create_sendable_reference(napi_env env,
+                                                       napi_value value,
+                                                       uint32_t initial_refcount,
+                                                       napi_ref* result);
+NAPI_EXTERN napi_status napi_delete_sendable_reference(napi_env env, napi_ref ref);
+NAPI_EXTERN napi_status napi_sendable_reference_ref(napi_env env, napi_ref ref, uint32_t* result);
+NAPI_EXTERN napi_status napi_sendable_reference_unref(napi_env env, napi_ref ref, uint32_t* result);
+NAPI_EXTERN napi_status napi_get_sendable_reference_value(napi_env env, napi_ref ref, napi_value* result);
+
 // ======================================== sendable api end ======================================== //
 
 // ======================================== multiple-context ======================================== //

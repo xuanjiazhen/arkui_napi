@@ -354,3 +354,73 @@ bool ArkNativeReference::IsValidHeapObject()
     return value_.IsValidHeapObject();
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
+
+ArkSendableNativeReference::ArkSendableNativeReference(ArkNativeEngine* engine,
+                                                       napi_value value,
+                                                       uint32_t initialRefcount)
+    : value_(engine->GetEcmaVm(), LocalValueFromJsValue(value)), refCount_(initialRefcount)
+
+{
+    ArkSendableNativeReferenceConstructor(engine, initialRefcount);
+}
+
+ArkSendableNativeReference::ArkSendableNativeReference(ArkNativeEngine* engine,
+                                                       Local<JSValueRef> value,
+                                                       uint32_t initialRefcount)
+    : value_(engine->GetEcmaVm(), value), refCount_(initialRefcount)
+{
+    ArkSendableNativeReferenceConstructor(engine, initialRefcount);
+}
+
+ArkSendableNativeReference::~ArkSendableNativeReference()
+{
+    if (value_.IsEmpty()) {
+        return;
+    }
+    value_.FreeGlobalHandleAddr();
+}
+
+bool ArkSendableNativeReference::ReadyToRelease(ReferenceReleaseReason reason)
+{
+    std::lock_guard<std::mutex> lock { mutex_ };
+    if (refCount_ > 0) {
+        return true;
+    }
+    switch (reason) {
+        case ReferenceReleaseReason::DELETE_REFERENCE:
+            deleteSelf_ = true;
+            return finalRun_;
+        case ReferenceReleaseReason::FINALIZE:
+            finalRun_ = true;
+            return deleteSelf_;
+    }
+}
+
+napi_value ArkSendableNativeReference::Get(NativeEngine* engine)
+{
+    std::lock_guard<std::mutex> lock { mutex_ };
+    if (value_.IsEmpty()) {
+        return nullptr;
+    }
+    Local<JSValueRef> value = value_.ToLocal(engine->GetEcmaVm());
+    return JsValueFromLocalValue(value);
+}
+
+void ArkSendableNativeReference::FinalizeCallback()
+{
+    if (ReadyToRelease(ReferenceReleaseReason::FINALIZE)) {
+        delete this;
+    }
+}
+
+void ArkSendableNativeReference::FreeGlobalCallBack(void* ref)
+{
+    auto that = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    that->value_.FreeGlobalHandleAddr();
+}
+
+void ArkSendableNativeReference::NativeFinalizeCallBack(void* ref)
+{
+    auto that = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    that->FinalizeCallback();
+}
