@@ -74,37 +74,40 @@ void ARKTS_SetCJModuleCallback(ARKTS_ModuleCallbacks* callback)
 // export but only for internal
 panda::JSValueRef* ARKTS_LoadModule(ARKTS_Env env, const char* dllName)
 {
-    LOGE("ARKTS_LoadCJModule start: %{public}s", dllName);
+    LOGI("ARKTS_LoadCJModule start: %{public}s", dllName);
+    auto vm = P_CAST(env, EcmaVM*);
     // HandleScope
-    auto scope = ARKTS_OpenScope(env);
+    panda::EscapeLocalScope scope(vm);
+    panda::Local<panda::JSValueRef> result = panda::JSValueRef::Undefined(vm);
 
-    auto undefined = ARKTS_CreateUndefined();
     auto runtime = OHOS::CJEnv::LoadInstance();
     if (!runtime) {
-        return ARKTSInner_Escape(env, scope, undefined);
+        return BIT_CAST(result, panda::JSValueRef*);
     }
 
     if (!runtime->startRuntime()) {
         LOGE("start cj runtime failed");
-        return ARKTSInner_Escape(env, scope, undefined);
+        return BIT_CAST(result, panda::JSValueRef*);
     }
     if (!g_cjModuleCallbacks || !g_cjModuleCallbacks->hasModuleHandle(dllName)) {
         if (!runtime->loadCJModule(dllName)) {
             LOGE("load cj library failed, try load as native");
-            return ARKTSInner_Escape(env, scope, undefined);
+            return BIT_CAST(result, panda::JSValueRef*);
         }
     }
 
     if (!g_cjModuleCallbacks) {
         LOGE("cj module must dependent on ohos_ark_interop");
-        return ARKTSInner_Escape(env, scope, undefined);
+        return BIT_CAST(result, panda::JSValueRef*);
     }
 
     auto exports = ARKTS_CreateObject(env);
 
     exports = g_cjModuleCallbacks->exportModule(env, dllName, exports);
 
-    return ARKTSInner_Escape(env, scope, exports);
+    result = BIT_CAST(exports, panda::Local<panda::JSValueRef>);
+    result = scope.Escape(result);
+    return BIT_CAST(result, panda::JSValueRef*);
 }
 
 EXPORT panda::JSValueRef* ARKTS_LoadModuleByNapiEnv(void* env, const char* dllName)
