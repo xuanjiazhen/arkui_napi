@@ -247,4 +247,9 @@ void ArkNativeReference::MarkFromObject()
 {
     value_.MarkFromObject();
 }
+
+bool ArkNativeReference::IsObjectAlive()
+{
+    return value_.IsObjectAlive();
+}
 #endif // PANDA_JS_ETS_HYBRID_MODE

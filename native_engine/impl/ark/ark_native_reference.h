@@ -92,6 +92,7 @@ public:
     void ResetFinalizer()  override;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     void MarkFromObject();
+    bool IsObjectAlive();
 #endif // PANDA_JS_ETS_HYBRID_MODE
 
 private:
