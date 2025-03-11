@@ -154,6 +154,8 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
 NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, void** result);
 
 NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref);
+NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result);
+NAPI_EXTERN napi_status napi_get_js_type_object(napi_env env, napi_ref ref, int* result);
 NAPI_EXTERN napi_status napi_create_xref(napi_env env,
                                          napi_value value,
                                          uint32_t initial_refcount,

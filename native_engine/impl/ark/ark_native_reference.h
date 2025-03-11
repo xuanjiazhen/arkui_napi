@@ -92,6 +92,8 @@ public:
     void ResetFinalizer()  override;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     void MarkFromObject();
+    bool IsContainObject();
+    int GetJsTypeObject();
 #endif // PANDA_JS_ETS_HYBRID_MODE
 
 private:
