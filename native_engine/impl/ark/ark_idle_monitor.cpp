@@ -159,13 +159,19 @@ void ArkIdleMonitor::IntervalMonitor()
     }
     startRecordTimestamp_ = nowTimestamp;
     CheckWorkerEnvQueue();
+    uint32_t checkCountsForThreadNum = IsInBackground() ? IDLE_THREADNUM_CHECK_LENGTH_BACKGROUND :
+                                                          IDLE_THREADNUM_CHECK_LENGTH_FOREGROUND;
     uint32_t checkCounts = IsInBackground() ? IDLE_INBACKGROUND_CHECK_LENGTH : IDLE_CHECK_LENGTH;
     uint32_t workThreadCheckCounts = checkCounts - IDLE_WORKER_TRIGGER_COUNT;
-    if (numberOfLowIdleNotifyCycles_ >= checkCounts &&
-            numberOfHighIdleTimeRatio_ >= checkCounts) {
-        NotifyMainThreadTryCompressGC();
+    if (numberOfLowIdleNotifyCycles_ >= checkCountsForThreadNum &&
+            numberOfLowIdleNotifyCycles_ >= checkCountsForThreadNum) {
+        NotifyMainThreadTryReduceGCThreadNumber();
         PostMonitorTask(SLEEP_MONITORING_INTERVAL);
         ClearIdleStats();
+    } else if (numberOfLowIdleNotifyCycles_ >= checkCounts &&
+                    numberOfHighIdleTimeRatio_ >= checkCounts) {
+        NotifyMainThreadTryCompressGC();
+        PostMonitorTask(IDLE_MONITORING_INTERVAL);
     } else if (numberOfLowIdleNotifyCycles_ >= workThreadCheckCounts &&
                     numberOfHighIdleTimeRatio_ >= workThreadCheckCounts) {
         NotifyOneWorkerThreadTryCompressGC();
@@ -238,6 +244,29 @@ void ArkIdleMonitor::NotifyMainThreadTryCompressGC()
         }
     };
     mainThreadHandler_->PostTask(task, "ARKTS_IDLE_COMPRESS", 0, OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
+#endif
+}
+
+void ArkIdleMonitor::NotifyMainThreadTryReduceGCThreadNumber()
+{
+#if defined(ENABLE_EVENT_HANDLER)
+    double cpuUsage = GetCpuUsage();
+    if (cpuUsage >= IDLE_CPU_USAGE) {
+        HILOG_INFO("ArkIdleMonitor: Sending a quiet notification is canceled due to high CPU usage: %{public}.2f",
+            cpuUsage);
+        return;
+    }
+    if (mainThreadHandler_ == nullptr) {
+        mainThreadHandler_ = std::make_shared<OHOS::AppExecFwk::EventHandler>(
+            OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
+    };
+    if (mainVM_ == nullptr) {
+        return;
+    }
+    auto task = [this]() {
+        JSNApi::TryReduceGCThreadNumber(mainVM_);
+    };
+    mainThreadHandler_->PostTask(task, "ARKTS_IDLE_REDUCE_THREADNUM", 0, OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
 #endif
 }
 
