@@ -127,8 +127,13 @@ panda::Local<panda::JSValueRef> NapiValueToLocalValue(napi_value v)
 }
 
 #ifdef ENABLE_CONTAINER_SCOPE
-void FunctionSetContainerId(const EcmaVM *vm, panda::Local<panda::JSValueRef> &value)
+void FunctionSetContainerId(napi_env env, panda::Local<panda::JSValueRef> &value)
 {
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+    if (!engine->IsContainerScopeEnabled()) {
+        return;
+    }
+    auto vm = engine->GetEcmaVm();
     if (!value->IsFunction(vm)) {
         return;
     }
@@ -176,7 +181,10 @@ panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, 
     funcInfo->callback = callback;
     funcInfo->data = data;
 #ifdef ENABLE_CONTAINER_SCOPE
-    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+    if (engine->IsContainerScopeEnabled()) {
+        funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    }
 #endif
 
     Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentClassFunction(vm, ArkNativeFunctionCallBack,
@@ -369,6 +377,9 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 
     options_ = new NapiOptions();
     crossThreadCheck_ = JSNApi::IsMultiThreadCheckEnabled(vm);
+#ifdef ENABLE_CONTAINER_SCOPE
+    containerScopeEnable_ = OHOS::system::GetBoolParameter("persist.ace.napiContainerScope.enabled", true);
+#endif
 #if defined(OHOS_PLATFORM) && !defined(IOS_PLATFORM) && !defined(ANDROID_PLATFORM)
     int napiProperties = OHOS::system::GetIntParameter<int>("persist.ark.napi.properties", -1);
     if (options_ != nullptr) {
@@ -834,7 +845,9 @@ static Local<panda::JSValueRef> NapiNativeCreateFunction(napi_env env, const cha
     funcInfo->callback = cb;
     funcInfo->data = value;
 #ifdef ENABLE_CONTAINER_SCOPE
-    funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    if (engine->IsContainerScopeEnabled()) {
+        funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    }
 #endif
 
     Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(
