@@ -136,6 +136,27 @@ private:
     size_t size_;
 };
 
+class AppStateNotifier {
+public:
+    void SetCallback(NapiAppStateCallback callback)
+    {
+        std::lock_guard<std::mutex> lck(appStateLock_);
+        callback_ = callback;
+    }
+
+    void Notify(NapiAppState state, int64_t timestamp = 0)
+    {
+        std::lock_guard<std::mutex> lck(appStateLock_);
+        if (callback_ != nullptr) {
+            callback_(state, timestamp);
+        }
+    }
+
+private:
+    NapiAppStateCallback callback_ {nullptr};
+    std::mutex appStateLock_;
+};
+
 class NAPI_EXPORT ArkNativeEngine : public NativeEngine {
 friend struct MoudleNameLocker;
 public:
@@ -269,6 +290,7 @@ public:
     void NotifyIdleTime(int idleMicroSec) override;
     void NotifyMemoryPressure(bool inHighMemoryPressure = false) override;
     void NotifyForceExpandState(int32_t value) override;
+    void RegisterAppStateCallback(NapiAppStateCallback callback) override;
 
     void AllowCrossThreadExecution() const override;
     static void PromiseRejectCallback(void* values);
@@ -416,5 +438,6 @@ private:
     NapiOptions* options_ { nullptr };
     bool crossThreadCheck_ { false };
     std::shared_ptr<ArkIdleMonitor> arkIdleMonitor_;
+    AppStateNotifier interopAppState_ {};
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */
