@@ -132,7 +132,10 @@ do_env() {
     out_dir=${TARGET_GEN_DIR}/out
     workdir=${NODE_PATH}
     [ -d "${out_dir}" ] || mkdir -p ${out_dir}
-    [ -L "${workdir}/out" ] || ln -s ${out_dir} ${workdir}/out
+    # make sure ${workdir}/out is linked to the right path ${out_dir}
+    if [ ! -L "${workdir}/out" ] || [ "$(readlink -f "${workdir}/out")" != "$(readlink -f "${out_dir}")" ]; then
+        ln -sfn "$(readlink -f "${out_dir}")" "${workdir}/out"
+    fi
 
     argurment+=" -fstack-protector-strong"
     argurment+=" -Wl,-z,noexecstack"
