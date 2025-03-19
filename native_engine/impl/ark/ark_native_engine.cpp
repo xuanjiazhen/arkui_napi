@@ -14,6 +14,7 @@
  */
 
 #include "ark_native_engine.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 
 #ifdef ENABLE_HITRACE
 #include <sys/prctl.h>
@@ -94,6 +95,7 @@ using panda::SymbolRef;
 using panda::IntegerRef;
 using panda::DateRef;
 using panda::BigIntRef;
+using ArkCrashHolder = panda::ArkCrashHolder;
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 static constexpr auto PANDA_MODULE_NAME = "_GLOBAL_MODULE_NAME";
 static constexpr auto PANDA_MODULE_NAME_LEN = 32;
@@ -1378,43 +1380,22 @@ Local<JSValueRef> ArkNativeEngine::NapiLoadNativeModule(std::string path)
     return panda::JSNApi::ExecuteNativeModule(vm_, key);
 }
 
-ModuleTypes ArkNativeEngine::CheckLoadType(const std::string &path)
-{
-    if (path[0] == '@') {
-        return ModuleTypes::NATIVE_MODULE;
-    } else if (path.find("ets/") == 0) { // ets/xxx/xxx
-        return ModuleTypes::MODULE_INNER_FILE;
-    }
-    return ModuleTypes::UNKNOWN;
-}
-
-napi_value ArkNativeEngine::NapiLoadModule(const char* path, const char* module_info)
+napi_value ArkNativeEngine::NapiLoadModule(const char* path)
 {
     if (path == nullptr) {
         HILOG_ERROR("ArkNativeEngine:The module name is empty");
         return nullptr;
     }
+    HILOG_INFO("ArkNativeEngine::NapiLoadModule path:%{public}s", path);
     panda::EscapeLocalScope scope(vm_);
     Local<JSValueRef> undefObj = JSValueRef::Undefined(vm_);
-    Local<ObjectRef> exportObj(undefObj);
+    Local exportObj(undefObj);
     std::string inputPath(path);
-    std::string modulePath;
-    if (module_info != nullptr) {
-        modulePath = module_info;
-    }
-    switch (CheckLoadType(inputPath)) {
-        case ModuleTypes::NATIVE_MODULE: {
-            exportObj = NapiLoadNativeModule(inputPath);
-            break;
-        }
-        case ModuleTypes::MODULE_INNER_FILE: {
-            exportObj = panda::JSNApi::GetModuleNameSpaceFromFile(vm_, inputPath, modulePath);
-            break;
-        }
-        default: {
-            std::string msg = "ArkNativeEngine:NapiLoadModule input path:" + inputPath + " is invalid.";
-            ThrowException(msg.c_str());
-        }
+    std::string ohmurl = GetOhmurl(inputPath);
+    if (!ohmurl.empty()) {
+        exportObj = panda::JSNApi::ExecuteNativeModule(vm_, ohmurl);
+    } else {
+        exportObj = panda::JSNApi::GetModuleNameSpaceFromFile(vm_, inputPath);
     }
     if (!exportObj->IsObject(vm_)) {
         ThrowException("ArkNativeEngine:NapiLoadModule failed.");
@@ -1441,8 +1422,10 @@ napi_value ArkNativeEngine::NapiLoadModuleWithInfo(const char* path, const char*
         exportObj = NapiLoadNativeModule(inputPath);
     }
 
-    if (!exportObj->IsObject(vm_)) {
-        ThrowException("ArkNativeEngine:NapiLoadModuleWithInfo failed.");
+    if (panda::JSNApi::HasPendingException(vm_)) {
+        HILOG_WARN("ArkNativeEngine:NapiLoadModuleWithInfo failed.");
+        panda::JSNApi::PrintExceptionInfo(vm_);
+        panda::JSNApi::GetAndClearUncaughtException(vm_); // clear exception here
         return JsValueFromLocalValue(scope.Escape(undefObj));
     }
     return JsValueFromLocalValue(scope.Escape(exportObj));
@@ -1549,6 +1532,7 @@ __attribute__((optnone)) void ArkNativeEngine::RunAsyncCallbacks(std::vector<Ref
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "RunFinalizeCallbacks:" + std::to_string(finalizers->size()));
 #endif
+    INIT_CRASH_HOLDER(holder, "NAPI");
     for (auto iter : (*finalizers)) {
         NapiNativeFinalize callback = iter.first;
         std::tuple<NativeEngine*, void*, void*> &param = iter.second;
@@ -1635,7 +1619,7 @@ __attribute__((optnone)) void ArkNativeEngine::RunCallbacks(AsyncNativeCallbacks
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "RunNativeCallbacks:" + std::to_string(callbacksPack->GetNumCallBacks()));
 #endif
-    callbacksPack->ProcessAll();
+    callbacksPack->ProcessAll("NAPI");
 #ifdef ENABLE_HITRACE
     FinishTrace(HITRACE_TAG_ACE);
 #endif
@@ -2370,7 +2354,7 @@ bool DumpHybridStack(const EcmaVM* vm, std::string &stack, uint32_t ignore, int3
 
     for (auto &frame : frames) {
         if (frame.isJsFrame) {
-            DFXJSNApi::TranslateJSStackInfo(vm, frame.mapName, frame.line, frame.column);
+            DFXJSNApi::TranslateJSStackInfo(vm, frame.mapName, frame.line, frame.column, frame.packageName);
         }
     }
 
