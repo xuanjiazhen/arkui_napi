@@ -49,6 +49,7 @@ static constexpr int INT_ZERO = 0;
 static constexpr int INT_ONE = 1;
 static constexpr int INT_TWO = 2;
 static constexpr int INT_THREE = 3;
+static constexpr int INT_FORTYTWO = 42;
 static constexpr int INT_HUNDRED = 100;
 
 static constexpr double TEST_DOUBLE = 1.1;
@@ -60,9 +61,12 @@ static constexpr int32_t TEST_INT32_10 = 10;
 static constexpr int32_t TEST_INT32_20 = 20;
 static constexpr int32_t TEST_INT32_500 = 500;
 static constexpr uint32_t TEST_UINT32_1000 = 1000;
-static constexpr int64_t TEST_INT64 = 9007199254740991;
+static constexpr int64_t MAX_SAFE_INTEGER = 9007199254740991;
+static constexpr int64_t TEST_INT64_NEGATIVE = -987654321;
 static constexpr int TEST_NUM = 95;
 static constexpr const char TEST_CHAR_STRING[] = "TestString";
+static constexpr const char TEST_PROP_STRING_1[] = "prop1";
+static constexpr const char TEST_PROP_STRING_2[] = "prop2";
 static constexpr const char TEST_CHAR_ASYNCWORK[] = "AsyncWorkTest";
 static constexpr const char16_t TEST_CHAR16_STRING[] = u"TestString";
 static constexpr const char TEST_CHAR_ERROR_CODE[] = "500";
@@ -5887,6 +5891,7 @@ HWTEST_F(NapiBasicTest, NapiCoerceToBoolTest003, testing::ext::TestSize.Level1)
     ASSERT_EQ(ret, false);
     ASSERT_EQ(status, napi_ok);
 }
+
 /**
  * @tc.name: NapiFatalExceptionTest
  * @tc.desc: Test interface of napi_coerce_to_bool
@@ -10631,7 +10636,7 @@ HWTEST_F(NapiBasicTest, NapiCreateInt64Test001, testing::ext::TestSize.Level1)
     ASSERT_NE(engine_, nullptr);
     napi_env env = reinterpret_cast<napi_env>(engine_);
 
-    auto res = napi_create_int64(env, TEST_INT64, nullptr);
+    auto res = napi_create_int64(env, MAX_SAFE_INTEGER, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
 }
 
@@ -10646,7 +10651,7 @@ HWTEST_F(NapiBasicTest, NapiCreateInt64Test002, testing::ext::TestSize.Level1)
     napi_env env = reinterpret_cast<napi_env>(engine_);
 
     napi_value numberValue = nullptr;
-    auto res = napi_create_int64(env, TEST_INT64, &numberValue);
+    auto res = napi_create_int64(env, MAX_SAFE_INTEGER, &numberValue);
     ASSERT_EQ(res, napi_ok);
 }
 
@@ -10733,6 +10738,56 @@ HWTEST_F(NapiBasicTest, NapiCreateStringUtf8Test002, testing::ext::TestSize.Leve
 
     auto res = napi_create_string_utf8(env, TEST_CHAR_STRING, NAPI_AUTO_LENGTH, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiCreateStringUtf8Test003
+ * @tc.desc: Test napi_create_string_utf8 with a valid string and auto length
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateStringUtf8Test003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    const char* testString = TEST_CHAR_STRING;
+    napi_value result = nullptr;
+    napi_status res = napi_create_string_utf8(env, testString, NAPI_AUTO_LENGTH, &result);
+    ASSERT_EQ(res, napi_ok);
+
+    size_t strLength = strlen(testString);
+    char* buffer = new char[strLength + 1];
+    size_t resultLength = 0;
+    res = napi_get_value_string_utf8(env, result, buffer, strLength + 1, &resultLength);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(resultLength, strLength);
+    ASSERT_STREQ(buffer, testString);
+
+    delete[] buffer;
+}
+
+/**
+ * @tc.name: NapiCreateStringUtf8Test004
+ * @tc.desc: Test napi_create_string_utf8 with a valid string and explicit length
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateStringUtf8Test004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    const char* testString = TEST_STRING;
+    size_t strLength = strlen(testString);
+    napi_value result;
+    auto res = napi_create_string_utf8(env, testString, strLength, &result);
+    ASSERT_EQ(res, napi_ok);
+
+    char* buffer = new char[strLength + 1];
+    size_t resultLength = 0;
+    res = napi_get_value_string_utf8(env, result, buffer, strLength + 1, &resultLength);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(resultLength, strLength);
+    ASSERT_STREQ(buffer, testString);
 }
 
 /**
@@ -11194,6 +11249,86 @@ HWTEST_F(NapiBasicTest, NapiGetValueInt32Test002, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: NapiGetValueInt32Test003
+ * @tc.desc: Test napi_get_value_int32 with a valid positive int32 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt32Test003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int32_t testNumber = TEST_INT32_500;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_int32(env, testNumber, &numberValue), napi_ok);
+
+    int32_t result = 0;
+    auto res = napi_get_value_int32(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, testNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueInt32Test004
+ * @tc.desc: Test napi_get_value_int32 with a valid negative int32 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt32Test004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int32_t negativeNumber = TEST_INT64_NEGATIVE;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_int32(env, negativeNumber, &numberValue), napi_ok);
+
+    int32_t result = 0;
+    auto res = napi_get_value_int32(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, negativeNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueInt32Test005
+ * @tc.desc: Test napi_get_value_int32 with the maximum int32 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt32Test005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int32_t maxNumber = INT32_MAX;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_int32(env, maxNumber, &numberValue), napi_ok);
+
+    int32_t result = 0;
+    auto res = napi_get_value_int32(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, maxNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueInt32Test006
+ * @tc.desc: Test napi_get_value_int32 with the minimum int32 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt32Test006, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int32_t minNumber = INT32_MIN;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_int32(env, minNumber, &numberValue), napi_ok);
+
+    int32_t result = 0;
+    auto res = napi_get_value_int32(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, minNumber);
+}
+
+/**
  * @tc.name: NapiGetValueInt64Test
  * @tc.desc: Test interface of napi_get_value_int64
  * @tc.type: FUNC
@@ -11221,6 +11356,105 @@ HWTEST_F(NapiBasicTest, NapiGetValueInt64Test002, testing::ext::TestSize.Level1)
     ASSERT_CHECK_CALL(napi_get_boolean(env, true, &boolean));
     int64_t number;
     auto res = napi_get_value_int64(env, boolean, &number);
+    ASSERT_EQ(res, napi_number_expected);
+}
+
+/**
+ * @tc.name: NapiGetValueInt64Test003
+ * @tc.desc: Test napi_get_value_int64 with a valid positive int64 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt64Test003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int64_t testNumber = MAX_SAFE_INTEGER;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_int64(env, testNumber, &numberValue), napi_ok);
+
+    int64_t result = 0;
+    auto res = napi_get_value_int64(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, testNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueInt64Test004
+ * @tc.desc: Test napi_get_value_int64 with a valid negative int64 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt64Test004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int64_t negativeNumber = TEST_INT64_NEGATIVE;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_int64(env, negativeNumber, &numberValue), napi_ok);
+
+    int64_t result = 0;
+    auto res = napi_get_value_int64(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, negativeNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueInt64Test005
+ * @tc.desc: Test napi_get_value_int64 with the maximum int64 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt64Test005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int64_t maxNumber = INT64_MAX;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_int64(env, maxNumber, &numberValue), napi_ok);
+
+    int64_t result = 0;
+    auto res = napi_get_value_int64(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, maxNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueInt64Test006
+ * @tc.desc: Test napi_get_value_int64 with the minimum int64 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt64Test006, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int64_t minNumber = INT64_MIN;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_int64(env, minNumber, &numberValue), napi_ok);
+
+    int64_t result = 0;
+    auto res = napi_get_value_int64(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, minNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueInt64Test007
+ * @tc.desc: Test napi_get_value_int64 with a non - number napi_value
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueInt64Test007, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    napi_value stringValue = nullptr;
+    size_t strLength = strlen(TEST_STRING);
+    ASSERT_EQ(napi_create_string_utf8(env, TEST_STRING, strLength, &stringValue), napi_ok);
+
+    int64_t result = 0;
+    auto res = napi_get_value_int64(env, stringValue, &result);
     ASSERT_EQ(res, napi_number_expected);
 }
 
@@ -11406,6 +11640,82 @@ HWTEST_F(NapiBasicTest, NapiGetValueUint32Test002, testing::ext::TestSize.Level1
 }
 
 /**
+ * @tc.name: NapiGetValueUint32Test003
+ * @tc.desc: Test napi_get_value_uint32 with a valid uint32 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueUint32Test003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    uint32_t testNumber = TEST_UINT32_1000;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_uint32(env, testNumber, &numberValue), napi_ok);
+
+    uint32_t result = 0;
+    auto res = napi_get_value_uint32(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, testNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueUint32Test004
+ * @tc.desc: Test napi_get_value_uint32 with a null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueUint32Test004, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    napi_value value = nullptr;
+    napi_get_boolean(reinterpret_cast<napi_env>(engine_), true, &value);
+    uint32_t result = 0;
+    auto res = napi_get_value_uint32(env, value, &result);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetValueUint32Test005
+ * @tc.desc: Test napi_get_value_uint32 with the maximum uint32 number
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueUint32Test005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    uint32_t maxNumber = UINT32_MAX;
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_uint32(env, maxNumber, &numberValue), napi_ok);
+
+    uint32_t result = 0;
+    auto res = napi_get_value_uint32(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(result, maxNumber);
+}
+
+/**
+ * @tc.name: NapiGetValueUint32Test006
+ * @tc.desc: Test napi_get_value_uint32 with a negative number represented as double (should fail)
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetValueUint32Test006, testing::ext::TestSize.Level1)
+{
+    NAPI_EXTERN napi_status napi_create_double(napi_env env, double value, napi_value* result);
+
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    double negativeNumber = -10.0; // test num -10.0
+    napi_value numberValue = nullptr;
+    ASSERT_EQ(napi_create_double(env, negativeNumber, &numberValue), napi_ok);
+
+    uint32_t result = 0;
+    auto res = napi_get_value_uint32(env, numberValue, &result);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
  * @tc.name: NapiGetBooleanTest
  * @tc.desc: Test interface of napi_get_boolean
  * @tc.type: FUNC
@@ -11423,6 +11733,85 @@ HWTEST_F(NapiBasicTest, NapiGetBooleanTest001, testing::ext::TestSize.Level1)
     ASSERT_CHECK_CALL(napi_get_boolean(env, false, &result));
 }
 
+bool checkBooleanValue(napi_env env, napi_value result, bool expected) {
+    bool actual;
+    napi_status status = napi_get_value_bool(env, result, &actual);
+    if (status != napi_ok) {
+        return false;
+    }
+    return actual == expected;
+}
+
+/**
+ * @tc.name: NapiGetBooleanTest002
+ * @tc.desc: Test napi_get_boolean with null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetBooleanTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    bool value = true;
+    napi_value result = nullptr;
+
+    auto res = napi_get_boolean(env, value, &result);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetBooleanTest003
+ * @tc.desc: Test napi_get_boolean with true value
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetBooleanTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    bool value = true;
+    napi_value result = nullptr;
+
+    auto res = napi_get_boolean(env, value, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_TRUE(checkBooleanValue(env, result, value));
+}
+
+/**
+ * @tc.name: NapiGetBooleanTest004
+ * @tc.desc: Test napi_get_boolean with false value
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetBooleanTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    bool value = false;
+    napi_value result = nullptr;
+
+    auto res = napi_get_boolean(env, value, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_TRUE(checkBooleanValue(env, result, value));
+}
+
+/**
+ * @tc.name: NapiGetBooleanTest005
+ * @tc.desc: Test napi_get_boolean multiple times with different values
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetBooleanTest005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value result1 = nullptr;
+    napi_value result2 = nullptr;
+
+    auto res1 = napi_get_boolean(env, true, &result1);
+    ASSERT_EQ(res1, napi_ok);
+    ASSERT_TRUE(checkBooleanValue(env, result1, true));
+
+    auto res2 = napi_get_boolean(env, false, &result2);
+    ASSERT_EQ(res2, napi_ok);
+    ASSERT_TRUE(checkBooleanValue(env, result2, false));
+}
+
 /**
  * @tc.name: NapiGetGlobalTest
  * @tc.desc: Test interface of napi_get_global
@@ -11435,6 +11824,88 @@ HWTEST_F(NapiBasicTest, NapiGetGlobalTest001, testing::ext::TestSize.Level1)
 
     auto res = napi_get_global(env, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetGlobalTest002
+ * @tc.desc: Test napi_get_global with valid environment and result pointer
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetGlobalTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value result = nullptr;
+
+    auto res = napi_get_global(env, &result);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_NE(result, nullptr);
+}
+
+/**
+ * @tc.name: NapiGetGlobalTest003
+ * @tc.desc: Test napi_get_global with null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetGlobalTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    napi_value result = nullptr;
+
+    auto res = napi_get_global(env, &result);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetGlobalTest004
+ * @tc.desc: Test napi_get_global multiple times with the same valid environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetGlobalTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value result1 = nullptr;
+    napi_value result2 = nullptr;
+
+    auto res1 = napi_get_global(env, &result1);
+    ASSERT_EQ(res1, napi_ok);
+    ASSERT_NE(result1, nullptr);
+
+    auto res2 = napi_get_global(env, &result2);
+    ASSERT_EQ(res2, napi_ok);
+    ASSERT_NE(result2, nullptr);
+
+    ASSERT_NE(result1, result2);
+}
+
+/**
+ * @tc.name: NapiGetGlobalTest005
+ * @tc.desc: Test napi_get_global in different valid environments
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetGlobalTest005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    NativeEngineProxy env1;
+    env1->Deinit();
+    NativeEngineProxy env2;
+    env2->Deinit();
+
+    napi_value result1 = nullptr;
+    napi_value result2 = nullptr;
+
+    auto res1 = napi_get_global(env1, &result1);
+    ASSERT_EQ(res1, napi_ok);
+    ASSERT_NE(result1, nullptr);
+
+    auto res2 = napi_get_global(env2, &result2);
+    ASSERT_EQ(res2, napi_ok);
+    ASSERT_NE(result2, nullptr);
+
+    ASSERT_NE(result1, result2);
+    env1->Init();
+    env2->Init();
 }
 
 /**
@@ -11452,6 +11923,79 @@ HWTEST_F(NapiBasicTest, NapiGetNullTest001, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: NapiGetNullTest002
+ * @tc.desc: Test napi_get_null with valid environment and result pointer
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetNullTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value result = nullptr;
+
+    auto res = napi_get_null(env, &result);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiGetNullTest003
+ * @tc.desc: Test napi_get_null with null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetNullTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    napi_value result = nullptr;
+
+    auto res = napi_get_null(env, &result);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetNullTest004
+ * @tc.desc: Test napi_get_null multiple times with the same valid environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetNullTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value result1 = nullptr;
+    napi_value result2 = nullptr;
+
+    auto res1 = napi_get_null(env, &result1);
+    ASSERT_EQ(res1, napi_ok);
+
+    auto res2 = napi_get_null(env, &result2);
+    ASSERT_EQ(res2, napi_ok);
+}
+
+/**
+ * @tc.name: NapiGetNullTest005
+ * @tc.desc: Test napi_get_null in different environments
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetNullTest005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    NativeEngineProxy env1;
+    env1->Deinit();
+    NativeEngineProxy env2;
+    env2->Deinit();
+
+    napi_value result1 = nullptr;
+    napi_value result2 = nullptr;
+
+    auto res1 = napi_get_null(env1, &result1);
+    ASSERT_EQ(res1, napi_ok);
+
+    auto res2 = napi_get_null(env2, &result2);
+    ASSERT_EQ(res2, napi_ok);
+    env1->Init();
+    env2->Init();
+}
+
+/**
  * @tc.name: NapiGetUndefinedTest
  * @tc.desc: Test interface of napi_get_undefined
  * @tc.type: FUNC
@@ -11463,6 +12007,54 @@ HWTEST_F(NapiBasicTest, NapiGetUndefinedTest001, testing::ext::TestSize.Level1)
 
     auto res = napi_get_undefined(env, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetUndefinedTest002
+ * @tc.desc: Test napi_get_undefined with valid environment and result pointer
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetUndefinedTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value result = nullptr;
+
+    auto res = napi_get_undefined(env, &result);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiGetUndefinedTest003
+ * @tc.desc: Test napi_get_undefined with null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetUndefinedTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    napi_value result = nullptr;
+
+    auto res = napi_get_undefined(env, &result);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetUndefinedTest004
+ * @tc.desc: Test napi_get_undefined multiple times with the same valid environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetUndefinedTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value result1 = nullptr;
+    napi_value result2 = nullptr;
+
+    auto res1 = napi_get_undefined(env, &result1);
+    ASSERT_EQ(res1, napi_ok);
+
+    auto res2 = napi_get_undefined(env, &result2);
+    ASSERT_EQ(res2, napi_ok);
 }
 
 /**
@@ -11578,6 +12170,58 @@ HWTEST_F(NapiBasicTest, NapiObjectSealTest002, testing::ext::TestSize.Level1)
     ASSERT_CHECK_CALL(napi_get_boolean(env, true, &boolean));
     auto res = napi_object_seal(env, boolean);
     ASSERT_EQ(res, napi_object_expected);
+}
+
+/**
+ * @tc.name: NapiObjectSealTest003
+ * @tc.desc: Test napi_object_seal with a valid object
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiObjectSealTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    napi_value object = nullptr;
+    ASSERT_EQ(napi_create_object(env, &object), napi_ok);
+
+    auto res = napi_object_seal(env, object);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiObjectSealTest004
+ * @tc.desc: Test napi_object_seal with a null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiObjectSealTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    napi_value object = nullptr;
+    napi_create_object(reinterpret_cast<napi_env>(engine_), &object);
+
+    auto res = napi_object_seal(env, object);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiObjectSealTest005
+ * @tc.desc: Test napi_object_seal on an already sealed object
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiObjectSealTest005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    napi_value object = nullptr;
+    ASSERT_EQ(napi_create_object(env, &object), napi_ok);
+
+    auto firstSealRes = napi_object_seal(env, object);
+    ASSERT_EQ(firstSealRes, napi_ok);
+
+    auto secondSealRes = napi_object_seal(env, object);
+    ASSERT_EQ(secondSealRes, napi_ok);
 }
 
 /**
@@ -11746,6 +12390,67 @@ HWTEST_F(NapiBasicTest, NapiIsDetachedArraybufferTest002, testing::ext::TestSize
 }
 
 /**
+ * @tc.name: NapiIsDetachedArraybufferTest003
+ * @tc.desc: Test napi_is_detached_arraybuffer with a valid non - detached arraybuffer
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiIsDetachedArraybufferTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    static constexpr size_t arrayBufferSize = 0;
+    napi_value arrayBuffer = nullptr;
+    void* arrayBufferPtr = nullptr;
+    ASSERT_EQ(napi_create_arraybuffer(env, arrayBufferSize, &arrayBufferPtr, &arrayBuffer), napi_ok);
+
+    bool isDetached = false;
+    auto res = napi_is_detached_arraybuffer(env, arrayBuffer, &isDetached);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_FALSE(isDetached);
+}
+
+/**
+ * @tc.name: NapiIsDetachedArraybufferTest004
+ * @tc.desc: Test napi_is_detached_arraybuffer with null result pointer
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiIsDetachedArraybufferTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    static constexpr size_t arrayBufferSize = 0;
+    napi_value arrayBuffer = nullptr;
+    void* arrayBufferPtr = nullptr;
+    ASSERT_EQ(napi_create_arraybuffer(env, arrayBufferSize, &arrayBufferPtr, &arrayBuffer), napi_ok);
+
+    auto res = napi_is_detached_arraybuffer(env, arrayBuffer, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiIsDetachedArraybufferTest005
+ * @tc.desc: Test napi_is_detached_arraybuffer after detaching the arraybuffer (simulated)
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiIsDetachedArraybufferTest005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    static constexpr size_t arrayBufferSize = 0;
+    napi_value arrayBuffer = nullptr;
+    void* arrayBufferPtr = nullptr;
+    ASSERT_EQ(napi_create_arraybuffer(env, arrayBufferSize, &arrayBufferPtr, &arrayBuffer), napi_ok);
+
+    bool isDetached = false;
+    auto res = napi_is_detached_arraybuffer(env, arrayBuffer, &isDetached);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_FALSE(isDetached);
+}
+
+/**
  * @tc.name: NapiSetInstanceDataTest
  * @tc.desc: Test interface of napi_set_instance_data
  * @tc.type: FUNC
@@ -11754,6 +12459,62 @@ HWTEST_F(NapiBasicTest, NapiSetInstanceDataTest001, testing::ext::TestSize.Level
 {
     auto res = napi_set_instance_data(nullptr, nullptr, nullptr, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
+}
+
+void testFinalizeCb(napi_env env, void* data, void* hint) {}
+
+/**
+ * @tc.name: NapiSetInstanceDataTest002
+ * @tc.desc: Test napi_set_instance_data with valid environment and null data
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetInstanceDataTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    void* data = nullptr;
+    napi_finalize finalizeCb = testFinalizeCb;
+    void* finalizeHint = nullptr;
+
+    auto res = napi_set_instance_data(env, data, finalizeCb, finalizeHint);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiSetInstanceDataTest003
+ * @tc.desc: Test napi_set_instance_data with valid environment, data, and finalize callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetInstanceDataTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    int dataValue = INT_FORTYTWO;
+    void* data = &dataValue;
+    napi_finalize finalizeCb = testFinalizeCb;
+    void* finalizeHint = nullptr;
+
+    auto res = napi_set_instance_data(env, data, finalizeCb, finalizeHint);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiSetInstanceDataTest004
+ * @tc.desc: Test napi_set_instance_data with valid environment, data, null finalize callback, and non - null hint
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetInstanceDataTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    int dataValue = INT_FORTYTWO;
+    void* data = &dataValue;
+    napi_finalize finalizeCb = nullptr;
+    int hintValue = INT_HUNDRED;
+    void* finalizeHint = &hintValue;
+
+    auto res = napi_set_instance_data(env, data, finalizeCb, finalizeHint);
+    ASSERT_EQ(res, napi_ok);
 }
 
 /**
@@ -11768,6 +12529,60 @@ HWTEST_F(NapiBasicTest, NapiGetInstanceDataTest001, testing::ext::TestSize.Level
 
     auto res = napi_get_instance_data(env, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetInstanceDataTest002
+ * @tc.desc: Test napi_get_instance_data after setting valid instance data
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetInstanceDataTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int dataValue = INT_FORTYTWO;
+    void* dataToSet = &dataValue;
+    napi_finalize finalizeCb = testFinalizeCb;
+    void* finalizeHint = nullptr;
+
+    auto setRes = napi_set_instance_data(env, dataToSet, finalizeCb, finalizeHint);
+    ASSERT_EQ(setRes, napi_ok);
+
+    void* retrievedData;
+    auto getRes = napi_get_instance_data(env, &retrievedData);
+    ASSERT_EQ(getRes, napi_ok);
+    ASSERT_EQ(retrievedData, dataToSet);
+}
+
+/**
+ * @tc.name: NapiGetInstanceDataTest003
+ * @tc.desc: Test napi_get_instance_data with null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetInstanceDataTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    void* retrievedData = nullptr;
+    auto res = napi_get_instance_data(env, &retrievedData);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetInstanceDataTest004
+ * @tc.desc: Test napi_get_instance_data before setting any instance data
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetInstanceDataTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    NativeEngineProxy env;
+    env->Deinit();
+    void* retrievedData = nullptr;
+    auto res = napi_get_instance_data(env, &retrievedData);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_EQ(retrievedData, nullptr);
+    env->Init();
 }
 
 /**
@@ -11879,6 +12694,44 @@ HWTEST_F(NapiBasicTest, NodeApiGetModuleFileNameTest002, testing::ext::TestSize.
 
     auto res = node_api_get_module_file_name(env, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NodeApiGetModuleFileNameTest003
+ * @tc.desc: Test node_api_get_module_file_name with valid environment and valid result pointer
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NodeApiGetModuleFileNameTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const char* result = nullptr;
+
+    auto res = node_api_get_module_file_name(env, &result);
+    ASSERT_EQ(res, napi_ok);
+    if (res == napi_ok) {
+        ASSERT_NE(result, nullptr);
+    }
+}
+
+/**
+ * @tc.name: NodeApiGetModuleFileNameTest004
+ * @tc.desc: Test node_api_get_module_file_name with same valid environment multiple times
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NodeApiGetModuleFileNameTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const char* result = nullptr;
+
+    for (int i = 0; i < BUFFER_SIZE_FIVE; ++i) {
+        auto res = node_api_get_module_file_name(env, &result);
+        ASSERT_EQ(res, napi_ok);
+        if (res == napi_ok) {
+            ASSERT_NE(result, nullptr);
+        }
+    }
 }
 
 /**
@@ -12116,6 +12969,87 @@ HWTEST_F(NapiBasicTest, NapiCreateObjectWithPropertiesTest002, testing::ext::Tes
 }
 
 /**
+ * @tc.name: NapiCreateObjectWithPropertiesTest003
+ * @tc.desc: Test napi_create_object_with_properties with valid environment and one property
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateObjectWithPropertiesTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    size_t propertyCount = 0;
+    napi_property_descriptor* prop = nullptr;
+    prop->utf8name = TEST_PROP_STRING_1;
+
+    const napi_property_descriptor properties[] = { *prop };
+    napi_value result = nullptr;
+
+    auto res = napi_create_object_with_properties(env, &result, propertyCount, properties);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiCreateObjectWithPropertiesTest004
+ * @tc.desc: Test napi_create_object_with_properties with multiple properties
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateObjectWithPropertiesTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    size_t propertyCount = INT_TWO;
+    napi_property_descriptor* prop1 = nullptr;
+    napi_property_descriptor* prop2 = nullptr;
+    prop1->utf8name = TEST_PROP_STRING_1;
+    prop2->utf8name = TEST_PROP_STRING_2;
+
+    const napi_property_descriptor properties[] = { *prop1, *prop2 };
+    napi_value result = nullptr;
+
+    auto res = napi_create_object_with_properties(env, &result, propertyCount, properties);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiCreateObjectWithPropertiesTest005
+ * @tc.desc: Test napi_create_object_with_properties with valid environment but zero property count
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateObjectWithPropertiesTest005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    size_t propertyCount = 0;
+    const napi_property_descriptor* properties = nullptr;
+    napi_value result = nullptr;
+
+    auto res = napi_create_object_with_properties(env, &result, propertyCount, properties);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiCreateObjectWithPropertiesTest006
+ * @tc.desc: Test napi_create_object_with_properties with null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateObjectWithPropertiesTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    size_t propertyCount = INT_ONE;
+    napi_property_descriptor* prop = nullptr;
+    prop->utf8name = TEST_CHAR_STRING;
+
+    const napi_property_descriptor properties[] = { *prop };
+    napi_value result = nullptr;
+
+    auto res = napi_create_object_with_properties(env, &result, propertyCount, properties);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
  * @tc.name: NapiCreateObjectWithNamedPropertiesTest
  * @tc.desc: Test interface of napi_create_object_with_named_properties
  * @tc.type: FUNC
@@ -12137,6 +13071,84 @@ HWTEST_F(NapiBasicTest, NapiCreateObjectWithNamedPropertiesTest002, testing::ext
     napi_env env = reinterpret_cast<napi_env>(engine_);
 
     auto res = napi_create_object_with_named_properties(env, nullptr, 0, nullptr, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiCreateObjectWithNamedPropertiesTest003
+ * @tc.desc: Test napi_create_object_with_named_properties with valid environment and one property
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateObjectWithNamedPropertiesTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    size_t propertyCount = INT_ONE;
+    const char* keys[] = { TEST_CHAR_STRING };
+    napi_value values[1];
+    values[0] = nullptr;
+    napi_value result = nullptr;
+
+    auto res = napi_create_object_with_named_properties(env, &result, propertyCount, keys, values);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiCreateObjectWithNamedPropertiesTest004
+ * @tc.desc: Test napi_create_object_with_named_properties with multiple properties
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateObjectWithNamedPropertiesTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    size_t propertyCount = INT_TWO;
+    const char* keys[] = { TEST_PROP_STRING_1, TEST_PROP_STRING_2 };
+    napi_value values[2];
+    values[0] = nullptr;
+    values[1] = nullptr;
+    napi_value result = nullptr;
+
+    auto res = napi_create_object_with_named_properties(env, &result, propertyCount, keys, values);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiCreateObjectWithNamedPropertiesTest005
+ * @tc.desc: Test napi_create_object_with_named_properties with valid environment but zero property count
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateObjectWithNamedPropertiesTest005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    size_t propertyCount = INT_ZERO;
+    const char** keys = nullptr;
+    const napi_value* values = nullptr;
+    napi_value result = nullptr;
+
+    auto res = napi_create_object_with_named_properties(env, &result, propertyCount, keys, values);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: NapiCreateObjectWithNamedPropertiesTest006
+ * @tc.desc: Test napi_create_object_with_named_properties with null environment
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateObjectWithNamedPropertiesTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    size_t propertyCount = INT_ONE;
+    const char* keys[] = { TEST_PROP_STRING_1 };
+    napi_value values[1];
+    values[0] = nullptr;
+    napi_value result = nullptr;
+
+    auto res = napi_create_object_with_named_properties(env, &result, propertyCount, keys, values);
     ASSERT_EQ(res, napi_invalid_arg);
 }
 
@@ -12254,6 +13266,23 @@ HWTEST_F(NapiBasicTest, NapiCreateArkRuntimeTest002, testing::ext::TestSize.Leve
     auto res = napi_create_ark_runtime(nullptr);
     NativeCreateEnv::g_createNapiEnvCallback = temp;
     ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiCreateArkRuntimeTest003
+ * @tc.desc: Test napi_create_ark_runtime multiple times in a row
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateArkRuntimeTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    for (int i = 0; i < BUFFER_SIZE_FIVE; ++i) {
+        NativeEngineProxy engine;
+        engine->Deinit();
+        auto res = napi_create_ark_runtime(nullptr);
+        ASSERT_EQ(res, napi_invalid_arg);
+        engine->Init();
+    }
 }
 
 /**
