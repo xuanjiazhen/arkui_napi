@@ -100,6 +100,27 @@ void ARKTS_DefineOwnProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, 
 
     PropertyAttribute attribute(value, attrs & N_WRITABLE, attrs & N_ENUMERABLE, attrs & N_CONFIGURABLE);
     object->DefineProperty(vm, key, attribute);
+    if (JSNApi::HasPendingException(vm)) {
+        JSNApi::GetAndClearUncaughtException(vm);
+    }
+}
+
+bool ARKTS_DefineOwnPropertyV2(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Value jvalue,
+    ARKTS_PropertyFlag attrs)
+{
+    ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(ARKTS_IsHeapObject(jobj), "object is not heap object");
+    ARKTS_ASSERT_F(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+
+    auto vm = P_CAST(env, EcmaVM*);
+    auto object = BIT_CAST(jobj, Local<ObjectRef>);
+    auto key = ARKTS_ToHandle<JSValueRef>(jkey);
+    auto value = ARKTS_ToHandle<JSValueRef>(jvalue);
+
+    PropertyAttribute attribute(value, attrs & N_WRITABLE, attrs & N_ENUMERABLE, attrs & N_CONFIGURABLE);
+    auto result = object->DefineProperty(vm, key, attribute);
+    ARKTSInner_ReportJSErrors(env, false);
+    return result;
 }
 
 void ARKTS_DefineAccessors(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Accessor accessor)
@@ -126,6 +147,38 @@ void ARKTS_DefineAccessors(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, AR
         accessor.attrs & N_ENUMERABLE,
         accessor.attrs & N_CONFIGURABLE);
     object->SetAccessorProperty(vm, key, handledGetter, handledSetter, attribute);
+
+    if (JSNApi::HasPendingException(vm)) {
+        JSNApi::GetAndClearUncaughtException(vm);
+    }
+}
+
+bool ARKTS_DefineAccessorsV2(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Accessor accessor)
+{
+    ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(ARKTS_IsHeapObject(jobj), "object is not heap object");
+    ARKTS_ASSERT_F(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+
+    auto undefined = ARKTS_CreateUndefined();
+
+    ARKTS_ASSERT_F(accessor.setter == undefined || ARKTS_IsCallable(env, accessor.setter), "setter not callable");
+    ARKTS_ASSERT_F(accessor.getter == undefined || ARKTS_IsCallable(env, accessor.getter), "getter not callable");
+    ARKTS_ASSERT_F(accessor.getter != undefined || accessor.setter != undefined, "getter and setter is undefined");
+
+    auto vm = P_CAST(env, EcmaVM*);
+    auto object = BIT_CAST(jobj, Local<ObjectRef>);
+    auto key = ARKTS_ToHandle<JSValueRef>(jkey);
+    auto handledUndef = ARKTS_ToHandle<JSValueRef>(undefined);
+    auto handledGetter = accessor.getter != undefined ? BIT_CAST(accessor.getter, Local<JSValueRef>) : handledUndef;
+    auto handledSetter = accessor.setter != undefined ? BIT_CAST(accessor.setter, Local<JSValueRef>) : handledUndef;
+
+    PropertyAttribute attribute(handledUndef,
+        accessor.attrs & N_WRITABLE,
+        accessor.attrs & N_ENUMERABLE,
+        accessor.attrs & N_CONFIGURABLE);
+    auto result = object->SetAccessorProperty(vm, key, handledGetter, handledSetter, attribute);
+    ARKTSInner_ReportJSErrors(env, false);
+    return result;
 }
 
 void ARKTS_SetProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Value jvalue)
