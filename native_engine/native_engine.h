@@ -81,7 +81,8 @@ using NapiUncaughtExceptionCallback = std::function<void(napi_value value)>;
 using PermissionCheckCallback = std::function<bool()>;
 using NapiConcurrentCallback = void (*)(napi_env env, napi_value result, bool success, void* data);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
-using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
+using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column,
+    std::string& packageName)>;
 using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
 using EcmaVM = panda::ecmascript::EcmaVM;
 using JsFrameInfo = panda::ecmascript::JsFrameInfo;
@@ -442,7 +443,7 @@ public:
      */
     void SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDelegate>& moduleCheckerDelegate);
 
-    virtual napi_value NapiLoadModule(const char* path, const char* module_info) = 0;
+    virtual napi_value NapiLoadModule(const char* path) = 0;
     virtual napi_value NapiLoadModuleWithInfo(const char* path, const char* module_info) = 0;
     virtual std::string GetPkgName(const std::string &moduleName) = 0;
 
