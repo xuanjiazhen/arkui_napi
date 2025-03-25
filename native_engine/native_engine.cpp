@@ -1107,6 +1107,8 @@ void NativeEngine::ThrowException(const char* msg)
     panda::JSNApi::ThrowException(vm, error);
 }
 
+
+
 NapiErrorManager* NapiErrorManager::GetInstance()
 {
     if (instance_ == NULL) {

@@ -2771,7 +2771,7 @@ NAPI_EXTERN napi_status napi_create_typedarray(napi_env env,
     RETURN_STATUS_IF_FALSE(env, value->IsArrayBuffer(vm), napi_status::napi_arraybuffer_expected);
     Local<panda::ArrayBufferRef> arrayBuf(value);
 
-    if (!reinterpret_cast<NativeEngine*>(env)->NapiNewTypedArray(vm, typedArrayType, arrayBuf,
+    if (!reinterpret_cast<NativeEngine*>(env)->NapiNewTypedArray(typedArrayType, arrayBuf,
                                                                  byte_offset, length, result)) {
         HILOG_ERROR("%{public}s invalid arg", __func__);
         return napi_set_last_error(env, napi_invalid_arg);
@@ -2797,7 +2797,7 @@ NAPI_EXTERN napi_status napi_create_sendable_typedarray(napi_env env,
     RETURN_STATUS_IF_FALSE(env, value->IsSendableArrayBuffer(vm), napi_status::napi_arraybuffer_expected);
     Local<panda::SendableArrayBufferRef> arrayBuf(value);
 
-    if (!reinterpret_cast<NativeEngine*>(env)->NapiNewSendableTypedArray(vm, typedArrayType,
+    if (!reinterpret_cast<NativeEngine*>(env)->NapiNewSendableTypedArray(typedArrayType,
                                                                          arrayBuf, byte_offset,
                                                                          length, result)) {
         HILOG_ERROR("%{public}s invalid arg", __func__);
@@ -4257,4 +4257,28 @@ NAPI_EXTERN napi_status napi_is_bitvector(napi_env env, napi_value value, bool* 
     *result = nativeValue->IsBitVector(vm);
 
     return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_create_ark_context(napi_env env, napi_env *env)
+{
+    NAPI_PREAMBLE(env);
+    // to-do later
+    return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_switch_ark_context(napi_env env)
+{
+    NAPI_PREAMBLE(env);
+    auto nativeEngine = reinterpret_cast<NativeEngine*>(env);
+    nativeEngine->SwitchContext();
+    return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_destroy_ark_context(napi_env env)
+{
+    NAPI_PREAMBLE(env);
+    auto nativeEngine = reinterpret_cast<NativeEngine*>(env);
+    nativeEngine->DestroyContext();
+    delete nativeEngine;
+    return GET_RETURN_STATUS(env);
 }

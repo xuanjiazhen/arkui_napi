@@ -164,10 +164,10 @@ public:
     void NotifyTaskFinished() const override;
 
     // judge_typedarray
-    bool NapiNewTypedArray(const EcmaVM* vm, NativeTypedArrayType typedArrayType,
+    bool NapiNewTypedArray(NativeTypedArrayType typedArrayType,
                            Local<panda::ArrayBufferRef> arrayBuf,
                            size_t byte_offset, size_t length, napi_value* result) override;
-    bool NapiNewSendableTypedArray(const EcmaVM* vm, NativeTypedArrayType typedArrayType,
+    bool NapiNewSendableTypedArray(NativeTypedArrayType typedArrayType,
                                    Local<panda::SendableArrayBufferRef> arrayBuf,
                                    size_t byte_offset, size_t length, napi_value* result) override;
     NativeTypedArrayType GetTypedArrayType(panda::Local<panda::TypedArrayRef> typedArray) override;
@@ -393,6 +393,17 @@ public:
         TimerListHead_ = info;
     }
 
+    Local<JSValueRef> GetContext() const;
+    {
+        return context_.ToLocal();
+    }
+
+    void SetConext(Local<JSValueRef> context);
+
+    void SwitchContext();
+
+    void DestroyContext();
+
 private:
     inline NapiOptions *GetNapiOptions() const override
     {
@@ -439,5 +450,6 @@ private:
     bool containerScopeEnable_ { true };
 #endif
     NativeTimerCallbackInfo* TimerListHead_ {nullptr};
+    Global<JSValueRef> context_;
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */

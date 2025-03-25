@@ -1280,44 +1280,44 @@ napi_value ArkNativeEngine::CallFunction(
     return JsValueFromLocalValue(scope.Escape(value));
 }
 
-bool ArkNativeEngine::NapiNewTypedArray(const EcmaVM* vm, NativeTypedArrayType typedArrayType,
+bool ArkNativeEngine::NapiNewTypedArray(NativeTypedArrayType typedArrayType,
                                         Local<panda::ArrayBufferRef> arrayBuf,
                                         size_t byte_offset, size_t length, napi_value* result)
 {
     Local<panda::TypedArrayRef> typedArray;
     switch (typedArrayType) {
         case NATIVE_INT8_ARRAY:
-            typedArray = panda::Int8ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Int8ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT8_ARRAY:
-            typedArray = panda::Uint8ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Uint8ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT8_CLAMPED_ARRAY:
-            typedArray = panda::Uint8ClampedArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Uint8ClampedArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_INT16_ARRAY:
-            typedArray = panda::Int16ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Int16ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT16_ARRAY:
-            typedArray = panda::Uint16ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Uint16ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_INT32_ARRAY:
-            typedArray = panda::Int32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Int32ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT32_ARRAY:
-            typedArray = panda::Uint32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Uint32ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_FLOAT32_ARRAY:
-            typedArray = panda::Float32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Float32ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_FLOAT64_ARRAY:
-            typedArray = panda::Float64ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::Float64ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_BIGINT64_ARRAY:
-            typedArray = panda::BigInt64ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::BigInt64ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_BIGUINT64_ARRAY:
-            typedArray = panda::BigUint64ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::BigUint64ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         default:
             *result = nullptr;
@@ -1327,44 +1327,44 @@ bool ArkNativeEngine::NapiNewTypedArray(const EcmaVM* vm, NativeTypedArrayType t
     return true;
 }
 
-bool ArkNativeEngine::NapiNewSendableTypedArray(const EcmaVM* vm, NativeTypedArrayType typedArrayType,
+bool ArkNativeEngine::NapiNewSendableTypedArray(NativeTypedArrayType typedArrayType,
                                                 Local<panda::SendableArrayBufferRef> arrayBuf,
                                                 size_t byte_offset, size_t length, napi_value* result)
 {
     Local<panda::SendableTypedArrayRef> typedArray;
     switch (typedArrayType) {
         case NATIVE_INT8_ARRAY:
-            typedArray = panda::SharedInt8ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedInt8ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT8_ARRAY:
-            typedArray = panda::SharedUint8ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedUint8ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_INT16_ARRAY:
-            typedArray = panda::SharedInt16ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedInt16ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT16_ARRAY:
-            typedArray = panda::SharedUint16ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedUint16ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_INT32_ARRAY:
-            typedArray = panda::SharedInt32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedInt32ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT32_ARRAY:
-            typedArray = panda::SharedUint32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedUint32ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_FLOAT32_ARRAY:
-            typedArray = panda::SharedFloat32ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedFloat32ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_UINT8_CLAMPED_ARRAY:
-            typedArray = panda::SharedUint8ClampedArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedUint8ClampedArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_FLOAT64_ARRAY:
-            typedArray = panda::SharedFloat64ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedFloat64ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_BIGINT64_ARRAY:
-            typedArray = panda::SharedBigInt64ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedBigInt64ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         case NATIVE_BIGUINT64_ARRAY:
-            typedArray = panda::SharedBigUint64ArrayRef::New(vm, arrayBuf, byte_offset, length);
+            typedArray = panda::SharedBigUint64ArrayRef::New(vm_, arrayBuf, byte_offset, length);
             break;
         default:
             *result = nullptr;
@@ -2783,4 +2783,44 @@ bool ArkNativeEngine::ExecuteJsBin(const std::string& fileName, bool checkPath)
     bool ret = JSNApi::Execute(vm_, fileName, PANDA_MAIN_FUNCTION);
     return ret;
     // LCOV_EXCL_STOP
+}
+
+void ArkNativeEngine::SetConext(Local<JSValueRef> context)
+{
+    if (context.IsEmpty()) {
+        HILOG_ERROR("invalid argument");
+        return;
+    }
+    if (!context_.IsEmpty()) {
+        HILOG_ERROR("context cannot be set again");
+        return;
+    }
+    context_ = Global<JSValueRef>(vm, context);
+}
+
+void ArkNativeEngine::SwitchContext()
+{
+    if (context_.IsEmpty()) {
+        HILOG_ERROR("no env context exists");
+        return;
+    }
+
+    panda::JSNApi::SwitchEcmaContext(vm_, context_.ToLocal(vm_));
+}
+
+void ArkNativeEngine::DestroyContext()
+{
+    // the original context cannot be destroyed
+    if (context_.IsEmpty()) {
+        HILOG_ERROR("no env context exists");
+        return;
+    }
+
+    // the current running context also cannot be destroyed
+    Local<JSValueRef> currentContext = panda::JSNApi::GetCurrentContext(vm_);
+    if (context_.ToLocal(vm_) == currentContext) {
+        HILOG_ERROR("running env cannot be destroyed");
+        return;
+    }
+    context_.FreeGlobalHandleAddr();
 }
