@@ -67,6 +67,10 @@ static bool LoadArkCJModule(napi_env env, const char* libName, napi_value* resul
         targetName = "libark_interop.so";
 #endif
         auto runtime = OHOS::CJEnv::LoadInstance();
+        if (runtime == nullptr) {
+            LOGE("load Instance failed");
+            return false;
+        }
         auto handle = runtime->loadLibrary(0, targetName);
         if (!handle) {
             LOGE("open '%{public}s' failed", targetName);
@@ -96,6 +100,10 @@ static napi_value LoadCJModule(napi_env env, napi_callback_info info)
         return result;
     }
     auto runtime = OHOS::CJEnv::LoadInstance();
+    if (runtime == nullptr) {
+        LOGE("load Instance failed");
+        return result;
+    }
     runtime->initCJChipSDKNS("/system/lib64/chipset-pub-sdk");
     runtime->initCJAppNS("/data/storage/el1/bundle/libs/arm64");
     runtime->initCJSDKNS("/data/storage/el1/bundle/libs/arm64/ohos:"
