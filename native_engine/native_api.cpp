@@ -1834,6 +1834,12 @@ NAPI_EXTERN napi_status napi_wrap(napi_env env,
     return GET_RETURN_STATUS(env);
 }
 
+
+NAPI_EXTERN void napi_print_log_log(const char* stack)
+{
+    HILOG_ERROR("Panda Test: %{public}s", stack);
+}
+
 NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
                                        napi_value js_object,
                                        void* native_object,
@@ -1841,10 +1847,14 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
                                        NapiXRefDirection ref_direction,
                                        napi_ref* result)
 {
+    HILOG_ERROR("[ljh][napi_xref_wrap] enter");
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
+    HILOG_ERROR("[ljh][napi_xref_wrap] after check js_object");
     CHECK_ARG(env, native_object);
+    HILOG_ERROR("[ljh][napi_xref_wrap] after check native_object");
     CHECK_ARG(env, finalize_cb);
+    HILOG_ERROR("[ljh][napi_xref_wrap] after check finalize_cb");
 
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
@@ -1852,6 +1862,7 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
     auto vm = engine->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
     CHECK_AND_CONVERT_TO_OBJECT(env, vm, nativeValue, nativeObject);
+    HILOG_ERROR("[ljh][napi_xref_wrap] after get nativeObject");
     size_t nativeBindingSize = 0;
     auto reference = reinterpret_cast<NativeReference**>(result);
     Local<panda::StringRef> key = panda::StringRef::GetProxyNapiWrapperString(vm);
@@ -1882,6 +1893,7 @@ NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
     object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
     PropertyAttribute attr(object, true, false, true);
     nativeObject->DefineProperty(vm, key, attr);
+    HILOG_ERROR("[ljh][napi_xref_wrap] end");
     return GET_RETURN_STATUS(env);
 }
 
@@ -2002,9 +2014,12 @@ NAPI_EXTERN napi_status napi_unwrap(napi_env env, napi_value js_object, void** r
 
 NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, void** result)
 {
+    HILOG_ERROR("[ljh][napi_xref_unwrap] enter");
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
     CHECK_ARG(env, result);
+
+    HILOG_ERROR("[ljh][napi_xref_unwrap] After args check");
 
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
@@ -2014,6 +2029,7 @@ NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, voi
     Local<panda::JSValueRef> val = nativeObject->Get(vm, key);
     *result = nullptr;
     if (val->IsObject(vm)) {
+        HILOG_ERROR("[ljh][napi_xref_unwrap] val->IsObject(vm) is true");
         Local<panda::ObjectRef> ext(val);
         auto ref = reinterpret_cast<NativeReference*>(ext->GetNativePointerField(vm, 0));
         *result = ref != nullptr ? ref->GetData() : nullptr;

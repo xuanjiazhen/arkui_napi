@@ -152,6 +152,8 @@ typedef enum {
     NAPI_DIRECTION_HYBRID = 3, // STS object and the JS object references each other
 } NapiXRefDirection;
 
+NAPI_EXTERN void napi_print_log_log(const char* stack);
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 // XGC specific internal API
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env, void* inputIface, void** outputIface);
