@@ -435,6 +435,6 @@ private:
     NapiOptions* options_ { nullptr };
     bool crossThreadCheck_ { false };
     std::shared_ptr<ArkIdleMonitor> arkIdleMonitor_;
-    AppStateNotifier interopAppState_ {};
+    std::shared_ptr<AppStateNotifier> interopAppState_;
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */

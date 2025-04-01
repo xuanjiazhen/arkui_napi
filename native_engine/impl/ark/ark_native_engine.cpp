@@ -564,6 +564,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 #if defined(ENABLE_EVENT_HANDLER)
     if (JSNApi::IsJSMainThreadOfEcmaVM(vm)) {
         arkIdleMonitor_ = std::make_shared<ArkIdleMonitor>(vm);
+        interopAppState_ = std::make_shared<AppStateNotifier>();
         JSNApi::SetTriggerGCTaskCallback(vm, [this](TriggerGCData& data) {
             this->PostTriggerGCTask(data);
         });
@@ -2124,7 +2125,7 @@ void ArkNativeEngine::NotifyApplicationState(bool inBackground)
 {
     DFXJSNApi::NotifyApplicationState(vm_, inBackground);
     arkIdleMonitor_->NotifyChangeBackgroundState(inBackground);
-    interopAppState_.Notify(inBackground ? NAPI_APP_STATE_BACKGROUND : NAPI_APP_STATE_FOREGROUND);
+    interopAppState_->Notify(inBackground ? NAPI_APP_STATE_BACKGROUND : NAPI_APP_STATE_FOREGROUND);
 }
 
 void ArkNativeEngine::NotifyIdleStatusControl(std::function<void(bool)> callback)
@@ -2147,15 +2148,15 @@ void ArkNativeEngine::NotifyForceExpandState(int32_t value)
     switch (ForceExpandState(value)) {
         case ForceExpandState::FINISH_COLD_START:
             DFXJSNApi::NotifyFinishColdStart(vm_, true);
-            interopAppState_.Notify(NAPI_APP_STATE_COLD_START_FINISHED);
+            interopAppState_->Notify(NAPI_APP_STATE_COLD_START_FINISHED);
             break;
         case ForceExpandState::START_HIGH_SENSITIVE:
             DFXJSNApi::NotifyHighSensitive(vm_, true);
-            interopAppState_.Notify(NAPI_APP_STATE_SENSITIVE_START);
+            interopAppState_->Notify(NAPI_APP_STATE_SENSITIVE_START);
             break;
         case ForceExpandState::FINISH_HIGH_SENSITIVE:
             DFXJSNApi::NotifyHighSensitive(vm_, false);
-            interopAppState_.Notify(NAPI_APP_STATE_SENSITIVE_END);
+            interopAppState_->Notify(NAPI_APP_STATE_SENSITIVE_END);
             break;
         default:
             HILOG_ERROR("Invalid Force Expand State: %{public}d.", value);
@@ -2395,19 +2396,27 @@ void ArkNativeEngine::PostLooperTriggerIdleGCTask()
         return;
     }
     std::weak_ptr<ArkIdleMonitor> weakArkIdleMonitor = arkIdleMonitor_;
+    std::weak_ptr<AppStateNotifier> weakInteropAppNotifier = interopAppState_;
     auto callback = [weakArkIdleMonitor](OHOS::AppExecFwk::EventRunnerStage stage,
         const OHOS::AppExecFwk::StageInfo* info) -> int {
         auto arkIdleMonitor = weakArkIdleMonitor.lock();
+        auto interopAppStateNotifier = weakInteropAppNotifier.lock();
         if (nullptr == arkIdleMonitor) {
             HILOG_ERROR("ArkIdleMonitor has been destructed.");
+            return 0;
+        }
+        if (nullptr == weakInteropAppState) {
+            HILOG_ERROR("AppStateNotifier has been destructed.");
             return 0;
         }
         switch (stage) {
             case OHOS::AppExecFwk::EventRunnerStage::STAGE_BEFORE_WAITING:
                 arkIdleMonitor->NotifyLooperIdleStart(info->timestamp, info->sleepTime);
+                interopAppStateNotifier->Notify(NAPI_APP_STATE_IDLE_START, info->timestamp);
                 break;
             case OHOS::AppExecFwk::EventRunnerStage::STAGE_AFTER_WAITING:
                 arkIdleMonitor->NotifyLooperIdleEnd(info->timestamp);
+                interopAppStateNotifier->Notify(NAPI_APP_STATE_IDLE_END, info->timestamp);
                 break;
             default:
                 HILOG_ERROR("this branch is unreachable");
@@ -2422,7 +2431,7 @@ void ArkNativeEngine::PostLooperTriggerIdleGCTask()
 
 void ArkNativeEngine::RegisterAppStateCallback(NapiAppStateCallback callback)
 {
-    interopAppState_.SetCallback(callback);
+    interopAppState_->SetCallback(callback);
 }
 
 int32_t ArkNativeEngine::GetObjectHash(napi_env env, napi_value src)
