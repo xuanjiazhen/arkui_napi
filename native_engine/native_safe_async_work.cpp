@@ -33,6 +33,8 @@ using OHOS::Ace::ContainerScope;
 using namespace OHOS::AppExecFwk;
 #endif
 
+thread_local std::shared_ptr<OHOS::AppExecFwk::EventHandler> eventHandler = nullptr;
+
 // static methods start
 void NativeSafeAsyncWork::AsyncCallback(uv_async_t* asyncHandler)
 {
@@ -102,7 +104,10 @@ NativeSafeAsyncWork::NativeSafeAsyncWork(NativeEngine* engine,
 #if defined(ENABLE_EVENT_HANDLER)
     std::shared_ptr<EventRunner> runner = EventRunner::Current();
     if (runner != nullptr) {
-        eventHandler_ = std::make_shared<EventHandler>(runner);
+        if (UNLIKELY(eventHandler == nullptr)) {
+            eventHandler = std::make_shared<EventHandler>(runner);
+        }
+        eventHandler_ = eventHandler;
     }
 #endif
 }
