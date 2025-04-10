@@ -26,11 +26,22 @@
 #endif
 
 #include "native_async_context.h"
+#ifdef ENABLE_HITRACE
+#include "hitrace/trace.h"
+#endif
 
 #if defined(ENABLE_EVENT_HANDLER)
 namespace OHOS::AppExecFwk {
     class EventHandler;
 }
+#endif
+
+#ifdef ENABLE_HITRACE
+namespace OHOS {
+namespace HiviewDFX {
+class HiTraceId;
+}
+} // namespace OHOS
 #endif
 
 enum class SafeAsyncCode {
@@ -106,6 +117,10 @@ protected:
 
 #ifdef ENABLE_CONTAINER_SCOPE
     int32_t containerScopeId_;
+#endif
+
+#ifdef ENABLE_HITRACE
+    OHOS::HiviewDFX::HiTraceId taskTraceId_;
 #endif
 };
 

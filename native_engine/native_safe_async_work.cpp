@@ -20,6 +20,11 @@
 #include "native_api_internal.h"
 #include <securec.h>
 
+#ifdef ENABLE_HITRACE
+#include "hitrace_meter.h"
+#include "parameter.h"
+#endif
+
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
 #endif
@@ -31,6 +36,13 @@ using OHOS::Ace::ContainerScope;
 #if defined(ENABLE_EVENT_HANDLER)
 #include "event_handler.h"
 using namespace OHOS::AppExecFwk;
+#endif
+
+#ifdef ENABLE_HITRACE
+extern std::atomic<bool> g_napiTraceIdEnabled;
+extern std::atomic<bool> g_ParamUpdated;
+constexpr size_t TRACEID_PARAM_SIZE = 10;
+using namespace OHOS::HiviewDFX;
 #endif
 
 // static methods start
@@ -103,6 +115,30 @@ NativeSafeAsyncWork::NativeSafeAsyncWork(NativeEngine* engine,
     std::shared_ptr<EventRunner> runner = EventRunner::Current();
     if (runner != nullptr) {
         eventHandler_ = std::make_shared<EventHandler>(runner);
+    }
+#endif
+
+#ifdef ENABLE_HITRACE
+    if (!g_ParamUpdated.load()) {
+        char napiTraceIdEnabled[TRACEID_PARAM_SIZE] = {0};
+        int ret = GetParameter("persist.hiviewdfx.napitraceid.enabled", "false",
+            napiTraceIdEnabled, sizeof(napiTraceIdEnabled));
+        if (ret > 0 && strcmp(napiTraceIdEnabled, "true") == 0) {
+            g_napiTraceIdEnabled.store(true);
+        }
+        g_ParamUpdated.store(true);
+    }
+    bool createdTraceId = false;
+    HiTraceId thisId = HiTraceChain::GetId();
+    if (g_napiTraceIdEnabled.load() && (!thisId.IsValid())) {
+        thisId = HiTraceChain::Begin("New NativeAsyncWork", 0);
+        createdTraceId = true;
+    }
+    if (thisId.IsValid()) {
+        taskTraceId_ = HiTraceChain::CreateSpan();
+    }
+    if (createdTraceId) {
+        OHOS::HiviewDFX::HiTraceChain::ClearId();
     }
 #endif
 }
@@ -310,6 +346,13 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
     ContainerScope containerScope(containerScopeId_, engine_->IsContainerScopeEnabled());
 #endif
     TryCatch tryCatch(reinterpret_cast<napi_env>(engine_));
+#ifdef ENABLE_HITRACE
+    bool isValidTraceId = taskTraceId_.IsValid();
+    HiTraceId currentId;
+    if (isValidTraceId) {
+        currentId = HiTraceChain::SaveAndSet(taskTraceId_);
+    }
+#endif
     while (size > 0) {
         data = queue_.front();
 
@@ -333,6 +376,11 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
         queue_.pop_front();
         size--;
     }
+#ifdef ENABLE_HITRACE
+    if (isValidTraceId) {
+        HiTraceChain::Restore(currentId);
+    }
+#endif
 
     if (!queue_.empty()) {
         auto ret = uv_async_send(&asyncHandler_);
@@ -370,7 +418,13 @@ SafeAsyncCode NativeSafeAsyncWork::CloseHandles()
 void NativeSafeAsyncWork::CleanUp()
 {
     HILOG_DEBUG("NativeSafeAsyncWork::CleanUp called");
-
+#ifdef ENABLE_HITRACE
+    bool isValidTraceId = taskTraceId_.IsValid();
+    HiTraceId currentId;
+    if (isValidTraceId) {
+        currentId = HiTraceChain::SaveAndSet(taskTraceId_);
+    }
+#endif
     if (finalizeCallback_ != nullptr) {
         finalizeCallback_(engine_, finalizeData_, context_);
     }
@@ -384,6 +438,12 @@ void NativeSafeAsyncWork::CleanUp()
         }
         queue_.pop_front();
     }
+#ifdef ENABLE_HITRACE
+    if (isValidTraceId) {
+        HiTraceChain::Restore(currentId);
+    }
+#endif
+
     delete this;
 }
 
@@ -407,11 +467,23 @@ napi_status NativeSafeAsyncWork::PostTask(void *data, int32_t priority, bool isT
         HILOG_DEBUG("The task is executing in main thread or worker thread");
         panda::LocalScope scope(this->engine_->GetEcmaVm());
         napi_value func_ = (this->ref_ == nullptr) ? nullptr : this->ref_->Get(engine_);
+#ifdef ENABLE_HITRACE
+        bool isValidTraceId = taskTraceId_.IsValid();
+        HiTraceId currentId;
+        if (isValidTraceId) {
+            currentId = HiTraceChain::SaveAndSet(taskTraceId_);
+        }
+#endif
         if (this->callJsCallback_ != nullptr) {
             this->callJsCallback_(engine_, func_, context_, data);
         } else {
             CallJs(engine_, func_, context_, data);
         }
+#ifdef ENABLE_HITRACE
+        if (isValidTraceId) {
+            HiTraceChain::Restore(currentId);
+        }
+#endif
     };
 
     bool res = false;
