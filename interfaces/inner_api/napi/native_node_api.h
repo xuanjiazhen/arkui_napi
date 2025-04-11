@@ -196,4 +196,39 @@ NAPI_EXTERN napi_status napi_load_module_with_path(napi_env env, const char* pat
                                                    napi_value* result);
 NAPI_EXTERN napi_status napi_throw_jsvalue(napi_env env, napi_value error);
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+// XGC specific internal API
+NAPI_EXTERN napi_status napi_vm_handshake(napi_env env, void* inputIface, void** outputIface);
+NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
+                                       napi_value js_object,
+                                       void* native_object,
+                                       napi_finalize finalize_cb,
+                                       NapiXRefDirection ref_direction,
+                                       napi_ref* result);
+NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, void** result);
+
+NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref);
+NAPI_EXTERN napi_status napi_create_xref(napi_env env,
+                                         napi_value value,
+                                         uint32_t initial_refcount,
+                                         napi_ref* result);
+NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
+                                            napi_value js_object,
+                                            void* native_object,
+                                            napi_finalize finalize_cb,
+                                            napi_ref* result);
+NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool* result);
+NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result);
+NAPI_EXTERN napi_status napi_is_xref_type(napi_env env, napi_value js_object, bool* result);
+#endif  // PANDA_JS_ETS_HYBRID_MODE
+NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool* result);
+NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result);
+NAPI_EXTERN napi_status napi_is_xref_type(napi_env env, napi_value js_object, bool* result);
+NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback);
+NAPI_EXTERN napi_status napi_load_module_with_info_hybrid(napi_env env,
+                                                          const char* path,
+                                                          const char* module_info,
+                                                          napi_value* result,
+                                                          bool isHybrid);
+
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_API_H */
