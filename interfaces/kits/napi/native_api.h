@@ -138,7 +138,7 @@ NAPI_EXTERN napi_status napi_map_get_entries(napi_env env, napi_value map, napi_
 NAPI_EXTERN napi_status napi_map_get_keys(napi_env env, napi_value map, napi_value* result);
 NAPI_EXTERN napi_status napi_map_get_values(napi_env env, napi_value map, napi_value* result);
 NAPI_EXTERN napi_status napi_map_iterator_get_next(napi_env env, napi_value iterator, napi_value* result);
-
+NAPI_EXTERN void napi_onLoad();
 // ======================================= sendable api begin ======================================= //
 NAPI_EXTERN napi_status napi_define_sendable_class(napi_env env,
                                                    const char* utf8name,
