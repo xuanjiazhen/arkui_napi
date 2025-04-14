@@ -2784,3 +2784,43 @@ bool ArkNativeEngine::ExecuteJsBin(const std::string& fileName, bool checkPath)
     return ret;
     // LCOV_EXCL_STOP
 }
+
+void ArkNativeEngine::SetConext(Local<JSValueRef> context)
+{
+    if (context.IsEmpty()) {
+        HILOG_ERROR("invalid argument");
+        return;
+    }
+    if (!context_.IsEmpty()) {
+        HILOG_ERROR("context cannot be set again");
+        return;
+    }
+    context_ = Global<JSValueRef>(vm, context);
+}
+
+void ArkNativeEngine::SwitchContext()
+{
+    if (context_.IsEmpty()) {
+        HILOG_ERROR("no env context exists");
+        return;
+    }
+
+    panda::JSNApi::SwitchEcmaContext(vm_, context_.ToLocal(vm_));
+}
+
+void ArkNativeEngine::DestroyContext()
+{
+    // the original context cannot be destroyed
+    if (context_.IsEmpty()) {
+        HILOG_ERROR("no env context exists");
+        return;
+    }
+
+    // the current running context also cannot be destroyed
+    Local<JSValueRef> currentContext = panda::JSNApi::GetCurrentContext(vm_);
+    if (context_.ToLocal(vm_) == currentContext) {
+        HILOG_ERROR("running env cannot be destroyed");
+        return;
+    }
+    context_.FreeGlobalHandleAddr();
+}

@@ -393,6 +393,17 @@ public:
         TimerListHead_ = info;
     }
 
+    Local<JSValueRef> GetContext() const;
+    {
+        return context_.ToLocal();
+    }
+
+    void SetConext(Local<JSValueRef> context);
+
+    void SwitchContext();
+
+    void DestroyContext();
+
 private:
     inline NapiOptions *GetNapiOptions() const override
     {
@@ -439,5 +450,6 @@ private:
     bool containerScopeEnable_ { true };
 #endif
     NativeTimerCallbackInfo* TimerListHead_ {nullptr};
+    Global<JSValueRef> context_;
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */

@@ -11790,3 +11790,120 @@ HWTEST_F(NapiBasicTest, AsyncWorkTest007, testing::ext::TestSize.Level1)
     napi_queue_async_work(env, callbackData->work2);
     HILOG_INFO("AsyncWorkTest007 end");
 }
+
+/**
+ * @tc.name: NapiCreateContextTest001
+ * @tc.desc: Test napi_create_env when the input argument env is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateContextTest001, testing::ext::TestSize.Level1)
+{
+    napi_env newEnv = nullptr;
+    napi_status res = napi_create_env(nullptr, &newEnv);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiCreateContextTest002
+ * @tc.desc: Test napi_create_env when some exception exists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateContextTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = (napi_env)engine_;
+
+    // mock exception
+    napi_value value = nullptr;
+    ASSERT_CHECK_CALL(napi_get_undefined(env, &value));
+    Local<panda::JSValueRef> nativeValue = LocalValueFromJsValue(value);
+    engine_->lastException_ = Local<panda::ObjectRef>(nativeValue);
+    bool isPendingException = false;
+    ASSERT_CHECK_CALL(napi_is_exception_pending(env, &isPendingException));
+    ASSERT_EQ(isPendingException, true);
+
+    napi_env newEnv = nullptr;
+    napi_status res = napi_create_env(env, &newEnv);
+    ASSERT_EQ(status, napi_pending_exception);
+
+    //clear exception
+    engine_->lastException_.Empty();
+}
+
+/**
+ * @tc.name: NapiSwitchContextTest001
+ * @tc.desc: Test napi_switch_env when the input argument env is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSwitchContextTest001, testing::ext::TestSize.Level1)
+{
+    napi_env newEnv = nullptr;
+    napi_status res = napi_switch_env(nullptr, &newEnv);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiSwitchContextTest002
+ * @tc.desc: Test napi_switch_env when some exception exists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSwitchContextTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = (napi_env)engine_;
+
+    // mock exception
+    napi_value value = nullptr;
+    ASSERT_CHECK_CALL(napi_get_undefined(env, &value));
+    Local<panda::JSValueRef> nativeValue = LocalValueFromJsValue(value);
+    engine_->lastException_ = Local<panda::ObjectRef>(nativeValue);
+    bool isPendingException = false;
+    ASSERT_CHECK_CALL(napi_is_exception_pending(env, &isPendingException));
+    ASSERT_EQ(isPendingException, true);
+
+    napi_env newEnv = nullptr;
+    napi_status res = napi_switch_env(env, &newEnv);
+    ASSERT_EQ(status, napi_pending_exception);
+
+    //clear exception
+    engine_->lastException_.Empty();
+}
+
+/**
+ * @tc.name: NapiDestroyContextTest001
+ * @tc.desc: Test napi_switch_env when the input argument env is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiDestroyContextTest001, testing::ext::TestSize.Level1)
+{
+    napi_env newEnv = nullptr;
+    napi_status res = napi_destroy_env(nullptr, &newEnv);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiDestroyContextTest002
+ * @tc.desc: Test napi_switch_env when some exception exists.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiDestroyContextTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = (napi_env)engine_;
+
+    // mock exception
+    napi_value value = nullptr;
+    ASSERT_CHECK_CALL(napi_get_undefined(env, &value));
+    Local<panda::JSValueRef> nativeValue = LocalValueFromJsValue(value);
+    engine_->lastException_ = Local<panda::ObjectRef>(nativeValue);
+    bool isPendingException = false;
+    ASSERT_CHECK_CALL(napi_is_exception_pending(env, &isPendingException));
+    ASSERT_EQ(isPendingException, true);
+
+    napi_env newEnv = nullptr;
+    napi_status res = napi_destroy_env(env, &newEnv);
+    ASSERT_EQ(status, napi_pending_exception);
+
+    //clear exception
+    engine_->lastException_.Empty();
+}

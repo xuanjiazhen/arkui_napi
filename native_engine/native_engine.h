@@ -554,6 +554,14 @@ public:
         return workerThreadState_;
     }
 
+    virtual Local<JSValueRef> GetContext() const = 0;
+
+    virtual void SetConext(Local<JSValueRef> context) = 0;
+
+    virtual void SwitchContext() = 0;
+
+    virtual void DestroyContext() = 0;
+
 private:
     void InitUvField();
 

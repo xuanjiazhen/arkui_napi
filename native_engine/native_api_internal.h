@@ -42,6 +42,12 @@ static inline napi_status napi_set_last_error(napi_env env,
         return napi_set_last_error((env), (status));   \
     }
 
+#define RETURN_STATUS_AND_MESSAGE_IF_FALSE(env, condition, status, errMessage) \
+    if (!(condition)) {                                \
+        HILOG_ERROR("%{public}s", errMessage);         \
+        return napi_set_last_error((env), (status));   \
+    }
+
 #define CHECK_ENV(env)           \
     if ((env) == nullptr) {      \
         return napi_invalid_arg; \

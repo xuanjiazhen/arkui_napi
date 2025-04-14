@@ -4258,3 +4258,27 @@ NAPI_EXTERN napi_status napi_is_bitvector(napi_env env, napi_value value, bool* 
 
     return napi_clear_last_error(env);
 }
+
+NAPI_EXTERN napi_status napi_create_ark_context(napi_env env, napi_env *env)
+{
+    NAPI_PREAMBLE(env);
+    // to-do later
+    return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_switch_ark_context(napi_env env)
+{
+    NAPI_PREAMBLE(env);
+    auto nativeEngine = reinterpret_cast<NativeEngine*>(env);
+    nativeEngine->SwitchContext();
+    return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_destroy_ark_context(napi_env env)
+{
+    NAPI_PREAMBLE(env);
+    auto nativeEngine = reinterpret_cast<NativeEngine*>(env);
+    nativeEngine->DestroyContext();
+    delete nativeEngine;
+    return GET_RETURN_STATUS(env);
+}
