@@ -107,17 +107,18 @@ bool NativeAsyncWork::Queue(NativeEngine* engine)
     HiTraceId taskId = taskTraceId_;
     HiTraceChain::Tracepoint(HITRACE_TP_CS, taskId, "%s", TRACE_POINT_QUEUE.c_str());
 #endif
-    int status = uv_queue_work(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback);
+    int status = uv_queue_work_internal(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback,
+                                        this->GetTraceDescription().c_str());
 #ifdef ENABLE_HITRACE
     HiTraceChain::Tracepoint(HITRACE_TP_CR, taskId, "%s", TRACE_POINT_QUEUE.c_str());
     FinishTrace(HITRACE_TAG_ACE);
 #endif
     if (status != 0) {
-        HILOG_ERROR("uv_queue_work failed");
+        HILOG_ERROR("uv_queue_work_internal failed");
         engine_->DecreaseWaitingRequestCounter();
         return false;
     }
-    HILOG_DEBUG("uv_queue_work succeed");
+    HILOG_DEBUG("uv_queue_work_internal succeed");
     return true;
 }
 
@@ -136,17 +137,18 @@ bool NativeAsyncWork::QueueWithQos(NativeEngine* engine, napi_qos_t qos)
     HiTraceId taskId = taskTraceId_;
     HiTraceChain::Tracepoint(HITRACE_TP_CS, taskId, "%s", TRACE_POINT_QUEUE_WITH_QOS.c_str());
 #endif
-    int status = uv_queue_work_with_qos(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback, uv_qos_t(qos));
+    int status = uv_queue_work_with_qos_internal(loop, &work_, AsyncWorkCallback, AsyncAfterWorkCallback,
+                                                 uv_qos_t(qos), this->GetTraceDescription().c_str());
 #ifdef ENABLE_HITRACE
     HiTraceChain::Tracepoint(HITRACE_TP_CR, taskId, "%s", TRACE_POINT_QUEUE_WITH_QOS.c_str());
     FinishTrace(HITRACE_TAG_ACE);
 #endif
     if (status != 0) {
-        HILOG_ERROR("uv_queue_work_with_qos failed");
+        HILOG_ERROR("uv_queue_work_with_qos_internal failed");
         engine_->DecreaseWaitingRequestCounter();
         return false;
     }
-    HILOG_DEBUG("uv_queue_work_with_qos succeed");
+    HILOG_DEBUG("uv_queue_work_with_qos_internal succeed");
     return true;
 }
 
