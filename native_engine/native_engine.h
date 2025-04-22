@@ -28,6 +28,7 @@
 
 #include "callback_scope_manager/native_callback_scope_manager.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "native_engine/impl/ark/ark_native_finalizer.h"
 #include "module_manager/native_module_manager.h"
 #include "native_engine/native_async_work.h"
 #include "native_engine/native_deferred.h"
@@ -526,6 +527,10 @@ public:
 #ifdef ENABLE_CONTAINER_SCOPE
     virtual bool IsContainerScopeEnabled() const = 0;
 #endif
+
+    virtual ArkNativeFinalizer* GetArkNativeFinalizerListHead() const = 0;
+
+    virtual void SetArkNativeFinalizerListHead(ArkNativeFinalizer* arkNativeFinalizer) = 0;
 
     bool IsInDestructor() const
     {

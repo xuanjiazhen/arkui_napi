@@ -24,6 +24,7 @@ napi_sources = [
   "native_engine/impl/ark/ark_idle_monitor.cpp",
   "native_engine/impl/ark/ark_native_deferred.cpp",
   "native_engine/impl/ark/ark_native_engine.cpp",
+  "native_engine/impl/ark/ark_native_finalizer.cpp",
   "native_engine/impl/ark/ark_native_reference.cpp",
   "native_engine/impl/ark/ark_native_timer.cpp",
   "native_engine/impl/ark/cj_support.cpp",

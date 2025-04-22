@@ -21,6 +21,7 @@
 #include "core/common/container_scope.h"
 #endif
 #include "native_api_internal.h"
+#include "native_engine/impl/ark/ark_native_finalizer.h"
 #include "native_engine/impl/ark/ark_native_reference.h"
 #include "native_engine/native_create_env.h"
 #include "native_engine/native_utils.h"
@@ -2144,8 +2145,11 @@ NAPI_EXTERN napi_status napi_create_external(
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
-    auto callback = reinterpret_cast<panda::NativePointerCallback>(finalize_cb);
-    Local<panda::NativePointerRef> object = panda::NativePointerRef::New(vm, data, callback, finalize_hint, 0);
+
+    // which will be deleted in the TestFinalizeCallback
+    ArkNativeFinalizer *finalize = new ArkNativeFinalizer(engine, finalize_cb, data, finalize_hint);
+    Local<panda::NativePointerRef> object =
+        panda::NativePointerRef::New(vm, data, ArkNativeFinalizer::TestFinalizeCallback, finalize, 0);
 
     *result = JsValueFromLocalValue(object);
     return napi_clear_last_error(env);
@@ -2163,9 +2167,11 @@ NAPI_EXTERN napi_status napi_create_external_with_size(napi_env env,
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
-    auto callback = reinterpret_cast<panda::NativePointerCallback>(finalize_cb);
+
+    // which will be deleted in the TestFinalizeCallback
+    ArkNativeFinalizer *finalize = new ArkNativeFinalizer(engine, finalize_cb, data, finalize_hint);
     Local<panda::NativePointerRef> object =
-        panda::NativePointerRef::New(vm, data, callback, finalize_hint, native_binding_size);
+        panda::NativePointerRef::New(vm, data, ArkNativeFinalizer::TestFinalizeCallback, finalize, native_binding_size);
 
     *result = JsValueFromLocalValue(object);
     return napi_clear_last_error(env);
@@ -2527,9 +2533,11 @@ NAPI_EXTERN napi_status napi_create_external_arraybuffer(napi_env env,
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
-    auto callback = reinterpret_cast<panda::NativePointerCallback>(finalize_cb);
+
+    // which will be deleted in the TestFinalizeCallback
+    ArkNativeFinalizer *finalize = new ArkNativeFinalizer(engine, finalize_cb, external_data, finalize_hint);
     Local<panda::ArrayBufferRef> object =
-        panda::ArrayBufferRef::New(vm, external_data, byte_length, callback, finalize_hint);
+        panda::ArrayBufferRef::New(vm, external_data, byte_length, ArkNativeFinalizer::TestFinalizeCallback, finalize);
     *result = JsValueFromLocalValue(object);
     return GET_RETURN_STATUS(env);
 }
@@ -2682,7 +2690,6 @@ NAPI_EXTERN napi_status napi_create_external_buffer(napi_env env,
     CHECK_ARG(env, data);
     RETURN_STATUS_IF_FALSE(env, length > 0, napi_invalid_arg);
 
-    auto callback = reinterpret_cast<panda::NativePointerCallback>(finalize_cb);
     if (!data) {
         HILOG_ERROR("data is empty");
         return napi_set_last_error(env, napi_invalid_arg);
@@ -2697,7 +2704,11 @@ NAPI_EXTERN napi_status napi_create_external_buffer(napi_env env,
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
-    Local<panda::BufferRef> object = panda::BufferRef::New(vm, data, length, callback, finalize_hint);
+
+    // which will be deleted in the TestFinalizeCallback
+    ArkNativeFinalizer *finalize = new ArkNativeFinalizer(engine, finalize_cb, data, finalize_hint);
+    Local<panda::BufferRef> object = panda::BufferRef::New(vm, data, length, ArkNativeFinalizer::TestFinalizeCallback,
+        finalize);
     void* ptr = object->GetBuffer(vm);
     CHECK_ARG(env, ptr);
 

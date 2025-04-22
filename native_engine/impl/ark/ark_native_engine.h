@@ -379,11 +379,21 @@ public:
 
     NativeTimerCallbackInfo* GetTimerListHead() const
     {
-        return TimerListHead_;
+        return timerListHead_;
     }
     void SetTimerListHead(NativeTimerCallbackInfo* info)
     {
-        TimerListHead_ = info;
+        timerListHead_ = info;
+    }
+
+    ArkNativeFinalizer* GetArkNativeFinalizerListHead() const override
+    {
+        return arkNativeFinalizerListHead_;
+    }
+
+    void SetArkNativeFinalizerListHead(ArkNativeFinalizer* arkNativeFinalizer) override
+    {
+        arkNativeFinalizerListHead_ = arkNativeFinalizer;
     }
 
     inline bool IsMainEnvContext() const
@@ -438,7 +448,9 @@ private:
 #ifdef ENABLE_CONTAINER_SCOPE
     bool containerScopeEnable_ { true };
 #endif
-    NativeTimerCallbackInfo* TimerListHead_ {nullptr};
+    NativeTimerCallbackInfo* timerListHead_ {nullptr};
+    // manage ark native finalizer from napi interface
+    ArkNativeFinalizer* arkNativeFinalizerListHead_ {nullptr};
     bool isMainEnvContext_ = true;
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */
