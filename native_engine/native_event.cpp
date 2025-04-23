@@ -301,11 +301,8 @@ napi_status NativeEvent::SendEventByEventHandler(const std::function<void()> &ta
         // Internal temporary code
         return napi_status::napi_invalid_arg;
     }
-    bool postRes = eventHandler_->PostTask(task,
-                                           std::string(name) + std::to_string(eventId),
-                                           0,
-                                           static_cast<EventQueue::Priority>(priority),
-                                           {});
+    bool postRes = eventHandler_->PostTaskAtTail(task, std::string(name) + std::to_string(eventId),
+                                           static_cast<EventQueue::Priority>(priority), {}, true);
     std::string res = (postRes ? "ok" : "fail");
     auto evt = TraceLogClass(
         "eventHandler Send task: " + std::string(name) +
