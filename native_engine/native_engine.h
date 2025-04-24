@@ -69,14 +69,14 @@ enum class WorkerVersion {
 
 class WorkerThreadState {
 public:
-    void CheckIdleState()
+    uint32_t CheckIdleState()
     {
         if (!isRunning_.load() && taskCount_ == lastTaskCount_) {
-            checkCount_++;
-            return;
+            return ++checkCount_;
         }
         checkCount_ = 0;
         lastTaskCount_ = taskCount_;
+        return checkCount_;
     }
 
     uint32_t GetCheckCount()
