@@ -16,6 +16,8 @@
 #include "test.h"
 
 #include "native_engine/impl/ark/ark_native_engine.h"
+#include "native_engine/impl/ark/ark_idle_monitor.h"
+#include "native_engine/impl/ark/ark_finalizers_pack.h"
 #include "utils/log.h"
 
 using ArkIdleMonitor = panda::ecmascript::ArkIdleMonitor;
@@ -188,14 +190,16 @@ HWTEST_F(NativeEngineTest, NapiErrorManagerTest004, testing::ext::TestSize.Level
     ASSERT_EQ(callback(), false);
 }
 
+
 HWTEST_F(NativeEngineTest, FinalizersCallbackTest001, testing::ext::TestSize.Level0)
 {
     ASSERT_NE(engine_, nullptr);
     napi_env env = (napi_env)engine_;
     const EcmaVM *vm = reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm();
+    AutoRunLoop arl(env);
 
     const char *str = "FinalizersCallbackTest001";
-    size_t size = 2 * ArkNativeEngine::FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD;
+    size_t size = 2 * ArkFinalizersPack::FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD;
     static bool finalizersCallbackDone[2] = {false, false};
 
     for (int i = 0; i < 2; ++i) {

@@ -19,20 +19,28 @@
 #include "ecmascript/napi/include/jsnapi_expo.h"
 
 #include "interfaces/inner_api/napi/native_node_api.h"
+#include "utils/macros.h"
 
+class ArkNativeEngine;
 class NativeEngine;
 
 using RefFinalizer = std::pair<NapiNativeFinalize, std::tuple<NativeEngine*, void*, void*>>;
 using RefAsyncFinalizer = std::pair<NapiNativeFinalize, std::pair<void*, void*>>;
 using ArkFinalizersPackFinishNotify = std::function<void(size_t totalNativeBindingSize)>;
 using ArkCrashHolder = panda::ArkCrashHolder;
+namespace panda::ecmascript {
+class ArkIdleMonitor;
+} // namespace panda::ecmascript
+
 
 class ArkFinalizersPack {
 public:
+    static constexpr size_t FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD = 500 * 1024 * 1024;  // 500 MB
+
     ArkFinalizersPack() = default;
     ~ArkFinalizersPack() = default;
-    DEFAULT_MOVE_SEMANTIC(ArkFinalizersPack);
-    DEFAULT_COPY_SEMANTIC(ArkFinalizersPack);
+    NAPI_DEFAULT_MOVE_SEMANTIC(ArkFinalizersPack);
+    NAPI_DEFAULT_COPY_SEMANTIC(ArkFinalizersPack);
 
     void Clear()
     {
@@ -72,6 +80,9 @@ public:
         finalizers_.emplace_back(finalizer);
         totalNativeBindingSize_ += nativeBindingSize;
     }
+    static void PostFinalizeTasks(ArkNativeEngine* engine);
+    static void PostAsyncTask(ArkNativeEngine* engine, panda::AsyncNativeCallbacksPack* callBacksPack);
+
 private:
     void NotifyFinish() const
     {
@@ -79,6 +90,13 @@ private:
             notify_(totalNativeBindingSize_);
         }
     }
+
+    friend class panda::ecmascript::ArkIdleMonitor;
+    static void RunCallbacks(ArkFinalizersPack *finalizersPack);
+    static void RunAsyncCallbacks(std::vector<RefAsyncFinalizer> *finalizers);
+    static void RunCallbacks(panda::AsyncNativeCallbacksPack *callbacks);
+    static void RunCallbacks(panda::TriggerGCData *triggerGCData);
+
     std::vector<RefFinalizer> finalizers_ {};
     size_t totalNativeBindingSize_ {0};
     ArkFinalizersPackFinishNotify notify_ {nullptr};

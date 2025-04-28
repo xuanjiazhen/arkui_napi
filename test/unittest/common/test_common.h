@@ -50,4 +50,17 @@
         uv_stop(loop);                                           \
     } while (0)
 
+class AutoRunLoop {
+public:
+    AutoRunLoop(napi_env env) : engine_(reinterpret_cast<NativeEngine*>(env)) {}
+    AutoRunLoop(NativeEngine* engine) : engine_(engine) {}
+
+    ~AutoRunLoop() {
+        uv_run(engine_->GetUVLoop(), UV_RUN_NOWAIT);    
+    }
+
+private:
+    NativeEngine* engine_ {nullptr};
+};
+
 #endif /* FOUNDATION_ACE_NAPI_TEST_UNITTEST_TEST_COMMON_H */

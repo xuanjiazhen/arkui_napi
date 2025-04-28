@@ -20,6 +20,8 @@
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
 #endif
+
+#include "ark_native_engine.h"
 #include "native_api_internal.h"
 #include "native_engine/impl/ark/ark_native_reference.h"
 #include "native_engine/native_create_env.h"

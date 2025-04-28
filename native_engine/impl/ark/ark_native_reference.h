@@ -16,7 +16,6 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H
 
-#include "ark_native_engine.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "native_engine/native_reference.h"
 #include "native_engine/native_value.h"
@@ -70,21 +69,7 @@ public:
     void ResetFinalizer()  override;
 
 private:
-    inline void ArkNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf)
-    {
-        if (initialRefCount == 0) {
-            value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
-        }
-
-        if (deleteSelf) {
-            NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
-            if (referenceManager != nullptr) {
-                referenceManager->CreateHandler(this);
-            }
-        }
-
-        engineId_ = engine_->GetId();
-    }
+    void ArkNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf);
 
     ArkNativeEngine* engine_;
     uint64_t engineId_ {0};
@@ -101,8 +86,8 @@ private:
     void* hint_ {nullptr};
     size_t nativeBindingSize_ {0};
 
-    NativeReference* prev_ {nullptr};
-    NativeReference* next_ {nullptr};
+    ArkNativeReference* prev_ {nullptr};
+    ArkNativeReference* next_ {nullptr};
 
     void FinalizeCallback(FinalizerState state);
 

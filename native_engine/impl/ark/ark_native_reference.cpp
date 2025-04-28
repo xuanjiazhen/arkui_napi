@@ -17,6 +17,7 @@
 
 #include "ark_native_reference.h"
 
+#include "ark_native_engine.h"
 #include "native_engine/native_api_internal.h"
 #include "native_engine/native_utils.h"
 
@@ -81,6 +82,22 @@ ArkNativeReference::~ArkNativeReference()
     FinalizeCallback(FinalizerState::DESTRUCTION);
 }
 
+void ArkNativeReference::ArkNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf)
+{
+    if (initialRefCount == 0) {
+        value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
+    }
+
+    if (deleteSelf) {
+        NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
+        if (referenceManager != nullptr) {
+            referenceManager->CreateHandler(this);
+        }
+    }
+
+    engineId_ = engine_->GetId();
+}
+
 uint32_t ArkNativeReference::Ref()
 {
     ++refCount_;
@@ -141,7 +158,7 @@ void ArkNativeReference::FinalizeCallback(FinalizerState state)
             } else {
                 std::tuple<NativeEngine*, void*, void*> tuple = std::make_tuple(engine_, data_, hint_);
                 RefFinalizer finalizer = std::make_pair(napiCallback_, tuple);
-                engine_->GetArkFinalizersPack().AddFinalizer(finalizer, nativeBindingSize_);
+                engine_->GetArkFinalizersPack()->AddFinalizer(finalizer, nativeBindingSize_);
             }
         } else {
             napiCallback_(reinterpret_cast<napi_env>(engine_), data_, hint_);
