@@ -47,16 +47,28 @@ die() {
 
 do_man_process() {
     do_opt_process $@
-    do_env
+    do_env 0
     do_fetch     > ${out_dir}/log.do_fetch
     do_patch     > ${out_dir}/log.do_patch
     do_configure > ${out_dir}/log.do_configure
     do_compile   > ${out_dir}/log.do_compile
+    do_install   > ${out_dir}/log.do_install
+    do_strip
+ 
     if [[ "${IS_ASAN}" = "true" && "${USE_HWASAN}" = "true" ]]; then
-        do_install_hwasan > ${out_dir}/log.do_install_hwasan
+        do_env 1
+        do_fetch        > ${out_dir}/log.do_fetch_asan_unstripped
+        do_patch        > ${out_dir}/log.do_patch_asan_unstripped
+        do_configure    > ${out_dir}/log.do_configure_asan_unstripped
+        do_compile      > ${out_dir}/log.do_compile_asan_unstripped
+        do_install_hwasan > ${out_dir}/log.do_install_asan_unstripped
     else
-        do_install   > ${out_dir}/log.do_install
-        do_strip
+        do_env 1
+        do_fetch     > ${out_dir}/log.do_fetch_unstripped
+        do_patch     > ${out_dir}/log.do_patch_unstripped
+        do_configure > ${out_dir}/log.do_configure_unstripped
+        do_compile   > ${out_dir}/log.do_compile_unstripped
+        do_unstripped_copy
     fi
 }
 
