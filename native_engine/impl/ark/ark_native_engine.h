@@ -90,6 +90,11 @@ panda::Local<panda::ObjectRef> NapiCreateObjectWithProperties(napi_env env, size
                                                               const napi_property_descriptor *properties,
                                                               Local<panda::JSValueRef> *keys,
                                                               panda::PropertyAttribute *attrs);
+// panda::Local<panda::ObjectRef> NapiAddClassProperties(napi_env env,
+//                             size_t propertyCount,
+//                             const NapiPropertyDescriptor* properties,
+//                             Local<panda::JSValueRef> *keys,
+//                             PropertyAttribute *attrs);
 
 enum class ForceExpandState : int32_t {
     FINISH_COLD_START = 0,

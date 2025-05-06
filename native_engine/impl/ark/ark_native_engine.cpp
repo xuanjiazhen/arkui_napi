@@ -169,63 +169,6 @@ void FunctionSetContainerId(napi_env env, panda::Local<panda::JSValueRef> &value
 }
 #endif
 
-panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, NapiNativeCallback callback,
-    void* data, const NapiPropertyDescriptor* properties, size_t length)
-{
-    auto vm = const_cast<EcmaVM*>(reinterpret_cast<NativeEngine*>(env)->GetEcmaVm());
-    std::string className(name);
-    if (ArkNativeEngine::napiProfilerEnabled) {
-        className = ArkNativeEngine::tempModuleName_ + "." + name;
-    }
-
-    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
-    if (funcInfo == nullptr) {
-        HILOG_ERROR("funcInfo is nullptr");
-        return panda::JSValueRef::Undefined(vm);
-    }
-    funcInfo->callback = callback;
-    funcInfo->data = data;
-    funcInfo->env = env;
-#ifdef ENABLE_CONTAINER_SCOPE
-    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
-    if (engine->IsContainerScopeEnabled()) {
-        funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
-    }
-#endif
-
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentClassFunction(vm, ArkNativeFunctionCallBack,
-        [](void* env, void* externalPointer, void* data) {
-            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
-                if (info != nullptr) {
-                    delete info;
-                }
-            },
-        reinterpret_cast<void*>(funcInfo), true);
-
-    Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, className.c_str());
-    fn->SetName(vm, fnName);
-
-    if (length == 0) {
-        return fn;
-    }
-    Local<panda::ObjectRef> classPrototype = fn->GetFunctionPrototype(vm);
-    Local<panda::ObjectRef> fnObj = fn->ToObject(vm);
-    for (size_t i = 0; i < length; i++) {
-        if (properties[i].attributes & NATIVE_STATIC) {
-            NapiDefineProperty(env, fnObj, properties[i]);
-        } else {
-            if (classPrototype->IsUndefined()) {
-                HILOG_ERROR("ArkNativeEngineImpl::Class's prototype is null");
-                continue;
-            }
-            reinterpret_cast<ArkNativeEngine*>(env)->SetModuleName(classPrototype, className);
-            NapiDefineProperty(env, classPrototype, properties[i]);
-        }
-    }
-
-    return fn;
-}
-
 panda::Local<panda::JSValueRef> NapiDefineSendableClass(napi_env env,
                                                         const char* name,
                                                         NapiNativeCallback callback,
@@ -267,7 +210,57 @@ panda::Local<panda::JSValueRef> NapiDefineSendableClass(napi_env env,
 
     return fn;
 }
+// panda::Local<panda::ObjectRef> NapiAddClassProperties(napi_env env,
+//                             size_t propertyCount,
+//                             const NapiPropertyDescriptor* properties,
+//                             Local<panda::JSValueRef> *keys,
+//                             PropertyAttribute *attrs)
+// {
+//     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+//     panda::EscapeLocalScope scope(vm);
+//     for (size_t i = 0; i < propertyCount; ++i) {
+//         const napi_property_descriptor &property = properties[i];
 
+//         const char* utf8name = property.utf8name;
+//         uint32_t attributes = property.attributes;
+//         bool writable = (attributes & NATIVE_WRITABLE) != 0;
+//         bool enumable = (attributes & NATIVE_ENUMERABLE) != 0;
+//         bool configable = (attributes & NATIVE_CONFIGURABLE) != 0;
+//         NapiNativeCallback method = reinterpret_cast<NapiNativeCallback>(property.method);
+//         NapiNativeCallback getter = reinterpret_cast<NapiNativeCallback>(property.getter);
+//         NapiNativeCallback setter = reinterpret_cast<NapiNativeCallback>(property.setter);
+//         napi_value value = property.value;
+//         void *data = property.data;
+
+//         Local<panda::JSValueRef> val = panda::JSValueRef::Undefined(vm);
+
+//         std::string fullName("");
+//         if (getter != nullptr || setter != nullptr) {
+//             Local<panda::JSValueRef> localGetter = panda::JSValueRef::Undefined(vm);
+//             Local<panda::JSValueRef> localSetter = panda::JSValueRef::Undefined(vm);
+
+//             if (getter != nullptr) {
+//                 fullName += "getter";
+//                 localGetter = NapiNativeCreateFunction(env, fullName.c_str(), getter, data);
+//             }
+//             if (setter != nullptr) {
+//                 fullName += "setter";
+//                 localSetter = NapiNativeCreateFunction(env, fullName.c_str(), setter, data);
+//             }
+
+//             val = panda::ObjectRef::CreateAccessorData(vm, localGetter, localSetter);
+//             writable = false;
+//         } else if (method != nullptr) {
+//             fullName += utf8name;
+//             val = NapiNativeCreateFunction(env, fullName.c_str(), method, data);
+//         } else {
+//             val = LocalValueFromJsValue(value);
+//         }
+//         new (reinterpret_cast<void *>(&attrs[i])) PropertyAttribute(val, writable, enumable, configable);
+//         keys[i] = panda::StringRef::NewFromUtf8(vm, utf8name);
+//     }
+//     return panda::ObjectRef::AddClassProperties(vm, propertyCount, keys, attrs);
+// }
 struct MoudleNameLocker {
     explicit MoudleNameLocker(std::string moduleName)
     {
@@ -1059,6 +1052,121 @@ panda::Local<panda::ObjectRef> ArkNativeEngine::GetModuleFromName(
         exports = exportObj;
     }
     return scope.Escape(exports);
+}
+
+panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, NapiNativeCallback callback,
+    void* data, const NapiPropertyDescriptor* properties, size_t length)
+{
+    auto vm = const_cast<EcmaVM*>(reinterpret_cast<NativeEngine*>(env)->GetEcmaVm());
+    std::string className(name);
+    if (ArkNativeEngine::napiProfilerEnabled) {
+        className = ArkNativeEngine::tempModuleName_ + "." + name;
+    }
+
+    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
+    if (funcInfo == nullptr) {
+        HILOG_ERROR("funcInfo is nullptr");
+        return panda::JSValueRef::Undefined(vm);
+    }
+    funcInfo->callback = callback;
+    funcInfo->data = data;
+    funcInfo->env = env;
+#ifdef ENABLE_CONTAINER_SCOPE
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+    if (engine->IsContainerScopeEnabled()) {
+        funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    }
+#endif
+    bool hasStatic = false;
+    // check if has static
+    for (size_t i = 0; i < length; i++) {
+        if (properties[i].attributes & NATIVE_STATIC) {
+            hasStatic = true;
+            break;
+        }
+    }
+    if (!hasStatic) {
+        // fastpath
+        Local<panda::ObjectRef> object;
+        if (length <= panda::ObjectRef::MAX_PROPERTIES_ON_STACK) {
+        char attrs[sizeof(PropertyAttribute) * panda::ObjectRef::MAX_PROPERTIES_ON_STACK];
+        char keys[sizeof(Local<panda::JSValueRef>) * panda::ObjectRef::MAX_PROPERTIES_ON_STACK];
+        // NapiAddClassProperties(env, length, properties,
+        //                        reinterpret_cast<Local<panda::JSValueRef> *>(keys),
+        //                        reinterpret_cast<PropertyAttribute *>(attrs),
+        //                        );
+        object = NapiCreateObjectWithProperties(env, length,
+                            reinterpret_cast<const napi_property_descriptor*>(properties),
+                                                reinterpret_cast<Local<panda::JSValueRef> *>(keys),
+                                                reinterpret_cast<PropertyAttribute *>(attrs));
+        } else {
+            void *attrs = malloc(sizeof(PropertyAttribute) * length);
+            void *keys = malloc(sizeof(Local<panda::JSValueRef>) * length);
+            if (attrs != nullptr && keys != nullptr) {
+                object = NapiCreateObjectWithProperties(env, length,
+                            reinterpret_cast<const napi_property_descriptor*>(properties),
+                                                reinterpret_cast<Local<panda::JSValueRef> *>(keys),
+                                                reinterpret_cast<PropertyAttribute *>(attrs));
+                // NapiAddClassProperties(env, length, properties,
+                //                     reinterpret_cast<Local<panda::JSValueRef> *>(keys),
+                //                     reinterpret_cast<PropertyAttribute *>(attrs),
+                //                     fnObj);
+            } else {
+                auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+                object = panda::JSValueRef::Undefined(vm);
+                napi_throw_error(env, nullptr, "malloc failed in napi_create_object_with_properties");
+            }
+            if (attrs != nullptr) {
+                free(attrs);
+            }
+            if (keys != nullptr) {
+                free(keys);
+            }
+        }
+        Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentClassFunctionByObject(vm, ArkNativeFunctionCallBack,
+        [](void* env, void* externalPointer, void* data) {
+            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
+                if (info != nullptr) {
+                    delete info;
+                }
+            },
+        reinterpret_cast<void*>(funcInfo), object, true);
+
+        Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, className.c_str());
+        fn->SetName(vm, fnName);
+    }
+    // slow path
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentClassFunction(vm, ArkNativeFunctionCallBack,
+        [](void* env, void* externalPointer, void* data) {
+            auto info = reinterpret_cast<NapiFunctionInfo*>(data);
+                if (info != nullptr) {
+                    delete info;
+                }
+            },
+        reinterpret_cast<void*>(funcInfo), true);
+
+    Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, className.c_str());
+    fn->SetName(vm, fnName);
+
+    if (length == 0) {
+        return fn;
+    }
+    Local<panda::ObjectRef> classPrototype = fn->GetFunctionPrototype(vm);
+    Local<panda::ObjectRef> fnObj = fn->ToObject(vm);
+    for (size_t i = 0; i < length; i++) {
+        if (properties[i].attributes & NATIVE_STATIC) {
+            NapiDefineProperty(env, fnObj, properties[i]);
+        } else {
+            if (classPrototype->IsUndefined()) {
+                HILOG_ERROR("ArkNativeEngineImpl::Class's prototype is null");
+                continue;
+            }
+            reinterpret_cast<ArkNativeEngine*>(env)->SetModuleName(classPrototype, className);
+            NapiDefineProperty(env, classPrototype, properties[i]);
+        }
+    }
+
+    return fn;
 }
 
 napi_value ArkNativeEngine::CreatePromise(NativeDeferred** deferred)
