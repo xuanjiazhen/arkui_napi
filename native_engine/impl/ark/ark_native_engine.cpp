@@ -396,10 +396,6 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 
                 if (info->GetArgsNumber() == 3) { // 3:Determine if the number of parameters is equal to 3
                     Local<StringRef> path(info->GetCallArgRef(2)); // 2:Take the second parameter
-                    if (UNLIKELY(IsCJModule(moduleName->ToString(ecmaVm).c_str()))) {
-                        return NapiValueToLocalValue(
-                            LoadCJModule((napi_env)arkNativeEngine, moduleName->ToString(ecmaVm).c_str()));
-                    }
                     module = moduleManager->LoadNativeModule(moduleName->ToString(ecmaVm).c_str(),
                         path->ToString(ecmaVm).c_str(), isAppModule, errInfo, false, "");
                 } else if (info->GetArgsNumber() == 4) { // 4:Determine if the number of parameters is equal to 4
@@ -472,6 +468,12 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                     }
                 }
                 if (module == nullptr) {
+                    if (info->GetArgsNumber() == 3) { // 3:Determine if the number of parameters is equal to 3
+                        if (LIKELY(IsCJModule(moduleName->ToString(ecmaVm).c_str()))) {
+                            return NapiValueToLocalValue(
+                                LoadCJModule((napi_env)arkNativeEngine, moduleName->ToString(ecmaVm).c_str()));
+                        }
+                    }
                     HILOG_INFO("%{public}s", errInfo.c_str());
                     exports = panda::ObjectRef::CreateNativeModuleFailureInfo(ecmaVm, errInfo);
                 }
