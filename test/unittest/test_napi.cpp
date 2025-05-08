@@ -133,10 +133,26 @@ static const napi_type_tag typeTags[5] = { // 5:array element size is 5.
     {0xa5ed9ce2e4c00c34, 0xdaf987b3cc62481a},
 };
 
+static bool g_finalizer = false;
+
+void AssertFalse()
+{
+    ASSERT_TRUE(false);
+}
+
 static void* TestDetachCallback(napi_env env, void* nativeObject, void* hint)
 {
     HILOG_INFO("this is detach callback");
     return nativeObject;
+}
+
+static void TestDetachFinalizer(void* detachedObject, void* finalizeHint)
+{
+    HILOG_INFO("this is detach finalizer");
+    if (g_finalizer) {
+        AssertFalse();
+    }
+    g_finalizer = true;
 }
 
 static napi_value TestAttachCallback(napi_env env, void* nativeObject, void* hint)
@@ -173,6 +189,8 @@ HWTEST_F(NapiBasicTest, ToNativeBindingObjectTest001, testing::ext::TestSize.Lev
     napi_status status = napi_coerce_to_native_binding_object(
         env, object, TestDetachCallback, TestAttachCallback, reinterpret_cast<void*>(object1), nullptr);
     ASSERT_EQ(status, napi_status::napi_ok);
+    status = napi_add_detached_finalizer(env, object, TestDetachFinalizer, nullptr);
+    ASSERT_EQ(status, napi_status::napi_ok);
 }
 
 /**
@@ -187,8 +205,11 @@ HWTEST_F(NapiBasicTest, ToNativeBindingObjectTest002, testing::ext::TestSize.Lev
     napi_create_object(env, &object);
     napi_value object1 = nullptr;
     napi_create_object(env, &object1);
-    napi_coerce_to_native_binding_object(
+    napi_status status = napi_coerce_to_native_binding_object(
         env, object, TestDetachCallback, TestAttachCallback, reinterpret_cast<void*>(object1), nullptr);
+    ASSERT_EQ(status, napi_status::napi_ok);
+    status = napi_add_detached_finalizer(env, object, TestDetachFinalizer, nullptr);
+    ASSERT_EQ(status, napi_status::napi_ok);
     napi_value undefined = nullptr;
     napi_get_undefined(env, &undefined);
     void* data = nullptr;
@@ -197,7 +218,9 @@ HWTEST_F(NapiBasicTest, ToNativeBindingObjectTest002, testing::ext::TestSize.Lev
     napi_value result = nullptr;
     napi_deserialize(env, data, &result);
     ASSERT_CHECK_VALUE_TYPE(env, result, napi_object);
+    g_finalizer = false;
     napi_delete_serialization_data(env, data);
+    ASSERT_TRUE(g_finalizer);
     napi_value number = nullptr;
     napi_get_named_property(env, result, "number", &number);
     ASSERT_CHECK_VALUE_TYPE(env, number, napi_number);
@@ -243,6 +266,8 @@ HWTEST_F(NapiBasicTest, ToNativeBindingObjectTest004, testing::ext::TestSize.Lev
     napi_status status = napi_coerce_to_native_binding_object(env, object,
         TestDetachCallback, TestAttachCallback, reinterpret_cast<void*>(object1), reinterpret_cast<void*>(hint));
     ASSERT_EQ(status, napi_status::napi_ok);
+    status = napi_add_detached_finalizer(env, object, TestDetachFinalizer, nullptr);
+    ASSERT_EQ(status, napi_status::napi_ok);
     napi_value undefined = nullptr;
     napi_get_undefined(env, &undefined);
     void* data = nullptr;
@@ -251,7 +276,9 @@ HWTEST_F(NapiBasicTest, ToNativeBindingObjectTest004, testing::ext::TestSize.Lev
     napi_value result = nullptr;
     napi_deserialize(env, data, &result);
     ASSERT_CHECK_VALUE_TYPE(env, result, napi_object);
+    g_finalizer = false;
     napi_delete_serialization_data(env, data);
+    ASSERT_TRUE(g_finalizer);
     napi_value number = nullptr;
     napi_get_named_property(env, result, "number", &number);
     ASSERT_CHECK_VALUE_TYPE(env, number, napi_number);
