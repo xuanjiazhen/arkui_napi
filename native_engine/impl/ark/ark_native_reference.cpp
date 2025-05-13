@@ -224,7 +224,6 @@ void ArkNativeReference::ResetFinalizer()
     hint_ = nullptr;
 }
 
-#ifdef PANDA_JS_ETS_HYBRID_MODE
 void ArkNativeReference::MarkFromObject()
 {
     value_.MarkFromObject();
@@ -240,4 +239,3 @@ bool ArkNativeReference::IsValidHeapObject()
     return value_.IsValidHeapObject();
 }
 
-#endif // PANDA_JS_ETS_HYBRID_MODE

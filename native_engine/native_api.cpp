@@ -4412,7 +4412,6 @@ NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppSta
     return napi_clear_last_error(env);
 }
 
-#ifdef PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env,
                                           [[maybe_unused]] void* inputIface,
                                           [[maybe_unused]] void** outputIface)
@@ -4517,4 +4516,3 @@ NAPI_EXTERN napi_status napi_is_xref_type(napi_env env, napi_value js_object, bo
     }
     return GET_RETURN_STATUS(env);
 }
-#endif // PANDA_JS_ETS_HYBRID_MODE
