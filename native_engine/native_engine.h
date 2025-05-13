@@ -139,7 +139,7 @@ public:
 
     virtual NativeModuleManager* GetModuleManager();
     virtual NativeReferenceManager* GetReferenceManager();
-    NativeCallbackScopeManager* callbackScopeManager_ = nullptr;
+
     virtual NativeCallbackScopeManager* GetCallbackScopeManager();
     virtual uv_loop_t* GetUVLoop() const;
     virtual pthread_t GetTid() const;
