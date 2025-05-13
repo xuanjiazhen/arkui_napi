@@ -14,6 +14,7 @@
  */
 
 #include "native_engine/native_engine.h"
+#include "callback_scope_manager/native_callback_scope_manager.h"
 
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM) && !defined(LINUX_PLATFORM)
 #include <sys/epoll.h>

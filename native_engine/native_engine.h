@@ -26,7 +26,7 @@
 #include<atomic>
 #endif
 
-#include "callback_scope_manager/native_callback_scope_manager.h"
+
 #include "ecmascript/napi/include/jsnapi.h"
 #include "module_manager/native_module_manager.h"
 #include "native_engine/native_async_work.h"
@@ -131,6 +131,7 @@ using NapiAllPromiseRejectCallback = std::function<void(napi_value* args)>;
 using NapiHasOnErrorCallback = std::function<bool()>;
 using NapiHasAllUnhandledRejectionCallback = std::function<bool()>;
 
+class NativeCallbackScopeManager;
 class NAPI_EXPORT NativeEngine {
 public:
     explicit NativeEngine(void* jsEngine);
@@ -138,6 +139,7 @@ public:
 
     virtual NativeModuleManager* GetModuleManager();
     virtual NativeReferenceManager* GetReferenceManager();
+    NativeCallbackScopeManager* callbackScopeManager_ = nullptr;
     virtual NativeCallbackScopeManager* GetCallbackScopeManager();
     virtual uv_loop_t* GetUVLoop() const;
     virtual pthread_t GetTid() const;
