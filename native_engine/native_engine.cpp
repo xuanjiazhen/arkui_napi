@@ -77,7 +77,7 @@ static std::mutex g_errorManagerInstanceMutex;
 NativeEngine::NativeEngine(void* jsEngine) : jsEngine_(jsEngine)
 {
     SetMainThreadEngine(this);
-    SetAlived();
+    SetAlive();
     InitUvField();
     workerThreadState_ = new WorkerThreadState();
 }
@@ -154,7 +154,7 @@ void NativeEngine::Deinit()
         referenceManager_ = nullptr;
     }
 
-    SetUnalived();
+    SetDead();
     SetStopping(true);
     if (loop_ == nullptr) {
         return;
@@ -266,7 +266,7 @@ void NativeEngine::Loop(LoopMode mode, bool needSync)
 }
 
 // should only call once in life cycle of ArkNativeEngine(NativeEngine)
-void NativeEngine::SetAlived()
+void NativeEngine::SetAlive()
 {
     if (id_ != 0) {
         HILOG_FATAL("id of native engine cannot set twice");
@@ -751,10 +751,8 @@ napi_status NativeEngine::RemoveCleanupHook(CleanupCallback fun, void* arg)
     return napi_generic_failure;
 }
 
-void NativeEngine::RunCleanup()
+void NativeEngine::RunCleanupHooks(bool waitTasks)
 {
-    HILOG_DEBUG("%{public}s, start.", __func__);
-    CleanupHandles();
     // sync clean up
     while (!cleanupHooks_.empty()) {
         HILOG_DEBUG("NativeEngine::RunCleanup cleanupHooks_ is not empty");
@@ -783,8 +781,21 @@ void NativeEngine::RunCleanup()
             }
             cleanupHooks_.erase(data);
         }
-        CleanupHandles();
+        if (waitTasks) {
+            CleanupHandles();
+        } else {
+            // only execute queued complete callback or uv_close_cb
+            uv_run(loop_, UV_RUN_NOWAIT);
+        }
     }
+}
+
+void NativeEngine::RunCleanup()
+{
+    HILOG_DEBUG("%{public}s, start.", __func__);
+    CleanupHandles();
+
+    RunCleanupHooks();
 
     // make sure tsfn relese by itself
     uv_run(loop_, UV_RUN_NOWAIT);
@@ -811,34 +822,30 @@ void NativeEngine::CleanupHandles()
     }
 }
 
-void NativeEngine::IncreaseWaitingRequestCounter()
-{
-    requestWaiting_++;
-}
+#define BODY_COUNTER_METHOD(name, storage)       \
+    void NativeEngine::Increase##name##Counter() \
+    {                                            \
+        storage++;                               \
+    }                                            \
+                                                 \
+    void NativeEngine::Decrease##name##Counter() \
+    {                                            \
+        storage--;                               \
+    }                                            \
+                                                 \
+    bool NativeEngine::Has##name()               \
+    {                                            \
+        return storage.load() != 0;              \
+    }
 
-void NativeEngine::DecreaseWaitingRequestCounter()
-{
-    requestWaiting_--;
-}
+NAPI_COUNTER_METHOD(BODY_COUNTER_METHOD)
 
-bool NativeEngine::HasWaitingRequest()
-{
-    return requestWaiting_.load() != 0;
-}
+#undef BODY_COUNTER_METHOD
 
-void NativeEngine::IncreaseListeningCounter()
-{
-    listeningCounter_++;
-}
-
-void NativeEngine::DecreaseListeningCounter()
-{
-    listeningCounter_--;
-}
-
+// alias for HasListening
 bool NativeEngine::HasListeningCounter()
 {
-    return listeningCounter_.load() != 0;
+    return HasListening();
 }
 
 void NativeEngine::RegisterWorkerFunction(const NativeEngine* engine)
