@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "utils/log.h"
+#include "base/log/log.h"
 
 
 [[maybe_unused]] static void StripFormatString(const std::string& prefix, std::string& str)
@@ -22,14 +23,7 @@
     }
 }
 
-#if defined(ANDROID_PLATFORM)
-
-#include <android/log.h>
-
-#define LOG_TAG "NAPI"
-
-constexpr int LOG_LEVEL[] = { ANDROID_LOG_DEBUG, ANDROID_LOG_INFO, ANDROID_LOG_WARN, ANDROID_LOG_ERROR,
-    ANDROID_LOG_FATAL };
+#if defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
 
 NAPI_EXPORT void PrintLog(LogLevel level, const char* fmt, ...)
 {
@@ -38,11 +32,11 @@ NAPI_EXPORT void PrintLog(LogLevel level, const char* fmt, ...)
     StripFormatString("{private}", newFmt);
     va_list args;
     va_start(args, fmt);
-    __android_log_vprint(LOG_LEVEL[static_cast<int>(level)], LOG_TAG, newFmt.c_str(), args);
+    OHOS::Ace::LogWrapper::PrintLog(OHOS::Ace::LogDomain::JS_APP, OHOS::Ace::LogLevel(level),OHOS::Ace::AceLogTag::ACE_DEFAULT_DOMAIN, newFmt.c_str(), args);
     va_end(args);
 }
 
-#elif defined(MAC_PLATFORM) || defined(WINDOWS_PLATFORM) || defined(IOS_PLATFORM) || defined(LINUX_PLATFORM)
+#elif defined(MAC_PLATFORM) || defined(WINDOWS_PLATFORM) || defined(LINUX_PLATFORM)
 
 #include <securec.h>
 
