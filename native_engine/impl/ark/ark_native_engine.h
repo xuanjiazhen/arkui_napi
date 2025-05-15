@@ -141,11 +141,14 @@ public:
 
     static ArkNativeEngine* New(NativeEngine* engine, EcmaVM* vm, const Local<JSValueRef>& context);
 
+    bool IsReadyToDelete();
+    void Delete();
+
     NAPI_EXPORT const EcmaVM* GetEcmaVm() const override
     {
         return vm_;
     }
-    const NativeEngine* GetParent() const override;
+    const ArkNativeEngine* GetParent() const override;
 
     void Loop(LoopMode mode, bool needSync = false) override;
     void SetPromiseRejectCallback(NativeReference* rejectCallbackRef, NativeReference* checkCallbackRef) override;
@@ -453,7 +456,8 @@ private:
         pendingFinalizersPackNativeBindingSize_ -= nativeBindingSize;
     }
 
-    bool IsLimitWorker() const override {
+    bool IsLimitWorker() const override
+    {
         return isLimitedWorker_;
     }
 
@@ -464,7 +468,7 @@ private:
     panda::Global<panda::JSValueRef> context_;
 
     // for context env
-    NativeEngine* parentEngine_ { nullptr };
+    ArkNativeEngine* parentEngine_ { nullptr };
     static std::atomic<NapiModuleValidateCallback> moduleValidateCallback_;
 
     NapiConcurrentCallback concurrentCallbackFunc_ { nullptr };

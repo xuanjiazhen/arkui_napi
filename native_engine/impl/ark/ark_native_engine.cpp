@@ -28,6 +28,7 @@
 #include "cj_support.h"
 #include "securec.h"
 #include "utils/file.h"
+#include <inttypes.h>
 #if !defined(PREVIEW) && !defined(ANDROID_PLATFORM) && !defined(IOS_PLATFORM)
 #include "parameters.h"
 #include <uv.h>
@@ -113,6 +114,8 @@ static constexpr const char* REQUIRE_NAPI_FUNCTION_NAME = "requireNapi";
 #else
 static constexpr const char* REQUIRE_NAPI_FUNCTION_NAME = "requireNapiPreview";
 #endif
+static constexpr const char* REQUIRE_NAPI_INTERNAL_NAME = "requireInternal";
+
 #ifdef ENABLE_HITRACE
 constexpr auto NAPI_PROFILER_PARAM_SIZE = 10;
 std::atomic<uint64_t> g_chainId = 0;
@@ -352,7 +355,8 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                                                                                      topScope_(vm),
                                                                                      isLimitedWorker_(isLimitedWorker)
 {
-    HILOG_DEBUG("ArkNativeEngine::ArkNativeEngine");
+    HILOG_INFO("ArkNativeEngine is created, id %{public}" PRIu64, GetId());
+
     JSNApi::SetEnv(vm, this);
     // enable napi profiler
     EnableNapiProfiler();
@@ -376,7 +380,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
     global->Set(vm, StringRef::NewFromUtf8(vm, REQUIRE_NAPI_FUNCTION_NAME),
                 FunctionRef::New(vm, RequireNapi, nullptr, requireData));
 
-    global->Set(vm, StringRef::NewFromUtf8(vm, "requireInternal"),
+    global->Set(vm, StringRef::NewFromUtf8(vm, REQUIRE_NAPI_INTERNAL_NAME),
                 FunctionRef::New(vm, RequireInternal, nullptr, requireData));
 
     JSNApi::SetNativePtrGetter(vm, reinterpret_cast<void*>(ArkNativeEngine::GetNativePtrCallBack));
@@ -425,20 +429,18 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
  * 3. Async capabilities are provided by the parent engine.
  */
 ArkNativeEngine::ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<JSValueRef>& context)
-    : NativeEngine(parent->GetJsEngine()), vm_(vm),
-    topScope_(vm),
-    context_(vm, context),
+    : NativeEngine(parent),
+      vm_(vm),
+      topScope_(vm),
+      context_(vm, context),
       containerScopeEnable_(parent->IsContainerScopeEnabled())
 {
-    HILOG_DEBUG("ArkNativeEngine::ArkNativeEngine");
+    HILOG_INFO("ArkContextEngine is created, id %{public}" PRIu64, GetId());
+
     LocalScope scope(vm);
 
     // enable napi profiler
     EnableNapiProfiler();
-
-    if (parent->GetParent()) {
-        HILOG_FATAL("ark context env cannot create from sub engine, root engine is required");
-    }
 
     crossThreadCheck_ = JSNApi::IsMultiThreadCheckEnabled(vm);
 
@@ -455,7 +457,7 @@ ArkNativeEngine::ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<J
     Local<ObjectRef> global = JSNApi::GetGlobalObject(vm);
     global->Set(vm, StringRef::NewFromUtf8(vm, REQUIRE_NAPI_FUNCTION_NAME),
                 FunctionRef::New(vm, RequireNapiForCtxEnv, nullptr, requireData));
-    global->Set(vm, StringRef::NewFromUtf8(vm, "requireInternal"),
+    global->Set(vm, StringRef::NewFromUtf8(vm, REQUIRE_NAPI_INTERNAL_NAME),
                 FunctionRef::New(vm, RequireInternal, nullptr, requireData));
 
     // The VM scope callback is initialized during the construction of the root engine and is ignored in this context.
@@ -463,7 +465,8 @@ ArkNativeEngine::ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<J
 
 ArkNativeEngine::~ArkNativeEngine()
 {
-    HILOG_DEBUG("ArkNativeEngine::~ArkNativeEngine");
+    HILOG_INFO("%{public}s %{public}" PRIu64 " is deconstructed",
+               isMainEnvContext_ ? "ArkNativeEngine" : "ArkContextEngine", GetId());
 
     if (!parentEngine_) {
         // unregister worker env for idle GC
@@ -499,11 +502,20 @@ ArkNativeEngine::~ArkNativeEngine()
 ArkNativeEngine *ArkNativeEngine::New(NativeEngine* engine, EcmaVM* vm, const Local<JSValueRef>& context)
 {
     if (engine->GetParent()) {
-        HILOG_ERROR("Invalid arguments, root-engine is required, but sub-engine is provided");
+        HILOG_FATAL("Invalid arguments, root-engine is required, but sub-engine is provided");
         return nullptr;
     }
     return new ArkNativeEngine(engine, vm, context);
 }
+
+bool ArkNativeEngine::IsReadyToDelete() {
+    return !HasRuntimeOwnedRef() && context_.IsEmpty();
+}
+
+void ArkNativeEngine::Delete() {
+    delete this;
+}
+
 
 /**
  * Replacement of NativeEngine::Deinit
@@ -530,7 +542,10 @@ void ArkNativeEngine::DeconstructCtxEnv() {
     if (HasWaitingRequest()) {
         HILOG_FATAL("Do not release ark context env until all async work done");
     }
-    if (HasAvticeTsfn()) {
+
+    // An active TSFN blocks uv_run, indirectly keeping the engine alive in Node.js (unless unrefed).
+    // Context dosen't have its own uv_loop, so abort if still exists.
+    if (HasActiveTsfn()) {
         HILOG_FATAL("Failed to release Ark context environment: active napi_threadsafe_function still exists.");
     }
     if (referenceManager_ != nullptr) {
@@ -542,8 +557,15 @@ void ArkNativeEngine::DeconstructCtxEnv() {
     if (HasWaitingRequest()) {
         HILOG_FATAL("Do not release ark context env until all async work done");
     }
-    if (HasAvticeTsfn()) {
+    if (HasActiveTsfn()) {
         HILOG_FATAL("Failed to release Ark context environment: active napi_threadsafe_function still exists.");
+    }
+
+    if (HasNonCallbackRef()) {
+        HILOG_ERROR("Non-callback napi_ref is leak after context env teardown, counts: %{public}" PRIu64, GetNonCallbackRefCount());
+    }
+    if (HasCallbackableRef()) {
+        HILOG_ERROR("Callbackable napi_ref is leak after context env teardown, counts: %{public}" PRIu64, GetCallbackableRefCount());
     }
     parentEngine_ = nullptr;
 }
@@ -553,7 +575,7 @@ napi_value ArkNativeEngine::GetContext() const
     return LocalValueToLocalNapiValue(context_.ToLocal());
 }
 
-const NativeEngine* ArkNativeEngine::GetParent() const
+const ArkNativeEngine* ArkNativeEngine::GetParent() const
 {
     return parentEngine_;
 }
@@ -1863,7 +1885,6 @@ void ArkNativeEngine::PostFinalizeTasks()
     int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
         ArkFinalizersPack *finalizersPack = reinterpret_cast<ArkFinalizersPack*>(syncWork->data);
         RunCallbacks(finalizersPack);
-        HILOG_DEBUG("uv_queue_work running");
         delete syncWork;
         delete finalizersPack;
     }, uv_qos_t(napi_qos_background));
@@ -2981,6 +3002,16 @@ napi_status ArkNativeEngine::DestroyContext()
         return napi_invalid_arg;
     }
 
-    context_.FreeGlobalHandleAddr();
+    context_.SetWeakCallback(reinterpret_cast<void*>(this),
+        [](void* engine) {
+            reinterpret_cast<ArkNativeEngine*>(engine)->context_.FreeGlobalHandleAddr();
+        },
+        [](void* engine) {
+            ArkNativeEngine* that = reinterpret_cast<ArkNativeEngine*>(engine);
+            if (!that->IsReadyToDelete()) {
+                that->Delete();
+            }
+            // waiting all ref callbacks done.
+        });
     return napi_ok;
 }

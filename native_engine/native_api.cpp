@@ -4342,7 +4342,6 @@ NAPI_EXTERN napi_status napi_create_ark_context(napi_env env, napi_env* newEnv)
     }
 
     // create env will be implemented later
-    auto newNativeEngine = reinterpret_cast<NativeEngine*>(*newEnv);
     auto context = panda::JSNApi::CreateContext(vm);
     ArkNativeEngine* newEngine = ArkNativeEngine::New(nativeEngine, const_cast<EcmaVM *>(vm), context);
     if (newEngine == nullptr) {

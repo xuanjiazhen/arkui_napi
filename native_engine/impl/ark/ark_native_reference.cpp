@@ -30,6 +30,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        bool isAsyncCall,
                                        size_t nativeBindingSize)
     : engine_(engine),
+      ownership_(deleteSelf ? ReferenceOwnerShip::RUNTIME : ReferenceOwnerShip::USERLAND),
       value_(engine->GetEcmaVm(), LocalValueFromJsValue(value)),
       refCount_(initialRefcount),
       deleteSelf_(deleteSelf),
@@ -52,6 +53,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        bool isAsyncCall,
                                        size_t nativeBindingSize)
     : engine_(engine),
+      ownership_(deleteSelf ? ReferenceOwnerShip::RUNTIME : ReferenceOwnerShip::USERLAND),
       value_(engine->GetEcmaVm(), value),
       refCount_(initialRefcount),
       deleteSelf_(deleteSelf),
@@ -68,6 +70,10 @@ ArkNativeReference::~ArkNativeReference()
 {
     VALID_ENGINE_CHECK(engine_, engine_, engineId_);
 
+    if (!napiCallback_) {
+        engine_->DecreaseNonCallbackRefCounter();
+    }
+
     if (deleteSelf_ && engine_->GetReferenceManager()) {
         engine_->GetReferenceManager()->ReleaseHandler(this);
         prev_ = nullptr;
@@ -83,6 +89,7 @@ ArkNativeReference::~ArkNativeReference()
 
 uint32_t ArkNativeReference::Ref()
 {
+    VALID_ENGINE_CHECK(engine, engine_, engineId_);
     ++refCount_;
     if (refCount_ == 1) {
         value_.ClearWeak();
@@ -92,6 +99,7 @@ uint32_t ArkNativeReference::Ref()
 
 uint32_t ArkNativeReference::Unref()
 {
+    VALID_ENGINE_CHECK(engine, engine_, engineId_);
     if (refCount_ == 0) {
         return refCount_;
     }
@@ -130,24 +138,62 @@ void* ArkNativeReference::GetData()
     return data_;
 }
 
+struct NapiSecondCallback {
+    NapiNativeFinalize callback_;
+    void* data_;
+    ReferenceOwnerShip ownership_;
+    void Invoke(napi_env env, void* hint)
+    {
+        callback_(env, data_, hint);
+    }
+};
+
 void ArkNativeReference::FinalizeCallback(FinalizerState state)
 {
-    if (napiCallback_ != nullptr && !engine_->IsInDestructor()) {
+    // Invoke the callback only if it is callbackable and has not already been invoked.
+    if (!finalRun_ && napiCallback_ && !engine_->IsInDestructor()) {
         if (state == FinalizerState::COLLECTION) {
             if (isAsyncCall_) {
                 std::pair<void*, void*> pair = std::make_pair(data_, hint_);
                 RefAsyncFinalizer asyncFinalizer = std::make_pair(napiCallback_, pair);
-                engine_->GetPendingAsyncFinalizers().emplace_back(asyncFinalizer);
+                // Async callback doesn't require the current engine. Use the root engine if a context is passed.
+                if (engine_->IsMainEnvContext()) {
+                    const_cast<ArkNativeEngine*>(engine_->GetParent())
+                        ->GetPendingAsyncFinalizers()
+                        .emplace_back(asyncFinalizer);
+                } else {
+                    engine_->GetPendingAsyncFinalizers().emplace_back(asyncFinalizer);
+                }
             } else {
-                std::tuple<NativeEngine*, void*, void*> tuple = std::make_tuple(engine_, data_, hint_);
-                RefFinalizer finalizer = std::make_pair(napiCallback_, tuple);
+                std::tuple<NativeEngine*, void*, void*> tuple =
+                    std::make_tuple(engine_, new NapiSecondCallback { napiCallback_, data_, ownership_ }, hint_);
+                RefFinalizer finalizer = std::make_pair(
+                    [](napi_env env, void* secondCb, void* hint) {
+                        NapiSecondCallback* callbackWarp =  reinterpret_cast<NapiSecondCallback*>(secondCb);
+                        callbackWarp->Invoke(env, hint);
+                        ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env);
+                        engine->DecreaseCallbackableRefCounter();
+
+                        if (callbackWarp->ownership_ == ReferenceOwnerShip::RUNTIME) {
+                            engine->DecreaseRuntimeOwnedRefCounter();
+                        }
+
+                        delete callbackWarp;
+                        if (engine->IsReadyToDelete()) {
+                            engine->Delete();
+                        }
+                    },
+                    tuple);
+                // callbackable ref counter will decrease until callback is invoked
                 engine_->GetArkFinalizersPack().AddFinalizer(finalizer, nativeBindingSize_);
             }
         } else {
+            if (!isAsyncCall_) {
+                engine_->DecreaseCallbackableRefCounter();
+            }
             napiCallback_(reinterpret_cast<napi_env>(engine_), data_, hint_);
         }
     }
-    napiCallback_ = nullptr;
     data_ = nullptr;
     hint_ = nullptr;
     finalRun_ = true;

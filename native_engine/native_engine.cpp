@@ -82,6 +82,15 @@ NativeEngine::NativeEngine(void* jsEngine) : jsEngine_(jsEngine)
     workerThreadState_ = new WorkerThreadState();
 }
 
+NativeEngine::NativeEngine(NativeEngine* parent) : jsEngine_(parent->jsEngine_)
+{
+    // make napi_async_work and napi_threadsafe_funtion is reachable
+    // update engine id
+    SetAlive();
+    // fill 0 to embedded uv members
+    InitUvField();
+}
+
 void NativeEngine::InitUvField()
 {
     if (memset_s(&uvAsync_, sizeof(uvAsync_), 0, sizeof(uvAsync_)) != EOK) {
@@ -822,20 +831,20 @@ void NativeEngine::CleanupHandles()
     }
 }
 
-#define BODY_COUNTER_METHOD(name, storage)       \
-    void NativeEngine::Increase##name##Counter() \
-    {                                            \
-        storage++;                               \
-    }                                            \
-                                                 \
-    void NativeEngine::Decrease##name##Counter() \
-    {                                            \
-        storage--;                               \
-    }                                            \
-                                                 \
-    bool NativeEngine::Has##name()               \
-    {                                            \
-        return storage.load() != 0;              \
+#define BODY_COUNTER_METHOD(_type, name, storage, LOAD) \
+    void NativeEngine::Increase##name##Counter()        \
+    {                                                   \
+        storage++;                                      \
+    }                                                   \
+                                                        \
+    void NativeEngine::Decrease##name##Counter()        \
+    {                                                   \
+        storage--;                                      \
+    }                                                   \
+                                                        \
+    bool NativeEngine::Has##name()                      \
+    {                                                   \
+        return LOAD(storage) != 0;                      \
     }
 
 NAPI_COUNTER_METHOD(BODY_COUNTER_METHOD)
@@ -846,6 +855,15 @@ NAPI_COUNTER_METHOD(BODY_COUNTER_METHOD)
 bool NativeEngine::HasListeningCounter()
 {
     return HasListening();
+}
+
+// custom CallbackableRefCounter method
+uint64_t NativeEngine::GetNonCallbackRefCount(){
+    return nonCallbackRefCounter_;
+}
+
+uint64_t NativeEngine::GetCallbackableRefCount(){
+    return callbackableRefCounter_;
 }
 
 void NativeEngine::RegisterWorkerFunction(const NativeEngine* engine)
