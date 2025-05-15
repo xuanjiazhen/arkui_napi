@@ -82,7 +82,8 @@ NativeEngine::NativeEngine(void* jsEngine) : jsEngine_(jsEngine)
     workerThreadState_ = new WorkerThreadState();
 }
 
-NativeEngine::NativeEngine(NativeEngine* parent) : jsEngine_(parent->jsEngine_)
+NativeEngine::NativeEngine(NativeEngine* parent) : jsEngine_(parent->jsEngine_),
+                                                   workerThreadState_(nullptr)
 {
     // make napi_async_work and napi_threadsafe_funtion is reachable
     // update engine id

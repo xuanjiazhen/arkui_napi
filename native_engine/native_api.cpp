@@ -4383,7 +4383,6 @@ NAPI_EXTERN napi_status napi_destroy_ark_context(napi_env env)
     if (status != napi_ok) {
         return napi_set_last_error(env, status);
     }
-    delete nativeEngine;
     return GET_RETURN_STATUS(env);
 }
 

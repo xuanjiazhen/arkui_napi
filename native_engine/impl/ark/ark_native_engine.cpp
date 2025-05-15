@@ -433,6 +433,7 @@ ArkNativeEngine::ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<J
       vm_(vm),
       topScope_(vm),
       context_(vm, context),
+      parentEngine_(reinterpret_cast<ArkNativeEngine*>(parent)),
       containerScopeEnable_(parent->IsContainerScopeEnabled())
 {
     HILOG_INFO("ArkContextEngine is created, id %{public}" PRIu64, GetId());
@@ -526,7 +527,7 @@ void ArkNativeEngine::Delete() {
  * 1. Cleanup hooks will be invoked to handle any necessary cleanup logic.
  * 2. Owned napi_async_work and napi_threadsafe_function must either
  *    complete execution or be released before the context is destroyed.
- *    - Use `uv_run_nowait` to wait for `uv_close_cb` to execute after cleanup hooks.
+ *    - ERROR: uv_run is not supported when loop is running.
  *    - Check `tsfn` and incomplete `async_work` counts, abort if not equal to 0.
  * 3. Trigger all managed reference finalize callbacks.
  * 4. Mark the engine as dead (this is particularly important for preventing conflicts
@@ -536,8 +537,6 @@ void ArkNativeEngine::Delete() {
 void ArkNativeEngine::DeconstructCtxEnv() {
     // To avoid blocking the thread, do not wait for any incomplete asynchronous tasks here.
     RunCleanupHooks(false);
-    // run complete callback or uv_close_cb
-    uv_run(loop_, UV_RUN_NOWAIT);
 
     if (HasWaitingRequest()) {
         HILOG_FATAL("Do not release ark context env until all async work done");
@@ -3002,10 +3001,9 @@ napi_status ArkNativeEngine::DestroyContext()
         return napi_invalid_arg;
     }
     releasing_ = true;
-    ArkNativeEngine* that = reinterpret_cast<ArkNativeEngine*>(engine);
-    if (!that->HasRuntimeOwnedRef()) {
-        that->context_.FreeGlobalHandleAddr();
-        that->Delete();
+    if (!HasRuntimeOwnedRef()) {
+        context_.FreeGlobalHandleAddr();
+        Delete();
     }
     // waiting all ref callbacks done.
     return napi_ok;

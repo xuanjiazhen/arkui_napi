@@ -147,7 +147,7 @@ struct NapiSecondCallback {
     // proxy of user callback
     static void SecondFinalizeCallback(napi_env env, void* data, void* hint)
     {
-        NapiSecondCallback* callbackWarp =  reinterpret_cast<NapiSecondCallback*>(secondCb);
+        NapiSecondCallback* callbackWarp = reinterpret_cast<NapiSecondCallback*>(data);
         callbackWarp->Invoke(env, hint);
         ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env);
         engine->DecreaseCallbackableRefCounter();
