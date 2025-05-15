@@ -490,5 +490,6 @@ private:
     bool containerScopeEnable_ { true };
     NativeTimerCallbackInfo* TimerListHead_ {nullptr};
     bool isMainEnvContext_ = false;
+    bool releasing_ { false };
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */

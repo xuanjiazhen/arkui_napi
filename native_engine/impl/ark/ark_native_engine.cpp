@@ -503,16 +503,16 @@ ArkNativeEngine *ArkNativeEngine::New(NativeEngine* engine, EcmaVM* vm, const Lo
 {
     if (engine->GetParent()) {
         HILOG_FATAL("Invalid arguments, root-engine is required, but sub-engine is provided");
-        return nullptr;
     }
     return new ArkNativeEngine(engine, vm, context);
 }
 
 bool ArkNativeEngine::IsReadyToDelete() {
-    return !HasRuntimeOwnedRef() && context_.IsEmpty();
+    return !HasRuntimeOwnedRef();
 }
 
 void ArkNativeEngine::Delete() {
+    context_.FreeGlobalHandleAddr();
     delete this;
 }
 
@@ -3001,17 +3001,12 @@ napi_status ArkNativeEngine::DestroyContext()
         HILOG_ERROR("running env context cannot be destroyed");
         return napi_invalid_arg;
     }
-
-    context_.SetWeakCallback(reinterpret_cast<void*>(this),
-        [](void* engine) {
-            reinterpret_cast<ArkNativeEngine*>(engine)->context_.FreeGlobalHandleAddr();
-        },
-        [](void* engine) {
-            ArkNativeEngine* that = reinterpret_cast<ArkNativeEngine*>(engine);
-            if (!that->IsReadyToDelete()) {
-                that->Delete();
-            }
-            // waiting all ref callbacks done.
-        });
+    releasing_ = true;
+    ArkNativeEngine* that = reinterpret_cast<ArkNativeEngine*>(engine);
+    if (!that->HasRuntimeOwnedRef()) {
+        that->context_.FreeGlobalHandleAddr();
+        that->Delete();
+    }
+    // waiting all ref callbacks done.
     return napi_ok;
 }

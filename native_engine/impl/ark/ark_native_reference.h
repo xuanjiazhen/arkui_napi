@@ -77,15 +77,14 @@ public:
 private:
     inline void ArkNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf)
     {
-
         if (napiCallback_) {
-            // Non-callback runtime owned napi_ref will free when env teardown.
-            if (ownership_ == ReferenceOwnerShip::RUNTIME) {
-                engine_->IncreaseRuntimeOwnedRefCounter();
-            }
             // Async callback will redirect to root engine, no monitoring needed.
             if (!isAsyncCall_) {
                 engine_->IncreaseCallbackableRefCounter();
+                // Non-callback runtime owned napi_ref will free when env teardown.
+                if (ownership_ == ReferenceOwnerShip::RUNTIME) {
+                    engine_->IncreaseRuntimeOwnedRefCounter();
+                }
             }
         } else {
             engine_->IncreaseNonCallbackRefCounter();

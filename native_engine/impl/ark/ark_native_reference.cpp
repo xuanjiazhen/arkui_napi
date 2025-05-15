@@ -89,7 +89,6 @@ ArkNativeReference::~ArkNativeReference()
 
 uint32_t ArkNativeReference::Ref()
 {
-    VALID_ENGINE_CHECK(engine, engine_, engineId_);
     ++refCount_;
     if (refCount_ == 1) {
         value_.ClearWeak();
@@ -99,7 +98,6 @@ uint32_t ArkNativeReference::Ref()
 
 uint32_t ArkNativeReference::Unref()
 {
-    VALID_ENGINE_CHECK(engine, engine_, engineId_);
     if (refCount_ == 0) {
         return refCount_;
     }
@@ -146,6 +144,23 @@ struct NapiSecondCallback {
     {
         callback_(env, data_, hint);
     }
+    // proxy of user callback
+    static void SecondFinalizeCallback(napi_env env, void* data, void* hint)
+    {
+        NapiSecondCallback* callbackWarp =  reinterpret_cast<NapiSecondCallback*>(secondCb);
+        callbackWarp->Invoke(env, hint);
+        ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env);
+        engine->DecreaseCallbackableRefCounter();
+
+        if (callbackWarp->ownership_ == ReferenceOwnerShip::RUNTIME) {
+            engine->DecreaseRuntimeOwnedRefCounter();
+        }
+
+        delete callbackWarp;
+        if (engine->IsReadyToDelete()) {
+            engine->Delete();
+        }
+    }
 };
 
 void ArkNativeReference::FinalizeCallback(FinalizerState state)
@@ -157,7 +172,7 @@ void ArkNativeReference::FinalizeCallback(FinalizerState state)
                 std::pair<void*, void*> pair = std::make_pair(data_, hint_);
                 RefAsyncFinalizer asyncFinalizer = std::make_pair(napiCallback_, pair);
                 // Async callback doesn't require the current engine. Use the root engine if a context is passed.
-                if (engine_->IsMainEnvContext()) {
+                if (!engine_->IsMainEnvContext()) {
                     const_cast<ArkNativeEngine*>(engine_->GetParent())
                         ->GetPendingAsyncFinalizers()
                         .emplace_back(asyncFinalizer);
@@ -167,29 +182,16 @@ void ArkNativeReference::FinalizeCallback(FinalizerState state)
             } else {
                 std::tuple<NativeEngine*, void*, void*> tuple =
                     std::make_tuple(engine_, new NapiSecondCallback { napiCallback_, data_, ownership_ }, hint_);
-                RefFinalizer finalizer = std::make_pair(
-                    [](napi_env env, void* secondCb, void* hint) {
-                        NapiSecondCallback* callbackWarp =  reinterpret_cast<NapiSecondCallback*>(secondCb);
-                        callbackWarp->Invoke(env, hint);
-                        ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env);
-                        engine->DecreaseCallbackableRefCounter();
-
-                        if (callbackWarp->ownership_ == ReferenceOwnerShip::RUNTIME) {
-                            engine->DecreaseRuntimeOwnedRefCounter();
-                        }
-
-                        delete callbackWarp;
-                        if (engine->IsReadyToDelete()) {
-                            engine->Delete();
-                        }
-                    },
-                    tuple);
+                RefFinalizer finalizer = std::make_pair(NapiSecondCallback::SecondFinalizeCallback, tuple);
                 // callbackable ref counter will decrease until callback is invoked
                 engine_->GetArkFinalizersPack().AddFinalizer(finalizer, nativeBindingSize_);
             }
         } else {
             if (!isAsyncCall_) {
                 engine_->DecreaseCallbackableRefCounter();
+                if (ownership_ == ReferenceOwnerShip::RUNTIME) {
+                    engine_->DecreaseRuntimeOwnedRefCounter();
+                }
             }
             napiCallback_(reinterpret_cast<napi_env>(engine_), data_, hint_);
         }
