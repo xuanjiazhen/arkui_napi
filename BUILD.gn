@@ -125,6 +125,12 @@ ohos_source_set("ace_napi_static") {
   }
   external_deps = []
   configs = []
+  if (is_arkui_x) {
+    include_dirs += [
+      "//foundation/arkui/ace_engine/frameworks",
+      "//foundation/arkui/ace_engine/interfaces/inner_api/ace_kit/include",
+    ]
+  }
 
   sources = napi_sources
 
