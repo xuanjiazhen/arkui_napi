@@ -409,6 +409,7 @@ private:
     // ArkNativeEngine constructor for multi-context
     ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<JSValueRef>& context);
     void DeconstructCtxEnv();
+    static void EnvironmentCleanup(void* arg);
 
     // -1: failed to load module
     //  0: success to found module -> need load

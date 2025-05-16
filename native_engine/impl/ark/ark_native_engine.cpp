@@ -438,6 +438,11 @@ ArkNativeEngine::ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<J
 {
     HILOG_INFO("ArkContextEngine is created, id %{public}" PRIu64, GetId());
 
+    // The sub-context environment must be deleted before the uv_loop is destroyed.
+    // In this case, we cannot delay the destruction of the context environment
+    // until all napi_ref callbacks are completed.
+    parent->AddCleanupHook(EnvironmentCleanup, this);
+
     LocalScope scope(vm);
 
     // enable napi profiler
@@ -508,11 +513,13 @@ ArkNativeEngine *ArkNativeEngine::New(NativeEngine* engine, EcmaVM* vm, const Lo
     return new ArkNativeEngine(engine, vm, context);
 }
 
-bool ArkNativeEngine::IsReadyToDelete() {
+bool ArkNativeEngine::IsReadyToDelete()
+{
     return !HasRuntimeOwnedRef();
 }
 
-void ArkNativeEngine::Delete() {
+void ArkNativeEngine::Delete()
+{
     context_.FreeGlobalHandleAddr();
     delete this;
 }
@@ -534,9 +541,12 @@ void ArkNativeEngine::Delete() {
  *    with any future engine instances that may be created at the same memory address).
  * 5. Recheck async work and tsfn counts to ensure no task leaks after finalize callbacks.
  */
-void ArkNativeEngine::DeconstructCtxEnv() {
+void ArkNativeEngine::DeconstructCtxEnv()
+{
     // To avoid blocking the thread, do not wait for any incomplete asynchronous tasks here.
     RunCleanupHooks(false);
+
+    parentEngine_->RemoveCleanupHook(EnvironmentCleanup, this);
 
     if (HasWaitingRequest()) {
         HILOG_FATAL("Do not release ark context env until all async work done");
@@ -567,6 +577,11 @@ void ArkNativeEngine::DeconstructCtxEnv() {
         HILOG_ERROR("Callbackable napi_ref is leak after context env teardown, counts: %{public}" PRIu64, GetCallbackableRefCount());
     }
     parentEngine_ = nullptr;
+}
+
+void ArkNativeEngine::EnvironmentCleanup(void* arg)
+{
+    reinterpret_cast<ArkNativeEngine*>(arg)->Delete();
 }
 
 napi_value ArkNativeEngine::GetContext() const

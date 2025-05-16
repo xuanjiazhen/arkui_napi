@@ -791,11 +791,9 @@ void NativeEngine::RunCleanupHooks(bool waitTasks)
             }
             cleanupHooks_.erase(data);
         }
+        // We cannot re-run the uv_loop while it is already running.
         if (waitTasks) {
             CleanupHandles();
-        } else {
-            // only execute queued complete callback or uv_close_cb
-            uv_run(loop_, UV_RUN_NOWAIT);
         }
     }
 }
