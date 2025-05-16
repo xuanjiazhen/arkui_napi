@@ -380,7 +380,7 @@ public:
     }
     static constexpr size_t FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD = 500 * 1024 * 1024;  // 500 MB
 
-    virtual bool IsContainerScopeEnabled() const override
+    bool IsContainerScopeEnabled() const override
     {
         return containerScopeEnable_;
     }
@@ -488,7 +488,8 @@ private:
     // napi options and its cache
     NapiOptions* options_ { nullptr };
     bool crossThreadCheck_ { false };
-    bool containerScopeEnable_ { true };
+    // Initialize the default value to false rather than isolating it with macros.
+    bool containerScopeEnable_ { false };
     NativeTimerCallbackInfo* TimerListHead_ {nullptr};
     bool isMainEnvContext_ = false;
     bool releasing_ { false };
