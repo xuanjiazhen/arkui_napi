@@ -612,6 +612,10 @@ ArkNativeEngine::~ArkNativeEngine()
         delete options_;
         options_ = nullptr;
     }
+    // Trigger all finalizer registered by napi interface when NativeEngine is destroyed.
+    if (arkNativeFinalizerListHead_) {
+        arkNativeFinalizerListHead_->TriggerAllArkNativeFinalizer();
+    }
 }
 
 #ifdef ENABLE_HITRACE
