@@ -34,6 +34,11 @@ enum class FinalizerState {
     COLLECTION,
 };
 
+enum class ReferenceOwnerShip : uint8_t {
+    RUNTIME,
+    USERLAND,
+};
+
 class ArkNativeReference : public NativeReference {
 public:
     ArkNativeReference(ArkNativeEngine* engine,
@@ -72,6 +77,19 @@ public:
 private:
     inline void ArkNativeReferenceConstructor(uint32_t initialRefCount, bool deleteSelf)
     {
+        if (napiCallback_) {
+            // Async callback will redirect to root engine, no monitoring needed.
+            if (!isAsyncCall_) {
+                engine_->IncreaseCallbackableRefCounter();
+                // Non-callback runtime owned napi_ref will free when env teardown.
+                if (ownership_ == ReferenceOwnerShip::RUNTIME) {
+                    engine_->IncreaseRuntimeOwnedRefCounter();
+                }
+            }
+        } else {
+            engine_->IncreaseNonCallbackRefCounter();
+        }
+
         if (initialRefCount == 0) {
             value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
         }
@@ -88,6 +106,7 @@ private:
 
     ArkNativeEngine* engine_;
     uint64_t engineId_ {0};
+    const ReferenceOwnerShip ownership_;
 
     Global<JSValueRef> value_;
     uint32_t refCount_ {0};
