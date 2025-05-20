@@ -192,8 +192,10 @@ panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, 
         funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
     }
 #endif
-
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentClassFunction(vm, ArkNativeFunctionCallBack,
+    ArkNativeEngine* arkEngine = reinterpret_cast<ArkNativeEngine*>(env);
+    Local<JSValueRef> context = arkEngine->GetContext();
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentClassFunction(vm, &context,
+        ArkNativeFunctionCallBack,
         [](void* env, void* externalPointer, void* data) {
             auto info = reinterpret_cast<NapiFunctionInfo*>(data);
                 if (info != nullptr) {
@@ -201,7 +203,6 @@ panda::Local<panda::JSValueRef> NapiDefineClass(napi_env env, const char* name, 
                 }
             },
         reinterpret_cast<void*>(funcInfo), true);
-
     Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, className.c_str());
     fn->SetName(vm, fnName);
 
@@ -825,8 +826,9 @@ static Local<panda::JSValueRef> NapiNativeCreateFunction(napi_env env, const cha
     }
 #endif
 
+    Local<JSValueRef> context = engine->GetContext();
     Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(
-        vm, ArkNativeFunctionCallBack,
+        vm, &context, ArkNativeFunctionCallBack,
         [](void* env, void* externalPointer, void* data) {
             auto info = reinterpret_cast<NapiFunctionInfo*>(data);
             if (info != nullptr) {
