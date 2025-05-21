@@ -174,11 +174,11 @@ HWTEST_F(NapiContextTest, NapiCreateContextTest005, testing::ext::TestSize.Level
     ASSERT_NE(engine_, nullptr);
     napi_env env = reinterpret_cast<napi_env>(engine_);
 
-    NativeEngineProxy newEngine;
-    napi_env newEnv = napi_env(newEngine);
+    napi_env newEnv = nullptr;
 
     napi_status status = napi_create_ark_context(env, &newEnv);
-    EXPECT_EQ(status, napi_generic_failure);
+    EXPECT_EQ(status, napi_ok);
+    EXPECT_EQ(napi_destroy_ark_context(newEnv), napi_ok);
 }
 
 /**
