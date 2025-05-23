@@ -2637,6 +2637,63 @@ NAPI_EXTERN napi_status napi_get_arraybuffer_info(napi_env env,
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_get_arraybuffer_finalizer(napi_env env,
+                                                       napi_value arraybuffer,
+                                                       napi_finalize* finalize_cb_ptr,
+                                                       void** finalize_hint_ptr)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, arraybuffer);
+    CHECK_ARG(env, finalize_cb_ptr);
+    CHECK_ARG(env, finalize_hint_ptr);
+
+    auto nativeValue = LocalValueFromJsValue(arraybuffer);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+    if (LIKELY(nativeValue->IsArrayBuffer(vm))) {
+        Local<panda::ArrayBufferRef> res(nativeValue);
+        auto [finalize_cb, finalize_hint] = res->GetFinalizer(vm);
+
+        if (finalize_cb_ptr != nullptr) {
+            *finalize_cb_ptr = reinterpret_cast<napi_finalize>(finalize_cb);
+        }
+        if (finalize_hint_ptr != nullptr) {
+            *finalize_hint_ptr = finalize_hint;
+        }
+    } else if (nativeValue->IsSendableArrayBuffer(vm)) {
+        // TODO
+    } else {
+        return napi_set_last_error(env, napi_arraybuffer_expected);
+    }
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_set_arraybuffer_finalizer(napi_env env,
+                                                       napi_value arraybuffer,
+                                                       napi_finalize finalize_cb,
+                                                       void* finalize_hint)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, arraybuffer);
+    // CHECK_ARG(env, finalize_cb);
+    // CHECK_ARG(env, finalize_hint);
+
+    auto nativeValue = LocalValueFromJsValue(arraybuffer);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+    if (LIKELY(nativeValue->IsArrayBuffer(vm))) {
+        Local<panda::ArrayBufferRef> res(nativeValue);
+        res->SetFinalizer(vm, reinterpret_cast<panda::NativePointerCallback>(finalize_cb), finalize_hint);
+    } else if (nativeValue->IsSendableArrayBuffer(vm)) {
+        // TODO
+    } else {
+        return napi_set_last_error(env, napi_arraybuffer_expected);
+    }
+
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_is_typedarray(napi_env env, napi_value value, bool* result)
 {
     CHECK_ENV(env);
