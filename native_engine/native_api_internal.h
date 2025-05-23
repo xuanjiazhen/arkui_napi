@@ -19,7 +19,7 @@
 #include <cinttypes>
 
 #include "napi/native_api.h"
-#include "native_engine.h"
+#include "ark_native_engine.h"
 #include "utils/log.h"
 
 static inline napi_status napi_clear_last_error(napi_env env)
@@ -156,5 +156,14 @@ inline bool EnableContainerScope(napi_env env)
     return engine->IsContainerScopeEnabled();
 }
 #endif
+
+#define SWITCH_CONTEXT(env)                                             \
+    auto engine = reinterpret_cast<NativeEngine *>(env);                \
+    if (!engine->IsMainEnvContext() || engine->HasSubContextEnv()) {    \
+        napi_status stat = engine->SwitchContext();                     \
+        if (UNLIKELY(stat != napi_ok)) {                                \
+            return napi_set_last_error(env, stat);                      \
+        }                                                               \
+    }
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_API_INTERNAL_H */
