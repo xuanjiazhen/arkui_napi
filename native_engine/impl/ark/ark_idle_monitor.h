@@ -205,6 +205,7 @@ private:
     void StopIdleMonitorTimerTaskAndPostSleepTask();
     void CheckShortIdleTask(int64_t timestamp, int idleTime);
     void PostSwitchBackgroundGCTask();
+    static void PostTriggerGCTask(NativeEngine* enggine, TriggerGCData& data);
 
     static std::shared_ptr<ArkIdleMonitor> instance_;
 

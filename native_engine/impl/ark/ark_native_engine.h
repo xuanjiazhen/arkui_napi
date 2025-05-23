@@ -28,7 +28,6 @@
 #include <thread>
 #include <unistd.h>
 
-#include "ark_idle_monitor.h"
 #include "ark_native_options.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -280,13 +279,13 @@ public:
     void JudgmentDump(size_t limitSize);
     void NotifyNativeCalling(const void *nativeAddress);
 
-    void PostFinalizeTasks();
-    void PostAsyncTask(panda::AsyncNativeCallbacksPack *callbacksPack);
-    void PostTriggerGCTask(panda::TriggerGCData& data) override;
+    inline size_t GetPendingFinalizersPackNativeBindingSize() {
+        return pendingFinalizersPackNativeBindingSize_;
+    };
 
-    ArkFinalizersPack &GetArkFinalizersPack()
+    ArkFinalizersPack *GetArkFinalizersPack()
     {
-        return arkFinalizersPack_;
+        return &arkFinalizersPack_;
     }
 
     std::vector<RefAsyncFinalizer> &GetPendingAsyncFinalizers()
@@ -298,7 +297,6 @@ public:
     void HandleUncaughtException() override;
     bool HasPendingException() override;
     void RegisterPermissionCheck(PermissionCheckCallback callback) override;
-    bool ExecutePermissionCheck() override;
     void RegisterTranslateBySourceMap(SourceMapCallback callback) override;
     std::string ExecuteTranslateBySourceMap(const std::string& rawStack) override;
         void RegisterSourceMapTranslateCallback(SourceMapTranslateCallback callback) override;
@@ -371,7 +369,6 @@ public:
     {
         return crossThreadCheck_;
     }
-    static constexpr size_t FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD = 500 * 1024 * 1024;  // 500 MB
 
 #ifdef ENABLE_CONTAINER_SCOPE
     inline bool IsContainerScopeEnabled() const override
@@ -413,15 +410,13 @@ private:
 
     void EnableNapiProfiler() override;
 
-    static void RunCallbacks(ArkFinalizersPack *finalizersPack);
-    static void RunAsyncCallbacks(std::vector<RefAsyncFinalizer> *finalizers);
-    static void RunCallbacks(panda::AsyncNativeCallbacksPack *callbacks);
-    static void RunCallbacks(panda::TriggerGCData *triggerGCData);
     static void SetAttribute(bool isLimitedWorker, panda::RuntimeOption &option);
     static NativeEngine* CreateRuntimeFunc(NativeEngine* engine, void* jsEngine, bool isLimitedWorker = false);
     static NativeEngine* GetArkNativeEngineByID(uint64_t tid);
     static bool CheckArkApiAllowList(
         NativeModule* module, panda::ecmascript::ApiCheckContext context, panda::Local<panda::ObjectRef>& exportCopy);
+
+    friend class ArkFinalizersPack;
     void IncreasePendingFinalizersPackNativeBindingSize(size_t nativeBindingSize)
     {
         pendingFinalizersPackNativeBindingSize_ += nativeBindingSize;

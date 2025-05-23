@@ -442,7 +442,6 @@ public:
     }
     virtual void ThrowException(const char* msg);
     virtual void RegisterPermissionCheck(PermissionCheckCallback callback) = 0;
-    virtual bool ExecutePermissionCheck() = 0;
     virtual void RegisterTranslateBySourceMap(SourceMapCallback callback) = 0;
     virtual std::string ExecuteTranslateBySourceMap(const std::string& rawStack) = 0;
     virtual void RegisterSourceMapTranslateCallback(SourceMapTranslateCallback callback) = 0;
@@ -457,7 +456,6 @@ public:
     virtual std::string GetBundleName() = 0;
     virtual bool IsExecuteModuleInAbcFile(std::string bundleName, std::string moduleName, std::string ohmurl) = 0;
     virtual int GetProcessStartRealTime() = 0;
-    virtual void PostTriggerGCTask(panda::TriggerGCData& data) = 0;
     // run script by path
     napi_value RunScriptForAbc(const char* path, char* entryPoint = nullptr);
     napi_value RunScript(const char* path, char* entryPoint = nullptr);

@@ -321,7 +321,7 @@ void ArkIdleMonitor::EnableIdleGC(NativeEngine *engine)
     if (gEnableIdleGC && JSNApi::IsJSMainThreadOfEcmaVM(vm)) {
         SetMainThreadEcmaVM(vm);
         JSNApi::SetTriggerGCTaskCallback(vm, [engine](TriggerGCData& data) {
-            engine->PostTriggerGCTask(data);
+            PostTriggerGCTask(engine, data);
         });
         SetStartTimerCallback();
         PostLooperTriggerIdleGCTask();
@@ -521,7 +521,7 @@ void ArkIdleMonitor::NotifyOneWorkerThreadTryCompressGC()
         if (arkNativeEngine->GetWorkerThreadState()->GetCheckCount() >= IDLE_INBACKGROUND_CHECK_LENGTH) {
             std::pair<void*, uint8_t> data(reinterpret_cast<void*>(const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm())),
                 static_cast<uint8_t>(TRIGGER_IDLE_GC_TYPE::FULL_GC));
-            arkNativeEngine->PostTriggerGCTask(data);
+            PostTriggerGCTask(arkNativeEngine, data);
             return;
         }
     }
@@ -560,6 +560,26 @@ void ArkIdleMonitor::StopIdleMonitorTimerTaskAndPostSleepTask()
 #endif
 }
 
+
+void ArkIdleMonitor::PostTriggerGCTask(NativeEngine* engine, TriggerGCData& data)
+{
+    TriggerGCData *triggerGCData = new TriggerGCData(data);
+    uv_work_t *syncWork = new uv_work_t;
+    syncWork->data = reinterpret_cast<void *>(triggerGCData);
+    int ret = uv_queue_work_with_qos(engine->GetUVLoop(), syncWork, [](uv_work_t *) {},
+        [](uv_work_t *syncWork, int32_t) {
+            auto triggerGCData = reinterpret_cast<TriggerGCData *>(syncWork->data);
+            ArkFinalizersPack::RunCallbacks(triggerGCData);
+            delete syncWork;
+            delete triggerGCData;
+        }, uv_qos_t(napi_qos_user_initiated));
+    if (ret != 0) {
+        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
+        ArkFinalizersPack::RunCallbacks(triggerGCData);
+        delete syncWork;
+        delete triggerGCData;
+    }
+}
 
 std::shared_ptr<ArkIdleMonitor> ArkIdleMonitor::instance_ = std::make_shared<ArkIdleMonitor>();
 

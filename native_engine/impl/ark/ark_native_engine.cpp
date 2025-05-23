@@ -20,6 +20,7 @@
 #include <sys/prctl.h>
 #endif
 
+#include "ark_idle_monitor.h"
 #include "ark_native_deferred.h"
 #include "ark_native_reference.h"
 #include "ark_native_timer.h"
@@ -560,10 +561,10 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
     JSNApi::SetLoop(vm, loop_);
     DFXJSNApi::RegisterAsyncDetectCallBack(vm);
     JSNApi::SetWeakFinalizeTaskCallback(vm, [this] () -> void {
-        this->PostFinalizeTasks();
+        ArkFinalizersPack::PostFinalizeTasks(this);
     });
     JSNApi::SetAsyncCleanTaskCallback(vm, [this] (AsyncNativeCallbacksPack *callbacksPack) {
-        this->PostAsyncTask(callbacksPack);
+        ArkFinalizersPack::PostAsyncTask(this, callbacksPack);
     });
     JSNApi::SetHostPromiseRejectionTracker(vm_, reinterpret_cast<void*>(PromiseRejectCallback),
                                            reinterpret_cast<void*>(this));
@@ -1561,176 +1562,9 @@ NativeReference* ArkNativeEngine::CreateAsyncReference(napi_value value, uint32_
     return new ArkNativeReference(this, value, initialRefcount, flag, callback, data, hint, true);
 }
 
-__attribute__((optnone)) void ArkNativeEngine::RunCallbacks(TriggerGCData *triggerGCData)
-{
-#ifdef ENABLE_HITRACE
-    StartTrace(HITRACE_TAG_ACE, "RunTriggerGCTaskCallback");
-#endif
-    std::pair<void *, uint8_t> &param = *triggerGCData;
-    JSNApi::TriggerIdleGC(reinterpret_cast<EcmaVM *>(param.first),
-        static_cast<JSNApi::TRIGGER_IDLE_GC_TYPE>(param.second));
-#ifdef ENABLE_HITRACE
-    FinishTrace(HITRACE_TAG_ACE);
-#endif
-}
-
-__attribute__((optnone)) void ArkNativeEngine::RunCallbacks(ArkFinalizersPack *finalizersPack)
-{
-#ifdef ENABLE_HITRACE
-    StartTrace(HITRACE_TAG_ACE, "RunFinalizeCallbacks:" + std::to_string(finalizersPack->GetNumFinalizers()));
-#endif
-    finalizersPack->ProcessAll();
-#ifdef ENABLE_HITRACE
-    FinishTrace(HITRACE_TAG_ACE);
-#endif
-}
-
-__attribute__((optnone)) void ArkNativeEngine::RunAsyncCallbacks(std::vector<RefAsyncFinalizer> *finalizers)
-{
-#ifdef ENABLE_HITRACE
-    StartTrace(HITRACE_TAG_ACE, "RunFinalizeCallbacks:" + std::to_string(finalizers->size()));
-#endif
-    INIT_CRASH_HOLDER(holder, "NAPI");
-    for (auto iter : (*finalizers)) {
-        NapiNativeFinalize callback = iter.first;
-        std::pair<void*, void*> &param = iter.second;
-        holder.UpdateCallbackPtr(reinterpret_cast<uintptr_t>(callback));
-        callback(nullptr, std::get<0>(param), std::get<1>(param)); // 1 is the param.
-    }
-#ifdef ENABLE_HITRACE
-    FinishTrace(HITRACE_TAG_ACE);
-#endif
-}
-
-void ArkNativeEngine::PostFinalizeTasks()
-{
-    if (IsInDestructor()) {
-        return;
-    }
-    if (!pendingAsyncFinalizers_.empty()) {
-        uv_work_t *asynWork = new uv_work_t;
-        std::vector<RefAsyncFinalizer> *asyncFinalizers = new std::vector<RefAsyncFinalizer>();
-        asyncFinalizers->swap(pendingAsyncFinalizers_);
-        asynWork->data = reinterpret_cast<void *>(asyncFinalizers);
-
-        int ret = uv_queue_work_with_qos(GetUVLoop(), asynWork, [](uv_work_t *asynWork) {
-            std::vector<RefAsyncFinalizer> *finalizers =
-                reinterpret_cast<std::vector<RefAsyncFinalizer> *>(asynWork->data);
-            RunAsyncCallbacks(finalizers);
-            HILOG_DEBUG("uv_queue_work async running ");
-            delete finalizers;
-        }, [](uv_work_t *asynWork, int32_t) {
-            delete asynWork;
-        }, uv_qos_t(napi_qos_background));
-        if (ret != 0) {
-            HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
-            RunAsyncCallbacks(asyncFinalizers);
-            delete asynWork;
-            delete asyncFinalizers;
-        }
-    }
-    if (arkFinalizersPack_.Empty()) {
-        return;
-    }
-    ArkFinalizersPack *finalizersPack = new ArkFinalizersPack();
-    std::swap(arkFinalizersPack_, *finalizersPack);
-    if (!IsMainThread()) {
-        panda::JsiNativeScope nativeScope(vm_);
-        RunCallbacks(finalizersPack);
-        delete finalizersPack;
-        return;
-    }
-    size_t bindingSize = finalizersPack->GetTotalNativeBindingSize();
-    if (pendingFinalizersPackNativeBindingSize_ > FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD &&
-        bindingSize > 0) {
-        HILOG_DEBUG("Pending Finalizers NativeBindingSize '%{public}zu' large than '%{public}zu', process sync.",
-            pendingFinalizersPackNativeBindingSize_, FINALIZERS_PACK_PENDING_NATIVE_BINDING_SIZE_THRESHOLD);
-        panda::JsiNativeScope nativeScope(vm_);
-        RunCallbacks(finalizersPack);
-        delete finalizersPack;
-        return;
-    }
-    uv_work_t *syncWork = new uv_work_t;
-    finalizersPack->RegisterFinishNotify([this] (size_t totalNativeBindingSize) {
-        this->DecreasePendingFinalizersPackNativeBindingSize(totalNativeBindingSize);
-    });
-    IncreasePendingFinalizersPackNativeBindingSize(bindingSize);
-
-    syncWork->data = reinterpret_cast<void *>(finalizersPack);
-    int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
-        ArkFinalizersPack *finalizersPack = reinterpret_cast<ArkFinalizersPack*>(syncWork->data);
-        RunCallbacks(finalizersPack);
-        HILOG_DEBUG("uv_queue_work running");
-        delete syncWork;
-        delete finalizersPack;
-    }, uv_qos_t(napi_qos_background));
-    if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
-        panda::JsiNativeScope nativeScope(vm_);
-        RunCallbacks(finalizersPack);
-        delete syncWork;
-        delete finalizersPack;
-    }
-}
-
-__attribute__((optnone)) void ArkNativeEngine::RunCallbacks(AsyncNativeCallbacksPack *callbacksPack)
-{
-#ifdef ENABLE_HITRACE
-    StartTrace(HITRACE_TAG_ACE, "RunNativeCallbacks:" + std::to_string(callbacksPack->GetNumCallBacks()));
-#endif
-    callbacksPack->ProcessAll("NAPI");
-#ifdef ENABLE_HITRACE
-    FinishTrace(HITRACE_TAG_ACE);
-#endif
-}
-
-void ArkNativeEngine::PostAsyncTask(AsyncNativeCallbacksPack *callBacksPack)
-{
-    if (IsInDestructor()) {
-        delete callBacksPack;
-        return;
-    }
-    uv_work_t *syncWork = new uv_work_t;
-    syncWork->data = reinterpret_cast<void *>(callBacksPack);
-
-    int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
-        AsyncNativeCallbacksPack *finalizers = reinterpret_cast<AsyncNativeCallbacksPack*>(syncWork->data);
-        RunCallbacks(finalizers);
-        HILOG_DEBUG("uv_queue_work running");
-        delete syncWork;
-        delete finalizers;
-    }, uv_qos_t(napi_qos_background));
-    if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
-        panda::JsiNativeScope nativeScope(vm_);
-        RunCallbacks(callBacksPack);
-        delete callBacksPack;
-        delete syncWork;
-    }
-}
-
-void ArkNativeEngine::PostTriggerGCTask(TriggerGCData& data)
-{
-    TriggerGCData *triggerGCData = new TriggerGCData(data);
-    uv_work_t *syncWork = new uv_work_t;
-    syncWork->data = reinterpret_cast<void *>(triggerGCData);
-    int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
-            auto triggerGCData = reinterpret_cast<TriggerGCData *>(syncWork->data);
-            RunCallbacks(triggerGCData);
-            delete syncWork;
-            delete triggerGCData;
-        }, uv_qos_t(napi_qos_user_initiated));
-    if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
-        RunCallbacks(triggerGCData);
-        delete syncWork;
-        delete triggerGCData;
-    }
-}
-
-#if defined(OHOS_PLATFORM) && !defined(IOS_PLATFORM) && !defined(ANDROID_PLATFORM)
 void ArkNativeEngine::SetAttribute(bool isLimitedWorker, panda::RuntimeOption &option)
 {
+#if defined(OHOS_PLATFORM) && !defined(IOS_PLATFORM) && !defined(ANDROID_PLATFORM)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     std::string bundleName = OHOS::system::GetParameter("persist.ark.arkbundlename", "");
     std::string memConfigProperty = OHOS::system::GetParameter("persist.ark.mem_config_property", "");
@@ -1751,8 +1585,8 @@ void ArkNativeEngine::SetAttribute(bool isLimitedWorker, panda::RuntimeOption &o
     option.SetIsRestrictedWorker(isLimitedWorker);
     HILOG_DEBUG("ArkNativeEngineImpl::CreateRuntimeFunc ark properties = %{public}d, bundlename = %{public}s",
         arkProperties, bundleName.c_str());
-}
 #endif
+}
 
 NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsEngine, bool isLimitedWorker)
 {
@@ -2423,22 +2257,7 @@ bool ArkNativeEngine::HasPendingException()
     return JSNApi::HasPendingException(vm_);
 }
 
-void ArkNativeEngine::RegisterPermissionCheck(PermissionCheckCallback callback)
-{
-    if (permissionCheckCallback_ == nullptr) {
-        permissionCheckCallback_ = callback;
-    }
-}
-
-bool ArkNativeEngine::ExecutePermissionCheck()
-{
-    if (permissionCheckCallback_ != nullptr) {
-        return permissionCheckCallback_();
-    } else {
-        HILOG_INFO("permissionCheckCallback_ is still nullptr when executing permission check!");
-        return true;
-    }
-}
+void ArkNativeEngine::RegisterPermissionCheck(PermissionCheckCallback callback) { }
 
 void ArkNativeEngine::RegisterTranslateBySourceMap(SourceMapCallback callback)
 {

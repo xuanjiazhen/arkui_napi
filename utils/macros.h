@@ -24,4 +24,46 @@
 #endif
 #endif
 
+#ifndef NAPI_DEFAULT_MOVE_CTOR
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define NAPI_DEFAULT_MOVE_CTOR(TypeName)         \
+    /* NOLINTNEXTLINE(misc-macro-parentheses) */ \
+    TypeName(TypeName&&) = default
+#endif
+
+#ifndef NAPI_DEFAULT_MOVE_OPERATOR
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define NAPI_DEFAULT_MOVE_OPERATOR(TypeName)     \
+    /* NOLINTNEXTLINE(misc-macro-parentheses) */ \
+    TypeName& operator=(TypeName&&) = default
+#endif
+
+#ifndef NAPI_DEFAULT_MOVE_SEMANTIC
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define NAPI_DEFAULT_MOVE_SEMANTIC(TypeName) \
+    NAPI_DEFAULT_MOVE_CTOR(TypeName);        \
+    NAPI_DEFAULT_MOVE_OPERATOR(TypeName)
+#endif
+
+#ifndef NAPI_DEFAULT_COPY_CTOR
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define NAPI_DEFAULT_COPY_CTOR(TypeName)         \
+    /* NOLINTNEXTLINE(misc-macro-parentheses) */ \
+    TypeName(const TypeName&) = default
+#endif
+
+#ifndef NAPI_DEFAULT_COPY_OPERATOR
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define NAPI_DEFAULT_COPY_OPERATOR(TypeName)     \
+    /* NOLINTNEXTLINE(misc-macro-parentheses) */ \
+    TypeName& operator=(const TypeName&) = default
+#endif
+
+#ifndef NAPI_DEFAULT_COPY_SEMANTIC
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define NAPI_DEFAULT_COPY_SEMANTIC(TypeName) \
+    NAPI_DEFAULT_COPY_CTOR(TypeName);        \
+    NAPI_DEFAULT_COPY_OPERATOR(TypeName)
+#endif
+
 #endif /* FOUNDATION_ACE_NAPI_UTILS_MACROS_H */
