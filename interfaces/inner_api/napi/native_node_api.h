@@ -171,4 +171,5 @@ NAPI_EXTERN napi_status napi_encode(napi_env env, napi_value src, napi_value* re
 NAPI_EXTERN napi_status napi_is_bitvector(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_add_cleanup_finalizer(napi_env env, void (*fun)(void* arg), void* arg);
 NAPI_EXTERN napi_status napi_remove_cleanup_finalizer(napi_env env, void (*fun)(void* arg), void* arg);
+NAPI_EXTERN napi_status napi_get_ets_implements(napi_env env, napi_value value, napi_value* result);
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_API_H */

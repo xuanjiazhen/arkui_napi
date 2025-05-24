@@ -629,3 +629,14 @@ NAPI_EXTERN napi_status napi_make_callback(napi_env env,
     }
     return GET_RETURN_STATUS(env);
 }
+
+NAPI_EXTERN napi_status napi_get_ets_implements(napi_env env, napi_value value, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    panda::JSValueRef* emlpementValue = panda::JSNApi::GetImplements(env, value);
+    *result = reinterpret_cast<napi_value>(emlpementValue);
+    return napi_clear_last_error(env);
+}
