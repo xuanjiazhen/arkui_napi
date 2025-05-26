@@ -684,3 +684,76 @@ HWTEST_F(NapiContextTest, CreateSendableTypedArrayWithMultiContext001, testing::
     ASSERT_EQ(res, napi_invalid_arg);
     SetMainEnvContext(true);
 }
+
+/**
+ * @tc.name: CreateSendableTypedArrayWithMultiContext001
+ * @tc.desc: Test napi_get_global when ***
+ *           interface.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, GetGlobalWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+
+    NativeEngineProxy envProxy;
+    napi_env newEnv = napi_env(envProxy);
+    napi_value global, undefined;
+    ASSERT_CHECK_CALL(napi_get_global(newEnv, &global));
+    ASSERT_CHECK_CALL(napi_get_undefined(newEnv, &undefined));
+    ASSERT_CHECK_CALL(napi_set_named_property(newEnv, global, STRING_TEST, undefined));
+    bool hasProp = false;
+    ASSERT_CHECK_CALL(napi_has_named_property(newEnv, global, STRING_TEST, &hasProp));
+    ASSERT_EQ(hasProp, true);
+
+    napi_env newEnv = napi_env(newEngine);
+    auto context = newEngine->context_;
+    (newEngine->context_).Empty();
+    napi_status status = napi_create_ark_context(env, &newEnv);
+    EXPECT_EQ(status, napi_ok);
+
+    auto arkNativeEngine = reinterpret_cast<ArkNativeEngine* >(newEnv);
+    arkNativeEngine->isMainEnvContext_ = false;
+    EXPECT_FALSE(arkNativeEngine->IsMainEnvContext());
+
+    napi_value globalNew = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(newEnv, &globalNew));
+    ASSERT_CHECK_CALL(napi_has_named_property(newEnv, globalNew, STRING_TEST, &hasProp));
+    ASSERT_EQ(hasProp, false);
+
+    newEngine->context_ = context;
+}
+
+/**
+ * @tc.name: CreateErrorWithMultiContext001
+ * @tc.desc: Test napi_create_error when ***
+ *           interface.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, CreateErrorWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    NativeEngineProxy newEngine;
+    napi_env newEnv = napi_env(newEngine);
+    auto context = newEngine->context_;
+    (newEngine->context_).Empty();
+    napi_status status = napi_create_ark_context(env, &newEnv);
+    EXPECT_EQ(status, napi_ok);
+
+    napi_value error, code, msg;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(newEnv, TEST_ERROR_CODE, NAPI_AUTO_LENGTH, &code));
+    ASSERT_CHECK_CALL(napi_create_string_utf8(newEnv, TEST_ERROR_MESSAGE, NAPI_AUTO_LENGTH, &msg));
+    ASSERT_CHECK_CALL(napi_create_error(newEnv, code, msg, &error));
+    ASSERT_CHECK_CALL(napi_throw(newEnv, error));
+
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_and_clear_last_exception(env, &result));
+    EXPECT_EQ(result, nullptr);
+    result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_and_clear_last_exception(newEnv, &result));
+    EXPECT_NE(result, nullptr);
+
+    newEngine->context_ = context;
+
+}

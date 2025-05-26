@@ -157,4 +157,15 @@ inline bool EnableContainerScope(napi_env env)
 }
 #endif
 
+#define SWITCH_CONTEXT(env)                                             \
+    auto engine = reinterpret_cast<NativeEngine *>(env);                \
+    auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());                 \
+    auto envContext = engine->GetContext();                             \
+    if (envContext.IsEmpty()) {                                         \
+        HILOG_FATAL("current context is null");                         \
+    }                                                                   \
+    if (!(envContext == panda::JSNApi::GetCurrentContext(vm))) {        \
+        engine->SwitchContext();                                        \
+    }
+
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_API_INTERNAL_H */
