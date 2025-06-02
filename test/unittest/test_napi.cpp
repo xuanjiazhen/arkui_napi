@@ -7625,7 +7625,6 @@ HWTEST_F(NapiBasicTest, NapiWrapTest006, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_object_expected);
 }
 
-#ifdef PANDA_JS_ETS_HYBRID_MODE
 HWTEST_F(NapiBasicTest, NapiWrapWithXRefTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -7743,7 +7742,6 @@ HWTEST_F(NapiBasicTest, NapiCreateXRefTest003, testing::ext::TestSize.Level1)
     auto res = napi_create_xref(env, nullptr, 1, nullptr);
     ASSERT_EQ(res, napi_invalid_arg);
 }
-#endif
 
 HWTEST_F(NapiBasicTest, NapiRegisterAppStateCallbakcTest001, testing::ext::TestSize.Level1)
 {
@@ -7827,7 +7825,6 @@ HWTEST_F(NapiBasicTest, NapiUnwrapTest006, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_invalid_arg);
 }
 
-#ifdef PANDA_JS_ETS_HYBRID_MODE
 HWTEST_F(NapiBasicTest, NapiXrefUnwrapTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -7838,7 +7835,6 @@ HWTEST_F(NapiBasicTest, NapiXrefUnwrapTest001, testing::ext::TestSize.Level1)
     napi_status status = napi_xref_unwrap(env, obj, (void**)&testStr);
     ASSERT_EQ(status, napi_ok);
 }
-#endif
 
 HWTEST_F(NapiBasicTest, NapiRemoveWrapTest001, testing::ext::TestSize.Level1)
 {

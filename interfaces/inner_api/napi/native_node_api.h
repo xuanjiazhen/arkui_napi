@@ -192,7 +192,6 @@ typedef enum {
     NAPI_DIRECTION_HYBRID = 3, // STS object and the JS object references each other
 } NapiXRefDirection;
 
-#ifdef PANDA_JS_ETS_HYBRID_MODE
 // XGC specific internal API
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env, void* inputIface, void** outputIface);
 NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
@@ -217,7 +216,6 @@ NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool* r
 NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result);
 NAPI_EXTERN napi_status napi_is_xref_type(napi_env env, napi_value js_object, bool* result);
 NAPI_EXTERN napi_status napi_get_ets_implements(napi_env env, napi_value value, napi_value* result);
-#endif  // PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback);
 
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_API_H */
