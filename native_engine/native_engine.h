@@ -555,6 +555,8 @@ public:
         return workerThreadState_;
     }
 
+    virtual void *GetThreadHolder() const = 0;
+
 private:
     void InitUvField();
 
