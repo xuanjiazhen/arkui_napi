@@ -141,7 +141,7 @@ ohos_shared_library("cjLibLoader") {
 
   sources = [ "ark_interop_loader.cpp" ]
 
-  external_deps = [ "hilog:libhilog" ]
+  external_deps = [ "hilog:libhilog_ndk" ]
 
   deps = [
     ":cj_envsetup",
