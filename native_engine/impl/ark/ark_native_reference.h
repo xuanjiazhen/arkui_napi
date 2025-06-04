@@ -18,6 +18,7 @@
 
 #include "ark_native_engine.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "jsnapi_expo.h"
 #include "native_engine/native_reference.h"
 #include "native_engine/native_value.h"
 
@@ -104,6 +105,45 @@ private:
     static void FreeGlobalCallBack(void* ref);
     static void NativeFinalizeCallBack(void* ref);
     friend class NativeReferenceManager;
+};
+
+enum class ReferenceReleaseReason {
+    DELETE_REFERENCE,
+    FINALIZE,
+};
+
+class ArkSendableNativeReference {
+public:
+    ArkSendableNativeReference(ArkNativeEngine* engine, napi_value value, uint32_t initialRefcount);
+    ArkSendableNativeReference(ArkNativeEngine* engine, Local<JSValueRef> value, uint32_t initialRefcount);
+    ~ArkSendableNativeReference();
+
+    bool ReadyToRelease(ReferenceReleaseReason reason);
+    uint32_t Ref(NativeEngine* engine);
+    uint32_t Unref(NativeEngine* engine);
+    napi_value Get(NativeEngine* engine);
+
+private:
+    inline void ArkSendableNativeReferenceConstructor(ArkNativeEngine* engine,
+                                                      uint32_t initialRefCount,
+                                                      bool deleteSelf = false)
+    {
+        if (initialRefCount == 0) {
+            value_.SetWeakCallback(engine->GetEcmaVm(), reinterpret_cast<void*>(this), FreeGlobalCallBack,
+                                   NativeFinalizeCallBack);
+        }
+    }
+
+    panda::SendableGlobal<JSValueRef> value_;
+    uint32_t refCount_ { 0 };
+    bool deleteSelf_ { false };
+    bool finalRun_ { false };
+    std::mutex mutex_;
+
+    void FinalizeCallback();
+
+    static void FreeGlobalCallBack(void* ref);
+    static void NativeFinalizeCallBack(void* ref);
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H */
