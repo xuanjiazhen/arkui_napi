@@ -52,6 +52,21 @@ typedef enum {
     napi_eprio_idle = 4,
 } napi_event_priority;
 
+typedef enum {
+    NAPI_APP_STATE_FOREGROUND = 0,
+    NAPI_APP_STATE_BACKGROUND = 1,
+    NAPI_APP_STATE_SENSITIVE_START = 2,
+    NAPI_APP_STATE_SENSITIVE_END = 3,
+    NAPI_APP_STATE_COLD_START_FINISHED = 4,
+    NAPI_APP_STATE_WARM_START = 5,
+} NapiAppState;
+
+using NapiAppStateCallback = void (*)(int state, int64_t timestamp);
+
+NAPI_EXTERN napi_status napi_load_module_with_info_hybrid(napi_env env,
+                                                          const char* path,
+                                                          const char* module_info,
+                                                          napi_value* result);
 NAPI_EXTERN napi_status napi_create_limit_runtime(napi_env env, napi_env* result_env);
 NAPI_EXTERN void napi_module_with_js_register(napi_module_with_js* mod);
 NAPI_EXTERN napi_status napi_is_callable(napi_env env, napi_value value, bool* result);
