@@ -17,6 +17,7 @@
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 
 #include <memory>
+#include "jsnapi_expo.h"
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -330,7 +331,8 @@ public:
         const std::string& moduleName, bool isAppModule, const std::string& id, const std::string& param,
         const std::string& instanceName, void** instance);
     napi_value NapiLoadModule(const char* path) override;
-    napi_value NapiLoadModuleWithInfo(const char* path, const char* module_info, bool isHybrid = false) override;
+    napi_value NapiLoadModuleWithInfo(const char* path, const char* module_info) override;
+    napi_value NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info) override;
     std::string GetOhmurl(std::string str);
     Local<JSValueRef> NapiLoadNativeModule(std::string path);
     NativeReference* GetPromiseRejectCallBackRef()
