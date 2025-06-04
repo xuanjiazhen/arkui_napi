@@ -202,7 +202,8 @@ ohos_source_set("ace_napi_static") {
 
   cflags_cc = [ "-Wno-missing-braces" ]
 
-  if (is_ohos && is_clang && enhanced_opt) {
+  if (is_ohos && is_clang && enhanced_opt &&
+      (target_cpu == "arm" || target_cpu == "arm64")) {
     if (napi_feature_enable_pgo) {
       cflags_cc += [
         "-fprofile-use=" +
@@ -252,11 +253,14 @@ if (is_arkui_x) {
     innerapi_tags = [ "platformsdk" ]
     part_name = "napi"
 
-    if (is_ohos && is_clang && enhanced_opt) {
-      if (napi_feature_enable_pgo) {
-        ldflags = [ "-Wl,-mllvm,-align-all-functions=4" ]
+    if (is_ohos && is_clang && enhanced_opt &&
+        (target_cpu == "arm" || target_cpu == "arm64")) {
+      ldflags = [ "-Wl,-Bsymbolic" ]
 
-        if (target_cpu == "arm64") {
+      if (napi_feature_enable_pgo) {
+        ldflags += [ "-Wl,-mllvm,-align-all-functions=4" ]
+
+        if (target_cpu == "arm64" && enable_enhanced_opt) {
           ldflags += [ "-Wl,--aarch64-inline-plt" ]
         }
       }
