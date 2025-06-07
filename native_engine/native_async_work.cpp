@@ -90,12 +90,19 @@ NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
 #endif
 }
 
-NativeAsyncWork::~NativeAsyncWork() = default;
+NativeAsyncWork::~NativeAsyncWork() {
+    if (queuedSize_ > 0) {
+        HILOG_FATAL("Do not delete napi_async_work until complete callback is executed.");
+    }
+};
 
 bool NativeAsyncWork::Queue(NativeEngine* engine)
 {
     VALID_ENGINE_CHECK(engine, engine_, engineId_);
 
+    if (queuedSize_ > 0) {
+        HILOG_FATAL("Do not queue a napi_async_work more than once.");
+    }
     uv_loop_t* loop = engine_->GetUVLoop();
     if (loop == nullptr) {
         HILOG_ERROR("Get loop failed");
@@ -117,6 +124,7 @@ bool NativeAsyncWork::Queue(NativeEngine* engine)
         engine_->DecreaseWaitingRequestCounter();
         return false;
     }
+    queuedSize_++;
     HILOG_DEBUG("uv_queue_work succeed");
     return true;
 }
@@ -125,6 +133,9 @@ bool NativeAsyncWork::QueueWithQos(NativeEngine* engine, napi_qos_t qos)
 {
     VALID_ENGINE_CHECK(engine, engine_, engineId_);
 
+    if (queuedSize_ > 0) {
+        HILOG_FATAL("Do not queue a napi_async_work more than once.");
+    }
     uv_loop_t* loop = engine_->GetUVLoop();
     if (loop == nullptr) {
         HILOG_ERROR("Get loop failed");
@@ -146,6 +157,7 @@ bool NativeAsyncWork::QueueWithQos(NativeEngine* engine, napi_qos_t qos)
         engine_->DecreaseWaitingRequestCounter();
         return false;
     }
+    queuedSize_++;
     HILOG_DEBUG("uv_queue_work_with_qos succeed");
     return true;
 }
@@ -198,6 +210,7 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
     }
 
     auto that = reinterpret_cast<NativeAsyncWork*>(req->data);
+    that->queuedSize_--;
     auto engine = that->engine_;
     engine->DecreaseWaitingRequestCounter();
     auto vm = engine->GetEcmaVm();

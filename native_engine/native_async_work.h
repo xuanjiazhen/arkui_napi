@@ -83,6 +83,8 @@ private:
     std::mutex workAsyncMutex_;
     std::queue<NativeAsyncWorkDataPointer> asyncWorkRecvData_;
     std::string traceDescription_;
+    // only be modify in queue and complete, would in the same thread.
+    size_t queuedSize_ {0};
 #ifdef ENABLE_CONTAINER_SCOPE
     int32_t containerScopeId_;
 #endif
