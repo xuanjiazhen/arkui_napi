@@ -40,23 +40,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
       hint_(hint),
       nativeBindingSize_(nativeBindingSize)
 {
-    ArkNativeReferenceConstructor();
-}
-
-ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
-                                       napi_value value,
-                                       ArkNativeReferenceConfig& config)
-    : engine_(engine),
-      ownership_(config.deleteSelf ? ReferenceOwnerShip::RUNTIME : ReferenceOwnerShip::USER),
-      value_(),
-      refCount_(config.initialRefcount),
-      isProxyReference_(config.isProxyReference),
-      deleteSelf_(config.deleteSelf),
-      napiCallback_(config.napiCallback),
-      data_(config.data)
-{
-    value_.CreateXRefGloablReference(engine->GetEcmaVm(), LocalValueFromJsValue(value));
-    ArkNativeReferenceConstructor();
+    ArkNativeReferenceConstructor(FreeGlobalCallBack);
 }
 
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
@@ -79,10 +63,10 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
       hint_(hint),
       nativeBindingSize_(nativeBindingSize)
 {
-    ArkNativeReferenceConstructor();
+    ArkNativeReferenceConstructor(FreeGlobalCallBack);
 }
 
-void ArkNativeReference::ArkNativeReferenceConstructor()
+void ArkNativeReference::ArkNativeReferenceConstructor(WeakRefClearCallBack weakCallback)
 {
     if (napiCallback_ != nullptr) {
         // Async callback will redirect to root engine, no monitoring needed.
@@ -98,7 +82,7 @@ void ArkNativeReference::ArkNativeReferenceConstructor()
     }
 
     if (refCount_ == 0) {
-        value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
+        value_.SetWeakCallback(reinterpret_cast<void*>(this), weakCallback, NativeFinalizeCallBack);
     }
 
     if (ownership_ == ReferenceOwnerShip::RUNTIME) {
@@ -129,11 +113,7 @@ ArkNativeReference::~ArkNativeReference()
         return;
     }
     hasDelete_ = true;
-    if (isProxyReference_) {
-        value_.FreeXRefGlobalHandleAddr();
-    } else {
-        value_.FreeGlobalHandleAddr();
-    }
+    value_.FreeGlobalHandleAddr();
     FinalizeCallback(FinalizerState::DESTRUCTION);
 }
 
@@ -279,11 +259,7 @@ void ArkNativeReference::FinalizeCallback(FinalizerState state)
 void ArkNativeReference::FreeGlobalCallBack(void* ref)
 {
     auto that = reinterpret_cast<ArkNativeReference*>(ref);
-    if (that->isProxyReference_) {
-        that->value_.FreeXRefGlobalHandleAddr();
-    } else {
-        that->value_.FreeGlobalHandleAddr();
-    }
+    that->value_.FreeGlobalHandleAddr();
 }
 
 void ArkNativeReference::NativeFinalizeCallBack(void* ref)
@@ -340,3 +316,50 @@ bool ArkNativeReference::IsValidHeapObject()
     return value_.IsValidHeapObject();
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
+
+ArkXRefNativeReference::ArkXRefNativeReference(ArkNativeEngine* engine,
+                                               napi_value value,
+                                               const ArkNativeReferenceConfig &config)
+    : ArkNativeReference(engine, config)
+{
+    value_.CreateXRefGloablReference(engine->GetEcmaVm(), LocalValueFromJsValue(value));
+    ArkNativeReferenceConstructor(FreeXRefGlobalCallBack);
+}
+
+ArkXRefNativeReference::~ArkXRefNativeReference()
+{
+    VALID_ENGINE_CHECK(engine_, engine_, engineId_);
+
+    if (deleteSelf_ && engine_->GetReferenceManager()) {
+        engine_->GetReferenceManager()->ReleaseHandler(this);
+        prev_ = nullptr;
+        next_ = nullptr;
+    }
+    if (value_.IsEmpty()) {
+        return;
+    }
+    hasDelete_ = true;
+    value_.FreeXRefGlobalHandleAddr();
+    FinalizeCallback(FinalizerState::DESTRUCTION);
+}
+
+void ArkXRefNativeReference::FreeXRefGlobalCallBack(void* ref)
+{
+    auto that = reinterpret_cast<ArkXRefNativeReference*>(ref);
+    that->value_.FreeXRefGlobalHandleAddr();
+}
+
+uint32_t ArkXRefNativeReference::Unref()
+{
+    if (refCount_ == 0) {
+        return refCount_;
+    }
+    --refCount_;
+    if (value_.IsEmpty()) {
+        return refCount_;
+    }
+    if (refCount_ == 0) {
+        value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeXRefGlobalCallBack, NativeFinalizeCallBack);
+    }
+    return refCount_;
+}

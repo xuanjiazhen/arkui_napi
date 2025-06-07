@@ -41,22 +41,22 @@ enum class ReferenceOwnerShip : uint8_t {
 
 struct ArkNativeReferenceConfig {
     uint32_t initialRefcount;
-    bool isProxyReference;
     bool deleteSelf;
     NapiNativeFinalize napiCallback;
     void* data;
 
-    ArkNativeReferenceConfig(uint32_t initialRefcount,
-                             bool isProxyReference,
+    explicit ArkNativeReferenceConfig(uint32_t initialRefcount,
                              bool deleteSelf = false,
                              NapiNativeFinalize napiCallback = nullptr,
                              void* data = nullptr)
         : initialRefcount(initialRefcount),
-          isProxyReference(isProxyReference),
           deleteSelf(deleteSelf),
           napiCallback(napiCallback),
-          data(data) {}
+          data(data)
+    {}
 };
+
+using WeakRefClearCallBack = void (*)(void*);
 
 class ArkNativeReference : public NativeReference {
 public:
@@ -69,9 +69,6 @@ public:
                        void* hint = nullptr,
                        bool isAsyncCall = false,
                        size_t nativeBindingSize = 0);
-    ArkNativeReference(ArkNativeEngine* engine,
-                       napi_value value,
-                       ArkNativeReferenceConfig &config);
     ArkNativeReference(ArkNativeEngine* engine,
                        Local<JSValueRef> value,
                        uint32_t initialRefcount,
@@ -101,8 +98,19 @@ public:
     bool IsValidHeapObject();
 #endif // PANDA_JS_ETS_HYBRID_MODE
 
-private:
-    void ArkNativeReferenceConstructor();
+protected:
+    ArkNativeReference(ArkNativeEngine* engine,
+                       const ArkNativeReferenceConfig &config)
+        : engine_(engine),
+          ownership_(config.deleteSelf ? ReferenceOwnerShip::RUNTIME : ReferenceOwnerShip::USER),
+          value_(),
+          refCount_(config.initialRefcount),
+          deleteSelf_(config.deleteSelf),
+          napiCallback_(config.napiCallback),
+          data_(config.data)
+    {}
+
+    void ArkNativeReferenceConstructor(WeakRefClearCallBack weakCallback);
 
     ArkNativeEngine* engine_;
     uint64_t engineId_ {0};
@@ -110,7 +118,6 @@ private:
 
     Global<JSValueRef> value_;
     uint32_t refCount_ {0};
-    bool isProxyReference_{false};
     bool deleteSelf_ {false};
     bool isAsyncCall_ {false};
 
@@ -129,9 +136,22 @@ private:
     void EnqueueAsyncTask();
     void EnqueueDeferredTask();
 
-    static void FreeGlobalCallBack(void* ref);
     static void NativeFinalizeCallBack(void* ref);
+private:
+    static void FreeGlobalCallBack(void* ref);
     friend class NativeReferenceManager;
+};
+
+class ArkXRefNativeReference : public ArkNativeReference {
+public:
+    ArkXRefNativeReference(ArkNativeEngine* engine,
+                           napi_value value,
+                           const ArkNativeReferenceConfig &config);
+    ~ArkXRefNativeReference() override;
+    uint32_t Unref() override;
+
+private:
+    static void FreeXRefGlobalCallBack(void* ref);
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H */
