@@ -1176,9 +1176,6 @@ NAPI_EXTERN napi_status napi_get_array_length(napi_env env, napi_value value, ui
 {
     // Omit to use NAPI_PREAMBLE and CHECK_ARG directly for performance.
     CHECK_ENV(env);
-    RETURN_STATUS_IF_FALSE(env, (reinterpret_cast<NativeEngine*>(env))->lastException_.IsEmpty(),
-        napi_pending_exception);
-    napi_clear_last_error((env));
 
     // This interface will not throw JS exceptions actively.
     // JS exception can only occur before calling the interface.
@@ -1211,7 +1208,7 @@ NAPI_EXTERN napi_status napi_get_array_length(napi_env env, napi_value value, ui
         reinterpret_cast<NativeEngine *>(env)->lastException_ = panda::JSNApi::GetUncaughtException(vm);
         return napi_set_last_error(env, napi_pending_exception);
     }
-    return napi_ok;
+    return napi_clear_last_error(env);
 }
 
 NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* result)
@@ -3962,7 +3959,7 @@ NAPI_EXTERN napi_status napi_create_date(napi_env env, double time, napi_value* 
 
 NAPI_EXTERN napi_status napi_get_date_value(napi_env env, napi_value value, double* result)
 {
-    NAPI_PREAMBLE(env);
+    CHECK_ENV(env);
     CHECK_ARG(env, value);
     CHECK_ARG(env, result);
 
