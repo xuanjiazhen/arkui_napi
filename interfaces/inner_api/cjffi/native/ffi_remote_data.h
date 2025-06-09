@@ -48,7 +48,7 @@ public:
         }
         return itor->second;
     }
-        
+
     sptr<RemoteData> GetRemoteData(int64_t id)
     {
         std::lock_guard<std::recursive_mutex> lock(mtx);
