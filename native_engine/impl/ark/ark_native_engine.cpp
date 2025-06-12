@@ -2800,3 +2800,10 @@ bool ArkNativeEngine::ExecuteJsBin(const std::string& fileName, bool checkPath)
     return ret;
     // LCOV_EXCL_STOP
 }
+
+void *ArkNativeEngine::GetThreadHolder() const
+{
+    panda::JSExecutionScope executionScope(vm_);
+    LocalScope scope(vm_);
+    return JSNApi::GetThreadHolder(vm_);
+}

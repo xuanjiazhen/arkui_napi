@@ -414,6 +414,8 @@ public:
         TimerListHead_ = info;
     }
 
+    void *GetThreadHolder() const override;
+
 private:
     inline NapiOptions *GetNapiOptions() const override
     {
