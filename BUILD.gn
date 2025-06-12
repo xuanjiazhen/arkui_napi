@@ -141,7 +141,11 @@ ohos_source_set("ace_napi_static") {
   sources = napi_sources
 
   if (current_cpu == "arm64") {
-    defines += [ "_ARM64_" ]
+    if (current_os == "linux") {
+      defines += [ "LINUX_PLATFORM" ]
+    } else {
+      defines += [ "_ARM64_" ]
+    }
   }
   if (is_ohos && !is_arkui_x && !ark_standalone_build) {
     external_deps += [ "faultloggerd:libunwinder" ]
