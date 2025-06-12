@@ -71,3 +71,7 @@ module_output_path = "napi/napi"
 if (!defined(ark_standalone_build)) {
   ark_standalone_build = false
 }
+
+if (!defined(ark_hybrid)) {
+  ark_hybrid = false
+}
