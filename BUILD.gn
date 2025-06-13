@@ -225,6 +225,8 @@ ohos_source_set("ace_napi_static") {
         "-Wno-error=backend-plugin",
         "-Wno-profile-instr-out-of-date",
         "-Wno-profile-instr-unprofiled",
+        "-mllvm",
+        "-enable-partial-inlining",
       ]
     }
   }
@@ -268,7 +270,10 @@ if (is_arkui_x) {
 
     if (is_ohos && is_clang && defined(enhanced_opt) && enhanced_opt) {
       if (napi_feature_enable_pgo) {
-        ldflags = [ "-Wl,-mllvm,-align-all-functions=4" ]
+        ldflags = [
+          "-Wl,-mllvm,-align-all-functions=4",
+          "-Wl,-mllvm,-enable-partial-inlining",
+        ]
 
         if (target_cpu == "arm64") {
           ldflags += [ "-Wl,--aarch64-inline-plt" ]
