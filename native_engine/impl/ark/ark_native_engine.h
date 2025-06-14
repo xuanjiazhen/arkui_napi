@@ -188,7 +188,7 @@ public:
     bool IsProfiling() const override;
     bool IsExecutingPendingJob() const override;
     void* GetCurrentTaskInfo() const override;
-    void TerminateExecution() const override;
+    void TerminateExecution(uintptr_t task = 0) const override;
     void NotifyTaskBegin() const override;
     void NotifyTaskFinished() const override;
 

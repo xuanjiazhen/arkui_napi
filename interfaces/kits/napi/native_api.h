@@ -41,6 +41,8 @@
 #endif
 #endif
 
+NAPI_EXTERN napi_status napi_is_termination_error(napi_env env, napi_value value, bool* result);
+
 NAPI_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err);
 
 
