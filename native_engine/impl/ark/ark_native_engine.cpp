@@ -2796,7 +2796,11 @@ int32_t ArkNativeEngine::GetObjectHash(napi_env env, napi_value src)
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
     auto nativeValue = LocalValueFromJsValue(src);
-    return DFXJSNApi::GetObjectHash(vm, nativeValue);
+    if (GetRealApiVersion() >= 20) { // 20: api interface version
+        return panda::JSNApi::GetObjectHashCode(vm, nativeValue);
+    } else {
+        return DFXJSNApi::GetObjectHash(vm, nativeValue);
+    }
 }
 // LCOV_EXCL_STOP
 
