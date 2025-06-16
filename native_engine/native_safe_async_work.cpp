@@ -189,9 +189,11 @@ SafeAsyncCode NativeSafeAsyncWork::Send(void* data, NativeThreadSafeFunctionCall
     if (IsMaxQueueSize()) {
         HILOG_INFO("queue size bigger than max queue size");
         if (mode == NATIVE_TSFUNC_BLOCKING) {
+            waitingCount_++;
             while (IsMaxQueueSize()) {
                 condition_.wait(lock);
             }
+            waitingCount_--;
         } else {
             return SafeAsyncCode::SAFE_ASYNC_QUEUE_FULL;
         }
@@ -341,7 +343,7 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
         data = queue_.front();
 
         // when queue is full, notify send.
-        if (size == maxQueueSize_ && maxQueueSize_ > 0) {
+        if (maxQueueSize_ > 0 && waitingCount_ > 0) {
             condition_.notify_one();
         }
 
