@@ -19,7 +19,6 @@ if (ark_standalone_build) {
   import("//build/ohos.gni")
 }
 
-# test 1
 config("ace_napi_config") {
   include_dirs = [
     ".",
