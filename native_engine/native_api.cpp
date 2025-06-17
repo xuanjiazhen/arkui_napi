@@ -4474,19 +4474,26 @@ NAPI_EXTERN napi_status napi_create_xref(napi_env env, napi_value value, uint32_
     *result = reinterpret_cast<napi_ref>(ref);
     return napi_clear_last_error(env);
 }
+using FunctionPtr = napi_value(*)(napi_env, void*);
+using ResourcePair = std::pair<FunctionPtr, void*>;
+static void DeletePairRefCallback([[maybe_unused]] void *env, [[maybe_unused]] void *data, [[maybe_unused]] void *hint)
+{
+    delete static_cast<ResourcePair *>(hint);
+}
 
+typedef napi_value (*proxy_object_attach_cb)(napi_env env, void* data);   
 NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_value js_object,
                                             void* native_object,
                                             napi_finalize finalize_cb,
-                                            napi_ref* result)
+                                            napi_ref* result,
+                                            proxy_object_attach_cb proxy_cb = nullptr)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
     CHECK_ARG(env, native_object);
     CHECK_ARG(env, finalize_cb);
     CHECK_ARG(env, result);
-
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
     auto engine = reinterpret_cast<ArkNativeEngine*>(env);
@@ -4501,8 +4508,12 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
     // Create strong reference now, will update to weak reference after interop support
     ref = engine->CreateXRefReference(js_object, 1, false, callback, native_object);
     *reference = ref;
+    auto dynamicPair = new std::pair<proxy_object_attach_cb, void*>{
+        proxy_cb, 
+        native_object
+    };
     object->SetNativePointerFieldCount(vm, 1);
-    object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
+    object->SetNativePointerField(vm, 0, ref, DeletePairRefCallback, (void *)dynamicPair, nativeBindingSize);
     PropertyAttribute attr(object, true, false, true);
     nativeObject->DefineProperty(vm, key, attr);
     return GET_RETURN_STATUS(env);
