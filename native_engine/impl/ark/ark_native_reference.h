@@ -29,7 +29,7 @@ using JSValueRef = panda::JSValueRef;
 using panda::Local;
 using LocalScope = panda::LocalScope;
 
-enum class FinalizerState {
+enum class FinalizerState : uint8_t {
     DESTRUCTION,
     COLLECTION,
 };
@@ -94,7 +94,6 @@ public:
     uint32_t GetRefCount() override;
     bool GetFinalRun() override;
     napi_value GetNapiValue() override;
-    void ResetFinalizer()  override;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     void MarkFromObject();
     bool IsObjectAlive();
@@ -102,20 +101,26 @@ public:
 #endif // PANDA_JS_ETS_HYBRID_MODE
 
 private:
+    static constexpr const uint8_t DELETE_SELF_MASK = 1;
+    static constexpr const uint8_t IS_ASYNC_CALL_MASK = DELETE_SELF_MASK << 1;
+    static constexpr const uint8_t HAS_DELETE_MASK = IS_ASYNC_CALL_MASK << 1;
+    static constexpr const uint8_t FINAL_RAN_MASK = HAS_DELETE_MASK << 1;
+    static constexpr const uint8_t IS_PROXY_REFERENCE_MASK = FINAL_RAN_MASK << 1;
+
     void ArkNativeReferenceConstructor();
+    void InitFlagsAndStates(bool deleteSelf = false, bool isAsyncCall = false);
 
     ArkNativeEngine* engine_;
-    uint64_t engineId_ {0};
-    const ReferenceOwnerShip ownership_;
+    const uint64_t engineId_ {0};
 
     Global<JSValueRef> value_;
     uint32_t refCount_ {0};
-    bool isProxyReference_{false};
-    bool deleteSelf_ {false};
-    bool isAsyncCall_ {false};
 
-    bool hasDelete_ {false};
-    bool finalRun_ {false};
+    const ReferenceOwnerShip ownership_;
+    // Bit-packed flags: saves memory and speeds up object creation vs. multiple bools.
+    // std::bitset will use more memory than uint8_t number.
+    uint8_t flagsAndStates_ {0};
+
     NapiNativeFinalize napiCallback_ {nullptr};
     void* data_ {nullptr};
     void* hint_ {nullptr};
@@ -124,10 +129,19 @@ private:
     NativeReference* prev_ {nullptr};
     NativeReference* next_ {nullptr};
 
+    bool IsProxyReference() const;
+    bool IsAsyncCall() const;
+    bool HasDelete() const;
+    void SetHasDelete();
+    void SetFinalRan();
+
     void FinalizeCallback(FinalizerState state);
     void DispatchFinalizeCallback();
     void EnqueueAsyncTask();
     void EnqueueDeferredTask();
+
+    void IncreaseCounter();
+    void DecreaseCounter();
 
     static void FreeGlobalCallBack(void* ref);
     static void NativeFinalizeCallBack(void* ref);
