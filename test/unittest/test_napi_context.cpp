@@ -54,6 +54,9 @@ constexpr const char CONST_STRING_NUMBER[] = "number";
 constexpr const char CONST_STRING_VALUE[] = "value";
 constexpr const char CONST_STRING_DONE[] = "done";
 constexpr const char CONST_STRING_PROP[] = "prop";
+constexpr const char CONST_STRING_CONSTRUCTOR_NAME_SET[] = "Set";
+constexpr const char CONST_STRING_CONSTRUCTOR_NAME_WEAK_MAP[] = "WeakMap";
+constexpr const char CONST_STRING_CONSTRUCTOR_NAME_WEAK_SET[] = "WeakSet";
 
 static constexpr int INT_ZERO = 0;
 static constexpr int INT_ONE = 1;
@@ -4670,6 +4673,847 @@ HWTEST_F(NapiContextTest, CoerceToBoolWithMultiContext001, testing::ext::TestSiz
     bool ret = false;
     napi_get_value_bool(env, result, &ret);
     ASSERT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: SetPromiseRejectionCallbackWithMultiContext001
+ * @tc.desc: Test napi_set_promise_rejection_callback when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, SetPromiseRejectionCallbackWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    static bool executed = false;
+    BasicDeathTest(
+        [] {
+            NativeEngineProxy rootEngine;
+            NativeEngineProxy contextEngine(*rootEngine);
+            napi_value func = nullptr;
+            ASSERT_CHECK_CALL(napi_create_function(contextEngine, GetTestCaseName(), NAPI_AUTO_LENGTH,
+                                                   EmptyNapiCallback, nullptr, &func));
+            napi_ref funcRef = nullptr;
+            ASSERT_CHECK_CALL(napi_create_reference(contextEngine, func, 1, &funcRef));
+            napi_set_promise_rejection_callback(contextEngine, funcRef, funcRef);
+        },
+        [](std::string, std::string err) {
+            executed = true;
+            ASSERT_NE(err.find("(napi_set_promise_rejection_callback)] multi-context does not support this interface"),
+                      std::string::npos);
+        })
+        .Run();
+    ASSERT_TRUE(executed);
+}
+
+/**
+ * @tc.name: CreateRuntimeWithMultiContext001
+ * @tc.desc: Test napi_create_runtime when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, CreateRuntimeWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    static bool executed = false;
+    BasicDeathTest(
+        []() {
+            NativeEngineProxy rootEngine;
+            NativeEngineProxy contextEngine(*rootEngine);
+            napi_env newEnv = nullptr;
+            napi_create_runtime(contextEngine, &newEnv);
+        },
+        [](std::string, std::string err) {
+            executed = true;
+            ASSERT_NE(err.find("(napi_create_runtime)] multi-context does not support this interface"),
+                      std::string::npos);
+        })
+        .Run();
+    ASSERT_TRUE(executed);
+}
+
+/**
+ * @tc.name: IsArgumentsObjectWithMultiContext001
+ * @tc.desc: Test napi_is_arguments_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsArgumentsObjectWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+    bool isArgsObj = true;
+    ASSERT_CHECK_CALL(napi_is_arguments_object(env, obj, &isArgsObj));
+    ASSERT_FALSE(isArgsObj);
+}
+
+/**
+ * @tc.name: IsArgumentsObjectWithMultiContext002
+ * @tc.desc: Test napi_is_arguments_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsArgumentsObjectWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+    napi_value arr = nullptr;
+    ASSERT_CHECK_CALL(napi_create_array(env, &arr));
+    bool isArgsObj = true;
+    ASSERT_CHECK_CALL(napi_is_arguments_object(env, arr, &isArgsObj));
+    ASSERT_FALSE(isArgsObj);
+}
+
+/**
+ * @tc.name: IsAsyncFunctionWithMultiContext001
+ * @tc.desc: Test napi_is_async_function when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsAsyncFunctionWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_function(env, GetTestCaseName(), NAPI_AUTO_LENGTH, EmptyNapiCallback, nullptr, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_async_function(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsBooleanObjectWithMultiContext001
+ * @tc.desc: Test napi_is_boolean_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsBooleanObjectWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_get_boolean(env, true, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_boolean_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsBooleanObjectWithMultiContext002
+ * @tc.desc: Test napi_is_boolean_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsBooleanObjectWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, "Boolean", &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_boolean_object(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsBooleanObjectWithMultiContext003
+ * @tc.desc: Test napi_is_boolean_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsBooleanObjectWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value value = nullptr;
+    ASSERT_CHECK_CALL(napi_get_boolean(env, true, &value));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_coerce_to_object(env, value, &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_boolean_object(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsBooleanObjectWithMultiContext004
+ * @tc.desc: Test napi_is_boolean_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsBooleanObjectWithMultiContext004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_boolean_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsGeneratorFunctionWithMultiContext001
+ * @tc.desc: Test napi_is_generator_function when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsGeneratorFunctionWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_function(env, GetTestCaseName(), NAPI_AUTO_LENGTH, EmptyNapiCallback, nullptr, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_generator_function(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsMapIteratorWithMultiContext001
+ * @tc.desc: Test napi_is_map_iterator when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsMapIteratorWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value map = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &map))
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_map_get_entries(env, map, &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_map_iterator(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsMapIteratorWithMultiContext002
+ * @tc.desc: Test napi_is_map_iterator when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsMapIteratorWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value map = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &map))
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_map_get_values(env, map, &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_map_iterator(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsMapIteratorWithMultiContext003
+ * @tc.desc: Test napi_is_map_iterator when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsMapIteratorWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value map = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &map))
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_map_get_keys(env, map, &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_map_iterator(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsSetIteratorWithMultiContext001
+ * @tc.desc: Test napi_is_set_iterator when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSetIteratorWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value map = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &map))
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_map_get_entries(env, map, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_set_iterator(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsSetIteratorWithMultiContext002
+ * @tc.desc: Test napi_is_set_iterator when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSetIteratorWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value map = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &map))
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_map_get_values(env, map, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_set_iterator(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsSetIteratorWithMultiContext003
+ * @tc.desc: Test napi_is_set_iterator when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSetIteratorWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value map = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &map))
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_map_get_keys(env, map, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_set_iterator(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsGeneratorObjectWithMultiContext001
+ * @tc.desc: Test napi_is_generator_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsGeneratorObjectWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_generator_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsModuleNamespaceObjectWithMultiContext001
+ * @tc.desc: Test napi_is_module_namespace_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsModuleNamespaceObjectWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_module_namespace_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsProxyWithMultiContext001
+ * @tc.desc: Test napi_is_proxy when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsProxyWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_proxy(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsProxyWithMultiContext002
+ * @tc.desc: Test napi_is_proxy when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsProxyWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, "Proxy", &cons));
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+    napi_value argv[] = { obj, obj };
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, sizeof(argv) / sizeof(argv[0]), argv, &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_proxy(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsRegExpWithMultiContext001
+ * @tc.desc: Test napi_is_reg_exp when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsRegExpWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_reg_exp(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsRegExpWithMultiContext002
+ * @tc.desc: Test napi_is_reg_exp when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsRegExpWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, "RegExp", &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_reg_exp(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsNumberObjectWithMultiContext001
+ * @tc.desc: Test napi_is_number_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsNumberObjectWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_number_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsNumberObjectWithMultiContext002
+ * @tc.desc: Test napi_is_number_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsNumberObjectWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, 0, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_number_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsNumberObjectWithMultiContext003
+ * @tc.desc: Test napi_is_number_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsNumberObjectWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value value = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, 0, &value));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_coerce_to_object(env, value, &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_number_object(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsMapWithMultiContext001
+ * @tc.desc: Test napi_is_map when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsMapWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, 0, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_map(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsMapWithMultiContext002
+ * @tc.desc: Test napi_is_map when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsMapWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, CONST_STRING_CONSTRUCTOR_NAME_SET, &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_map(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsMapWithMultiContext003
+ * @tc.desc: Test napi_is_map when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsMapWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_map(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsMapWithMultiContext004
+ * @tc.desc: Test napi_is_map when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsMapWithMultiContext004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &val));
+
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_map(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsMapWithMultiContext005
+ * @tc.desc: Test napi_is_map when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsMapWithMultiContext005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, CONST_STRING_CONSTRUCTOR_NAME_WEAK_MAP, &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_map(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsSetWithMultiContext001
+ * @tc.desc: Test napi_is_set when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSetWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, 0, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_set(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsSetWithMultiContext002
+ * @tc.desc: Test napi_is_set when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSetWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_set(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsSetWithMultiContext003
+ * @tc.desc: Test napi_is_set when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSetWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_set(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsSetWithMultiContext004
+ * @tc.desc: Test napi_is_set when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSetWithMultiContext004, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, CONST_STRING_CONSTRUCTOR_NAME_SET, &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_set(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsSetWithMultiContext005
+ * @tc.desc: Test napi_is_set when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSetWithMultiContext005, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, CONST_STRING_CONSTRUCTOR_NAME_WEAK_SET, &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_set(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsStringObjectWithMultiContext001
+ * @tc.desc: Test napi_is_string_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsStringObjectWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_string_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsStringObjectWithMultiContext002
+ * @tc.desc: Test napi_is_string_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsStringObjectWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_string_object(env, GetNapiTCName(env), &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsStringObjectWithMultiContext003
+ * @tc.desc: Test napi_is_string_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsStringObjectWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_coerce_to_object(env, GetNapiTCName(env), &val));
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_string_object(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsSymbolObjectWithMultiContext001
+ * @tc.desc: Test napi_is_symbol_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSymbolObjectWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_symbol_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsSymbolObjectWithMultiContext002
+ * @tc.desc: Test napi_is_symbol_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSymbolObjectWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_symbol(env, GetNapiTCName(env), &val));
+
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_symbol_object(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsSymbolObjectWithMultiContext003
+ * @tc.desc: Test napi_is_symbol_object when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsSymbolObjectWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value value = nullptr;
+    ASSERT_CHECK_CALL(napi_create_symbol(env, GetNapiTCName(env), &value));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_coerce_to_object(env, value, &val));
+
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_symbol_object(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsWeakMapWithMultiContext001
+ * @tc.desc: Test napi_is_weak_map when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsWeakMapWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_map(env, &val));
+
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_weak_map(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsWeakMapWithMultiContext002
+ * @tc.desc: Test napi_is_weak_map when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsWeakMapWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, CONST_STRING_CONSTRUCTOR_NAME_WEAK_MAP, &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_weak_map(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsWeakMapWithMultiContext003
+ * @tc.desc: Test napi_is_weak_map when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsWeakMapWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_weak_map(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsWeakSetWithMultiContext001
+ * @tc.desc: Test napi_is_weak_set when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsWeakSetWithMultiContext001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, CONST_STRING_CONSTRUCTOR_NAME_SET, &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_weak_set(env, val, &result));
+    ASSERT_FALSE(result);
+}
+
+/**
+ * @tc.name: IsWeakSetWithMultiContext002
+ * @tc.desc: Test napi_is_weak_set when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsWeakSetWithMultiContext002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value global = nullptr;
+    ASSERT_CHECK_CALL(napi_get_global(env, &global));
+    napi_value cons = nullptr;
+    ASSERT_CHECK_CALL(napi_get_named_property(env, global, CONST_STRING_CONSTRUCTOR_NAME_WEAK_SET, &cons));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_new_instance(env, cons, 0, nullptr, &val));
+
+    bool result = false;
+    ASSERT_CHECK_CALL(napi_is_weak_set(env, val, &result));
+    ASSERT_TRUE(result);
+}
+
+/**
+ * @tc.name: IsWeakSetWithMultiContext003
+ * @tc.desc: Test napi_is_weak_set when context is sub context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, IsWeakSetWithMultiContext003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &val));
+
+    bool result = true;
+    ASSERT_CHECK_CALL(napi_is_weak_set(env, val, &result));
+    ASSERT_FALSE(result);
 }
 
 class ContextAsyncWorkTestData final : public NapiAsyncWorkTestData {
