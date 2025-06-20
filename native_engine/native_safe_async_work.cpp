@@ -36,6 +36,7 @@ using OHOS::Ace::ContainerScope;
 #if defined(ENABLE_EVENT_HANDLER)
 #include "event_handler.h"
 using namespace OHOS::AppExecFwk;
+static constexpr int32_t API_VERSION_SIXTEEN = 20;
 #endif
 
 #ifdef ENABLE_HITRACE
@@ -370,7 +371,17 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
     }
 
     if (queue_.empty() && threadCount_ == 0) {
+#if defined(ENABLE_EVENT_HANDLER)
+        if (engine_->GetRealApiVersion() < API_VERSION_SIXTEEN) {
+            CloseHandles();
+            return;
+        }
+        if (taskSize_.load() == 0) {
+            CloseHandles();
+        }
+#else
         CloseHandles();
+#endif
     }
 }
 
@@ -414,7 +425,17 @@ void NativeSafeAsyncWork::CleanUp()
     }
     ClearTraceId(isValidTraceId);
 
+#if defined(ENABLE_EVENT_HANDLER)
+    if (engine_->GetRealApiVersion() < API_VERSION_SIXTEEN) {
+        delete this;
+        return;
+    }
+    if (taskSize_.load() == 0) {
+        delete this;
+    }
+#else
     delete this;
+#endif
 }
 
 bool NativeSafeAsyncWork::IsSameTid()
@@ -426,7 +447,6 @@ napi_status NativeSafeAsyncWork::PostTask(void *data, int32_t priority, bool isT
 {
 #if defined(ENABLE_EVENT_HANDLER)
     HILOG_DEBUG("NativeSafeAsyncWork::PostTask called");
-    std::unique_lock<std::mutex> lock(eventHandlerMutex_);
     if (engine_ == nullptr || eventHandler_ == nullptr) {
         HILOG_ERROR("post task failed due to nullptr engine or eventHandler");
         return napi_status::napi_generic_failure;
@@ -443,8 +463,23 @@ napi_status NativeSafeAsyncWork::PostTask(void *data, int32_t priority, bool isT
             CallJs(engine_, func_, context_, data);
         }
         RestoreTraceId(isValidTraceId);
+        if (engine_->GetRealApiVersion() < API_VERSION_SIXTEEN) {
+            return;
+        }
+        taskSize_--;
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (taskSize_.load() == 0 && queue_.empty()) {
+            if (status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSED) {
+                HILOG_DEBUG("NativeSafeAsyncWork is closed!");
+                delete this;
+                return;
+            }
+            auto ret = uv_async_send(&asyncHandler_);
+            if (ret != 0) {
+                HILOG_ERROR("uv async send failed in PostTask ret = %{public}d", ret);
+            }
+        }
     };
-
     bool res = false;
     if (isTail) {
         HILOG_DEBUG("The task is posted from tail");
@@ -453,12 +488,16 @@ napi_status NativeSafeAsyncWork::PostTask(void *data, int32_t priority, bool isT
         HILOG_DEBUG("The task is posted from head");
         res = eventHandler_->PostTaskAtFront(task, std::string(), static_cast<EventQueue::Priority>(priority));
     }
-
-    return res ? napi_status::napi_ok : napi_status::napi_generic_failure;
+    if (res) {
+        if (engine_->GetRealApiVersion() >= API_VERSION_SIXTEEN) {
+            taskSize_++;
+        }
+        return napi_status::napi_ok;
+    }
 #else
     HILOG_WARN("EventHandler feature is not supported");
-    return napi_status::napi_generic_failure;
 #endif
+    return napi_status::napi_generic_failure;
 }
 
 void NativeSafeAsyncWork::InitSafeAsyncWorkTraceId()
