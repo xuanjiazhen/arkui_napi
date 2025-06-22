@@ -60,6 +60,7 @@ static constexpr size_t MAX_BYTE_LENGTH = 2097152;
 static constexpr size_t ONEMIB_BYTE_SIZE = 1048576;
 static constexpr size_t SMALL_STRING_SIZE = 16;
 static constexpr char NAME_SPACE_TAG = '@';
+static constexpr int32_t API_VERSION_TWENTY = 20;
 
 class HandleScopeWrapper {
 public:
@@ -536,7 +537,12 @@ NAPI_EXTERN napi_status napi_create_type_error(napi_env env, napi_value code, na
     auto msgValue = LocalValueFromJsValue(msg);
     RETURN_STATUS_IF_FALSE(env, msgValue->IsString(vm), napi_invalid_arg);
 
-    Local<panda::JSValueRef> errorVal = panda::Exception::Error(vm, msgValue);
+    Local<panda::JSValueRef> errorVal;
+    if (reinterpret_cast<NativeEngine*>(env)->GetRealApiVersion() < API_VERSION_TWENTY) {
+        errorVal = panda::Exception::Error(vm, msgValue);
+    } else {
+        errorVal = panda::Exception::TypeError(vm, msgValue);
+    }
     if (code != nullptr) {
         Local<panda::StringRef> codeKey = panda::StringRef::NewFromUtf8(vm, "code");
         Local<panda::ObjectRef> errorObj(errorVal);
@@ -565,7 +571,12 @@ NAPI_EXTERN napi_status napi_create_range_error(napi_env env, napi_value code, n
     auto msgValue = LocalValueFromJsValue(msg);
     RETURN_STATUS_IF_FALSE(env, msgValue->IsString(vm), napi_invalid_arg);
 
-    Local<panda::JSValueRef> errorVal = panda::Exception::Error(vm, msgValue);
+    Local<panda::JSValueRef> errorVal;
+    if (reinterpret_cast<NativeEngine*>(env)->GetRealApiVersion() < API_VERSION_TWENTY) {
+        errorVal = panda::Exception::Error(vm, msgValue);
+    } else {
+        errorVal = panda::Exception::RangeError(vm, msgValue);
+    }
     if (code != nullptr) {
         Local<panda::StringRef> codeKey = panda::StringRef::NewFromUtf8(vm, "code");
         Local<panda::ObjectRef> errorObj(errorVal);
@@ -967,8 +978,16 @@ NAPI_EXTERN napi_status napi_has_own_property(napi_env env, napi_value object, n
     SWITCH_CONTEXT(env);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    auto hasResult = JSNApi::NapiHasOwnProperty(vm, reinterpret_cast<uintptr_t>(object),
-                                                reinterpret_cast<uintptr_t>(key));
+    Local<panda::JSValueRef> hasResult;
+
+    if (reinterpret_cast<NativeEngine*>(env)->GetRealApiVersion() < API_VERSION_TWENTY) {
+        hasResult = JSNApi::NapiHasProperty(vm, reinterpret_cast<uintptr_t>(object),
+                                            reinterpret_cast<uintptr_t>(key));
+    } else {
+        hasResult = JSNApi::NapiHasOwnProperty(vm, reinterpret_cast<uintptr_t>(object),
+                                               reinterpret_cast<uintptr_t>(key));
+    }
+
     RETURN_STATUS_IF_FALSE(env, NapiStatusValidationCheck(hasResult), napi_object_expected);
     if (result) {
         *result = hasResult->BooleaValue(vm);

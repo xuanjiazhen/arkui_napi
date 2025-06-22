@@ -71,6 +71,7 @@ static constexpr const char16_t TEST_CHAR16_STRING[] = u"TestString";
 static constexpr const char TEST_CHAR_ERROR_CODE[] = "500";
 static constexpr const char TEST_CHAR_ERROR_MESSAGE[] = "Common error";
 static constexpr const char TEST_CHAR_TEST_FUNC[] = "testFunc";
+static constexpr const char TEST_TOSTRING_PROP[] = "toString";
 
 class NapiBasicTest : public NativeEngineTest {
 public:
@@ -6735,6 +6736,22 @@ HWTEST_F(NapiBasicTest, NapiHasOwnPropertyTest005, testing::ext::TestSize.Level1
     napi_status status = napi_has_own_property(env, obj, key, &result);
     ASSERT_FALSE(result);
     ASSERT_EQ(status, napi_object_expected);
+}
+
+HWTEST_F(NapiBasicTest, NapiHasOwnPropertyTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    napi_value key = nullptr;
+    bool result = true;
+
+    int32_t oldVersion = env->realApiVersion_;
+    env->realApiVersion_ = 20;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, TEST_TOSTRING_PROP, NAPI_AUTO_LENGTH, &key));
+    ASSERT_CHECK_CALL(napi_has_own_property(env, obj, key, &result));
+    env->realApiVersion_ = oldVersion;
+    ASSERT_FALSE(result);
 }
 
 HWTEST_F(NapiBasicTest, NapiSetNamedPropertyTest001, testing::ext::TestSize.Level1)
