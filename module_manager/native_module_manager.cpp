@@ -514,7 +514,7 @@ bool NativeModuleManager::GetLdNamespaceName(const std::string &moduleName, std:
         HILOG_ERROR("not found ns: %{public}s", moduleName.c_str());
         return false;
     }
-    nsName = MODULE_NS + moduleName;
+    nsName = "moduleNs_" + moduleName;
     return true;
 #else
     return false;

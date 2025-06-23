@@ -232,10 +232,13 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_008, TestSize.Level1)
     std::string nsName;
     bool res = moduleManager->GetLdNamespaceName(moduleName, nsName);
     EXPECT_EQ(res, false);
+    std::string nsName;
+    bool res = moduleManager->GetLdNamespaceName(moduleName, nsName);
+    EXPECT_EQ(res, false);
     moduleManager->CreateLdNamespace(moduleName, libPath, true);
     res = moduleManager->GetLdNamespaceName(moduleName, nsName);
     EXPECT_EQ(res, true);
-    EXPECT_STREQ(nsName.c_str(), (MODULE_NS + moduleName).c_str());
+    EXPECT_STREQ(nsName.c_str(), ("moduleNs_" + moduleName).c_str());
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_008 end";
 }
 
@@ -256,10 +259,13 @@ HWTEST_F(ModuleManagerTest, LoadNativeModuleTest_009, TestSize.Level1)
     std::string nsName;
     bool res = moduleManager->GetLdNamespaceName(moduleName, nsName);
     EXPECT_EQ(res, false);
+    std::string nsName;
+    bool res = moduleManager->GetLdNamespaceName(moduleName, nsName);
+    EXPECT_EQ(res, false);
     moduleManager->CreateLdNamespace(moduleName, libPath, false);
     res = moduleManager->GetLdNamespaceName(moduleName, nsName);
     EXPECT_EQ(res, true);
-    EXPECT_STREQ(nsName.c_str(), (MODULE_NS + moduleName).c_str());
+    EXPECT_STREQ(nsName.c_str(), ("moduleNs_" + moduleName).c_str());
     std::vector<std::string> appLibPath;
     moduleManager->SetAppLibPath(moduleName, appLibPath, false);
     GTEST_LOG_(INFO) << "ModuleManagerTest, LoadNativeModuleTest_009 end";
