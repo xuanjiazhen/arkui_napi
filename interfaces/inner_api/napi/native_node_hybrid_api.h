@@ -96,10 +96,11 @@ NAPI_EXTERN napi_status napi_serialize_hybrid(napi_env env,
                                               napi_value object,
                                               napi_value transfer_list,
                                               napi_value clone_list, void** result);
- NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
+NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_value js_object,
                                             void* native_object,
                                             napi_finalize finalize_cb,
+                                            proxy_object_attach_cb proxy_cb,
                                             napi_ref* result);
 #endif // PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback);
