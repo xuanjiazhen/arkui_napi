@@ -4475,18 +4475,19 @@ NAPI_EXTERN napi_status napi_create_xref(napi_env env, napi_value value, uint32_
     return napi_clear_last_error(env);
 }
 
+typedef napi_value (*proxy_object_attach_cb)(napi_env env, void* data);   
 NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_value js_object,
                                             void* native_object,
                                             napi_finalize finalize_cb,
-                                            napi_ref* result)
+                                            napi_ref* result,
+                                            proxy_object_attach_cb proxy_cb = nullptr)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, js_object);
     CHECK_ARG(env, native_object);
     CHECK_ARG(env, finalize_cb);
     CHECK_ARG(env, result);
-
     auto nativeValue = LocalValueFromJsValue(js_object);
     auto callback = reinterpret_cast<NapiNativeFinalize>(finalize_cb);
     auto engine = reinterpret_cast<ArkNativeEngine*>(env);
@@ -4501,8 +4502,20 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
     // Create strong reference now, will update to weak reference after interop support
     ref = engine->CreateXRefReference(js_object, 1, false, callback, native_object);
     *reference = ref;
+    panda::JSNApi::XRefBindingInfo* data = panda::JSNApi::XRefBindingInfo::CreateNewInstance();
+    if (data == nullptr) {
+        HILOG_ERROR("data is nullptr");
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+    data->attachXRefFunc = reinterpret_cast<void*>(proxy_cb);
+    data->attachXRefData = native_object;
     object->SetNativePointerFieldCount(vm, 1);
-    object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
+    object->SetNativePointerField(vm, 0, ref, 
+        [](void* env, void* data, void* info) {
+            panda::JSNApi::XRefBindingInfo* externalInfo = reinterpret_cast<panda::JSNApi::XRefBindingInfo*>(info);
+            delete externalInfo;
+        },
+        reinterpret_cast<void*>(data), nativeBindingSize);
     PropertyAttribute attr(object, true, false, true);
     nativeObject->DefineProperty(vm, key, attr);
     return GET_RETURN_STATUS(env);

@@ -209,11 +209,14 @@ NAPI_EXTERN napi_status napi_create_xref(napi_env env,
                                          napi_value value,
                                          uint32_t initial_refcount,
                                          napi_ref* result);
+
+typedef napi_value (*proxy_object_attach_cb)(napi_env env, void* data);                                
 NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_value js_object,
                                             void* native_object,
                                             napi_finalize finalize_cb,
-                                            napi_ref* result);
+                                            napi_ref* result,
+                                            proxy_object_attach_cb proxy_cb);
 NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool* result);
 NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result);
 NAPI_EXTERN napi_status napi_is_xref_type(napi_env env, napi_value js_object, bool* result);
