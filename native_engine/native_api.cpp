@@ -2623,6 +2623,8 @@ NAPI_EXTERN napi_status napi_get_and_clear_last_exception(napi_env env, napi_val
     CHECK_ENV(env);
     CHECK_ARG(env, result);
 
+    HILOG_WARN("chengzhihao: into napi_get_and_clear_last_exception");
+
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = engine->GetEcmaVm();
     engine->lastException_.Empty();
