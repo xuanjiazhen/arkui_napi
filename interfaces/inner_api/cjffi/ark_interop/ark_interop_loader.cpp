@@ -28,6 +28,8 @@
 #define LIBS_NAME "arm"
 #elif defined(USE_LIBS_x86_64)
 #define LIBS_NAME "x86_64"
+#elif defined(USE_LIBS_LoongArch64)
+#define LIBS_NAME "loongarch64"
 #else
 #error current platform not supported
 #endif

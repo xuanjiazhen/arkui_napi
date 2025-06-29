@@ -709,7 +709,7 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
     std::string sysPrefix("./module");
     const char* abcfix = ".abc";
     std::string sysAbcPrefix("./module");
-#elif defined(_ARM64_) || defined(SIMULATOR)
+#elif defined(_ARM64_) || defined(SIMULATOR) || defined(_LOONGARCH64_)
     const char* soPostfix = ".so";
     const char* zfix = ".z";
     std::string sysPrefix("/system/lib64/module");
