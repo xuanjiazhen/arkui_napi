@@ -128,6 +128,7 @@ NAPI_EXTERN napi_status napi_is_big_int64_array(napi_env env, napi_value value, 
 NAPI_EXTERN napi_status napi_is_big_uint64_array(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_shared_array_buffer(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_get_stack_trace(napi_env env, std::string& stack);
+NAPI_EXTERN napi_status napi_get_hole(napi_env env, napi_value* result);
 NAPI_EXTERN napi_status napi_get_hybrid_stack_trace(napi_env env, std::string& stack);
 NAPI_EXTERN napi_status napi_get_own_property_descriptor(napi_env env,
                                                          napi_value object,
@@ -237,5 +238,6 @@ NAPI_EXTERN napi_status napi_serialize_hybrid(napi_env env,
 NAPI_EXTERN napi_status napi_deserialize_hybrid(napi_env env, void* buffer, napi_value* object);
 #endif  // PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback);
+
 
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_API_H */

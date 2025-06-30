@@ -148,6 +148,18 @@ NAPI_EXTERN napi_status napi_get_null(napi_env env, napi_value* result)
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_get_hole(napi_env env, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, result);
+
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    Local<panda::PrimitiveRef> value = panda::JSValueRef::Hole(vm);
+    *result = JsValueFromLocalValue(value);
+
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_get_global(napi_env env, napi_value* result)
 {
     CHECK_ENV(env);
