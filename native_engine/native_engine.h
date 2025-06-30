@@ -698,7 +698,6 @@ private:
     bool isLoopRunning_ = false;
     bool isInDestructor_ {false};
     std::string taskName_ = "";
-
     // protect alived engine set and last engine id
     static std::mutex g_alivedEngineMutex_;
     static uint64_t g_lastEngineId_;
