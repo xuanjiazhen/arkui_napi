@@ -181,6 +181,14 @@ NAPI_EXTERN napi_status napi_get_shared_array_buffer_info(napi_env env,
                                                           napi_value arraybuffer,
                                                           void** data,
                                                           size_t* byte_length);
+NAPI_EXTERN napi_status napi_get_arraybuffer_finalizer(napi_env env,
+                                                       napi_value arraybuffer,
+                                                       napi_finalize* finalize_cb_ptr,
+                                                       void** finalize_hint_ptr);
+NAPI_EXTERN napi_status napi_set_arraybuffer_finalizer(napi_env env,
+                                                       napi_value arraybuffer,
+                                                       napi_finalize finalize_cb,
+                                                       void* finalize_hint);
 NAPI_EXTERN napi_status napi_encode(napi_env env, napi_value src, napi_value* result);
 NAPI_EXTERN napi_status napi_is_bitvector(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_set_stackinfo(napi_env env, napi_stack_info *napi_info);
