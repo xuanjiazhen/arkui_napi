@@ -181,6 +181,30 @@ NAPI_EXTERN napi_status napi_get_shared_array_buffer_info(napi_env env,
                                                           napi_value arraybuffer,
                                                           void** data,
                                                           size_t* byte_length);
+
+/**
+ * @brief Takes ownership of an ArrayBuffer Object's buffer.
+ *
+ * After this call, the ArrayBuffer will be detached and unusable.
+ *
+ * @param env            The native engine environment.
+ * @param arraybuffer    The ArrayBuffer whose ownership will be taken.
+ * @param data           [out] Pointer to receive the data buffer of the ArrayBuffer.
+ * @param byte_length    [out] Pointer to receive the byte length of the ArrayBuffer.
+ * @param finalize_cb    [out] Pointer to receive the finalizer callback.
+ * @param finalize_hint  [out] Pointer to receive the finalizer hint.
+ * @param is_external    [out] Pointer to receive whether the ArrayBuffer is external.
+ *
+ * @return napi_status   The status code indicating success or failure.
+ */
+NAPI_EXTERN napi_status napi_release_buffer_arraybuffer(napi_env env,
+                                                        napi_value arraybuffer,
+                                                        void** data,
+                                                        size_t* byte_length,
+                                                        napi_finalize* finalize_cb,
+                                                        void** finalize_hint,
+                                                        bool* is_external);
+NAPI_EXTERN napi_status napi_is_external_arraybuffer(napi_env env, napi_value arraybuffer, bool* result);
 NAPI_EXTERN napi_status napi_get_arraybuffer_finalizer(napi_env env,
                                                        napi_value arraybuffer,
                                                        napi_finalize* finalize_cb_ptr,

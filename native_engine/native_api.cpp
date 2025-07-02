@@ -14,6 +14,7 @@
  */
 #ifndef NAPI_EXPERIMENTAL
 #define NAPI_EXPERIMENTAL
+#include <cstddef>
 #endif
 
 #ifdef ENABLE_CONTAINER_SCOPE
@@ -2637,6 +2638,82 @@ NAPI_EXTERN napi_status napi_get_arraybuffer_info(napi_env env,
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_release_buffer_arraybuffer(napi_env env,
+                                                        napi_value arraybuffer,
+                                                        void** data,
+                                                        size_t* byte_length,
+                                                        napi_finalize* finalize_cb,
+                                                        void** finalize_hint,
+                                                        bool* is_external)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, arraybuffer);
+    CHECK_ARG(env, data);
+    CHECK_ARG(env, byte_length);
+    CHECK_ARG(env, finalize_cb);
+    CHECK_ARG(env, finalize_hint);
+    CHECK_ARG(env, is_external);
+
+    auto nativeValue = LocalValueFromJsValue(arraybuffer);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+    if (LIKELY(nativeValue->IsArrayBuffer(vm))) {
+        Local<panda::ArrayBufferRef> res(nativeValue);
+
+        // Get the data and byte length
+        if (data != nullptr) {
+            *data = res->GetBuffer(vm);
+        }
+        *byte_length = res->ByteLength(vm);
+
+        // Check if the ArrayBuffer is external
+        bool withNativeAreaAllocator = res->GetWithNativeAreaAllocator(vm);
+        *is_external = !withNativeAreaAllocator;
+
+        if (!withNativeAreaAllocator) {
+            // If the ArrayBuffer is external, get the finalizer callback and hint
+            auto [finalize_cb_, finalize_hint_] = res->GetFinalizer(vm);
+            if (finalize_cb != nullptr) {
+                *finalize_cb = reinterpret_cast<napi_finalize>(finalize_cb_);
+            }
+            if (finalize_hint != nullptr) {
+                *finalize_hint = finalize_hint_;
+            }
+        }
+
+        // Release the ArrayBuffer
+        res->SetFinalizer(vm, nullptr, nullptr);
+        res->DetachForTransferring(vm);
+    } else {
+        // TODO: should we check if the SendableArrayBuffer is external?
+        return napi_set_last_error(env, napi_arraybuffer_expected);
+    }
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_is_external_arraybuffer(napi_env env, napi_value arraybuffer, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, arraybuffer);
+
+    auto nativeValue = LocalValueFromJsValue(arraybuffer);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+    if (LIKELY(nativeValue->IsArrayBuffer(vm))) {
+        Local<panda::ArrayBufferRef> res(nativeValue);
+
+        bool withNativeAreaAllocator = res->GetWithNativeAreaAllocator(vm);
+
+        *result = !withNativeAreaAllocator;
+    } else {
+        // TODO: should we check if the SendableArrayBuffer is external?
+        return napi_set_last_error(env, napi_arraybuffer_expected);
+    }
+
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_get_arraybuffer_finalizer(napi_env env,
                                                        napi_value arraybuffer,
                                                        napi_finalize* finalize_cb_ptr,
@@ -4483,7 +4560,7 @@ NAPI_EXTERN napi_status napi_vm_handshake(napi_env env,
     return napi_clear_last_error(env);
 }
 
-NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref, std::function<void(uintptr_t)> &visitor)
+NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref, std::function<void(uintptr_t)>& visitor)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, ref);
@@ -4501,7 +4578,7 @@ NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref)
     return napi_clear_last_error(env);
 }
 
-NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool *result)
+NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool* result)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, ref);
@@ -4510,7 +4587,7 @@ NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool *r
     return napi_clear_last_error(env);
 }
 
-NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool *result)
+NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, ref);
@@ -4566,7 +4643,8 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
     data->attachXRefFunc = reinterpret_cast<void*>(proxy_cb);
     data->attachXRefData = native_object;
     object->SetNativePointerFieldCount(vm, 1);
-    object->SetNativePointerField(vm, 0, ref,
+    object->SetNativePointerField(
+        vm, 0, ref,
         [](void* env, void* data, void* info) {
             panda::JSNApi::XRefBindingInfo* externalInfo = reinterpret_cast<panda::JSNApi::XRefBindingInfo*>(info);
             delete externalInfo;
