@@ -33,6 +33,7 @@ napi_sources = [
   "native_engine/native_engine.cpp",
   "native_engine/native_event.cpp",
   "native_engine/native_node_api.cpp",
+  "native_engine/native_node_hybrid_api.cpp",
   "native_engine/native_safe_async_work.cpp",
   "native_engine/native_sendable.cpp",
   "native_engine/worker_manager.cpp",

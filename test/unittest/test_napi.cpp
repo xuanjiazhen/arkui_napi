@@ -28,6 +28,7 @@
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "napi/native_common.h"
 #include "napi/native_node_api.h"
+#include "napi/native_node_hybrid_api.h"
 #include "native_create_env.h"
 #include "native_utils.h"
 #include "reference_manager/native_reference_manager.h"
