@@ -32,6 +32,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "interfaces/inner_api/napi/native_node_api.h"
+#include "interfaces/inner_api/napi/native_node_hybrid_api.h"
 
 class NativeEngine;
 

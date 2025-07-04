@@ -21,6 +21,7 @@
 
 #include "ecmascript/napi/include/jsnapi.h"
 #include "interfaces/inner_api/napi/native_node_api.h"
+#include "interfaces/inner_api/napi/native_node_hybrid_api.h"
 #include "utils/log.h"
 
 static constexpr uint64_t NAPI_SPECIAL_STATUS = 5;

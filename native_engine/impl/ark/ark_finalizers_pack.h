@@ -19,6 +19,7 @@
 #include "ecmascript/napi/include/jsnapi_expo.h"
 
 #include "interfaces/inner_api/napi/native_node_api.h"
+#include "interfaces/inner_api/napi/native_node_hybrid_api.h"
 
 class NativeEngine;
 
