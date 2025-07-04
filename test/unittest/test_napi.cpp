@@ -28,6 +28,7 @@
 #include "napi/native_api.h"
 #include "napi/native_common.h"
 #include "napi/native_node_api.h"
+#include "napi/native_node_hybrid_api.h"
 #include "native_create_env.h"
 #include "securec.h"
 #include "test.h"
