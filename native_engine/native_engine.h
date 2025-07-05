@@ -188,12 +188,6 @@ public:
     virtual void CancelCheckUVLoop();
 #endif
     virtual void* GetJsEngine();
-    virtual void SetInstanceId(int32_t id) {
-        instanceId_ = id;
-    };
-    virtual int32_t GetInstanceId() {
-        return instanceId_;
-    };
 
     virtual const EcmaVM* GetEcmaVm() const = 0;
     virtual const NativeEngine* GetParent() const = 0;
@@ -597,6 +591,13 @@ public:
 
     virtual napi_status DestroyContext() = 0;
 
+    virtual void SetInstanceId(int32_t id) {
+        instanceId_ = id;
+    };
+    virtual int32_t GetInstanceId() {
+        return instanceId_;
+    };
+
 private:
     void InitUvField();
 
@@ -670,6 +671,7 @@ private:
 
     // current is hostengine, can create old worker, new worker, or no workers on hostengine
     std::atomic<WorkerVersion> workerVersion_ { WorkerVersion::NONE };
+
 #if !defined(PREVIEW)
     static void UVThreadRunner(void* nativeEngine);
     void PostLoopTask();
