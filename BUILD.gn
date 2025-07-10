@@ -12,7 +12,7 @@
 # limitations under the License.
 
 import("napi.gni")
-
+# test 2
 if (ark_standalone_build) {
   import("$build_root/ark.gni")
 } else {
