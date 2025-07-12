@@ -14428,3 +14428,28 @@ HWTEST_F(NapiBasicTest, NapiQueueAsyncWorkWithQueueTest004, testing::ext::TestSi
 {
     TestQueueAsyncWorkWithQueue(engine_, napi_qos_user_initiated);
 }
+
+/**
+ * @tc.name: NapiQueueAsyncWorkWithQueueTest005
+ * @tc.desc: Test interface of napi_queue_async_work_with_queue
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiQueueAsyncWorkWithQueueTest005, testing::ext::TestSize.Level1)
+{
+    auto res = napi_queue_async_work_with_queue(nullptr, nullptr, napi_qos_default, reinterpret_cast<uintptr_t>(&TASKID));
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiQueueAsyncWorkWithQueueTest006
+ * @tc.desc: Test interface of napi_queue_async_work_with_queue
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiQueueAsyncWorkWithQueueTest006, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    auto res = napi_queue_async_work_with_queue(env, nullptr, napi_qos_default, reinterpret_cast<uintptr_t>(&TASKID));
+    ASSERT_EQ(res, napi_invalid_arg);
+}
