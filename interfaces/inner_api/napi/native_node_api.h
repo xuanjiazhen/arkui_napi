@@ -30,7 +30,6 @@ typedef void (*NapiNativeFinalize)(napi_env env, void* data, void* hint);
 typedef void* (*NapiDetachCallback)(napi_env env, void* nativeObject, void* hint); // hint: detach params
 typedef napi_value (*NapiAttachCallback)(napi_env env, void* nativeObject, void* hint); // hint: attach params
 typedef bool (*napi_module_validate_callback)(const char* moduleName);
-typedef napi_value (*proxy_object_attach_cb)(napi_env env, void* data);
 typedef struct napi_fast_native_scope__* napi_fast_native_scope;
 
 typedef struct napi_module_with_js {
@@ -68,10 +67,6 @@ typedef enum {
 
 using NapiAppStateCallback = void (*)(int state, int64_t timestamp);
 
-NAPI_EXTERN napi_status napi_load_module_with_info_hybrid(napi_env env,
-                                                          const char* path,
-                                                          const char* module_info,
-                                                          napi_value* result);
 NAPI_EXTERN napi_status napi_create_limit_runtime(napi_env env, napi_env* result_env);
 NAPI_EXTERN void napi_module_with_js_register(napi_module_with_js* mod);
 NAPI_EXTERN napi_status napi_is_callable(napi_env env, napi_value value, bool* result);
