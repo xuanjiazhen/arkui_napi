@@ -61,7 +61,8 @@
                     "header": {
                       "header_base": "//foundation/arkui/napi/interfaces/kits",
                       "header_files": [
-                          "napi/native_api.h"
+                          "napi/native_api.h",
+                          "napi/common.h"
                       ]
                     },
                     "name": "//foundation/arkui/napi:ace_napi"
