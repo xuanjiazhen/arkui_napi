@@ -1980,7 +1980,7 @@ NativeReference* ArkNativeEngine::CreateXRefReference(napi_value value, uint32_t
     bool flag, NapiNativeFinalize callback, void* data)
 {
     ArkNativeReferenceConfig config(initialRefcount, true, flag, callback, data);
-    return new ArkNativeReference(this, value, config);
+    return new ArkInteropNativeReference(this, value, config);
 }
 
 NativeReference* ArkNativeEngine::CreateAsyncReference(napi_value value, uint32_t initialRefcount,

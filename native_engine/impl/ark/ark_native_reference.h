@@ -70,9 +70,6 @@ public:
                        bool isAsyncCall = false,
                        size_t nativeBindingSize = 0);
     ArkNativeReference(ArkNativeEngine* engine,
-                       napi_value value,
-                       ArkNativeReferenceConfig &config);
-    ArkNativeReference(ArkNativeEngine* engine,
                        Local<JSValueRef> value,
                        uint32_t initialRefcount,
                        bool deleteSelf,
@@ -96,10 +93,13 @@ public:
     napi_value GetNapiValue() override;
     void ResetFinalizer()  override;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    void MarkFromObject();
-    bool IsObjectAlive();
-    bool IsValidHeapObject();
+    virtual void MarkFromObject() {}
+    virtual bool IsObjectAlive() { return false; }
+    virtual bool IsValidHeapObject() { return false; }
 #endif // PANDA_JS_ETS_HYBRID_MODE
+
+protected:
+    Global<JSValueRef> value_;
 
 private:
     enum ReferencePropertiesMask : uint8_t {
@@ -115,14 +115,13 @@ private:
     ArkNativeEngine* engine_;
     uint64_t engineId_ {0};
 
-    Global<JSValueRef> value_;
     uint32_t refCount_ {0};
 
     const ReferenceOwnerShip ownership_;
     // Bit-packed flags: saves memory and speeds up object creation vs. multiple bools.
     // std::bitset will use more memory than uint8_t number.
     uint8_t properties_ {0};
-    bool isProxyReference_{false};
+    // bool isProxyReference_{false};
 
     NapiNativeFinalize napiCallback_ {nullptr};
     void* data_ {nullptr};
@@ -148,6 +147,18 @@ private:
     static void FreeGlobalCallBack(void* ref);
     static void NativeFinalizeCallBack(void* ref);
     friend class NativeReferenceManager;
+};
+
+class ArkInteropNativeReference : public ArkNativeReference {
+public:
+    ArkInteropNativeReference(ArkNativeEngine* engine,
+        napi_value value,
+        ArkNativeReferenceConfig &config);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    void MarkFromObject() override;
+    bool IsObjectAlive() override;
+    bool IsValidHeapObject() override;
+#endif // PANDA_JS_ETS_HYBRID_MODE
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_REFERENCE_H */
