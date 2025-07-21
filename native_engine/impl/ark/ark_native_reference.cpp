@@ -14,7 +14,6 @@
  */
 
 #include <cinttypes>
-
 #include "ark_native_reference.h"
 
 #include "native_engine/native_api_internal.h"
@@ -29,7 +28,8 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        void* hint,
                                        bool isAsyncCall,
                                        size_t nativeBindingSize)
-    : engine_(engine),
+    : value_(engine->GetEcmaVm(), value),
+      engine_(engine),
       value_(engine->GetEcmaVm(), LocalValueFromJsValue(value)),
       refCount_(initialRefcount),
       ownership_(deleteSelf ? ReferenceOwnerShip::RUNTIME : ReferenceOwnerShip::USER),
@@ -42,21 +42,21 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
     ArkNativeReferenceConstructor();
 }
 
-ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
-                                       napi_value value,
-                                       ArkNativeReferenceConfig& config)
-    : engine_(engine),
-      value_(),
-      refCount_(config.initialRefcount),
-      ownership_(config.deleteSelf ? ReferenceOwnerShip::RUNTIME : ReferenceOwnerShip::USER),
-      isProxyReference_(config.isProxyReference),
-      napiCallback_(config.napiCallback),
-      data_(config.data)
-{
-    InitProperties(config.deleteSelf, false);
-    value_.CreateXRefGloablReference(engine->GetEcmaVm(), LocalValueFromJsValue(value));
-    ArkNativeReferenceConstructor();
-}
+// ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
+//                                        napi_value value,
+//                                        ArkNativeReferenceConfig& config)
+//     : engine_(engine),
+//       value_(),
+//       refCount_(config.initialRefcount),
+//       ownership_(config.deleteSelf ? ReferenceOwnerShip::RUNTIME : ReferenceOwnerShip::USER),
+//       isProxyReference_(config.isProxyReference),
+//       napiCallback_(config.napiCallback),
+//       data_(config.data)
+// {
+//     InitProperties(config.deleteSelf, false);
+//     value_.CreateXRefGloablReference(engine->GetEcmaVm(), LocalValueFromJsValue(value));
+//     ArkNativeReferenceConstructor();
+// }
 
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        Local<JSValueRef> value,
@@ -67,8 +67,8 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
                                        void* hint,
                                        bool isAsyncCall,
                                        size_t nativeBindingSize)
-    : engine_(engine),
-      value_(engine->GetEcmaVm(), value),
+    : value_(engine->GetEcmaVm(), value),
+      engine_(engine),
       refCount_(initialRefcount),
       ownership_(deleteSelf ? ReferenceOwnerShip::RUNTIME : ReferenceOwnerShip::USER),
       napiCallback_(napiCallback),
@@ -140,11 +140,7 @@ ArkNativeReference::~ArkNativeReference()
         return;
     }
     SetHasDelete();
-    if (isProxyReference_) {
-        value_.FreeXRefGlobalHandleAddr();
-    } else {
-        value_.FreeGlobalHandleAddr();
-    }
+    value_.FreeGlobalHandleAddr();
     FinalizeCallback(FinalizerState::DESTRUCTION);
 }
 
@@ -357,24 +353,64 @@ inline void ArkNativeReference::SetFinalRan()
     properties_ |= ReferencePropertiesMask::FINAL_RAN_MASK;
 }
 
+ArkInteropNativeReference::ArkInteropNativeReference(ArkNativeEngine* engine,
+    napi_value value, ArkNativeReferenceConfig& config)
+: ArkNativeReference(engine, napi_value(), config.initialRefcount, config.deleteSelf, config.napiCallback, config.data,
+                     nullptr, false, 0)
+{
+    value_.CreateXRefGloablReference(engine->GetEcmaVm(), LocalValueFromJsValue(value));
+}
+
+ArkInteropNativeReference::~ArkInteropNativeReference()
+{
+    VALID_ENGINE_CHECK(engine_, engine_, engineId_);
+
+    if (!napiCallback_) {
+        engine_->DecreaseNonCallbackRefCounter();
+    }
+
+    NativeReferenceManager* refMgr = engine_->GetReferenceManager();
+    if (ownership_ == ReferenceOwnerShip::RUNTIME && refMgr != nullptr) {
+        refMgr->ReleaseHandler(this);
+        prev_ = nullptr;
+        next_ = nullptr;
+    }
+    if (value_.IsEmpty()) {
+        return;
+    }
+    hasDelete_ = true;
+    value_.FreeGlobalHandleAddr();
+    value_.FreeXRefGlobalHandleAddr();
+    FinalizeCallback(FinalizerState::DESTRUCTION);
+}
+
+void ArkInteropNativeReference::FreeGlobalCallBack(void* ref)
+{
+    auto that = reinterpret_cast<ArkInteropNativeReference*>(ref);
+    // that->value_.FreeGlobalHandleAddr();
+    that->value_.FreeXRefGlobalHandleAddr();
+}
+
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-void ArkNativeReference::MarkFromObject(std::function<void(uintptr_t)> &visitor)
+void ArkInteropNativeReference::MarkFromObject(std::function<void(uintptr_t)> &visitor)
 {
     value_.MarkFromObject(visitor);
 }
 
-void ArkNativeReference::MarkFromObject()
+void ArkInteropNativeReference::MarkFromObject()
 {
     value_.MarkFromObject();
 }
 
-bool ArkNativeReference::IsObjectAlive()
+bool ArkInteropNativeReference::IsObjectAlive()
 {
     return value_.IsObjectAlive();
 }
 
-bool ArkNativeReference::IsValidHeapObject()
+bool ArkInteropNativeReference::IsValidHeapObject()
 {
     return value_.IsValidHeapObject();
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
+ 
