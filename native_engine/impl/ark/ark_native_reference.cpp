@@ -39,7 +39,7 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
       nativeBindingSize_(nativeBindingSize)
 {
     InitProperties(deleteSelf, isAsyncCall);
-    ArkNativeReferenceConstructor();
+    ArkNativeReferenceConstructor(FreeGlobalCallBack);
 }
 
 ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
@@ -61,10 +61,10 @@ ArkNativeReference::ArkNativeReference(ArkNativeEngine* engine,
       nativeBindingSize_(nativeBindingSize)
 {
     InitProperties(deleteSelf, isAsyncCall);
-    ArkNativeReferenceConstructor();
+    ArkNativeReferenceConstructor(FreeGlobalCallBack);
 }
 
-void ArkNativeReference::ArkNativeReferenceConstructor()
+void ArkNativeReference::ArkNativeReferenceConstructor(WeakRefClearCallBack weakCallback)
 {
     if (napiCallback_ != nullptr) {
         // Async callback will redirect to root engine, no monitoring needed.
@@ -80,7 +80,7 @@ void ArkNativeReference::ArkNativeReferenceConstructor()
     }
 
     if (refCount_ == 0) {
-        value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
+        value_.SetWeakCallback(reinterpret_cast<void*>(this), weakCallback, NativeFinalizeCallBack);
     }
 
     if (ownership_ == ReferenceOwnerShip::RUNTIME) {
