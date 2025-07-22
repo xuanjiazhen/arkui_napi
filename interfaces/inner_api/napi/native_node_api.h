@@ -67,6 +67,10 @@ typedef enum {
 
 using NapiAppStateCallback = void (*)(int state, int64_t timestamp);
 
+NAPI_EXTERN napi_status napi_load_module_with_info_hybrid(napi_env env,
+                                                          const char* path,
+                                                          const char* module_info,
+                                                          napi_value* result);
 NAPI_EXTERN napi_status napi_create_limit_runtime(napi_env env, napi_env* result_env);
 NAPI_EXTERN void napi_module_with_js_register(napi_module_with_js* mod);
 NAPI_EXTERN napi_status napi_is_callable(napi_env env, napi_value value, bool* result);
@@ -234,6 +238,11 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             void* native_object,
                                             napi_finalize finalize_cb,
                                             napi_ref* result);
+NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool* result);
+NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result);
+NAPI_EXTERN napi_status napi_is_xref_type(napi_env env, napi_value js_object, bool* result);
+NAPI_EXTERN napi_status napi_get_ets_implements(napi_env env, napi_value value, napi_value* result);
+NAPI_EXTERN napi_status napi_setup_hybrid_environment(napi_env env);
 #endif  // PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool* result);
 NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result);
