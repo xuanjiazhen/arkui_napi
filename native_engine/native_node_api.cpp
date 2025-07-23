@@ -643,3 +643,15 @@ NAPI_EXTERN napi_status napi_set_module_validate_callback(napi_module_validate_c
     }
     return napi_generic_failure;
 }
+
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+NAPI_EXTERN napi_status napi_setup_hybrid_environment(napi_env env)
+{
+    NAPI_PREAMBLE(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
+    panda::JSNApi::InitHybridVMEnv(vm);
+    return GET_RETURN_STATUS(env);
+}
+#endif // PANDA_JS_ETS_HYBRID_MODE
