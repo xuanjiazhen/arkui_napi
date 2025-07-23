@@ -14596,3 +14596,18 @@ HWTEST_F(NapiBasicTest, NapiQueueAsyncWorkWithQueueTest009, testing::ext::TestSi
     auto res = napi_queue_async_work_with_queue(env, work, napi_qos_default, reinterpret_cast<uintptr_t>(&TASKID));
     ASSERT_EQ(res, napi_ok);
 }
+
+/**
+ * @tc.name: NapiGetEtsImplementsTest
+ * @tc.desc: Test interface of napi_get_ets_implements
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetEtsImplementsTest, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value value = nullptr;
+    napi_value result = nullptr;
+
+    napi_status status = napi_get_ets_implements(env, value, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
