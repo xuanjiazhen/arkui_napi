@@ -44,7 +44,7 @@ struct ARKTS_Loop_ {
     std::condition_variable cv;
 
     explicit ARKTS_Loop_(uv_loop_t* loop);
-    ~ARKTS_Loop_();
+    ~ARKTS_Loop_() = default;
 
     void PostTask(std::function<void ()> task);
     // only to be call by uv_queue_task
@@ -165,28 +165,6 @@ ARKTS_Loop_::ARKTS_Loop_(uv_loop_t* loop) : loop(loop), asyncReq(), status(IDLE)
         }
     });
     asyncReq.data = this;
-}
-
-ARKTS_Loop_::~ARKTS_Loop_()
-{
-    {
-        std::lock_guard lock(mutex);
-        if (status == STOPPED) {
-            return;
-        }
-        if (status == IDLE) {
-            status = STOPPED;
-            return;
-        }
-        status = STOPPING;
-    }
-    // should be STOPPING by now.
-    constexpr auto checkDuration = 10; // ms
-    std::mutex curMutex;
-    std::unique_lock lock(mutex);
-    while (status != STOPPED) {
-        cv.wait_for(lock, std::chrono::milliseconds(checkDuration));
-    }
 }
 
 void ARKTS_Loop_::PostTask(std::function<void()> task)

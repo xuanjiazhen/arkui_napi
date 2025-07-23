@@ -103,10 +103,10 @@ static void ARKTSInner_DisposeEngine(ARKTS_Engine engine)
         engine->eventHandler->RemoveFileDescriptorListener(fd);
     }
 #endif
+    ARKTS_DisposeJSContext(reinterpret_cast<ARKTS_Env>(engine->vm));
     delete engine->engine;
     if (engine->vm) {
         auto env = P_CAST(engine->vm, ARKTS_Env);
-        ARKTS_DisposeJSContext(env);
         ARKTS_DisposeEventHandler(env);
         panda::JSNApi::DestroyJSVM(engine->vm);
     }

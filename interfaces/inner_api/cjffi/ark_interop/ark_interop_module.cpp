@@ -15,6 +15,8 @@
 
 #include <unordered_map>
 
+#include <node_api.h>
+
 #include "ark_interop_internal.h"
 #include "ark_interop_external.h"
 #include "ark_interop_log.h"
@@ -107,6 +109,22 @@ panda::JSValueRef* ARKTS_LoadModule(ARKTS_Env env, const char* dllName)
     return ARKTSInner_Escape(env, scope, exports);
 }
 
+static void DoCleanupTask(void* data)
+{
+    if (!data) {
+        return;
+    }
+    ARKTS_DisposeJSContext(reinterpret_cast<ARKTS_Env>(data));
+}
+
+static void DoUvLoopDispose(void* data)
+{
+    if (!data) {
+        return;
+    }
+    ARKTS_DisposeEventHandler(reinterpret_cast<ARKTS_Env>(data));
+}
+
 EXPORT panda::JSValueRef* ARKTS_LoadModuleByNapiEnv(void* env, const char* dllName)
 {
     if (!env) {
@@ -132,6 +150,20 @@ EXPORT panda::JSValueRef* ARKTS_LoadModuleByNapiEnv(void* env, const char* dllNa
         LOGE("init loop failed");
         return nullptr;
     }
+    auto status = napi_add_env_cleanup_hook(reinterpret_cast<napi_env>(env), DoCleanupTask, vm);
+    if (status != napi_ok) {
+        LOGE("add env cleanup hook failed: %{public}d", status);
+        ARKTS_DisposeEventHandler(reinterpret_cast<ARKTS_Env>(vm));
+        return nullptr;
+    }
+    status = napi_add_cleanup_finalizer(reinterpret_cast<napi_env>(env), DoUvLoopDispose, vm);
+    if (status != napi_ok) {
+        LOGE("add cleanup finalizer failed: %{public}d", status);
+        ARKTS_DisposeEventHandler(reinterpret_cast<ARKTS_Env>(vm));
+        napi_remove_env_cleanup_hook(reinterpret_cast<napi_env>(env), DoCleanupTask, vm);
+        return nullptr;
+    }
+
     return ARKTS_LoadModule(reinterpret_cast<ARKTS_Env>(vm), dllName);
 }
 
