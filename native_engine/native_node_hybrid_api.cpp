@@ -392,4 +392,123 @@ NAPI_EXTERN napi_status napi_setup_hybrid_environment(napi_env env)
     panda::JSNApi::InitHybridVMEnv(const_cast<panda::ecmascript::EcmaVM*>(vm));
     return GET_RETURN_STATUS(env);
 }
+
+static Local<panda::FunctionRef> NapiCreateClassFunctionWithoutSwitchState(napi_env env, std::string &className,
+                                                         NapiFunctionInfo* funcInfo, size_t propCount,
+                                                         const NapiPropertyDescriptor* properties)
+{
+    const EcmaVM *vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+    Local<JSValueRef> context = engine->GetContext();
+    Local<panda::FunctionRef> fn;
+    if (propCount == 0) {
+        fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context, ArkNativeFunctionCallBack<false>,
+                                                                    CommonDeleter, className.c_str(),
+                                                                    reinterpret_cast<void*>(funcInfo), true);
+    } else if (propCount <= panda::ObjectRef::MAX_PROPERTIES_ON_STACK) {
+        Local<panda::JSValueRef> keys[panda::ObjectRef::MAX_PROPERTIES_ON_STACK];
+        PropertyAttribute attrs[panda::ObjectRef::MAX_PROPERTIES_ON_STACK];
+        size_t staticPropCount = NapiGetKeysAndAttrsFromProps(env, propCount, properties, &keys[0], &attrs[0]);
+        fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context, ArkNativeFunctionCallBack<false>,
+                                                                    CommonDeleter, className.c_str(),
+                                                                    reinterpret_cast<void*>(funcInfo), true, propCount,
+                                                                    staticPropCount, &keys[0], &attrs[0]);
+    } else {
+        Local<panda::JSValueRef> *keys =
+            reinterpret_cast<Local<panda::JSValueRef> *>(malloc(sizeof(Local<panda::JSValueRef>) * propCount));
+        PropertyAttribute *attrs = reinterpret_cast<PropertyAttribute *>(malloc(sizeof(PropertyAttribute) * propCount));
+        if (attrs != nullptr && keys != nullptr) {
+            size_t staticPropCount = NapiGetKeysAndAttrsFromProps(env, propCount, properties, keys, attrs);
+            fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context, ArkNativeFunctionCallBack<false>,
+                                                                        CommonDeleter, className.c_str(),
+                                                                        reinterpret_cast<void*>(funcInfo), true,
+                                                                        propCount, staticPropCount, keys, attrs);
+        } else {
+            fn = panda::JSValueRef::Undefined(vm);
+            napi_throw_error(env, nullptr, "malloc failed in napi_define_class");
+        }
+
+        if (keys != nullptr) {
+            free(keys);
+        }
+        if (attrs != nullptr) {
+            free(attrs);
+        }
+    }
+    return fn;
+}
+
+panda::Local<panda::JSValueRef> NapiDefineClassWithoutSwitchState(napi_env env, const char* name, NapiNativeCallback callback,
+    void* data, const NapiPropertyDescriptor* properties, size_t length)
+{
+    auto vm = const_cast<EcmaVM*>(reinterpret_cast<NativeEngine*>(env)->GetEcmaVm());
+    std::string className(name);
+    if (ArkNativeEngine::napiProfilerEnabled) {
+        className = ArkNativeEngine::tempModuleName_ + "." + name;
+    }
+
+    NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
+    if (funcInfo == nullptr) {
+        HILOG_ERROR("funcInfo is nullptr");
+        return panda::JSValueRef::Undefined(vm);
+    }
+    funcInfo->callback = callback;
+    funcInfo->data = data;
+    funcInfo->env = env;
+#ifdef ENABLE_CONTAINER_SCOPE
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+    if (engine->IsContainerScopeEnabled()) {
+        funcInfo->scopeId = OHOS::Ace::ContainerScope::CurrentId();
+    }
+#endif
+    Local<panda::FunctionRef> fn = NapiCreateClassFunctionWithoutSwitchState(env, className, funcInfo, length, properties);
+
+    Local<panda::ObjectRef> excep = JSNApi::GetUncaughtException(vm);
+    if (!excep.IsNull()) {
+        HILOG_DEBUG("ArkNativeObject::NapiDefineClassWithoutSwitchState occur Exception");
+        JSNApi::GetAndClearUncaughtException(vm);
+    }
+#ifdef ENABLE_HITRACE
+    Local<panda::ObjectRef> classPrototype = fn->GetFunctionPrototype(vm);
+    reinterpret_cast<ArkNativeEngine*>(env)->SetModuleName(classPrototype, className);
+#endif
+    return fn;
+}
+
+NAPI_EXTERN napi_status napi_define_class_without_switch_state(napi_env env,
+                                                               const char* utf8name,
+                                                               size_t length,
+                                                               napi_callback constructor,
+                                                               void* data,
+                                                               size_t property_count,
+                                                               const napi_property_descriptor* properties,
+                                                               napi_value* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, utf8name);
+    RETURN_STATUS_IF_FALSE(env, length == NAPI_AUTO_LENGTH || length <= INT_MAX, napi_object_expected);
+    CHECK_ARG(env, constructor);
+    if (property_count > 0) {
+        CHECK_ARG(env, properties);
+    }
+    CHECK_ARG(env, result);
+
+    SWITCH_CONTEXT(env);
+    auto callback = reinterpret_cast<NapiNativeCallback>(constructor);
+    auto nativeProperties = reinterpret_cast<const NapiPropertyDescriptor*>(properties);
+
+    size_t nameLength = std::min(length, strlen(utf8name));
+    char newName[nameLength + 1];
+    if (strncpy_s(newName, nameLength + 1, utf8name, nameLength) != EOK) {
+        HILOG_ERROR("napi_define_class strncpy_s failed");
+        *result = nullptr;
+    } else {
+        auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+        panda::JsiFastNativeScope fastNativeScope(vm);
+        EscapeLocalScope scope(vm);
+        auto resultValue = NapiDefineClassWithoutSwitchState(env, newName, callback, data, nativeProperties, property_count);
+        *result = JsValueFromLocalValue(scope.Escape(resultValue));
+    }
+    return GET_RETURN_STATUS(env);
+}
 #endif // PANDA_JS_ETS_HYBRID_MODE
