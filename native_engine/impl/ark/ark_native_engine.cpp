@@ -182,6 +182,7 @@ void FunctionSetContainerId(napi_env env, panda::Local<panda::JSValueRef> &value
 }
 #endif
 
+template <bool changeState = true>
 static Local<panda::JSValueRef> NapiNativeCreateFunction(napi_env env, const char* name,
                                                          NapiNativeCallback cb, void* value)
 {
@@ -202,12 +203,13 @@ static Local<panda::JSValueRef> NapiNativeCreateFunction(napi_env env, const cha
 #endif
 
     Local<JSValueRef> context = engine->GetContext();
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentWithName(vm, context, ArkNativeFunctionCallBack,
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentWithName(vm, context, ArkNativeFunctionCallBack<changeState>,
                                                                              CommonDeleter, name,
                                                                              reinterpret_cast<void*>(funcInfo), true);
     return fn;
 }
 
+template <bool changeState = true>
 static Local<panda::JSValueRef> NapiInitAttrValFromProp(napi_env env, const NapiPropertyDescriptor &property,
                                                         bool &writable, Local<panda::JSValueRef> *curKey)
 {
@@ -219,11 +221,11 @@ static Local<panda::JSValueRef> NapiInitAttrValFromProp(napi_env env, const Napi
         Local<panda::JSValueRef> localSetter = panda::JSValueRef::Undefined(vm);
         if (property.getter != nullptr) {
             fullName += "getter";
-            localGetter = NapiNativeCreateFunction(env, fullName.c_str(), property.getter, property.data);
+            localGetter = NapiNativeCreateFunction<changeState>(env, fullName.c_str(), property.getter, property.data);
         }
         if (property.setter != nullptr) {
             fullName += "setter";
-            localSetter = NapiNativeCreateFunction(env, fullName.c_str(), property.setter, property.data);
+            localSetter = NapiNativeCreateFunction<changeState>(env, fullName.c_str(), property.setter, property.data);
         }
         val = panda::ObjectRef::CreateAccessorData(vm, localGetter, localSetter);
         writable = false; // the default writable of getter and setter is 'false'
@@ -235,15 +237,16 @@ static Local<panda::JSValueRef> NapiInitAttrValFromProp(napi_env env, const Napi
                         Local<panda::StringRef>(*curKey)->ToString(vm) :
                         Local<panda::SymbolRef>(*curKey)->GetDescription(vm)->ToString(vm);
         }
-        val = NapiNativeCreateFunction(env, fullName.c_str(), property.method, property.data);
+        val = NapiNativeCreateFunction<changeState>(env, fullName.c_str(), property.method, property.data);
     } else {
         val = LocalValueFromJsValue(property.value);
     }
     return val;
 }
 
-static size_t NapiGetKeysAndAttrsFromProps(napi_env env, size_t propertyCount, const NapiPropertyDescriptor *properties,
-                                           Local<panda::JSValueRef> *keys, PropertyAttribute *attrs)
+template <bool changeState = true>
+static size_t NapiGetKeysAndAttrsFromProps(napi_env env, size_t propertyCount,
+    const NapiPropertyDescriptor *properties, Local<panda::JSValueRef> *keys, PropertyAttribute *attrs)
 {
     auto vm = reinterpret_cast<NativeEngine *>(env)->GetEcmaVm();
     size_t curNonStaticPropIdx = propertyCount - 1; // 1: last index of array is 'lenght - 1'.
@@ -273,7 +276,7 @@ static size_t NapiGetKeysAndAttrsFromProps(napi_env env, size_t propertyCount, c
         bool writable = (property.attributes & NATIVE_WRITABLE) != 0;
         bool enumable = (property.attributes & NATIVE_ENUMERABLE) != 0;
         bool configable = (property.attributes & NATIVE_CONFIGURABLE) != 0;
-        Local<panda::JSValueRef> val = NapiInitAttrValFromProp(env, property, writable, curKey);
+        Local<panda::JSValueRef> val = NapiInitAttrValFromProp<changeState>(env, property, writable, curKey);
         // ~PropertyAttribute() was called in NewConcurrentClassFunctionWithName
         new (curAttr) PropertyAttribute(val, writable, enumable, configable);
     }
@@ -310,6 +313,50 @@ static Local<panda::FunctionRef> NapiCreateClassFunction(napi_env env, std::stri
                                                                         CommonDeleter, className.c_str(),
                                                                         reinterpret_cast<void*>(funcInfo), true,
                                                                         propCount, staticPropCount, keys, attrs);
+        } else {
+            fn = panda::JSValueRef::Undefined(vm);
+            napi_throw_error(env, nullptr, "malloc failed in napi_define_class");
+        }
+
+        if (keys != nullptr) {
+            free(keys);
+        }
+        if (attrs != nullptr) {
+            free(attrs);
+        }
+    }
+    return fn;
+}
+
+Local<panda::FunctionRef> ArkNativeEngine::NapiCreateClassFunctionWithoutSwitchState(napi_env env,
+    std::string &className, NapiFunctionInfo* funcInfo, size_t propCount, const NapiPropertyDescriptor* properties)
+{
+    const EcmaVM *vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+    Local<JSValueRef> context = engine->GetContext();
+    Local<panda::FunctionRef> fn;
+    if (propCount == 0) {
+        fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context,
+            ArkNativeFunctionCallBack<false>, CommonDeleter, className.c_str(),
+            reinterpret_cast<void*>(funcInfo), true);
+    } else if (propCount <= panda::ObjectRef::MAX_PROPERTIES_ON_STACK) {
+        Local<panda::JSValueRef> keys[panda::ObjectRef::MAX_PROPERTIES_ON_STACK];
+        PropertyAttribute attrs[panda::ObjectRef::MAX_PROPERTIES_ON_STACK];
+        size_t staticPropCount = NapiGetKeysAndAttrsFromProps<false>(env, propCount, properties, &keys[0],
+            &attrs[0]);
+        fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context,
+            ArkNativeFunctionCallBack<false>, CommonDeleter, className.c_str(),
+            reinterpret_cast<void*>(funcInfo), true, propCount, staticPropCount, &keys[0], &attrs[0]);
+    } else {
+        Local<panda::JSValueRef> *keys =
+            reinterpret_cast<Local<panda::JSValueRef> *>(malloc(sizeof(Local<panda::JSValueRef>) * propCount));
+        PropertyAttribute *attrs = reinterpret_cast<PropertyAttribute *>(malloc(sizeof(PropertyAttribute) * propCount));
+        if (attrs != nullptr && keys != nullptr) {
+            size_t staticPropCount = NapiGetKeysAndAttrsFromProps<false>(env, propCount, properties, keys,
+                attrs);
+            fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context,
+                ArkNativeFunctionCallBack<false>, CommonDeleter, className.c_str(),
+                reinterpret_cast<void*>(funcInfo), true, propCount, staticPropCount, keys, attrs);
         } else {
             fn = panda::JSValueRef::Undefined(vm);
             napi_throw_error(env, nullptr, "malloc failed in napi_define_class");
