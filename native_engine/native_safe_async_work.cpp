@@ -51,7 +51,7 @@ void NativeSafeAsyncWork::AsyncCallback(uv_async_t* asyncHandler)
     HILOG_DEBUG("NativeSafeAsyncWork::AsyncCallback called");
     NativeSafeAsyncWork* that = NativeAsyncWork::DereferenceOf(&NativeSafeAsyncWork::asyncHandler_, asyncHandler);
     if (that == nullptr) {
-        HILOG_ERROR("NativeSafeAsyncWork:: DereferenceOf failed!");
+        HILOG_WARN("NativeSafeAsyncWork:: DereferenceOf failed!");
         return;
     }
     that->ProcessAsyncHandle();
@@ -60,20 +60,11 @@ void NativeSafeAsyncWork::AsyncCallback(uv_async_t* asyncHandler)
 void NativeSafeAsyncWork::CallJs(NativeEngine* engine, napi_value js_call_func, void* context, void* data)
 {
     if (engine == nullptr || js_call_func == nullptr) {
-        HILOG_ERROR("CallJs failed. engine or js_call_func is nullptr!");
-        return;
-    }
-    napi_value value = nullptr;
-    napi_get_undefined(reinterpret_cast<napi_env>(engine), &value);
-    if (value == nullptr) {
-        HILOG_ERROR("CreateUndefined failed");
+        HILOG_ERROR("CallJs failed. Engine or js_call_func is nullptr!");
         return;
     }
 
-    auto resultValue = engine->CallFunction(value, js_call_func, nullptr, 0);
-    if (resultValue == nullptr) {
-        HILOG_ERROR("CallFunction failed");
-    }
+    engine->CallFunction(nullptr, js_call_func, nullptr, 0);
 }
 
 NativeSafeAsyncWork::NativeSafeAsyncWork(NativeEngine* engine,
@@ -149,7 +140,7 @@ bool NativeSafeAsyncWork::Init()
 
     int ret = uv_async_init(loop, &asyncHandler_, AsyncCallback);
     if (ret != 0) {
-        HILOG_ERROR("uv async send failed in Init ret = %{public}d", ret);
+        HILOG_ERROR("uv async send failed, ret = %{public}d", ret);
         return false;
     }
 
@@ -213,7 +204,7 @@ SafeAsyncCode NativeSafeAsyncWork::Send(void* data, NativeThreadSafeFunctionCall
         queue_.emplace_back(data);
         auto ret = uv_async_send(&asyncHandler_);
         if (ret != 0) {
-            HILOG_ERROR("uv async send failed in Send ret = %{public}d", ret);
+            HILOG_ERROR("uv async send failed, ret = %{public}d", ret);
             return SafeAsyncCode::SAFE_ASYNC_FAILED;
         }
     }
@@ -247,12 +238,12 @@ SafeAsyncCode NativeSafeAsyncWork::Release(NativeThreadSafeFunctionReleaseMode m
 
     if (status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSED ||
         status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSING) {
-        HILOG_WARN("Do not release, thread is closed!");
+        HILOG_WARN("Do not release, threadsafe function is closed!");
         return SafeAsyncCode::SAFE_ASYNC_CLOSED;
     }
 
     if (threadCount_ == 0) {
-        HILOG_ERROR("Do not release, thread count is zero.");
+        HILOG_ERROR("Do not release, acquired thread count is already zero.");
         return SafeAsyncCode::SAFE_ASYNC_INVALID_ARGS;
     }
 
@@ -275,7 +266,7 @@ SafeAsyncCode NativeSafeAsyncWork::Release(NativeThreadSafeFunctionReleaseMode m
         // trigger async handle
         auto ret = uv_async_send(&asyncHandler_);
         if (ret != 0) {
-            HILOG_ERROR("uv async send failed in Release ret = %{public}d", ret);
+            HILOG_ERROR("uv async send failed, ret = %{public}d", ret);
             return SafeAsyncCode::SAFE_ASYNC_FAILED;
         }
     }
@@ -316,12 +307,12 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
 {
     std::unique_lock<std::mutex> lock(mutex_);
     if (status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSED) {
-        HILOG_ERROR("Process failed, thread is closed!");
+        HILOG_ERROR("Process failed, threadsafe function is closed!");
         return;
     }
 
     if (status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSING) {
-        HILOG_ERROR("thread is closing!");
+        HILOG_INFO("Threadsafe function is releasing!");
         CloseHandles();
         return;
     }
@@ -365,7 +356,7 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
     if (!queue_.empty()) {
         auto ret = uv_async_send(&asyncHandler_);
         if (ret != 0) {
-            HILOG_ERROR("uv async send failed in ProcessAsyncHandle ret = %{public}d", ret);
+            HILOG_ERROR("uv async send failed, ret = %{public}d", ret);
         }
     }
 
@@ -379,7 +370,7 @@ SafeAsyncCode NativeSafeAsyncWork::CloseHandles()
     HILOG_DEBUG("NativeSafeAsyncWork::CloseHandles called");
 
     if (status_ == SafeAsyncStatus::SAFE_ASYNC_STATUS_CLOSED) {
-        HILOG_INFO("Close failed, thread is closed!");
+        HILOG_WARN("Close failed, threadsafe function is closed!");
         return SafeAsyncCode::SAFE_ASYNC_CLOSED;
     }
 

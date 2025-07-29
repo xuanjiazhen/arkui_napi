@@ -2719,13 +2719,9 @@ NAPI_EXTERN napi_status napi_create_buffer(napi_env env, size_t size, void** dat
     RETURN_STATUS_IF_FALSE(env, size > 0, napi_invalid_arg);
 
     uint8_t** value = reinterpret_cast<uint8_t**>(data);
-    if (!value) {
-        HILOG_ERROR("value is empty");
-        return napi_set_last_error(env, napi_invalid_arg);
-    }
 
     if (size > MAX_BYTE_LENGTH) {
-        HILOG_ERROR("Creat failed, current size: %{public}2f MiB, limit size: %{public}2f MiB",
+        HILOG_ERROR("Create failed, current size: %{public}2f MiB, limit size: %{public}2f MiB",
                     static_cast<float>(size) / static_cast<float>(ONEMIB_BYTE_SIZE),
                     static_cast<float>(MAX_BYTE_LENGTH) / static_cast<float>(ONEMIB_BYTE_SIZE));
         *value = nullptr;
@@ -2759,12 +2755,8 @@ NAPI_EXTERN napi_status napi_create_buffer_copy(napi_env env,
 
     uint8_t** value = reinterpret_cast<uint8_t**>(result_data);
     const uint8_t* recvdata = (uint8_t*)data;
-    if (!value) {
-        HILOG_ERROR("value is empty");
-        return napi_set_last_error(env, napi_invalid_arg);
-    }
     if (length > MAX_BYTE_LENGTH) {
-        HILOG_ERROR("Creat failed, current size: %{public}2f MiB, limit size: %{public}2f MiB",
+        HILOG_ERROR("Create failed, current size: %{public}2f MiB, limit size: %{public}2f MiB",
                     static_cast<float>(length) / static_cast<float>(ONEMIB_BYTE_SIZE),
                     static_cast<float>(MAX_BYTE_LENGTH) / static_cast<float>(ONEMIB_BYTE_SIZE));
         *value = nullptr;
@@ -2802,12 +2794,8 @@ NAPI_EXTERN napi_status napi_create_external_buffer(napi_env env,
     RETURN_STATUS_IF_FALSE(env, length > 0, napi_invalid_arg);
 
     auto callback = reinterpret_cast<panda::NativePointerCallback>(finalize_cb);
-    if (!data) {
-        HILOG_ERROR("data is empty");
-        return napi_set_last_error(env, napi_invalid_arg);
-    }
     if (length > MAX_BYTE_LENGTH) {
-        HILOG_ERROR("Creat failed, current size: %{public}2f MiB, limit size: %{public}2f MiB",
+        HILOG_ERROR("Create failed, current size: %{public}2f MiB, limit size: %{public}2f MiB",
                     static_cast<float>(length) / static_cast<float>(ONEMIB_BYTE_SIZE),
                     static_cast<float>(MAX_BYTE_LENGTH) / static_cast<float>(ONEMIB_BYTE_SIZE));
         data = nullptr;
@@ -2903,7 +2891,6 @@ NAPI_EXTERN napi_status napi_create_typedarray(napi_env env,
 
     if (!reinterpret_cast<NativeEngine*>(env)->NapiNewTypedArray(typedArrayType, arrayBuf,
                                                                  byte_offset, length, result)) {
-        HILOG_ERROR("%{public}s invalid arg", __func__);
         return napi_set_last_error(env, napi_invalid_arg);
     }
     return GET_RETURN_STATUS(env);
@@ -2936,7 +2923,6 @@ NAPI_EXTERN napi_status napi_create_sendable_typedarray(napi_env env,
     if (!reinterpret_cast<NativeEngine*>(env)->NapiNewSendableTypedArray(typedArrayType,
                                                                          arrayBuf, byte_offset,
                                                                          length, result)) {
-        HILOG_ERROR("%{public}s invalid arg", __func__);
         return napi_set_last_error(env, napi_invalid_arg);
     }
     return GET_RETURN_STATUS(env);
@@ -2996,7 +2982,6 @@ NAPI_EXTERN napi_status napi_get_typedarray_info(napi_env env,
             *byte_offset = byteOffset;
         }
     } else {
-        HILOG_ERROR("%{public}s invalid arg", __func__);
         return napi_set_last_error(env, napi_invalid_arg);
     }
 
@@ -3147,18 +3132,17 @@ NAPI_EXTERN napi_status napi_set_promise_rejection_callback(napi_env env, napi_r
     auto rejectCallbackRef = reinterpret_cast<NativeReference*>(ref);
     auto checkCallbackRef = reinterpret_cast<NativeReference*>(checkRef);
     if (rejectCallbackRef == nullptr || checkCallbackRef == nullptr) {
-        HILOG_ERROR("rejectCallbackRef or checkCallbackRef is nullptr");
-    } else {
-        auto engine = reinterpret_cast<NativeEngine*>(env);
-        if (!engine->IsMainEnvContext()) {
-            HILOG_FATAL("multi-context does not support this interface");
-        }
-        auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-        engine->SetPromiseRejectCallBackRef(rejectCallbackRef);
-        engine->SetCheckCallbackRef(checkCallbackRef);
-        panda::JSNApi::SetHostPromiseRejectionTracker(const_cast<EcmaVM*>(vm), engine->GetPromiseRejectCallback(),
-                                                      reinterpret_cast<void*>(engine));
+        HILOG_WARN("rejectCallbackRef or checkCallbackRef is nullptr");
     }
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    if (!engine->IsMainEnvContext()) {
+        HILOG_FATAL("multi-context does not support this interface");
+    }
+    auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
+    engine->SetPromiseRejectCallBackRef(rejectCallbackRef);
+    engine->SetCheckCallbackRef(checkCallbackRef);
+    panda::JSNApi::SetHostPromiseRejectionTracker(const_cast<EcmaVM*>(vm), engine->GetPromiseRejectCallback(),
+                                                    reinterpret_cast<void*>(engine));
 
     return napi_clear_last_error(env);
 }
@@ -3725,7 +3709,7 @@ NAPI_EXTERN napi_status napi_get_all_property_names(
             break;
         default:
             *result = nullptr;
-            HILOG_ERROR("%{public}s invalid arg", __func__);
+            HILOG_WARN("invalid arg key_mode");
             return napi_set_last_error(env, napi_invalid_arg);
     }
 
@@ -3738,7 +3722,7 @@ NAPI_EXTERN napi_status napi_get_all_property_names(
             break;
         default:
             *result = nullptr;
-            HILOG_ERROR("%{public}s invalid arg", __func__);
+            HILOG_WARN("invalid arg key_conversion");
             return napi_set_last_error(env, napi_invalid_arg);
     }
     Local<panda::ArrayRef> arrayVal = obj->GetAllPropertyNames(vm, filter);
@@ -3789,7 +3773,6 @@ NAPI_EXTERN napi_status napi_type_tag_object(napi_env env, napi_value js_object,
         result = obj->Set(vm, key, value);
     }
     if (!result) {
-        HILOG_ERROR("%{public}s invalid arg", __func__);
         return napi_set_last_error(env, napi_invalid_arg);
     }
 
@@ -3888,7 +3871,6 @@ NAPI_EXTERN napi_status napi_get_date_value(napi_env env, napi_value value, doub
     if (IsDate_result) {
         *result = dateObj->GetTime(vm);
     } else {
-        HILOG_ERROR("%{public}s date expected", __func__);
         return napi_set_last_error(env, napi_date_expected);
     }
 
@@ -3945,7 +3927,6 @@ NAPI_EXTERN napi_status napi_create_bigint_words(napi_env env,
     Local<panda::JSValueRef> value = panda::BigIntRef::CreateBigWords(vm, sign, size, words);
 
     if (panda::JSNApi::HasPendingException(vm)) {
-        HILOG_ERROR("%{public}s pending exception", __func__);
         return napi_set_last_error(env, napi_pending_exception);
     }
     *result = JsValueFromLocalValue(value);
@@ -4119,7 +4100,7 @@ NAPI_EXTERN napi_status napi_queue_async_work_with_queue(napi_env env,
     auto asyncWork = reinterpret_cast<NativeAsyncWork*>(work);
     bool res = asyncWork->QueueOrdered(reinterpret_cast<NativeEngine*>(env), qos, taskId);
     if (!res) {
-        HILOG_ERROR("QueueOrdered failed");
+        HILOG_WARN("QueueOrdered failed");
         return napi_status::napi_generic_failure;
     }
     return napi_status::napi_ok;
@@ -4128,7 +4109,7 @@ NAPI_EXTERN napi_status napi_queue_async_work_with_queue(napi_env env,
 static void* DetachFuncCallback(void* engine, void* object, void* hint, void* detachData)
 {
     if (detachData == nullptr || (engine == nullptr || object == nullptr)) {
-        HILOG_ERROR("DetachFuncCallback params has nullptr");
+        HILOG_WARN("DetachFuncCallback params has nullptr");
         return nullptr;
     }
     DetachCallback detach = reinterpret_cast<DetachCallback>(detachData);
@@ -4139,12 +4120,12 @@ static void* DetachFuncCallback(void* engine, void* object, void* hint, void* de
 static Local<panda::JSValueRef> AttachFuncCallback(void* engine, void* buffer, void* hint, void* attachData)
 {
     if (engine == nullptr) {
-        HILOG_ERROR("AttachFuncCallback engine is nullptr");
+        HILOG_WARN("AttachFuncCallback engine is nullptr");
         return Local<panda::JSValueRef>();
     }
     auto vm = reinterpret_cast<NativeEngine*>(engine)->GetEcmaVm();
     if (attachData == nullptr || buffer == nullptr) {
-        HILOG_ERROR("AttachFuncCallback params has nullptr");
+        HILOG_WARN("AttachFuncCallback params has nullptr");
         return panda::JSValueRef::Undefined(vm);
     }
     EscapeLocalScope scope(vm);
@@ -4182,7 +4163,6 @@ NAPI_EXTERN napi_status napi_coerce_to_native_binding_object(napi_env env,
 
     panda::JSNApi::NativeBindingInfo* data = panda::JSNApi::NativeBindingInfo::CreateNewInstance();
     if (data == nullptr) {
-        HILOG_ERROR("data is nullptr");
         return napi_set_last_error(env, napi_invalid_arg);
     }
     data->env = env;
@@ -4264,7 +4244,6 @@ NAPI_EXTERN napi_status napi_run_event_loop(napi_env env, napi_event_mode mode)
     CHECK_ENV(env);
 
     if (mode < napi_event_mode_default || mode > napi_event_mode_nowait) {
-        HILOG_ERROR("invalid mode %{public}d", static_cast<int32_t>(mode));
         return napi_status::napi_invalid_arg;
     }
 
@@ -4276,7 +4255,6 @@ NAPI_EXTERN napi_status napi_run_event_loop(napi_env env, napi_event_mode mode)
 
     auto result = nativeEngine->RunEventLoop(mode);
     if (result != napi_status::napi_ok) {
-        HILOG_ERROR("failed due to error %{public}d", static_cast<int32_t>(result));
         return napi_set_last_error(env, result);
     }
 
@@ -4294,7 +4272,6 @@ NAPI_EXTERN napi_status napi_stop_event_loop(napi_env env)
     }
     auto result = nativeEngine->StopEventLoop();
     if (result != napi_status::napi_ok) {
-        HILOG_ERROR("stop event loop failed due to error %{public}d", static_cast<int32_t>(result));
         return napi_set_last_error(env, result);
     }
     return napi_clear_last_error(env);
@@ -4359,15 +4336,11 @@ NAPI_EXTERN napi_status napi_call_threadsafe_function_with_priority(napi_threads
     CHECK_ENV(func);
 
     if (priority < napi_priority_immediate || priority > napi_priority_idle) {
-        HILOG_ERROR("invalid priority %{public}d", static_cast<int32_t>(priority));
         return napi_status::napi_invalid_arg;
     }
     auto safeAsyncWork = reinterpret_cast<NativeSafeAsyncWork*>(func);
     int32_t innerPriority = static_cast<int32_t>(priority);
     auto res = safeAsyncWork->PostTask(data, innerPriority, isTail);
-    if (res != napi_ok) {
-        HILOG_ERROR("post task failed due to error %{public}d", res);
-    }
     return res;
 }
 
@@ -4512,7 +4485,7 @@ NAPI_EXTERN napi_status napi_create_ark_context(napi_env env, napi_env* newEnv)
     auto vm = nativeEngine->GetEcmaVm();
     // cannot to utilize a created env to generate a new env
     if (!nativeEngine->IsMainEnvContext()) {
-        HILOG_ERROR("env cannot be generate by using a created env");
+        HILOG_WARN("env cannot be generate by using a created env");
         return napi_set_last_error(env, napi_invalid_arg);
     }
 

@@ -77,7 +77,7 @@ NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
         asyncResourceName.c_str(),
         reinterpret_cast<uintptr_t>(this),
         taskTraceId_.GetChainId()) < 0) {
-        HILOG_ERROR("Get traceStr fail");
+        HILOG_WARN("Get traceStr fail");
     }
     traceDescription_ = traceStr;
     if (createdTraceId) {
@@ -205,7 +205,7 @@ bool NativeAsyncWork::Cancel(NativeEngine* engine)
 
     int status = uv_cancel((uv_req_t*)&work_);
     if (status != 0) {
-        HILOG_ERROR("uv_cancel failed");
+        HILOG_WARN("uv_cancel failed");
         return false;
     }
     return true;

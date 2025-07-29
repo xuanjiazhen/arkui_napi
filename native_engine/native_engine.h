@@ -183,7 +183,6 @@ public:
 
     virtual void Loop(LoopMode mode, bool needSync = false);
     virtual void SetPostTask(PostTask postTask);
-    virtual void TriggerPostTask();
 #if !defined(PREVIEW)
     virtual void CheckUVLoop();
     virtual void CancelCheckUVLoop();
