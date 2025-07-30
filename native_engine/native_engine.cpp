@@ -98,16 +98,16 @@ NativeEngine::NativeEngine(NativeEngine* parent) : jsEngine_(parent->jsEngine_),
 void NativeEngine::InitUvField()
 {
     if (memset_s(&uvAsync_, sizeof(uvAsync_), 0, sizeof(uvAsync_)) != EOK) {
-        HILOG_ERROR("failed to init uvAsync_");
+        HILOG_WARN("failed to init uvAsync_");
         return;
     }
     if (memset_s(&uvSem_, sizeof(uvSem_), 0, sizeof(uvSem_)) != EOK) {
-        HILOG_ERROR("failed to init uvSem_");
+        HILOG_WARN("failed to init uvSem_");
         return;
     }
 #if !defined(PREVIEW)
     if (memset_s(&uvThread_, sizeof(uvThread_), 0, sizeof(uvThread_)) != EOK) {
-        HILOG_ERROR("failed to init uvThread_");
+        HILOG_WARN("failed to init uvThread_");
         return;
     }
 #endif
@@ -172,7 +172,7 @@ void NativeEngine::Deinit()
         uv_run(loop_, UV_RUN_DEFAULT);
         if (uv_loop_close(loop_) != EOK) {
             // it maybe up to fatal level later
-            HILOG_ERROR("faild to close uv_loop, after reran.");
+            HILOG_WARN("faild to close uv_loop, after reran.");
         }
     };
     delete loop_;
@@ -394,7 +394,6 @@ void NativeEngine::EncodeToUtf8(napi_value value, char* buffer, uint32_t* writte
 {
     auto nativeValue = LocalValueFromJsValue(value);
     if (nativeValue->IsNull() || nchars == nullptr || written == nullptr) {
-        HILOG_ERROR("NativeEngine EncodeToUtf8 args is nullptr");
         return;
     }
 
@@ -402,7 +401,7 @@ void NativeEngine::EncodeToUtf8(napi_value value, char* buffer, uint32_t* writte
     LocalScope scope(vm);
     auto nativeString = nativeValue->ToString(vm);
     if (!nativeString->IsString(vm)) {
-        HILOG_ERROR("nativeValue not is string");
+        HILOG_ERROR("nativeValue is not a string");
         return;
     }
 
@@ -460,7 +459,6 @@ static void SubEncodeToChinese(const EcmaVM* vm,
 void NativeEngine::EncodeToChinese(napi_value value, std::string& buffer, const std::string& encoding)
 {
     if (value == nullptr) {
-        HILOG_ERROR("nativeValue GetInterface is nullptr");
         return;
     }
 
@@ -469,7 +467,7 @@ void NativeEngine::EncodeToChinese(napi_value value, std::string& buffer, const 
     LocalScope scope(vm);
     auto nativeString = nativeValue->ToString(vm);
     if (!nativeString->IsString(vm)) {
-        HILOG_ERROR("nativeValue not is string");
+        HILOG_ERROR("nativeValue is not a string");
         return;
     }
 
@@ -553,15 +551,6 @@ void NativeEngine::PostLoopTask()
 void NativeEngine::SetPostTask(PostTask postTask)
 {
     postTask_ = postTask;
-}
-
-void NativeEngine::TriggerPostTask()
-{
-    if (postTask_ == nullptr) {
-        HILOG_ERROR("postTask_ is nullptr");
-        return;
-    }
-    postTask_(false);
 }
 
 void* NativeEngine::GetJsEngine()
@@ -725,8 +714,7 @@ napi_status NativeEngine::AddCleanupFinalizer(CleanupFinalizerCallBack fun, void
         return napi_ok;
     }
 
-    HILOG_ERROR("AddCleanupFinalizer Failed, This may cause memory leaks or unexpected behavior.");
-
+    HILOG_FATAL("AddCleanupFinalizer Failed, This may cause memory leaks or unexpected behavior.");
     return napi_generic_failure;
 }
 
@@ -741,7 +729,7 @@ napi_status NativeEngine::RemoveCleanupFinalizer(CleanupFinalizerCallBack fun, v
     const char *failedReason = cleanupHook == instanceFinalizer_.end() ?
         "data is not registered or already unregistered" : "callback not equals to last registered";
     
-    HILOG_ERROR("RemoveCleanupHook Failed, %{public}s, "
+    HILOG_FATAL("RemoveCleanupHook Failed, %{public}s, "
                 "This may cause memory leaks or unexpected behavior.", failedReason);
 
     return napi_generic_failure;
@@ -795,14 +783,14 @@ napi_status NativeEngine::AddCleanupHook(CleanupCallback fun, void* arg)
     std::string stack;
     if (IsCrossThreadCheckEnabled()) {
         if (DumpHybridStack(GetEcmaVm(), stack, 1, 8)) { // 1: skipd frames, 8: backtrace deepth
-            HILOG_ERROR("AddCleanupHook Failed, data cannot register multiple times."
+            HILOG_WARN("AddCleanupHook Failed, data cannot register multiple times."
                 "\n%{public}s", stack.c_str());
         } else {
-            HILOG_ERROR("AddCleanupHook Failed, data cannot register multiple times, "
+            HILOG_WARN("AddCleanupHook Failed, data cannot register multiple times, "
                 "backtrace failed or unsupported platform.");
         }
     } else {
-        HILOG_ERROR("AddCleanupHook Failed, data cannot register multiple times, "
+        HILOG_WARN("AddCleanupHook Failed, data cannot register multiple times, "
             "enable cross-thread check for more information.");
     }
 
@@ -822,14 +810,14 @@ napi_status NativeEngine::RemoveCleanupHook(CleanupCallback fun, void* arg)
     std::string stack;
     if (IsCrossThreadCheckEnabled()) {
         if (DumpHybridStack(GetEcmaVm(), stack, 1, 8)) { // 1: skiped frames, 8: backtrace deepth
-            HILOG_ERROR("RemoveCleanupHook Failed, %{public}s"
+            HILOG_WARN("RemoveCleanupHook Failed, %{public}s"
                 ".\n%{public}s", failedReason, stack.c_str());
         } else {
-            HILOG_ERROR("RemoveCleanupHook Failed %{public}s, "
+            HILOG_WARN("RemoveCleanupHook Failed %{public}s, "
                 "backtrace failed or unsupported platform.", failedReason);
         }
     } else {
-        HILOG_ERROR("RemoveCleanupHook Failed, %{public}s, "
+        HILOG_WARN("RemoveCleanupHook Failed, %{public}s, "
             "enable cross thread check for more information.", failedReason);
     }
 
@@ -851,8 +839,7 @@ void NativeEngine::RunCleanupHooks(bool waitTasks)
             // Sort in descending order so that the most recently inserted callbacks are run first.
             return a.second.second > b.second.second;
         });
-        HILOG_DEBUG(
-            "NativeEngine::RunCleanup cleanup_hooks callbacks size:%{public}d", (int32_t)callbacks.size());
+        HILOG_INFO("cleanup_hooks callbacks size:%{public}d", (int32_t)callbacks.size());
         for (const CleanupCallbackTuple& cb : callbacks) {
             void* data = cb.first;
             if (cleanupHooks_.find(data) == cleanupHooks_.end()) {
@@ -875,7 +862,6 @@ void NativeEngine::RunCleanupHooks(bool waitTasks)
 
 void NativeEngine::RunCleanup()
 {
-    HILOG_DEBUG("%{public}s, start.", __func__);
     CleanupHandles();
 
     RunCleanupHooks(true);
@@ -896,8 +882,6 @@ void NativeEngine::RunCleanup()
     uv_walk(loop_, ensureClosing, nullptr);
 
     while (uv_run(loop_, UV_RUN_DEFAULT) != 0) {};
-
-    HILOG_DEBUG("%{public}s, end.", __func__);
 }
 
 void NativeEngine::CleanupHandles()
@@ -907,8 +891,7 @@ void NativeEngine::CleanupHandles()
     }
 
     while (requestWaiting_.load() > 0) {
-        HILOG_INFO("%{public}s, request waiting:%{public}d.", __func__,
-            requestWaiting_.load(std::memory_order_relaxed));
+        HILOG_INFO("request waiting:%{public}d.", requestWaiting_.load(std::memory_order_relaxed));
         uv_run(loop_, UV_RUN_ONCE);
     }
 }
@@ -973,13 +956,12 @@ napi_value NativeEngine::RunScriptForAbc(const char* path, char* entryPoint)
     void* mapper = nullptr;
     if (!GetAbcBuffer(normalizedPath.c_str(), &scriptContent, &scriptContentSize,
         content, ami, &mapper, true)) {
-        HILOG_ERROR("RunScript: GetAbcBuffer failed");
+        HILOG_WARN("RunScript: GetAbcBuffer failed");
         return nullptr;
     }
     HILOG_DEBUG("RunScriptForAbc: GetAmi: %{private}s", ami.c_str());
     // if buffer is empty, return directly.
     if (scriptContentSize == 0) {
-        HILOG_ERROR("asset size is %{public}zu", scriptContentSize);
         ThrowException("RunScriptForAbc: abc file is empty.");
         return nullptr;
     }
@@ -1072,7 +1054,6 @@ bool NativeEngine::GetAbcBuffer(const char* path, uint8_t **buffer, size_t* buff
 
 void NativeEngine::SetInstanceData(void* data, NativeFinalize finalize_cb, void* hint)
 {
-    HILOG_DEBUG("NativeEngineWraper::%{public}s, start.", __func__);
     std::lock_guard<std::mutex> insLock(instanceDataLock_);
     FinalizerInstanceData();
     instanceDataInfo_.engine = this;
@@ -1083,7 +1064,6 @@ void NativeEngine::SetInstanceData(void* data, NativeFinalize finalize_cb, void*
 
 void NativeEngine::GetInstanceData(void** data)
 {
-    HILOG_DEBUG("NativeEngineWraper::%{public}s, start.", __func__);
     std::lock_guard<std::mutex> insLock(instanceDataLock_);
     if (data) {
         *data = instanceDataInfo_.nativeObject;
@@ -1103,13 +1083,10 @@ void NativeEngine::FinalizerInstanceData(void)
 
 const char* NativeEngine::GetModuleFileName()
 {
-    HILOG_DEBUG("%{public}s, start.", __func__);
     if (moduleFileName_.empty()) {
         NativeModuleManager* moduleManager = GetModuleManager();
-        HILOG_DEBUG("NativeEngineWraper::GetFileName GetModuleManager");
         if (moduleManager != nullptr) {
             std::string moduleFileName = moduleManager->GetModuleFileName(moduleName_.c_str(), isAppModule_);
-            HILOG_INFO("NativeEngineWraper::GetFileName end filename:%{public}s", moduleFileName.c_str());
             SetModuleFileName(moduleFileName);
         }
     }
@@ -1148,7 +1125,6 @@ void NativeEngine::SetModuleLoadChecker(const std::shared_ptr<ModuleCheckerDeleg
 
 napi_status NativeEngine::RunEventLoop(napi_event_mode mode)
 {
-    HILOG_DEBUG("%{public}s, start.", __func__);
     if (loop_ == nullptr) {
         HILOG_ERROR("nullptr loop in native engine");
         return napi_status::napi_invalid_arg;
@@ -1181,7 +1157,6 @@ napi_status NativeEngine::RunEventLoop(napi_event_mode mode)
 
 napi_status NativeEngine::StopEventLoop()
 {
-    HILOG_DEBUG("%{public}s, start.", __func__);
     if (loop_ == nullptr) {
         HILOG_ERROR("nullptr loop in native engine");
         return napi_status::napi_invalid_arg;

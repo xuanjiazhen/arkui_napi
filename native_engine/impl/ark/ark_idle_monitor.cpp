@@ -69,7 +69,7 @@ void ArkIdleMonitor::CheckShortIdleTask(int64_t timestamp, int idleTime)
         timerHandlerQueue_.pop();
         int ret = ffrt_timer_stop(ffrt_qos_user_initiated, handler);
         if (ret != 0) {
-            HILOG_ERROR("ArkIdleMonitor: ffrt_timer_stop error handler: timerHandler='%{public}d', ret='%{public}d'",
+            HILOG_WARN("ArkIdleMonitor: ffrt_timer_stop error handler: timerHandler='%{public}d', ret='%{public}d'",
                 handler, ret);
         }
         handlerWaitToStopCount_--;
@@ -162,7 +162,7 @@ void ArkIdleMonitor::IntervalMonitor()
     int64_t recordTotalDuration = nowTimestamp - startRecordTimestamp_;
     if (recordTotalDuration <= 0) {
         numberOfHighIdleTimeRatio_ = 0U;
-        HILOG_ERROR("ArkIdleMonitor: recordTotalDuration <= 0");
+        HILOG_WARN("ArkIdleMonitor: recordTotalDuration <= 0");
     } else {
         double idleTimeRatio = static_cast<double>(idleDuration) / recordTotalDuration;
         HILOG_DEBUG("ArkIdleMonitor: idleTimeRatio '%{public}.2f'", idleTimeRatio);
@@ -203,7 +203,7 @@ void ArkIdleMonitor::PostMonitorTask(uint64_t delayMs)
     if (waitForStopTimerHandler_ != -1) {
         int ret = ffrt_timer_stop(ffrt_qos_user_initiated, waitForStopTimerHandler_);
         if (ret != 0) {
-            HILOG_ERROR("ArkIdleMonitor: ffrt_timer_stop error handler: timerHandler='%{public}d', ret='%{public}d'",
+            HILOG_WARN("ArkIdleMonitor: ffrt_timer_stop error handler: timerHandler='%{public}d', ret='%{public}d'",
                 waitForStopTimerHandler_, ret);
         }
     }
@@ -376,7 +376,7 @@ double ArkIdleMonitor::GetCpuUsage() const
         HILOG_DEBUG("ArkIdleMonitor cpu usage: %{public}.2f", collectResult.data);
         return collectResult.data;
     }
-    HILOG_ERROR("ArkIdleMonitor get cpu usage failed, error code:%{public}d", collectResult.retCode);
+    HILOG_WARN("ArkIdleMonitor get cpu usage failed, error code:%{public}d", collectResult.retCode);
 #endif
     return 0.0f;
 }

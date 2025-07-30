@@ -155,7 +155,6 @@ static panda::JSValueRef* InternalMakeCallback(NativeEngine* engine, panda::Func
 {
     auto vm = engine->GetEcmaVm();
     if (funRef == nullptr) {
-        HILOG_ERROR("funRef is nullptr!");
         return *panda::JSValueRef::Undefined(vm);
     }
 

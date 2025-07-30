@@ -426,7 +426,7 @@ bool ArkNativeEngine::SetModuleValidateCallback(NapiModuleValidateCallback valid
         return false;
     }
     if (moduleValidateCallback_.load()) {
-        HILOG_ERROR("Module Validate Callback is already set by another module or thread.");
+        HILOG_WARN("Module Validate Callback is already set by another module or thread.");
         return false;
     }
     moduleValidateCallback_ = validateCallback;
@@ -716,11 +716,11 @@ void ArkNativeEngine::DeconstructCtxEnv()
     }
 
     if (HasNonCallbackRef()) {
-        HILOG_ERROR("Non-callback napi_ref is leak after context env teardown, counts: %{public}" PRIu64,
+        HILOG_WARN("Non-callback napi_ref is leak after context env teardown, counts: %{public}" PRIu64,
             GetNonCallbackRefCount());
     }
     if (HasCallbackbleRef()) {
-        HILOG_ERROR("Callbackble napi_ref is leak after context env teardown, counts: %{public}" PRIu64,
+        HILOG_WARN("Callbackble napi_ref is leak after context env teardown, counts: %{public}" PRIu64,
             GetCallbackbleRefCount());
     }
     parentEngine_ = nullptr;
@@ -832,7 +832,6 @@ Local<JSValueRef> ArkNativeEngine::LoadNativeModule(
         auto exportObject = LoadArkModule(buffer,
             module->jsCodeLen, fileName);
         if (exportObject->IsUndefined()) {
-            HILOG_ERROR("load module failed");
             return scope.Escape(exports);
         } else {
             exports = exportObject;
@@ -857,7 +856,7 @@ Local<JSValueRef> ArkNativeEngine::LoadNativeModule(
         exports = exportObj;
         loadedModules_[module] = Global<JSValueRef>(vm_, exports);
     } else {
-        HILOG_ERROR("init module failed");
+        HILOG_ERROR("module dose not provided an valid entry");
         return scope.Escape(exports);
     }
 
@@ -948,7 +947,7 @@ Local<JSValueRef> ArkNativeEngine::RequireNapiForCtxEnv(JsiRuntimeCallInfo *info
     std::string modNameCstr = moduleName->ToString(ecmaVm);
     NapiModuleValidateCallback modCheckCb = moduleValidateCallback_.load();
     if (modCheckCb == nullptr) {
-        HILOG_ERROR("Cannot load native modules: module validation callback is null.");
+        HILOG_WARN("Cannot load native modules: module validation callback is null.");
         return scope.Escape(exports);
     }
     if (!modCheckCb(modNameCstr.c_str())) {
@@ -1005,10 +1004,10 @@ Local<JSValueRef> ArkNativeEngine::RequireInternal(JsiRuntimeCallInfo *info)
     if (module != nullptr && arkNativeEngine) {
         if (module->registerCallback == nullptr) {
             if (module->name != nullptr) {
-                HILOG_ERROR("requireInternal Init function is nullptr. module name: %{public}s",
+                HILOG_WARN("requireInternal Init function is nullptr. module name: %{public}s",
                     module->name);
             } else {
-                HILOG_ERROR("requireInternal Init function is nullptr.");
+                HILOG_WARN("requireInternal Init function is nullptr.");
             }
             return scope.Escape(exports);
         }
@@ -1454,12 +1453,12 @@ panda::Local<panda::ObjectRef> ArkNativeEngine::GetModuleFromName(
         napi_status status = napi_get_named_property(
             reinterpret_cast<napi_env>(this), nExport, instanceName.c_str(), &exportInstance);
         if (status != napi_ok) {
-            HILOG_ERROR("GetModuleFromName napi_get_named_property status != napi_ok");
+            HILOG_WARN("GetModuleFromName napi_get_named_property status != napi_ok");
         }
 
         status = napi_unwrap(reinterpret_cast<napi_env>(this), exportInstance, reinterpret_cast<void**>(instance));
         if (status != napi_ok) {
-            HILOG_ERROR("GetModuleFromName napi_unwrap status != napi_ok");
+            HILOG_WARN("GetModuleFromName napi_unwrap status != napi_ok");
         }
         exports = exportObj;
     }
@@ -1642,8 +1641,7 @@ napi_value ArkNativeEngine::CallFunction(
 
     Local<JSValueRef> value = funcObj->Call(vm_, thisObj, args.data(), argc);
     if (JSNApi::HasPendingException(vm_)) {
-        HILOG_ERROR("pending exception when js function called");
-        HILOG_ERROR("print exception info: ");
+        HILOG_ERROR("Pending exception when js function called. Print exception info: ");
         JSNApi::PrintExceptionInfo(vm_);
         return nullptr;
     }
@@ -1818,7 +1816,7 @@ std::string ArkNativeEngine::GetOhmurl(std::string path)
     path.erase(path.find_last_not_of(" ") + 1);
     bool ret = std::regex_match(path, reg);
     if (!ret) {
-        HILOG_ERROR("ArkNativeEngine:The module name doesn't comply with the naming rules");
+        HILOG_ERROR("The module name doesn't comply with the naming rules");
         return "";
     }
     std::string systemModule = path.substr(1);
@@ -1843,7 +1841,7 @@ Local<JSValueRef> ArkNativeEngine::NapiLoadNativeModule(std::string path)
 napi_value ArkNativeEngine::NapiLoadModule(const char* path)
 {
     if (path == nullptr) {
-        HILOG_ERROR("ArkNativeEngine:The module name is empty");
+        HILOG_ERROR("The module name is empty");
         return nullptr;
     }
     HILOG_INFO("ArkNativeEngine::NapiLoadModule path:%{public}s", path);
@@ -1894,7 +1892,7 @@ napi_value ArkNativeEngine::NapiLoadModuleWithInfo(const char* path, const char*
 napi_value ArkNativeEngine::NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info)
 {
     if (path == nullptr) {
-        HILOG_ERROR("ArkNativeEngine:The module name is empty");
+        HILOG_ERROR("The module name is empty");
         return nullptr;
     }
     panda::EscapeLocalScope scope(vm_);
@@ -1910,7 +1908,7 @@ napi_value ArkNativeEngine::NapiLoadModuleWithInfoForHybridApp(const char* path,
     }
 
     if (JSNApi::HasPendingException(vm_)) {
-        HILOG_WARN("ArkNativeEngine:NapiLoadModuleWithInfo failed.");
+        HILOG_WARN("Load module with info failed.");
         JSNApi::PrintExceptionInfo(vm_);
         JSNApi::GetAndClearUncaughtException(vm_); // clear exception here
         return JsValueFromLocalValue(scope.Escape(undefObj));
@@ -1965,7 +1963,7 @@ napi_value ArkNativeEngine::CreateInstance(napi_value constructor, napi_value co
     Local<JSValueRef> instance = value->Constructor(vm_, args.data(), argc);
     Local<ObjectRef> excep = JSNApi::GetUncaughtException(vm_);
     if (!excep.IsNull()) {
-        HILOG_ERROR("ArkNativeEngineImpl::CreateInstance occur Exception");
+        HILOG_ERROR("Occur exception");
         return nullptr;
     }
     return JsValueFromLocalValue(scope.Escape(instance));
@@ -2052,7 +2050,7 @@ void ArkNativeEngine::PostFinalizeTasks()
             delete asynWork;
         }, uv_qos_t(napi_qos_background));
         if (ret != 0) {
-            HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
+            HILOG_WARN("uv_queue_work fail ret '%{public}d'", ret);
             RunAsyncCallbacks(asyncFinalizers);
             delete asynWork;
             delete asyncFinalizers;
@@ -2093,7 +2091,7 @@ void ArkNativeEngine::PostFinalizeTasks()
         delete finalizersPack;
     }, uv_qos_t(napi_qos_background));
     if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
+        HILOG_WARN("uv_queue_work fail ret '%{public}d'", ret);
         panda::JsiNativeScope nativeScope(vm_);
         RunCallbacks(finalizersPack);
         delete syncWork;
@@ -2129,7 +2127,7 @@ void ArkNativeEngine::PostAsyncTask(AsyncNativeCallbacksPack *callBacksPack)
         delete finalizers;
     }, uv_qos_t(napi_qos_background));
     if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
+        HILOG_WARN("uv_queue_work fail ret '%{public}d'", ret);
         panda::JsiNativeScope nativeScope(vm_);
         RunCallbacks(callBacksPack);
         delete callBacksPack;
@@ -2149,7 +2147,7 @@ void ArkNativeEngine::PostTriggerGCTask(TriggerGCData& data)
             delete triggerGCData;
         }, uv_qos_t(napi_qos_user_initiated));
     if (ret != 0) {
-        HILOG_ERROR("uv_queue_work fail ret '%{public}d'", ret);
+        HILOG_WARN("uv_queue_work fail ret '%{public}d'", ret);
         RunCallbacks(triggerGCData);
         delete syncWork;
         delete triggerGCData;
@@ -2931,7 +2929,7 @@ bool DumpHybridStack(const EcmaVM* vm, std::string &stack, uint32_t ignore, int3
     if (unwinder->UnwindLocal(false, false, backtraceDeepth, skipedFrames)) {
         frames = unwinder->GetFrames();
     } else {
-        HILOG_ERROR("Failed to unwind local");
+        HILOG_WARN("Failed to unwind local");
     }
 
     for (auto &frame : frames) {
@@ -3022,7 +3020,6 @@ bool ArkNativeEngine::IsValidPandaFile(const char* path)
 bool ArkNativeEngine::IsValidScriptBuffer(uint8_t* scriptBuffer, size_t bufferSize)
 {
     if (scriptBuffer == nullptr) {
-        HILOG_ERROR("buffer is nullptr");
         return false;
     }
     constexpr size_t headerLen = sizeof(uint64_t);
