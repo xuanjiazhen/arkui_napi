@@ -642,3 +642,25 @@ HWTEST_F(JSVMTest, JSVMCreateEnvFromSnapshot001, TestSize.Level1)
     JSVM_Status status = OH_JSVM_CreateEnvFromSnapshot(vm, 0, &env2);
     ASSERT_EQ(status, JSVM_GENERIC_FAILURE);
 }
+
+HWTEST_F(JSVMTest, JSVMCloseHandleScopeUAF, TestSize.Level1)
+{
+    JSVM_HandleScope handle = nullptr;
+    JSVM_CALL(OH_JSVM_OpenHandleScope(env, &handle));
+
+    JSVM_Value jsSrc = nullptr;
+    JSVM_CALL(OH_JSVM_CreateStringUtf8(env, srcProf.c_str(), srcProf.size(), &jsSrc));
+
+    bool cacheRejected = true;
+    JSVM_Script script = nullptr;
+    JSVM_CALL(OH_JSVM_CompileScript(env, jsSrc, nullptr, 0, true, &cacheRejected, &script));
+
+    JSVM_CALL(OH_JSVM_RetainScript(env, script));
+    JSVM_CALL(OH_JSVM_ReleaseScript(env, script));
+
+    const int length = 32;
+    char* data = new((char *)script) char[length];
+    memset(data, 0, length);
+
+    JSVM_CALL(OH_JSVM_CloseHandleScope(env, handle));
+}
