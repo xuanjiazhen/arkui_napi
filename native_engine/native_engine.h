@@ -189,12 +189,6 @@ public:
     virtual void CancelCheckUVLoop();
 #endif
     virtual void* GetJsEngine();
-    virtual void SetInstanceId(int32_t id) {
-        instanceId_ = id;
-    };
-    virtual int32_t GetInstanceId() {
-        return instanceId_;
-    };
 
     virtual const EcmaVM* GetEcmaVm() const = 0;
     virtual const NativeEngine* GetParent() const = 0;
@@ -597,6 +591,13 @@ public:
     virtual napi_status SwitchContext() = 0;
 
     virtual napi_status DestroyContext() = 0;
+
+    virtual void SetInstanceId(int32_t id) {
+        instanceId_ = id;
+    };
+    virtual int32_t GetInstanceId() {
+        return instanceId_;
+    };
 
 private:
     void InitUvField();
