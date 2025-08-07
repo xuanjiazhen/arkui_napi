@@ -46,8 +46,13 @@ NativeAsyncWork::NativeAsyncWork(NativeEngine* engine,
                                  NativeAsyncCompleteCallback complete,
                                  const std::string &asyncResourceName,
                                  void* data)
-    : work_({ 0 }), engine_(engine), engineId_(engine->GetId()), execute_(execute), complete_(complete), data_(data)
+    : engine_(engine), engineId_(engine->GetId()), execute_(execute), complete_(complete), data_(data)
 {
+#ifdef PANDA_TARGET_MACOS
+    work_ = {};
+#else
+    work_ = { 0 };
+#endif
     work_.data = this;
     (void)asyncResourceName;
 #ifdef ENABLE_HITRACE
