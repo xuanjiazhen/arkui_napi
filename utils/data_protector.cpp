@@ -15,7 +15,7 @@
 
 #include "data_protector.h"
 
-#if defined(NAPI_ENABLE_DATA_PROTECT)
+#if defined(NAPI_ENABLE_DATA_PROTECT) && !defined(PREVIEW) && !defined(SIMULATOR)
 #include <sys/auxv.h>
 #include <asm/hwcap.h>
 

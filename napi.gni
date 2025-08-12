@@ -13,8 +13,6 @@
 
 napi_path = "//foundation//arkui/napi"
 ets_runtime_path = "//arkcompiler/ets_runtime"
-# Set is enable data_protector
-enabled_data_protector = false
 
 napi_sources = [
   "callback_scope_manager/native_callback_scope_manager.cpp",
@@ -62,9 +60,13 @@ declare_args() {
 
   # Set pgo profdata path
   napi_feature_pgo_path = ""
+
+  # Set is enable data_protector
+  napi_enable_data_protector = false
+  enabled_data_protector = false
 }
 
-if (defined(target_cpu) && target_cpu == "arm64" &&
+if (defined(target_cpu) && target_cpu == "arm64" && napi_enable_data_protector &&
     !(defined(is_arkui_x) && is_arkui_x) && is_ohos && !is_emulator) {
   enabled_data_protector = true
 }
