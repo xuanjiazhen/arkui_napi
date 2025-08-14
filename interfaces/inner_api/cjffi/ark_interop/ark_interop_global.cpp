@@ -140,7 +140,7 @@ void GlobalManager::AsyncDisposer(ARKTS_Env env, void* data)
 {
     GlobalManager* current = nullptr;
     managersMutex_.Acquire();
-    auto exist = managers_.find(reinterpret_cast<EcmaVM*>(data));
+    auto exist = managers_.find(reinterpret_cast<EcmaVM*>(env));
     if (exist != managers_.end()) {
         current = exist->second;
     }

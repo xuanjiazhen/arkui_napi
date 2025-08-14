@@ -76,6 +76,8 @@ void ARKTS_SetCJModuleCallback(ARKTS_ModuleCallbacks* callback)
 // export but only for internal
 panda::JSValueRef* ARKTS_LoadModule(ARKTS_Env env, const char* dllName)
 {
+    static std::mutex moduleLoadMutex;
+    std::lock_guard lock(moduleLoadMutex);
     LOGD("ARKTS_LoadCJModule start: %{public}s", dllName);
     // HandleScope
     auto scope = ARKTS_OpenScope(env);
