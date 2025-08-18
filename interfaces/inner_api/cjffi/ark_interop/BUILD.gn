@@ -94,7 +94,10 @@ ohos_shared_library("ark_interop") {
 
     # macro in runtime_core in full repo will effect build napi
     if (ohos_indep_compiler_enable) {
-      external_deps += [ "runtime_core:libarkbase_static" ]
+      external_deps += [ 
+        "runtime_core:libarkbase_static",
+        "runtime_core:common_interfaces_header"
+      ]
     }
   }
 
