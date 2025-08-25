@@ -143,7 +143,7 @@ NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, voi
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
     CHECK_AND_CONVERT_TO_OBJECT(env, vm, nativeValue, nativeObject);
-    Local<panda::StringRef> key = panda::StringRef::GetProxyNapiWrapperString(vm);
+    Local<panda::StringRef> key = panda::StringRef::GetSharedReferencePointer(vm);
 
     Local<panda::JSValueRef> val = {};
     if (UNLIKELY(nativeValue->IsProxy(vm))) {
@@ -154,11 +154,12 @@ NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, voi
         val = property.GetValue(vm);
     }
 
-    *result = nullptr;
-    if (val->IsObject(vm)) {
-        Local<panda::ObjectRef> ext(val);
-        auto ref = reinterpret_cast<NativeReference*>(ext->GetNativePointerField(vm, 0));
-        *result = ref != nullptr ? ref->GetData() : nullptr;
+    bool isNumber = false;
+    auto sharedReferencePointer = reinterpret_cast<void*>(val->GetValueInt64(isNumber));
+    if (isNumber) {
+        *result = sharedReferencePointer;
+    } else {
+        *result = nullptr;
     }
 
     return GET_RETURN_STATUS(env);
@@ -308,6 +309,12 @@ NAPI_EXTERN napi_status napi_mark_attach_with_xref(napi_env env,
         reinterpret_cast<void*>(data), nativeBindingSize);
     panda::PropertyAttribute attr(object, true, false, true);
     nativeObject->DefineProperty(vm, key, attr);
+
+    Local<panda::NumberRef> sharedReferencePointer =
+        panda::NumberRef::New(vm, static_cast<int64_t>(reinterpret_cast<uintptr_t>(attach_data)));
+    panda::PropertyAttribute sharedReferencePointerAttr(sharedReferencePointer, true, false, true);
+    nativeObject->DefineProperty(vm, panda::StringRef::GetSharedReferencePointer(vm), sharedReferencePointerAttr);
+
     return GET_RETURN_STATUS(env);
 }
 
@@ -389,6 +396,12 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
         reinterpret_cast<void*>(data), nativeBindingSize);
     panda::PropertyAttribute attr(object, true, false, true);
     nativeObject->DefineProperty(vm, key, attr);
+
+    Local<panda::NumberRef> sharedReferencePointer =
+        panda::NumberRef::New(vm, static_cast<int64_t>(reinterpret_cast<uintptr_t>(native_object)));
+    panda::PropertyAttribute sharedReferencePointerAttr(sharedReferencePointer, true, false, true);
+    nativeObject->DefineProperty(vm, panda::StringRef::GetSharedReferencePointer(vm), sharedReferencePointerAttr);
+
     return GET_RETURN_STATUS(env);
 }
 
