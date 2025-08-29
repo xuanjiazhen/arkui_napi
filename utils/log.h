@@ -26,6 +26,12 @@
 
 #define __FILENAME__ strrchr(__FILE__, '/') + 1
 
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+
 #if defined(MAC_PLATFORM) || defined(WINDOWS_PLATFORM) || defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM) || \
     defined(LINUX_PLATFORM)
 enum class LogLevel : uint32_t {
