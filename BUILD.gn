@@ -13,6 +13,7 @@
 
 import("napi.gni")
 
+
 if (ark_standalone_build) {
   import("$build_root/ark.gni")
 } else {
