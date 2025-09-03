@@ -100,6 +100,7 @@ protected:
     NativeReference* ref_ = nullptr;
     size_t maxQueueSize_ = 0;
     size_t threadCount_ = 0;
+    size_t waitingCount_ { 0 };
     void* finalizeData_ = nullptr;
     NativeFinalize finalizeCallback_ = nullptr;
     void* context_ = nullptr;

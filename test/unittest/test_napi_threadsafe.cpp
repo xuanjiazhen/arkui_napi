@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 
+#include "engine/test.h"
 #include "test.h"
 
 #include <chrono>
+#include <cstdint>
+#include <mutex>
 #include <thread>
 #include <uv.h>
 
@@ -76,10 +79,10 @@ static uv_thread_t g_uvThreadSecondary;
 static uv_thread_t g_uvTheads2;
 static uv_thread_t g_uvTheads3;
 static int32_t g_sendDatas[SEND_DATAS_LENGTH];
-static int32_t  g_callSuccessCount = 0;
-static int32_t  g_callSuccessCountJS = 0;
-static int32_t  g_callSuccessCountJSFour = 0;
-static int32_t  g_callDepth = 4;
+static int32_t g_callSuccessCount = 0;
+static int32_t g_callSuccessCountJS = 0;
+static int32_t g_callSuccessCountJSFour = 0;
+static int32_t g_callDepth = 4;
 bool acquireFlag = false;
 static int32_t g_receiveCnt = 0;
 static bool g_isTailA = false;
@@ -306,7 +309,6 @@ static void TsFuncDataSourceThreadCountTotal(void* data)
     // set send data
     g_sendData = SEND_DATA_TEST;
     if (acquireFlag) {
-        std::cout<<"acquireFlag  is true"<<std::endl;
         status = napi_acquire_threadsafe_function(func);
         EXPECT_EQ(status, napi_ok);
     }
@@ -324,7 +326,7 @@ static void TsFuncDataSourceThreadMulti(void* data)
     // expect thread id not equal
     EXPECT_NE(gettid(), g_mainTid);
 
-    napi_threadsafe_function func =  (napi_threadsafe_function)data;
+    napi_threadsafe_function func = (napi_threadsafe_function)data;
     void* context = nullptr;
 
     auto status = napi_get_threadsafe_function_context(func, &context);
@@ -388,16 +390,16 @@ static void TsFuncThreadInternal(napi_env env,
     g_jsDataInternal.blockOnFull = (block ? napi_tsfn_blocking : napi_tsfn_nonblocking);
 
     auto status = napi_create_threadsafe_function(env,
-                                                  nullptr,
-                                                  nullptr,
-                                                  resourceName,
-                                                  MAX_QUEUE_SIZE,
-                                                  THREAD_COUNT,
-                                                  &uvThread,
-                                                  TsFuncFinalJoinThread,
-                                                  &g_jsDataInternal,
-                                                  cb,
-                                                  &tsFunc);
+                                                        nullptr,
+                                                        nullptr,
+                                                        resourceName,
+                                                        MAX_QUEUE_SIZE,
+                                                        THREAD_COUNT,
+                                                        &uvThread,
+                                                        TsFuncFinalJoinThread,
+                                                        &g_jsDataInternal,
+                                                        cb,
+                                                        &tsFunc);
     EXPECT_EQ(status, napi_ok);
 
     if (uv_thread_create(&uvThread, TsFuncDataSourceThreadMulti, tsFunc) != 0) {
@@ -1290,7 +1292,6 @@ HWTEST_F(NapiThreadsafeTest, ThreadsafeWithPriorityTest009, testing::ext::TestSi
     HILOG_INFO("ThreadsafeWithPriorityTest009 end");
 }
 
-
 /**
  * @tc.name: ThreadsafeWithPriorityTest010
  * @tc.desc: Test napi_call_threadsafe_function_with_priority.
@@ -1442,7 +1443,6 @@ HWTEST_F(NapiThreadsafeTest, ThreadsafeTest012, testing::ext::TestSize.Level1)
     HILOG_INFO("Threadsafe_Test_1200 end");
 }
 
-
 struct CallbackCountData {
     napi_threadsafe_function tsfn;
     napi_async_work work;
@@ -1505,46 +1505,47 @@ HWTEST_F(NapiThreadsafeTest, ThreadsafeTest013, testing::ext::TestSize.Level1)
     HILOG_INFO("ThreadsafeTest013 end");
 }
 
-struct CallbackCountDataThreadsafe014 {
-    napi_threadsafe_function tsfn;
-    napi_async_work work;
-};
-
-static void callJSCallBackThreadsafe014(napi_env env, napi_value tsfn_cb, void* context, void* data)
-{
-    CallbackCountDataThreadsafe014 *callbackData = reinterpret_cast<CallbackCountDataThreadsafe014 *>(data);
-    napi_release_threadsafe_function(callbackData->tsfn, napi_tsfn_release);
-    return;
-}
-
-static void finalizeCallBackThreadsafe014(napi_env env, void* finalizeData, void* hint)
-{
-    CallbackCountDataThreadsafe014 *callbackData = reinterpret_cast<CallbackCountDataThreadsafe014 *>(finalizeData);
-    callbackData->tsfn = nullptr;
-}
-
-static void executeWorkThreadsafe014(napi_env env, void *data)
-{
-    CallbackCountDataThreadsafe014 *callbackData = reinterpret_cast<CallbackCountDataThreadsafe014 *>(data);
-    napi_call_threadsafe_function(callbackData->tsfn, (void *)callbackData, napi_tsfn_nonblocking);
-    std::this_thread::sleep_for(std::chrono::seconds(INT_TWO));
-}
-
 HWTEST_F(NapiThreadsafeTest, ThreadsafeTest014, testing::ext::TestSize.Level1)
 {
-    HILOG_INFO("ThreadsafeTest014 start");
+    struct CallbackCountData {
+        napi_threadsafe_function tsfn;
+        napi_async_work work;
+        std::mutex mutex;
+        std::condition_variable cond;
+    };
+
+    UVLoopRunner runner(engine_);
     napi_env env = (napi_env)engine_;
-    CallbackCountDataThreadsafe014 *callbackData = new CallbackCountDataThreadsafe014();
+    CallbackCountData* callbackData = new CallbackCountData();
     napi_value resourceName = 0;
     napi_create_string_latin1(env, __func__, NAPI_AUTO_LENGTH, &resourceName);
 
-    auto status = napi_create_threadsafe_function(env, nullptr, nullptr, resourceName, 0, 1,
-        callbackData, finalizeCallBackThreadsafe014, callbackData, callJSCallBackThreadsafe014, &callbackData->tsfn);
+    auto status = napi_create_threadsafe_function(
+        env, nullptr, nullptr, resourceName, 0, 1, callbackData,
+        [](napi_env env, void* finalizeData, void* hint) {
+            CallbackCountData* callbackData =
+                reinterpret_cast<CallbackCountData*>(finalizeData);
+            callbackData->tsfn = nullptr;
+            callbackData->cond.notify_one();
+        },
+        callbackData,
+        [](napi_env env, napi_value tsfn_cb, void* context, void* data) {
+            CallbackCountData* callbackData = reinterpret_cast<CallbackCountData*>(data);
+            napi_release_threadsafe_function(callbackData->tsfn, napi_tsfn_release);
+        },
+        &callbackData->tsfn);
     EXPECT_EQ(status, napi_ok);
 
-    napi_create_async_work(env, nullptr, resourceName, executeWorkThreadsafe014,
+    napi_create_async_work(
+        env, nullptr, resourceName,
+        [](napi_env env, void* data) {
+            CallbackCountData* callbackData = reinterpret_cast<CallbackCountData*>(data);
+            std::unique_lock<std::mutex> lock(callbackData->mutex);
+            napi_call_threadsafe_function(callbackData->tsfn, (void*)callbackData, napi_tsfn_nonblocking);
+            callbackData->cond.wait(lock);
+        },
         [](napi_env env, napi_status status, void* data) {
-            CallbackCountDataThreadsafe014 *callbackData = reinterpret_cast<CallbackCountDataThreadsafe014 *>(data);
+            CallbackCountData* callbackData = reinterpret_cast<CallbackCountData*>(data);
             EXPECT_EQ(callbackData->tsfn, nullptr);
             napi_delete_async_work(env, callbackData->work);
             callbackData->work = nullptr;
@@ -1552,5 +1553,45 @@ HWTEST_F(NapiThreadsafeTest, ThreadsafeTest014, testing::ext::TestSize.Level1)
         },
         callbackData, &callbackData->work);
     napi_queue_async_work(env, callbackData->work);
-    HILOG_INFO("ThreadsafeTest014 end");
+    runner.Run();
+}
+
+/**
+ * @tc.name: ThreadsafeTest015
+ * @tc.desc: Test cal tsfn more than max queue size
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiThreadsafeTest, ThreadsafeTest015, testing::ext::TestSize.Level1)
+{
+    UVLoopRunner runner(engine_);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    std::atomic<uint32_t>* extraQueuedCounts = new std::atomic<uint32_t> { 0 };
+    napi_threadsafe_function tsfn = nullptr;
+    ASSERT_CHECK_CALL(napi_create_threadsafe_function(
+        env, nullptr, nullptr, GetNapiTCName(env), MAX_QUEUE_SIZE, 1, nullptr, nullptr, nullptr,
+        [](napi_env, napi_value, void*, void*) {}, &tsfn));
+    // It fulled queue of tsfn
+    for (uint32_t i = 0; i < MAX_QUEUE_SIZE; i++) {
+        ASSERT_CHECK_CALL(napi_call_threadsafe_function(tsfn, nullptr, napi_tsfn_blocking));
+    }
+
+    constexpr uint32_t EXTRA_TASK_SIZE = MAX_QUEUE_SIZE * 2;
+    for (uint32_t i = 0; i < EXTRA_TASK_SIZE; i++) {
+        std::thread(
+            [](napi_threadsafe_function tsfn, std::atomic<uint32_t>* counter) {
+                ASSERT_CHECK_CALL(napi_call_threadsafe_function(tsfn, nullptr, napi_tsfn_blocking));
+                if (++(*counter) == EXTRA_TASK_SIZE) {
+                    // release tsfn after all task queued
+                    ASSERT_CHECK_CALL(napi_release_threadsafe_function(tsfn, napi_tsfn_release));
+                }
+            },
+            tsfn, extraQueuedCounts)
+            .detach();
+    }
+
+    // Run loop for execution and notify.
+    runner.Run();
+    // It tests whether call threads can call finish after queue is fulled
+    ASSERT_EQ(extraQueuedCounts->load(), EXTRA_TASK_SIZE);
+    delete extraQueuedCounts;
 }

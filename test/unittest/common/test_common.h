@@ -15,8 +15,11 @@
 
 #ifndef FOUNDATION_ACE_NAPI_TEST_UNITTEST_TEST_COMMON_H
 #define FOUNDATION_ACE_NAPI_TEST_UNITTEST_TEST_COMMON_H
+
 #include "gtest/gtest.h"
 #include "utils/log.h"
+#include "napi/native_api.h"
+
 #define ASSERT_CHECK_CALL(call)   \
     {                             \
         ASSERT_EQ(call, napi_ok); \
