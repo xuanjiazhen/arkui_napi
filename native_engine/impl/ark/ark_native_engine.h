@@ -454,6 +454,9 @@ public:
 
     napi_status DestroyContext() override;
 
+    static Local<panda::FunctionRef> NapiCreateClassFunctionWithoutSwitchState(napi_env env, std::string &className,
+        NapiFunctionInfo* funcInfo, size_t propCount, const NapiPropertyDescriptor* properties);
+
 private:
     // ArkNativeEngine constructor for multi-context
     ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<JSValueRef>& context);

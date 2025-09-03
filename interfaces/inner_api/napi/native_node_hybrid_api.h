@@ -101,6 +101,18 @@ NAPI_EXTERN napi_status napi_serialize_hybrid(napi_env env,
                                             napi_finalize finalize_cb,
                                             proxy_object_attach_cb proxy_cb,
                                             napi_ref* result);
+
+/**
+ * This napi interface will not transfer state, as the result, running state should be guaranteed by the caller.
+ */
+NAPI_EXTERN napi_status napi_define_class_without_switch_state(napi_env env,
+                                                               const char* utf8name,
+                                                               size_t length,
+                                                               napi_callback constructor,
+                                                               void* data,
+                                                               size_t property_count,
+                                                               const napi_property_descriptor* properties,
+                                                               napi_value* result);
 #endif // PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback);
 
