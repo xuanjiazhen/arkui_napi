@@ -109,7 +109,7 @@ private:
 class GlobalManager {
 public:
     static void Dispose(EcmaVM* vm, uintptr_t handle);
-    static void AsyncDisposer(ARKTS_Env env, void* data);
+    static void AsyncDisposer(ARKTS_Env env, int64_t data);
     static void AddManager(ARKTS_Env env);
     static void RemoveManager(ARKTS_Env env);
 
@@ -136,7 +136,7 @@ GlobalManager::GlobalManager(EcmaVM* vm)
     vm_ = vm;
 }
 
-void GlobalManager::AsyncDisposer(ARKTS_Env env, void* data)
+void GlobalManager::AsyncDisposer(ARKTS_Env env, int64_t data)
 {
     GlobalManager* current = nullptr;
     managersMutex_.Acquire();
@@ -145,7 +145,7 @@ void GlobalManager::AsyncDisposer(ARKTS_Env env, void* data)
         current = exist->second;
     }
     managersMutex_.Release();
-    if (!current || data != current) {
+    if (!current || data != reinterpret_cast<uintptr_t>(current)) {
         return;
     }
     auto manager = (GlobalManager*)data;
@@ -186,7 +186,7 @@ void GlobalManager::Dispose(EcmaVM* vm, uintptr_t handle)
     }
     manager->handleMutex_.Release();
     if (needSchedule) {
-        ARKTSInner_CreateAsyncTask(P_CAST(vm, ARKTS_Env), AsyncDisposer, manager);
+        ARKTSInner_CreateAsyncTask(P_CAST(vm, ARKTS_Env), AsyncDisposer, reinterpret_cast<uintptr_t>(manager));
     }
 }
 
@@ -248,7 +248,7 @@ ARKTS_Global ARKTS_CreateGlobal(ARKTS_Env env, ARKTS_Value value)
 
 ARKTS_Value ARKTS_GetGlobalValue(ARKTS_Global global)
 {
-    ARKTS_ASSERT_P(global, "global is null");
+    ARKTS_ASSERT_U(global, "global is null");
 
     return global->GetValue();
 }
@@ -291,8 +291,8 @@ constexpr uint64_t GLOBAL_MASK = 0x0000'FFFF'FFFF'FFFF;
 
 ARKTS_Value ARKTS_GlobalToValue(ARKTS_Env env, ARKTS_Global global)
 {
-    ARKTS_ASSERT_P(env, "env is null");
-    ARKTS_ASSERT_P(global, "global is null");
+    ARKTS_ASSERT_U(env, "env is null");
+    ARKTS_ASSERT_U(global, "global is null");
 
     auto value = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(global)) & GLOBAL_MASK;
     value = value | GLOBAL_TAG;
