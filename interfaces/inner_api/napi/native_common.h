@@ -100,7 +100,7 @@
         (name), nullptr, (func), nullptr, nullptr, nullptr, napi_default, nullptr \
     }
 
-// W-writable E-enumerable C-configurable napi_writable
+// W-writable E-enumerable C-configurable napi_writable is WEC
 #define DECLARE_NAPI_WRITABLE_FUNCTION(name, func)                                 \
     {                                                                              \
         (name), nullptr, (func), nullptr, nullptr, nullptr, napi_writable, nullptr \
