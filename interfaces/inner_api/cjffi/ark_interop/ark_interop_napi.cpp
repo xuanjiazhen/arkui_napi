@@ -291,6 +291,8 @@ ARKTS_Value ARKTS_CreateFunc(ARKTS_Env env, int64_t lambdaId)
 
 bool ARKTS_IsClass(ARKTS_Env env, ARKTS_Value value)
 {
+    ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto tag = BIT_CAST(value, JSValueRef);
     if (!tag.IsHeapObject()) {
         return false;
@@ -411,6 +413,7 @@ ARKTS_Value ARKTS_CreateArray(ARKTS_Env env, uint32_t size)
 ARKTS_Value ARKTS_CreateArrayWithInit(ARKTS_Env env, uint32_t size, ARKTS_Value* data)
 {
     ARKTS_ASSERT_P(env, "env is null");
+    ARKTS_ASSERT_P(!size || data, "data is null");
     auto vm = P_CAST(env, EcmaVM*);
 
     auto result = ArrayRef::New(vm, size);
@@ -468,6 +471,7 @@ ARKTS_Value ARKTS_GetElement(ARKTS_Env env, ARKTS_Value array, uint32_t index)
 bool ARKTS_IsArray(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is NULL");
+    ARKTS_ASSERT_F(value, "value is null");
     auto v = BIT_CAST(value, JSValueRef);
     if (!v.IsHeapObject()) {
         return false;
@@ -491,6 +495,7 @@ ARKTS_Value ARKTS_CreateArrayBufferWithData(ARKTS_Env env, void* buffer, int32_t
 {
     ARKTS_ASSERT_P(env, "env is null");
     ARKTS_ASSERT_P(length >= 0, "length must be non-negative");
+    ARKTS_ASSERT_P(buffer, "buffer is null");
 
     auto vm = P_CAST(env, EcmaVM*);
     auto result = ArrayBufferRef::New(vm, buffer, length, ARKTSInner_CJArrayBufferDeleter,
@@ -502,6 +507,7 @@ ARKTS_Value ARKTS_CreateArrayBufferWithData(ARKTS_Env env, void* buffer, int32_t
 bool ARKTS_IsArrayBuffer(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto tag = BIT_CAST(value, JSValueRef);
     if (!tag.IsHeapObject()) {
         return false;
@@ -553,6 +559,10 @@ void* ARKTS_GetArrayBufferRawPtr(ARKTS_Env env, ARKTS_Value value)
 
 int32_t ARKTS_ArrayBufferReadBytes(ARKTS_Env env, ARKTS_Value buffer, void* dest, int32_t count)
 {
+    ARKTS_ASSERT_I(env, "env is null");
+    ARKTS_ASSERT_I(buffer, "buffer is null");
+    ARKTS_ASSERT_I(dest, "dest is null");
+
     auto src = ARKTS_GetArrayBufferRawPtr(env, buffer);
     auto srcSize = ARKTS_GetArrayBufferLength(env, buffer);
     auto targetSize = std::min(srcSize, count);
@@ -576,6 +586,7 @@ ARKTS_Value ARKTS_CreateExternal(ARKTS_Env env, void* data)
 bool ARKTS_IsExternal(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto prime = BIT_CAST(value, JSValueRef);
     if (!prime.IsHeapObject()) {
         return false;
@@ -643,6 +654,7 @@ void ARKTS_PromiseCapabilityReject(ARKTS_Env env, ARKTS_Promise prom, ARKTS_Valu
 bool ARKTS_IsPromise(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto v = BIT_CAST(value, JSValueRef);
     if (!v.IsHeapObject()) {
         return false;

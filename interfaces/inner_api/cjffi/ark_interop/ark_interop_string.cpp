@@ -44,6 +44,8 @@ ARKTS_Value ARKTS_CreateUtf8(ARKTS_Env env, const char* value, int32_t size)
 
 bool ARKTS_IsString(ARKTS_Env env, ARKTS_Value value)
 {
+    ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto v = BIT_CAST(value, JSValueRef);
     if (v.IsHole() || !v.IsHeapObject()) {
         return false;
@@ -65,6 +67,7 @@ int32_t ARKTS_GetValueUtf8Size(ARKTS_Env env, ARKTS_Value value)
 int32_t ARKTS_GetValueUtf8(ARKTS_Env env, ARKTS_Value value, int32_t capacity, char* buffer)
 {
     ARKTS_ASSERT_I(ARKTS_IsString(env, value), "not a string");
+    ARKTS_ASSERT_I(buffer, "buffer is null");
     auto vm = P_CAST(env, EcmaVM*);
     auto v = BIT_CAST(value, Local<StringRef>);
     return v->WriteUtf8(vm, buffer, capacity, true);
