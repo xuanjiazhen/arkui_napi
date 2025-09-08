@@ -291,6 +291,8 @@ ARKTS_Value ARKTS_CreateFunc(ARKTS_Env env, int64_t lambdaId)
 
 bool ARKTS_IsClass(ARKTS_Env env, ARKTS_Value value)
 {
+    ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto tag = BIT_CAST(value, JSValueRef);
     if (!tag.IsHeapObject()) {
         return false;
@@ -468,6 +470,7 @@ ARKTS_Value ARKTS_GetElement(ARKTS_Env env, ARKTS_Value array, uint32_t index)
 bool ARKTS_IsArray(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is NULL");
+    ARKTS_ASSERT_F(value, "value is null");
     auto v = BIT_CAST(value, JSValueRef);
     if (!v.IsHeapObject()) {
         return false;
@@ -502,6 +505,7 @@ ARKTS_Value ARKTS_CreateArrayBufferWithData(ARKTS_Env env, void* buffer, int32_t
 bool ARKTS_IsArrayBuffer(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto tag = BIT_CAST(value, JSValueRef);
     if (!tag.IsHeapObject()) {
         return false;
@@ -576,6 +580,7 @@ ARKTS_Value ARKTS_CreateExternal(ARKTS_Env env, void* data)
 bool ARKTS_IsExternal(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto prime = BIT_CAST(value, JSValueRef);
     if (!prime.IsHeapObject()) {
         return false;
@@ -643,6 +648,7 @@ void ARKTS_PromiseCapabilityReject(ARKTS_Env env, ARKTS_Promise prom, ARKTS_Valu
 bool ARKTS_IsPromise(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
+    ARKTS_ASSERT_F(value, "value is null");
     auto v = BIT_CAST(value, JSValueRef);
     if (!v.IsHeapObject()) {
         return false;
