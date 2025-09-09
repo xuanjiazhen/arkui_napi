@@ -485,7 +485,11 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                                                                                      topScope_(vm),
                                                                                      isLimitedWorker_(isLimitedWorker),
                                                                                      isMainEnvContext_(true)
-{
+{   
+    if (vm == nullptr) {
+        HILOG_ERROR("ArkNativeEngine:Failed to initialize vm");
+        return;
+    }
     HILOG_INFO("ArkNativeEngine is created, id %{public}" PRIu64, GetId());
 
     JSNApi::SetEnv(vm, this);
