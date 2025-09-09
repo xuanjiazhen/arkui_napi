@@ -486,7 +486,6 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
                                                                                      isLimitedWorker_(isLimitedWorker),
                                                                                      isMainEnvContext_(true)
 {   
-
     if (vm == nullptr) {
         HILOG_ERROR("ArkNativeEngine:Failed to initialize vm");
         return;
