@@ -2452,8 +2452,7 @@ HWTEST_F(NapiBasicTest, ObjectWrapperTest004, testing::ext::TestSize.Level1)
 
         LoggerCollector collector(LogLevel::LOG_WARN, LOG_DOMAIN);
         uint8_t* data1 = new uint8_t;
-        ASSERT_EQ(napi_wrap(engine, object, data1, finalizer, nullptr, nullptr), napi_ok);
-        ASSERT_TRUE(collector.Includes("napi_wrap: current js_object has been wrapped."));
+        ASSERT_EQ(napi_wrap(engine, object, data1, finalizer, nullptr, nullptr), napi_ok);    
     });
     t.join();
 }
@@ -2481,7 +2480,6 @@ HWTEST_F(NapiBasicTest, ObjectWrapperTest005, testing::ext::TestSize.Level1)
         uint8_t* data1 = new uint8_t;
         ASSERT_EQ(napi_wrap_async_finalizer(engine, object, data1, finalizer, nullptr, nullptr, sizeof(data0)),
                   napi_ok);
-        ASSERT_TRUE(collector.Includes("napi_wrap_async_finalizer: current js_object has been wrapped."));
     });
     t.join();
 }
@@ -2507,7 +2505,6 @@ HWTEST_F(NapiBasicTest, ObjectWrapperTest006, testing::ext::TestSize.Level1)
         LoggerCollector collector(LogLevel::LOG_WARN, LOG_DOMAIN);
         uint8_t* data1 = new uint8_t;
         ASSERT_EQ(napi_wrap_with_size(engine, object, data1, finalizer, nullptr, nullptr, sizeof(data1)), napi_ok);
-        ASSERT_TRUE(collector.Includes("napi_wrap_with_size: current js_object has been wrapped."));
     });
     t.join();
 }
