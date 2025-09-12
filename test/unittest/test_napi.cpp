@@ -14624,7 +14624,11 @@ static napi_value NewFunc(napi_env env, napi_callback_info info)
     return num;
 }
 
-
+/**
+ * @tc.name: NapiFuncWritableTest001
+ * @tc.desc: Test interface of napi_create_function with writable property
+ * @tc.type: FUNC
+ */
 HWTEST_F(NapiBasicTest, NapiFuncWritableTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = (napi_env)engine_;
