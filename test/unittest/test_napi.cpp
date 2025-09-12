@@ -14623,7 +14623,6 @@ static napi_value NewFunc(napi_env env, napi_callback_info info)
     napi_create_int32(env, 42, &num);
     return num;
 }
-
 /**
  * @tc.name: NapiFuncWritableTest001
  * @tc.desc: Test interface of napi_create_function with writable property
