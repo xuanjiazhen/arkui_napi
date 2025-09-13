@@ -147,7 +147,7 @@ NAPI适合封装IO、CPU密集型、OS底层等能力并对外暴露JS接口，�
 我们要实现的JS接口原型是：
 
 ```
-function getAppName(): string;
+function getAppName(): Promise<string>;
 ```
 
 以下是实现源码：
@@ -180,7 +180,7 @@ napi_value JSGetAppName(napi_env env, napi_callback_info info) {
 
     napi_value resourceName;
     napi_create_string_latin1(env, "GetAppName", NAPI_AUTO_LENGTH, &resourceName);
-    // 创建异步任务队列
+    // 创建异步任务并加入队列
     napi_create_async_work(
         env, nullptr, resourceName,
         // 异步任务的回调
