@@ -1777,12 +1777,6 @@ NativeTypedArrayType ArkNativeEngine::GetTypedArrayType(panda::Local<panda::Type
         thisType = NATIVE_UINT32_ARRAY;
     } else if (typedArray->IsFloat32Array(vm_)) {
         thisType = NATIVE_FLOAT32_ARRAY;
-    } else if (typedArray->IsFloat64Array(vm_)) {
-        thisType = NATIVE_FLOAT64_ARRAY;
-    } else if (typedArray->IsBigInt64Array(vm_)) {
-        thisType = NATIVE_BIGINT64_ARRAY;
-    } else if (typedArray->IsBigUint64Array(vm_)) {
-        thisType = NATIVE_BIGUINT64_ARRAY;
     }
 
     return thisType;
