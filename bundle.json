@@ -124,6 +124,9 @@
                       ]
                     },
                     "name": "//foundation/arkui/napi:napi_packages"
+                  },
+                  {
+                    "name": "//foundation/arkui/napi:napi_node_header"
                   }
             ],
             "test": [

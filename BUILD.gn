@@ -241,6 +241,15 @@ if (is_arkui_x) {
     part_name = "napi"
   }
 } else {
+  ohos_static_library("napi_node_header") {
+    if (!ark_standalone_build) {
+      public_external_deps = [ "node:node_header_notice" ]
+    } else {
+      external_deps += [ "node:node_header_notice" ]
+    }
+    subsystem_name = "arkui"
+    part_name = "napi"
+  }
   ohos_shared_library("ace_napi") {
     stack_protector_ret = false
     deps = [ ":ace_napi_static" ]
