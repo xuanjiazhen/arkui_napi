@@ -309,6 +309,7 @@ if (!ark_standalone_build) {
     innerapi_tags = [ "platformsdk" ]
     subsystem_name = "arkui"
     part_name = "napi"
+    relative_install_dir = "ndk"
   }
 
   ohos_source_set("cj_bind_ffi_source") {
