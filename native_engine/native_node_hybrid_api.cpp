@@ -330,6 +330,7 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_value js_object,
                                             void* native_object,
                                             napi_finalize finalize_cb,
+                                            proxy_object_attach_cb proxy_cb,
                                             napi_ref* result)
 {
     NAPI_PREAMBLE(env);
@@ -352,9 +353,22 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
     // Create strong reference now, will update to weak reference after interop support
     ref = engine->CreateXRefReference(js_object, 1, false, callback, native_object);
     *reference = ref;
+    panda::JSNApi::XRefBindingInfo* data = panda::JSNApi::XRefBindingInfo::CreateNewInstance();
+    if (data == nullptr) {
+        HILOG_ERROR("data is nullptr");
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+    data->attachXRefFunc = reinterpret_cast<void*>(proxy_cb);
+    data->attachXRefData = native_object;
     object->SetNativePointerFieldCount(vm, 1);
-    object->SetNativePointerField(vm, 0, ref, nullptr, nullptr, nativeBindingSize);
-    PropertyAttribute attr(object, true, false, true);
+    object->SetNativePointerField(
+        vm, 0, ref,
+        [](void* env, void* data, void* info) {
+            panda::JSNApi::XRefBindingInfo* externalInfo = reinterpret_cast<panda::JSNApi::XRefBindingInfo*>(info);
+            delete externalInfo;
+        },
+        reinterpret_cast<void*>(data), nativeBindingSize);
+    panda::PropertyAttribute attr(object, true, false, true);
     nativeObject->DefineProperty(vm, key, attr);
     return GET_RETURN_STATUS(env);
 }
