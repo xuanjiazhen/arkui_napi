@@ -379,6 +379,7 @@ panda::Local<panda::JSValueRef> NapiDefineSendableClass(napi_env env,
     NapiFunctionInfo* funcInfo = NapiFunctionInfo::CreateNewInstance();
     if (funcInfo == nullptr) {
         HILOG_FATAL("funcInfo is nullptr");
+        HILOG_FATAL("test for gitcode push");
         return JSValueRef::Undefined(vm);
     }
     funcInfo->callback = callback;
