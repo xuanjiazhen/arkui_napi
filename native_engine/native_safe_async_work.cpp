@@ -337,9 +337,9 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
     TryCatch tryCatch(reinterpret_cast<napi_env>(engine_));
 
     bool isValidTraceId = SaveAndSetTraceId();
+    uv_call_specify_task(engine_->GetUVLoop());
     while (size > 0) {
         data = queue_.front();
-
         // when queue is full, notify send.
         if (size == maxQueueSize_ && maxQueueSize_ > 0) {
             condition_.notify_one();
