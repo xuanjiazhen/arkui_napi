@@ -2551,6 +2551,12 @@ void ArkNativeEngine::GetMainThreadStackTrace(napi_env env, std::string &stackTr
     DFXJSNApi::GetMainThreadStackTrace(vm, stackTraceStr);
 }
 
+void ArkNativeEngine::GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr)
+{
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    DFXJSNApi::GetHybridStackTrace(vm, stackTraceStr);
+}
+
 bool ArkNativeEngine::DeleteWorker(NativeEngine* workerEngine)
 {
     if (workerEngine != nullptr) {
