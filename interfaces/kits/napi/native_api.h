@@ -207,6 +207,12 @@ NAPI_EXTERN napi_status napi_queue_async_work_with_queue(napi_env env,
                                                          napi_async_work work,
                                                          napi_qos_t qos,
                                                          uintptr_t taskId);
+
+typedef struct napi_strong_ref__* napi_strong_ref;
+
+NAPI_EXTERN napi_status napi_create_strong_reference(napi_env env, napi_value value, napi_strong_ref* result);
+NAPI_EXTERN napi_status napi_delete_strong_reference(napi_env env, napi_strong_ref ref);
+NAPI_EXTERN napi_status napi_get_strong_reference_value(napi_env env, napi_strong_ref ref, napi_value* result);
 #ifdef __cplusplus
 }
 #endif
