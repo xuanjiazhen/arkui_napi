@@ -782,6 +782,31 @@ NAPI_EXTERN napi_status napi_get_value_string_utf16(napi_env env,
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_get_buffer_string_utf16_in_critical_scope(napi_env env,
+                                                                       napi_value value,
+                                                                       const char16_t** buffer,
+                                                                       size_t* length)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
+    Local<panda::StringRef> stringVal(nativeValue);
+
+    if (buffer == nullptr) {
+        CHECK_ARG(env, length);
+        *length = stringVal->Length(vm);
+    } else {
+        *buffer = reinterpret_cast<const char16_t*>(stringVal->GetBufferUtf16(vm, reinterpret_cast<uint32_t*>(length)));
+        RETURN_STATUS_IF_FALSE(env, (*buffer), napi_invalid_arg);
+    }
+
+    return napi_clear_last_error(env);
+}
+
 // Methods to coerce values
 // These APIs may execute user scripts
 NAPI_EXTERN napi_status napi_coerce_to_bool(napi_env env, napi_value value, napi_value* result)
@@ -4582,4 +4607,14 @@ NAPI_EXTERN napi_status napi_destroy_ark_context(napi_env env)
         return napi_set_last_error(env, status);
     }
     return napi_ok;
+}
+
+NAPI_EXTERN napi_status napi_open_critical_scope(napi_env env, napi_critical_scope* scope)
+{
+    return napi_open_fast_native_scope(env, reinterpret_cast<napi_fast_native_scope*>(scope));
+}
+
+NAPI_EXTERN napi_status napi_close_critical_scope(napi_env env, napi_critical_scope scope)
+{
+    return napi_close_fast_native_scope(env, reinterpret_cast<napi_fast_native_scope>(scope));
 }
