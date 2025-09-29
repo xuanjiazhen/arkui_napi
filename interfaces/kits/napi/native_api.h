@@ -55,6 +55,12 @@ NAPI_EXTERN napi_status napi_get_value_string_utf16(napi_env env,
                                                     size_t bufsize,
                                                     size_t* result);
 
+
+NAPI_EXTERN napi_status napi_get_buffer_string_utf16_in_critical_scope(napi_env env,
+                                                                       napi_value value,
+                                                                       const char16_t** buffer,
+                                                                       size_t* length);
+
 NAPI_EXTERN napi_status napi_type_tag_object(napi_env env,
                                              napi_value value,
                                              const napi_type_tag* type_tag);
@@ -213,6 +219,11 @@ typedef struct napi_strong_ref__* napi_strong_ref;
 NAPI_EXTERN napi_status napi_create_strong_reference(napi_env env, napi_value value, napi_strong_ref* result);
 NAPI_EXTERN napi_status napi_delete_strong_reference(napi_env env, napi_strong_ref ref);
 NAPI_EXTERN napi_status napi_get_strong_reference_value(napi_env env, napi_strong_ref ref, napi_value* result);
+
+typedef struct napi_critical_scope__* napi_critical_scope;
+NAPI_EXTERN napi_status napi_open_critical_scope(napi_env env, napi_critical_scope* scope);
+NAPI_EXTERN napi_status napi_close_critical_scope(napi_env env, napi_critical_scope scope);
+
 #ifdef __cplusplus
 }
 #endif
