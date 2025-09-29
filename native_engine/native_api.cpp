@@ -782,6 +782,32 @@ NAPI_EXTERN napi_status napi_get_value_string_utf16(napi_env env,
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_get_buffer_string_utf16_in_critical_scope(napi_env env,
+                                                                       napi_value value,
+                                                                       const char16_t** buffer,
+                                                                       size_t* length)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, buffer);
+    CHECK_ARG(env, length);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
+    Local<panda::StringRef> stringVal(nativeValue);
+
+    uint32_t len = 0;
+    const uint16_t *buf = stringVal->GetBufferUtf16(vm, len);
+    RETURN_STATUS_IF_FALSE(env, buf, napi_invalid_arg);
+
+    *buffer = reinterpret_cast<const char16_t *>(buf);
+    *length = static_cast<size_t>(len);
+
+    return napi_clear_last_error(env);
+}
+
 // Methods to coerce values
 // These APIs may execute user scripts
 NAPI_EXTERN napi_status napi_coerce_to_bool(napi_env env, napi_value value, napi_value* result)
@@ -4582,4 +4608,23 @@ NAPI_EXTERN napi_status napi_destroy_ark_context(napi_env env)
         return napi_set_last_error(env, status);
     }
     return napi_ok;
+}
+
+NAPI_EXTERN napi_status napi_open_critical_scope(napi_env env, napi_critical_scope* scope)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, scope);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    *scope = reinterpret_cast<napi_critical_scope>(new panda::JsiFastNativeScope(engine->GetEcmaVm()));
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_close_critical_scope(napi_env env, napi_critical_scope scope)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, scope);
+
+    delete reinterpret_cast<panda::JsiFastNativeScope*>(scope);
+    return napi_clear_last_error(env);
 }
