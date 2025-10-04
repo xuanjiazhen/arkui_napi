@@ -531,7 +531,7 @@ void NativeModuleManager::InheritPluginNamespace(const std::string& moduleName, 
 
     Dl_namespace ns;
     Dl_namespace current_ns;
-    dlns_init(&ns, pluginModuleName.c_str())
+    dlns_init(&ns, pluginModuleName.c_str());
     dlns_init(&current_ns, moduleName.c_str());
     dlns_inherit(&ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
     dlns_inherit(&current_ns, &ns, ALLOW_ALL_SHARED_LIBS);
