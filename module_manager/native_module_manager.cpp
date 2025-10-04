@@ -521,6 +521,22 @@ bool NativeModuleManager::GetLdNamespaceName(const std::string &moduleName, std:
 #endif
 }
 
+void NativeModuleManager::InheritPluginNamespace(const std::string& moduleName, const std::string& pluginModuleName)
+{
+    HILOG_DEBUG("moduleName is %{public}s, pluginModuleName is %{public}s", moduleName.c_str(), pluginModuleName.c_str());
+    if (moduleName.empty() || pluginModuleName.empty()) {
+        HILOG_ERROR("Invalid input parameters: moduleName or pluginModuleName is empty");
+        return;
+    }
+
+    Dl_namespace ns;
+    Dl_namespace current_ns;
+    dlns_init(&ns, pluginModuleName.c_str())
+    dlns_init(&current_ns, moduleName.c_str());
+    dlns_inherit(&ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
+    dlns_inherit(&current_ns, &ns, ALLOW_ALL_SHARED_LIBS);
+}
+
 void NativeModuleManager::SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath,
                                         const bool& isSystemApp)
 {
@@ -842,7 +858,7 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
                 prefix, dupModuleName, zfix, soPostfix) == -1) {
                 return false;
             }
-            
+
             if (sprintf_s(nativeModulePath[MODULE_PATH_SECONDARY_INDEX], pathLength, "%s/%s%s",
                 sysAbcPrefix.c_str(), dupModuleName, abcfix) == -1) {
                 return false;
@@ -1130,7 +1146,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName
     if (lib != nullptr) {
         Napi_onLoadCallback(lib, moduleName);
     }
-    
+
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
     if (tailNativeModule_ && !abcBuffer) {
         const char* moduleName = strdup(moduleKey.c_str());

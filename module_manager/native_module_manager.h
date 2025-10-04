@@ -87,6 +87,7 @@ public:
     void SetAppLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath,
                        const bool& isSystemApp = false);
     bool GetLdNamespaceName(const std::string &moduleName, std::string &nsName);
+    void InheritPluginNamespace(const std::string& moduleName, const std::string& pluginModuleName);
     NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
         std::string& errInfo, bool internal = false, const char* relativePath = "");
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
