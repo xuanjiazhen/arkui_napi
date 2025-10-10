@@ -16,6 +16,10 @@
 #ifndef FOUNDATION_ACE_NAPI_TEST_UNITTEST_TEST_H
 #define FOUNDATION_ACE_NAPI_TEST_UNITTEST_TEST_H
 
+#include <functional>
+#include <string>
+#include <uv.h>
+
 #include "ark_native_engine.h"
 #include "event_handler.h"
 #include "napi/native_api.h"
@@ -48,10 +52,10 @@ public:
 protected:
     std::string coutResult_;
     std::string cerrResult_;
-    bool isExit_ {false};
-    int exitCode_ {0};
-    bool isSignal_ {false};
-    int signal_ {0};
+    bool isExit_ { false };
+    int exitCode_ { 0 };
+    bool isSignal_ { false };
+    int signal_ { 0 };
 
 private:
     static size_t GetCurrentStackSize();
@@ -65,9 +69,16 @@ private:
 
 class BasicDeathTest final : public DeathTest {
 public:
-    typedef void (*TestFunc)();
-    typedef void (*AssertFunc)(std::string log, std::string err);
-    BasicDeathTest(TestFunc testFunc, AssertFunc assertFunc) : test_(testFunc), assert_(assertFunc) {}
+    using TestFunc = std::function<void()>;
+    using AssertFunc = std::function<void(const std::string& cout, const std::string& err)>;
+    BasicDeathTest(TestFunc testFunc) : test_(testFunc)
+    {
+        Run();
+    }
+    BasicDeathTest(TestFunc testFunc, AssertFunc assertFunc) : test_(testFunc), assert_(assertFunc)
+    {
+        Run();
+    }
     void TestBody() override
     {
         if (test_ != nullptr) {
@@ -79,6 +90,38 @@ public:
         if (assert_ != nullptr) {
             assert_(coutResult_, cerrResult_);
         }
+    }
+    BasicDeathTest& AssertOutput(const std::string& search)
+    {
+        ASSERT_NE(coutResult_.find(search), std::string::npos);
+        return *this;
+    }
+    BasicDeathTest& AssertError(const std::string& search)
+    {
+        ASSERT_NE(cerrResult_.find(search), std::string::npos);
+        return *this;
+    }
+    BasicDeathTest& AssertExit()
+    {
+        ASSERT_TRUE(isExit_);
+        return *this;
+    }
+    BasicDeathTest& AssertExit(int status)
+    {
+        AssertExit();
+        ASSERT_EQ(exitCode_, status);
+        return *this;
+    }
+    BasicDeathTest& AssertSignal()
+    {
+        ASSERT_TRUE(isSignal_);
+        return *this;
+    }
+    BasicDeathTest& AssertSignal(int signal)
+    {
+        AssertSignal();
+        ASSERT_EQ(signal_, signal);
+        return *this;
     }
 
 private:
@@ -317,9 +360,14 @@ public:
         handles_.clear();
     }
 
-    void Run(uv_run_mode mode = UV_RUN_DEFAULT)
+    inline void Run(uv_run_mode mode = UV_RUN_DEFAULT)
     {
         uv_run(loop_, mode);
+    }
+
+    inline operator uv_loop_t*() const
+    {
+        return loop_;
     }
 
     static uv_loop_t* GetUVLoop(NativeEngine* engine)
