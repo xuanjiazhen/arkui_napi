@@ -17,32 +17,16 @@ import("//build/config/components/ace_engine/ace_gen_obj.gni")
 import("//build/test.gni")
 import("//foundation/arkui/napi/test/unittest/ut.gni")
 
-ohos_unittest("test_ark_unittest_base") {
-  module_out_path = module_output_path
-
+config("ace_napi_unittest_config") {
   include_dirs = common_include
-
   cflags = [ "-g3" ]
-
-  sources = [
-    "engine/test_ark.cpp",
-    "test_napi.cpp",
-    "test_napi_context.cpp",
-    "test_sendable_napi.cpp",
-  ]
-
   defines = [ "NAPI_TEST" ]
 
   deps = [ "../..:ace_napi" ]
-
   external_deps = [
     "bounds_checking_function:libsec_shared",
     "c_utils:utils",
-    "ets_runtime:libark_jsruntime",
     "eventhandler:libeventhandler",
-  ]
-
-  external_deps += [
     "googletest:gtest",
     "googletest:gtest_main",
     "hilog:libhilog",
@@ -50,67 +34,49 @@ ohos_unittest("test_ark_unittest_base") {
   ]
 }
 
-ohos_unittest("test_ark_unittest_threadsafe") {
-  module_out_path = module_output_path
+template("test_ark_unittest") {
+  ohos_unittest("test_ark_unittest_${invoker.name}") {
+    module_out_path = module_output_path
+    include_dirs = common_include
+    cflags = [ "-g3" ]
+    defines = [ "NAPI_TEST" ]
 
-  include_dirs = common_include
+    sources = [ "engine/test_ark.cpp" ]
+    sources += invoker.sources
 
-  cflags = [ "-g3" ]
+    deps = [ "../..:ace_napi" ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "eventhandler:libeventhandler",
+      "googletest:gtest",
+      "googletest:gtest_main",
+      "hilog:libhilog",
+      "libuv:uv",
+    ]
+  }
+}
 
+test_ark_unittest("base") {
   sources = [
-    "engine/test_ark.cpp",
-    "test_napi_threadsafe.cpp",
+    "test_napi.cpp",
+    "test_napi_context.cpp",
+    "test_sendable_napi.cpp",
   ]
+}
 
-  defines = [ "NAPI_TEST" ]
-
-  deps = [ "../..:ace_napi" ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "c_utils:utils",
-    "ets_runtime:libark_jsruntime",
-  ]
-
-  external_deps += [
-    "eventhandler:libeventhandler",
-    "googletest:gtest",
-    "googletest:gtest_main",
-    "hilog:libhilog",
-    "libuv:uv",
-  ]
+test_ark_unittest("test_ark_unittest_threadsafe") {
+  sources = [ "test_napi_threadsafe.cpp" ]
 }
 
 ohos_unittest("test_unittest_sendevent") {
   module_out_path = module_output_path
 
-  include_dirs = [
-    "./common",
-    "./engine",
-    "../../interfaces/inner_api",
-    "../../interfaces/kits",
-    "../../native_engine",
-  ]
-
-  cflags = [ "-g3" ]
+  configs = [ ":ace_napi_unittest_config" ]
 
   sources = [
     "engine/test_ark.cpp",
     "test_napi_sendevent.cpp",
-  ]
-
-  defines = [ "NAPI_TEST" ]
-
-  deps = [ "../..:ace_napi" ]
-
-  external_deps = [
-    "c_utils:utils",
-    "ets_runtime:libark_jsruntime",
-    "eventhandler:libeventhandler",
-    "googletest:gtest",
-    "googletest:gtest_main",
-    "hilog:libhilog",
-    "libuv:uv",
   ]
 }
 
@@ -132,35 +98,17 @@ ohos_unittest("test_worker_manager") {
   ]
 }
 
-ohos_unittest("test_ark_unittest_errorcode") {
-  module_out_path = module_output_path
-
-  include_dirs = common_include
-
-  cflags = [ "-g3" ]
-
+test_ark_unittest("errorcode") {
   sources = [
-    "engine/test_ark.cpp",
     "test_napi_errorcode.cpp",
     "test_napi_pendingexception.cpp",
   ]
+}
 
-  defines = [ "NAPI_TEST" ]
-
-  deps = [ "../..:ace_napi" ]
-
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "c_utils:utils",
-    "ets_runtime:libark_jsruntime",
-    "eventhandler:libeventhandler",
-  ]
-
-  external_deps += [
-    "googletest:gtest",
-    "googletest:gtest_main",
-    "hilog:libhilog",
-    "libuv:uv",
+ohos_unittest("critical") {
+  sources = [
+    "engine/test_ark.cpp",
+    "test_napi_critical.cpp",
   ]
 }
 
@@ -168,6 +116,7 @@ group("unittest") {
   testonly = true
   deps = [
     ":test_ark_unittest_base",
+    ":test_ark_unittest_critical",
     ":test_ark_unittest_errorcode",
     ":test_ark_unittest_threadsafe",
     ":test_unittest_sendevent",
