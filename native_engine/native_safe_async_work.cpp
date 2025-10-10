@@ -358,6 +358,10 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
 #endif
         if (callJsCallback_ != nullptr) {
             callJsCallback_(engine_, func_, context_, data);
+            if (engine_->openCriticalScopes_ > 0) {
+                HILOG_FATAL("critical scope still open after user callback (ID: %{public}" PRIuPTR ") returned",
+                            reinterpret_cast<uintptr_t>(callJsCallback_));
+            }
         } else {
             CallJs(engine_, func_, context_, data);
         }
@@ -366,6 +370,7 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
         if (tryCatch.HasCaught()) {
             engine_->HandleUncaughtException();
         }
+
         queue_.pop_front();
         size--;
     }
