@@ -122,6 +122,7 @@ int DeathTest::RunInChild(void* arg)
     // close read pipe port
     close(that->coutPipe_[1]);
     close(that->cerrPipe_[1]);
+    exit(0);
     return 0;
 }
 
