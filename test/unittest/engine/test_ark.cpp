@@ -98,7 +98,7 @@ size_t DeathTest::GetCurrentStackSize()
     return stackSize;
 }
 
-int DeathTest::RunInChild(void* arg)
+void DeathTest::RunInChild(void* arg)
 {
     // block to generate cppcrash log
     if (signal(SIGABRT, SIG_IGN) == SIG_ERR) {
@@ -122,7 +122,7 @@ int DeathTest::RunInChild(void* arg)
     // close read pipe port
     close(that->coutPipe_[1]);
     close(that->cerrPipe_[1]);
-    return 0;
+    exit(0);
 }
 
 void DeathTest::RedirectHilog(const LogType, const LogLevel level, const unsigned int, const char*, const char* msg)

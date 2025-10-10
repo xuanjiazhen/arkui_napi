@@ -155,6 +155,7 @@ using NapiHasAllUnhandledRejectionCallback = std::function<bool()>;
     XX(int32_t, ActiveTsfn, activeTsfnCounter_, NAPI_COUNTER_INT32_LOAD)            \
     /* Count of Sub Context Engine instances */                                     \
     XX(int32_t, SubContextEnv, subContextEnvCounter_, NAPI_COUNTER_INT32_LOAD)      \
+    XX(int32_t, CriticalScope, criticalScopeCounter_, NAPI_COUNTER_INT32_LOAD)      \
     XX(int64_t, CallbackbleRef, callbackbleRefCounter_, NAPI_COUNTER_INT32_LOAD)    \
     XX(int64_t, NonCallbackRef, nonCallbackRefCounter_, NAPI_COUNTER_INT32_LOAD)    \
     XX(int64_t, RuntimeOwnedRef, runtimeOwnedRefCounter_, NAPI_COUNTER_INT32_LOAD)

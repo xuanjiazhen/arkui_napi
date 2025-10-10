@@ -55,7 +55,7 @@ protected:
 
 private:
     static size_t GetCurrentStackSize();
-    static int RunInChild(void* arg);
+    static void RunInChild(void* arg);
     static void RedirectHilog(const LogType, const LogLevel level, const unsigned int, const char*, const char* msg);
     static std::string ReadFd(int fd);
 
