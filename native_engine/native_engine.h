@@ -16,8 +16,10 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_ENGINE_H
 
+#include <cstdint>
 #include <functional>
 #include <list>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -194,6 +196,7 @@ public:
     virtual void* GetJsEngine();
 
     virtual const EcmaVM* GetEcmaVm() const = 0;
+    virtual const EcmaVM* GetEcmaVmCritical() const = 0;
     virtual const NativeEngine* GetParent() const = 0;
     
     virtual bool NapiNewTypedArray(NativeTypedArrayType typedArrayType,
@@ -353,9 +356,14 @@ public:
 #define DCL_COUNTER_METHOD(_type, name, _storage, _LOAD) \
     void Increase##name##Counter();                      \
     void Decrease##name##Counter();                      \
-    bool Has##name();
+    bool Has##name() const;
     NAPI_COUNTER_METHOD(DCL_COUNTER_METHOD);
 #undef DCL_COUNTER_METHOD
+
+    void IncreaseCriticalScopeCounter();
+    void DecreaseCriticalScopeCounter();
+    bool HasCriticalScope() const;
+
     // alias for HasListening
     bool HasListeningCounter();
     void SetCleanEnv(CleanEnv cleanEnv)
@@ -409,7 +417,7 @@ public:
 
     inline static bool IsAlive(NativeEngine* env)
     {
-        std::lock_guard<std::mutex> alivedEngLock(g_alivedEngineMutex_);
+        std::shared_lock<std::shared_mutex> alivedEngLock(g_alivedEngineMutex_);
         return g_alivedEngine_.find(env) != g_alivedEngine_.end();
     }
 
@@ -628,7 +636,7 @@ protected:
 
     inline void SetDead()
     {
-        std::lock_guard<std::mutex> alivedEngLock(g_alivedEngineMutex_);
+        std::lock_guard<std::shared_mutex> alivedEngLock(g_alivedEngineMutex_);
         g_alivedEngine_.erase(this);
         return;
     }
@@ -660,7 +668,6 @@ protected:
     static std::unordered_set<NativeEngine*> g_alivedEngine_;
 public:
     uint64_t openHandleScopes_ = 0;
-    uint64_t openCriticalScopes_ = 0;
     panda::Local<panda::ObjectRef> lastException_;
 
 private:
@@ -702,6 +709,7 @@ private:
 #define DCL_STORAGE_COUNTER(type, _name, storage, _LOAD) type (storage) { 0 };
     NAPI_COUNTER_METHOD(DCL_STORAGE_COUNTER)
 #undef DCL_STORAGE_COUNTER
+    std::shared_ptr<uint64_t> criticalScopeCounter_ {};
 
     std::atomic_bool isStopping_ { false };
 
@@ -711,7 +719,7 @@ private:
     std::string taskName_ = "";
 
     // protect alived engine set and last engine id
-    static std::mutex g_alivedEngineMutex_;
+    static std::shared_mutex g_alivedEngineMutex_;
     static uint64_t g_lastEngineId_;
     static std::mutex g_mainThreadEngineMutex_;
     static NativeEngine* g_mainThreadEngine_;
@@ -732,7 +740,7 @@ public:
         return g_alivedEngine_.find(env) != g_alivedEngine_.end();
     }
 
-    inline static std::mutex& GetAliveEngineMutex() {
+    inline static std::shared_mutex& GetAliveEngineMutex() {
         return g_alivedEngineMutex_;
     }
 };
