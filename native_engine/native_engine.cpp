@@ -14,6 +14,7 @@
  */
 
 #include "native_engine/native_engine.h"
+#include <shared_mutex>
 
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(IOS_PLATFORM) && !defined(LINUX_PLATFORM)
 #include <sys/epoll.h>
@@ -69,7 +70,7 @@ thread_local static GetContainerScopeIdCallback g_getContainerScopeIdFunc;
 thread_local static ContainerScopeCallback g_initContainerScopeFunc;
 thread_local static ContainerScopeCallback g_finishContainerScopeFunc;
 
-std::mutex NativeEngine::g_alivedEngineMutex_;
+std::shared_mutex NativeEngine::g_alivedEngineMutex_;
 std::unordered_set<NativeEngine*> NativeEngine::g_alivedEngine_;
 uint64_t NativeEngine::g_lastEngineId_ = 1;
 std::mutex NativeEngine::g_mainThreadEngineMutex_;
@@ -303,7 +304,7 @@ void NativeEngine::SetAlive()
     if (id_ != 0) {
         HILOG_FATAL("id of native engine cannot set twice");
     }
-    std::lock_guard<std::mutex> alivedEngLock(g_alivedEngineMutex_);
+    std::lock_guard<std::shared_mutex> alivedEngLock(g_alivedEngineMutex_);
     g_alivedEngine_.emplace(this);
     // must be protected by g_alivedEngineMutex_
     id_ = g_lastEngineId_++;

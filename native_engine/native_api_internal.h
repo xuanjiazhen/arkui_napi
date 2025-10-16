@@ -47,10 +47,17 @@ static inline napi_status napi_set_last_error(napi_env env,
         return napi_invalid_arg; \
     }
 
-#define CHECK_ENV_AND_STATUS(env)                                            \
-    CHECK_ENV((env));                                                        \
-    if (reinterpret_cast<NativeEngine*>(env)->openCriticalScopes_ > 0) {     \
-        HILOG_FATAL("current interface cannot invoke under critical scope"); \
+#define CHECK_ENV_AND_STATUS(env)                                                                    \
+    CHECK_ENV((env));                                                                                \
+    if (reinterpret_cast<NativeEngine*>(env)->openCriticalScopes_ > 0) {                             \
+        auto engine = reinterpret_cast<NativeEngine*>(env);                                          \
+        if (!NativeEngine::IsAlive(engine)) {                                                        \
+            HILOG_FATAL("cannot invoke under invalid or dead env (%{public}" PRIuPTR ")",            \
+                        reinterpret_cast<uintptr_t>(env));                                           \
+        }                                                                                            \
+        HILOG_FATAL("current interface cannot invoke under critical scope, "                         \
+                    "%{public}" PRIu64 " scopes on env: %{public}" PRIu64 " (%{public}" PRIuPTR ")", \
+                    engine->openCriticalScopes_, engine->GetId(), reinterpret_cast<uintptr_t>(env)); \
     }
 
 #define CHECK_ARG(env, arg) RETURN_STATUS_IF_FALSE((env), ((arg) != nullptr), napi_invalid_arg)
