@@ -751,6 +751,19 @@ Local<JSValueRef> ArkNativeEngine::GetContext() const
     return context_.ToLocal();
 }
 
+const EcmaVM* ArkNativeEngine::GetEcmaVm() const
+{
+    if (HasCriticalScope()) {
+        HILOG_FATAL("napi cannot invoke in critical scope, env: %{public}" PRIu64, GetId());
+    }
+    return GetEcmaVmCritical();
+}
+
+const EcmaVM* ArkNativeEngine::GetEcmaVmCritical() const
+{
+    return vm_;
+}
+
 const ArkNativeEngine* ArkNativeEngine::GetParent() const
 {
     return parentEngine_;
@@ -1232,7 +1245,7 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
         }
     }
 
-    if (engine->openCriticalScopes_ > 0) {
+    if (engine->HasCriticalScope()) {
         Local<panda::FunctionRef> fn = runtimeInfo->GetFunctionRef();
         auto name = fn->GetName(vm)->ToString(vm);
         HILOG_FATAL("critical scope still open after user callback '%{public}s' (ID: %{public}" PRIuPTR ") returned",
@@ -2719,7 +2732,7 @@ void ArkNativeEngine::NotifyForceExpandState(int32_t value)
 
 void ArkNativeEngine::NotifyForceExpandState(uint64_t tid, int32_t value)
 {
-    std::lock_guard<std::mutex> alivedEngLock(GetAliveEngineMutex());
+    std::lock_guard alivedEngLock(GetAliveEngineMutex());
     NativeEngine *nativeEngine = GetArkNativeEngineByID(tid);
     if (nativeEngine == nullptr) {
         return;
