@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <list>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -409,7 +410,7 @@ public:
 
     inline static bool IsAlive(NativeEngine* env)
     {
-        std::lock_guard<std::mutex> alivedEngLock(g_alivedEngineMutex_);
+        std::shared_lock<std::shared_mutex> alivedEngLock(g_alivedEngineMutex_);
         return g_alivedEngine_.find(env) != g_alivedEngine_.end();
     }
 
@@ -628,7 +629,7 @@ protected:
 
     inline void SetDead()
     {
-        std::lock_guard<std::mutex> alivedEngLock(g_alivedEngineMutex_);
+        std::lock_guard<std::shared_mutex> alivedEngLock(g_alivedEngineMutex_);
         g_alivedEngine_.erase(this);
         return;
     }
@@ -711,7 +712,7 @@ private:
     std::string taskName_ = "";
 
     // protect alived engine set and last engine id
-    static std::mutex g_alivedEngineMutex_;
+    static std::shared_mutex g_alivedEngineMutex_;
     static uint64_t g_lastEngineId_;
     static std::mutex g_mainThreadEngineMutex_;
     static NativeEngine* g_mainThreadEngine_;
@@ -732,7 +733,7 @@ public:
         return g_alivedEngine_.find(env) != g_alivedEngine_.end();
     }
 
-    inline static std::mutex& GetAliveEngineMutex() {
+    inline static std::shared_mutex& GetAliveEngineMutex() {
         return g_alivedEngineMutex_;
     }
 };
