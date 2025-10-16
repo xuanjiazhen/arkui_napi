@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstring>
 #include <sstream>
+#include "js_native_api_types.h"
 #define private public
 #define protected public
 
@@ -8542,6 +8543,20 @@ HWTEST_F(NapiBasicTest, NapiGetUvEventLoopTest001, testing::ext::TestSize.Level1
 
     napi_status status = napi_get_uv_event_loop(env, loop);
     ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiBasicTest, NapiGetUvEventLoopTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env {};
+    // make a dead napi_env
+    {
+        NativeEngineProxy engine;
+        env = engine;
+    }
+
+    LoggerCollector collector;
+    ASSERT_EQ(napi_get_uv_event_loop(env, loop), napi_generic_failure);
+    ASSERT_TRUE(collector.Includes("napi_env has been destroyed!"));
 }
 
 HWTEST_F(NapiBasicTest, NapiCreateThreadsafeFunctionTest001, testing::ext::TestSize.Level1)
