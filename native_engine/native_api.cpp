@@ -4583,3 +4583,111 @@ NAPI_EXTERN napi_status napi_destroy_ark_context(napi_env env)
     }
     return napi_ok;
 }
+
+NAPI_EXTERN napi_status napi_open_critical_scope(napi_env env, napi_critical_scope* scope)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, scope);
+    CROSS_THREAD_CHECK(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+
+    if (engine->openCriticalScopes_ != 0) {
+        HILOG_ERROR("Already in critical scope, cannot open critical scope nested.");
+        return napi_set_last_error(env, napi_generic_failure);
+    }
+
+    *scope = reinterpret_cast<napi_critical_scope>(new panda::JsiFastNativeScope(engine->GetEcmaVm()));
+    engine->openCriticalScopes_++;
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_close_critical_scope(napi_env env, napi_critical_scope scope)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, scope);
+    CROSS_THREAD_CHECK(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    if (engine->openCriticalScopes_ == 0) {
+        HILOG_ERROR("Critical scope mismatch, cannot close critical scope.");
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+
+    engine->openCriticalScopes_--;
+    delete reinterpret_cast<panda::JsiFastNativeScope*>(scope);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_buffer_string_utf16_in_critical_scope(napi_env env,
+                                                                       napi_value value,
+                                                                       const char16_t** buffer,
+                                                                       size_t* length)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, buffer);
+    CHECK_ARG(env, length);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+
+    // Ensure inside critical scope
+    RETURN_STATUS_IF_FALSE(env, engine->openCriticalScopes_, napi_generic_failure);
+
+    auto vm = engine->GetEcmaVm();
+
+    // String type check
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
+    Local<panda::StringRef> stringVal(nativeValue);
+
+    uint32_t len = 0;
+    const uint16_t *buf = stringVal->GetBufferUtf16(vm, len);
+    RETURN_STATUS_IF_FALSE(env, buf, napi_invalid_arg);
+
+    *buffer = reinterpret_cast<const char16_t *>(buf);
+    *length = static_cast<size_t>(len);
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_create_strong_reference(
+    napi_env env, napi_value value, napi_strong_ref* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
+    auto nativeValue = LocalValueFromJsValue(value);
+
+    *result = reinterpret_cast<napi_strong_ref>(JSNApi::CreateStrongRef(vm, nativeValue));
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_delete_strong_reference(napi_env env, napi_strong_ref ref)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+
+    NativeEngine* engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
+
+    JSNApi::DeleteStrongRef(vm, reinterpret_cast<uintptr_t>(ref));
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_strong_reference_value(
+    napi_env env, napi_strong_ref ref, napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+    CROSS_THREAD_CHECK(env);
+
+    Local<JSValueRef> local(reinterpret_cast<uintptr_t>(ref));
+    *result = reinterpret_cast<napi_value>(JsValueFromLocalValue(local));
+
+    return napi_clear_last_error(env);
+}
