@@ -43,7 +43,13 @@
 
 NAPI_EXTERN napi_status napi_fatal_exception(napi_env env, napi_value err);
 
-
+NAPI_EXTERN napi_status napi_create_external_string_utf16(napi_env env,
+                                                          const char16_t* str,
+                                                          size_t length,
+                                                          napi_finalize finalize_callback,
+                                                          void* finalize_hint,
+                                                          napi_value* result);
+                                                          
 NAPI_EXTERN napi_status napi_create_string_utf16(napi_env env,
                                                  const char16_t* str,
                                                  size_t length,
