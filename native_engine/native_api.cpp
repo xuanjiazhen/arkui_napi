@@ -425,6 +425,27 @@ NAPI_EXTERN napi_status napi_create_string_utf16(
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_create_external_string_utf16(napi_env env,
+                                                          const char16_t* str,
+                                                          size_t length,
+                                                          napi_finalize finalize_callback,
+                                                          void* finalize_hint,
+                                                          napi_value* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, str);
+    CHECK_ARG(env, result);
+    RETURN_STATUS_IF_FALSE(env, (length == NAPI_AUTO_LENGTH) || (length <= INT_MAX), napi_invalid_arg);
+    size_t char16length = length;
+    if(length == NAPI_AUTO_LENGTH) {
+        char16length = static_cast<size_t>(std::char_traits<char16_t>::length(str));
+    }
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    Local<panda::StringRef> object = panda::StringRef::NewExternalFromUtf16(vm, str, char16length, finalize_callback, finalize_hint);
+    *result = JsValueFromLocalValue(object);
+    return napi_clear_last_error(env);
+}
+                                                
 NAPI_EXTERN napi_status napi_create_symbol(napi_env env, napi_value description, napi_value* result)
 {
     CHECK_ENV(env);
