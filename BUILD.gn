@@ -33,6 +33,10 @@ config("ace_napi_config") {
     defines += [ "PREVIEW" ]
   }
 
+  if (!is_debug) {
+    defines += [ "NDEBUG" ]
+  }
+
   if ("${target_platform}" == "watch" || is_wearable_product) {
     defines += [ "DISABLE_SHORT_IDLE_CHECK" ]
   }
