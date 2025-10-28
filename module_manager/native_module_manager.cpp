@@ -1363,3 +1363,20 @@ void NativeModuleManager::SetPreviewSearchPath(const std::string& previewSearchP
     HILOG_DEBUG("previewSearchPath is '%{public}s'", previewSearchPath.c_str());
     previewSearchPath_ = previewSearchPath;
 }
+
+void NativeModuleManager::SetLdPermittedPathForNamespace(const std::string& ldPermittedPath, const std::vector<std::string>& nsNames);
+{
+    HILOG_DEBUG("nsName is '%{public}s'", ldPermittedPath.c_str());
+    for(auto nsName : nsNames) {
+        Dl_namespace ns;
+        if (dlns_get(nsName.c_str(), &ns) != 0) {
+            HILOG_ERROR("dlns_get  %{public}s failed", nsName.c_str());
+            return;
+        };
+        if (dlns_set_ld_permitted_path(ldPermittedPath.c_str(), &ns) != 0) {
+            HILOG_ERROR("dlns_set_ld_permitted_path failed,
+                nsName = %{public}s, ldPermittedPath = %{public}s", nsName.c_str(), ldPermittedPath.c_str());
+            return;
+        }
+    }
+}
