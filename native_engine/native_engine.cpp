@@ -155,7 +155,7 @@ void NativeEngine::Init()
 
 void NativeEngine::Deinit()
 {
-    HILOG_INFO("NativeEngine::Deinit");
+    HILOG_INFO("Deinit");
     if (loop_ != nullptr) {
         NativeEvent::DestoryDefaultFunction(true, defaultFunc_, eventMutex_);
         uv_sem_destroy(&uvSem_);
@@ -747,8 +747,7 @@ napi_status NativeEngine::RemoveCleanupFinalizer(CleanupFinalizerCallBack fun, v
     const char *failedReason = cleanupHook == instanceFinalizer_.end() ?
         "data is not registered or already unregistered" : "callback not equals to last registered";
     
-    HILOG_ERROR("RemoveCleanupHook Failed, %{public}s, "
-                "this may cause memory leaks or unexpected behavior.", failedReason);
+    HILOG_ERROR("Failed, %{public}s, this may cause memory leaks or unexpected behavior.", failedReason);
 
     return napi_generic_failure;
 }
@@ -828,14 +827,14 @@ napi_status NativeEngine::RemoveCleanupHook(CleanupCallback fun, void* arg)
     std::string stack;
     if (IsCrossThreadCheckEnabled()) {
         if (DumpHybridStack(GetEcmaVm(), stack, 1, 8)) { // 1: skiped frames, 8: backtrace deepth
-            HILOG_ERROR("RemoveCleanupHook Failed, %{public}s"
+            HILOG_ERROR("Failed, %{public}s"
                 ".\n%{public}s", failedReason, stack.c_str());
         } else {
-            HILOG_ERROR("RemoveCleanupHook Failed %{public}s, "
+            HILOG_ERROR("Failed %{public}s, "
                 "backtrace failed or unsupported platform.", failedReason);
         }
     } else {
-        HILOG_WARN("RemoveCleanupHook Failed, %{public}s, "
+        HILOG_WARN("Failed, %{public}s, "
             "enable cross thread check for more information.", failedReason);
     }
 
@@ -913,8 +912,7 @@ void NativeEngine::CleanupHandles()
     }
 
     while (requestWaiting_.load() > 0) {
-        HILOG_INFO("%{public}s, request waiting:%{public}d.", __func__,
-            requestWaiting_.load(std::memory_order_relaxed));
+        HILOG_INFO("request waiting:%{public}d.", requestWaiting_.load(std::memory_order_relaxed));
         uv_run(loop_, UV_RUN_ONCE);
     }
 }
