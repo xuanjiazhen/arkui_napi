@@ -51,6 +51,11 @@ test_ark_unittest("base") {
   sources = [
     "test_napi.cpp",
     "test_napi_context.cpp",
+  ]
+}
+
+test_ark_unittest("sendable") {
+  sources = [
     "test_sendable_napi.cpp",
   ]
 }
@@ -119,6 +124,7 @@ group("unittest") {
     ":test_ark_unittest_threadsafe",
     ":test_unittest_sendevent",
     ":test_worker_manager",
+    ":test_ark_unittest_sendable",
   ]
   if (target_cpu == "arm64" || target_cpu == "x86_64") {
     deps += [ "cj_native:cj_native_unittest" ]

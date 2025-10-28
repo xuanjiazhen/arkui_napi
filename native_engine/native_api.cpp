@@ -24,6 +24,7 @@
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "native_api_internal.h"
 #include "native_engine/impl/ark/ark_native_reference.h"
+#include "native_engine/impl/ark/ark_sendable_native_reference.h"
 #include "native_engine/native_create_env.h"
 #include "native_engine/native_utils.h"
 #include "native_engine/worker_manager.h"
@@ -4684,5 +4685,63 @@ NAPI_EXTERN napi_status napi_get_strong_reference_value(
     Local<JSValueRef> local(reinterpret_cast<uintptr_t>(ref));
     *result = reinterpret_cast<napi_value>(JsValueFromLocalValue(local));
 
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_create_strong_sendable_reference(napi_env env,
+                                                              napi_value value,
+                                                              napi_sendable_ref* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    auto nativeValue = LocalValueFromJsValue(value);
+    if (!nativeValue->IsSendableObject(engine->GetEcmaVm())) {
+        HILOG_ERROR("Can not create sendable reference from a non-sendable object");
+        return napi_set_last_error(env, napi_object_expected);
+    }
+
+    auto ref = new ArkSendableNativeReference(engine, nativeValue);
+
+    *result = reinterpret_cast<napi_sendable_ref>(ref);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_delete_sendable_reference(napi_env env,
+                                                       napi_sendable_ref ref)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    auto reference = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    reference->DeleteSendableRef(engine);
+    reference = nullptr;
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_sendable_reference_value(napi_env env,
+                                                          napi_sendable_ref ref,
+                                                          napi_value* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+
+    auto reference = reinterpret_cast<ArkSendableNativeReference*>(ref);
+    ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env);
+
+    napi_value value = reference->Get(engine);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    if (nativeValue.IsEmpty() || !nativeValue->IsSendableObject(engine->GetEcmaVm())) {
+        HILOG_ERROR("Get sendable reference value fail.");
+        return napi_set_last_error(env, napi_object_expected);
+    }
+
+    *result = value;
     return napi_clear_last_error(env);
 }
