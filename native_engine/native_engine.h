@@ -42,6 +42,7 @@
 #include "utils/macros.h"
 #include "utils/data_protector.h"
 
+
 namespace panda::ecmascript {
     class EcmaVM;
 }
