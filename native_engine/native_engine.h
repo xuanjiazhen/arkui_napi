@@ -41,6 +41,7 @@
 #include "reference_manager/native_reference_manager.h"
 #include "utils/macros.h"
 #include "utils/data_protector.h"
+#include "securec.h"
 
 namespace panda::ecmascript {
     class EcmaVM;
