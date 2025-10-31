@@ -245,7 +245,10 @@ if (is_arkui_x) {
   ohos_shared_library("ace_napi") {
     stack_protector_ret = false
     deps = [ ":ace_napi_static" ]
-    external_deps = [ "bounds_checking_function:libsec_shared" ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "libuv:uv",
+      ]
     public_configs = [
       ":ace_napi_config",
       ":module_manager_config",
@@ -253,7 +256,6 @@ if (is_arkui_x) {
     if (!ark_standalone_build) {
       public_external_deps = [
         "ets_runtime:libark_jsruntime",
-        "libuv:uv",
         "node:node_header_notice",
       ]
       if(current_toolchain != host_toolchain){
