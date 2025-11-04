@@ -1941,3 +1941,36 @@ HWTEST_F(NapiErrorCodeTest, NapiRemoveWrapTest003, testing::ext::TestSize.Level1
     napi_status status = napi_remove_wrap(env, obj, (void **)&testStr);
     ASSERT_EQ(status, napi_object_expected);
 }
+
+HWTEST_F(NapiStringTest, CreateStringUtf8WithReplacementTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = nullptr;
+    const char* str = "test";
+    size_t length = strlen(str);
+    napi_value result = nullptr;
+
+    napi_status status = napi_create_string_utf8_with_replacement(env, str, length, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiStringTest, CreateStringUtf8WithReplacementTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const char* str = nullptr;
+    size_t length = 5;
+    napi_value result = nullptr;
+
+    napi_status status = napi_create_string_utf8_with_replacement(env, str, length, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiStringTest, CreateStringUtf8WithReplacementTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const char* str = "test";
+    size_t length = strlen(str);
+    napi_value* result = nullptr;
+
+    napi_status status = napi_create_string_utf8_with_replacement(env, str, length, result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
