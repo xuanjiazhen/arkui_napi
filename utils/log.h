@@ -91,6 +91,19 @@ static constexpr OHOS::HiviewDFX::HiLogLabel LOG_LABEL = { LOG_CORE, LOG_DOMAIN,
     ((void)HILOG_IMPL(LOG_CORE, LOG_DEBUG, LOG_DOMAIN, LOG_TAG, \
     "[(%{public}s:%{public}d)(%{public}s)] " fmt, __FILENAME__, __LINE__, __FUNCTION__, ##__VA_ARGS__))
 
+#define HILOG_ERROR_MODLEMNG(fmt, ...) \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_ERROR, LOG_DOMAIN, LOG_TAG, \
+    "[NMM:%{public}s]" fmt, __LINE__, ##__VA_ARGS__))
+#define HILOG_WARN_MODLEMNG(fmt, ...) \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_WARN, LOG_DOMAIN, LOG_TAG, \
+    "[NMM:%{public}s]" fmt, __LINE__, ##__VA_ARGS__))
+#define HILOG_INFO_MODLEMNG(fmt, ...) \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_INFO, LOG_DOMAIN, LOG_TAG, \
+    "[%{public}s] " fmt, __FUNCTION__, ##__VA_ARGS__))
+#define HILOG_DEBUG_MODLEMNG(fmt, ...) \
+    ((void)HILOG_IMPL(LOG_CORE, LOG_DEBUG, LOG_DOMAIN, LOG_TAG, \
+    "[%{public}s] " fmt, __FUNCTION__, ##__VA_ARGS__))
+    
 #endif /* MAC_PLATFORM */
 
 #endif /* FOUNDATION_ACE_NAPI_UTILS_LOG_H */
