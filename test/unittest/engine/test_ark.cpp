@@ -19,6 +19,9 @@
 #include "utils/log.h"
 
 #include <unistd.h>
+#ifdef OHOS_PLATFORM
+#include "parameters.h"
+#endif
 
 using ArkIdleMonitor = panda::ecmascript::ArkIdleMonitor;
 using panda::RuntimeOption;
@@ -408,3 +411,4 @@ HWTEST_F(NativeEngineTest, SetRawHeapTrimLevelTest001, testing::ext::TestSize.Le
 
     engine_->SetRawHeapTrimLevel(1); // test value
 }
+
