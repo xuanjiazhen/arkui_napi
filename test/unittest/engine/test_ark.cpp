@@ -408,3 +408,197 @@ HWTEST_F(NativeEngineTest, SetRawHeapTrimLevelTest001, testing::ext::TestSize.Le
 
     engine_->SetRawHeapTrimLevel(1); // test value
 }
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest001
+ * @tc.desc: Test idle Monitor deferfreeze
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest001, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+
+    ASSERT_TRUE(ArkIdleMonitor::gEnableIdleGC);
+
+    arkIdleMonitor->NotifyChangeBackgroundState(true);
+    ASSERT_TRUE(arkIdleMonitor->IsInBackground());
+    sleep(1);
+
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+
+    arkIdleMonitor->NotifyChangeBackgroundState(false);
+    ASSERT_FALSE(arkIdleMonitor->IsInBackground());
+
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+}
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest002
+ * @tc.desc: ban persist.ark.enableidlegc
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest002, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+
+    OHOS::system::SetBoolParameter("persist.ark.enableidlegc", false);
+    ASSERT_FALSE(OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);)
+    ArkIdleMonitor::gEnableIdleGC = OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_FALSE(ArkIdleMonitor::gEnableIdleGC);
+
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    
+    arkIdleMonitor->SetSwitchToBackground(true);
+    ASSERT_TRUE(arkIdleMonitor->IsSwitchToBackground());
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->SetDeferfreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+}
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest002
+ * @tc.desc: Normal function
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest003, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+
+    OHOS::system::SetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_TRUE(OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);)
+    ArkIdleMonitor::gEnableIdleGC = OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_TRUE(ArkIdleMonitor::gEnableIdleGC);
+
+    arkIdleMonitor->SetSwitchToBackground(true);
+    ASSERT_TRUE(arkIdleMonitor->IsSwitchToBackground());
+    arkIdleMonitor->SetDeferfreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_TRUE(arkIdleMonitor->IsDeferfreeze());
+    
+    arkIdleMonitor->NotifyNeedFreeze(true);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+}
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest003
+ * @tc.desc: Turn it on multiple times
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest004, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+
+    OHOS::system::SetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_TRUE(OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);)
+    ArkIdleMonitor::gEnableIdleGC = OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_TRUE(ArkIdleMonitor::gEnableIdleGC);
+
+    arkIdleMonitor->SetSwitchToBackground(true);
+    ASSERT_TRUE(arkIdleMonitor->IsSwitchToBackground());
+    arkIdleMonitor->SetDeferfreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_TRUE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_TRUE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(true);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+}
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest003
+ * @tc.desc: Closed multiple times
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest005, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+
+    OHOS::system::SetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_TRUE(OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);)
+    ArkIdleMonitor::gEnableIdleGC = OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_TRUE(ArkIdleMonitor::gEnableIdleGC);
+
+    arkIdleMonitor->SetSwitchToBackground(true);
+    ASSERT_TRUE(arkIdleMonitor->IsSwitchToBackground());
+    arkIdleMonitor->SetDeferfreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_TRUE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(true);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+
+    arkIdleMonitor->NotifyNeedFreeze(true);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+}
+
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest003
+ * @tc.desc: The background switch task has not been enabled
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest006, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+
+    OHOS::system::SetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_TRUE(OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);)
+    ArkIdleMonitor::gEnableIdleGC = OHOS::system::GetBoolParameter("persist.ark.enableidlegc", true);
+    ASSERT_TRUE(ArkIdleMonitor::gEnableIdleGC);
+
+    arkIdleMonitor->SetSwitchToBackground(false);
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+    arkIdleMonitor->SetDeferfreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(true);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+}
+

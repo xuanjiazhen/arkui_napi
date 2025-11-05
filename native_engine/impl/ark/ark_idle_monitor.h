@@ -61,8 +61,6 @@ public:
         idleState_.store(idleState, std::memory_order_relaxed);
     }
 
-    void NotifyChangeBackgroundState(bool inBackground);
-
     bool IsInBackground() const
     {
         return inBackground_.load(std::memory_order_relaxed);
@@ -106,6 +104,26 @@ public:
     void AddIdleDuration(int64_t duration)
     {
         totalIdleDuration_.fetch_add(duration, std::memory_order_relaxed);
+    }
+
+    void SetDeferfreeze(bool state)
+    {
+        deferfreeze_.store(state, std::memory_order_relaxed);
+    }
+
+    bool IsDeferfreeze()
+    {
+        return deferfreeze_.load(std::memory_order_relaxed);
+    }
+
+    void SetSwitchToBackground(bool state)
+    {
+        isSwitchToBackground_.store(state, std::memory_order_relaxed);
+    }
+
+    bool IsSwitchToBackground()
+    {
+        return isSwitchToBackground_.load(std::memory_order_relaxed);
     }
 
     void SetMainThreadEcmaVM(EcmaVM* vm)
@@ -177,6 +195,7 @@ public:
         int count_ {0};
     };
 
+    void NotifyChangeBackgroundState(bool inBackground);
     void NotifyLooperIdleStart(int64_t timestamp, int idleTime);
     void NotifyLooperIdleEnd(int64_t timestamp);
     void PostMonitorTask(uint64_t delayMs);
@@ -184,6 +203,7 @@ public:
     void PostLooperTriggerIdleGCTask();
     void EnableIdleGC(NativeEngine *engine);
     void UnregisterEnv(NativeEngine *engine);
+    void NotifyNeedFreeze(bool needFreeze);
 
 private:
     double GetCpuUsage() const;
@@ -205,6 +225,7 @@ private:
     void StopIdleMonitorTimerTaskAndPostSleepTask();
     void CheckShortIdleTask(int64_t timestamp, int idleTime);
     void PostSwitchBackgroundGCTask();
+    void ReportDataToRSS(bool isGCStart);
     static uint64_t GetIdleMonitoringInterval();
 
     static std::shared_ptr<ArkIdleMonitor> instance_;
@@ -232,6 +253,8 @@ private:
 
     std::atomic<bool> idleState_ {false};
     std::atomic<bool> inBackground_ {true};
+    std::atomic<bool> deferfreeze_ {false};
+    std::atomic<bool> isSwitchToBackground_ {false};
     std::atomic<int64_t> idleNotifyCount_ {0};
     std::atomic<int64_t> idleStartTimestamp_ {0};
     std::atomic<int64_t> totalIdleDuration_ {0};
@@ -259,6 +282,7 @@ private:
 #if defined(ENABLE_EVENT_HANDLER)
     std::shared_ptr<OHOS::AppExecFwk::EventHandler> mainThreadHandler_ {};
     static bool gEnableIdleGC;
+    static bool gEnableDeferFreeze;
 #endif
 };
 
