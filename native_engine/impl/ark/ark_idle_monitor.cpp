@@ -33,8 +33,12 @@
 #include "memory_trace.h"
 #endif
 #include "ark_native_engine.h"
+#include "res_sched_client.h"
+#include "res_type.h"
 
 namespace panda::ecmascript {
+bool ArkIdleMonitor::gEnableDeferFreeze =
+    OHOS::system::GetBoolParameter("persist.ark.deferfreeze", false);
 #if defined(ENABLE_EVENT_HANDLER)
 static constexpr uint64_t IDLE_GC_TIME_MIN = 1000;
 static constexpr uint64_t IDLE_GC_TIME_MAX = 10000;
@@ -291,6 +295,22 @@ void ArkIdleMonitor::SetStartTimerCallback()
     });
 }
 
+void ArkIdleMonitor::SetNotifyDeferFreezeCallback()
+{
+    JSNApi::SetNotifyDeferFreezeCallback([this](bool started_) {
+        if (!gEnableDeferFreeze) {
+            return;
+        }
+        if (started_) {
+            deferfreeze_.store(true, std::memory_order_relaxed);
+            ReportDataToRSS(false);
+        } else if (!started_ && deferfreeze_.load(std::memory_order_relaxed)) {
+            deferfreeze_.store(false, std::memory_order_relaxed);
+            ReportDataToRSS(true);
+        }
+    });
+}
+
 void ArkIdleMonitor::PostLooperTriggerIdleGCTask()
 {
 #if defined(ENABLE_EVENT_HANDLER)
@@ -337,6 +357,7 @@ void ArkIdleMonitor::EnableIdleGC(NativeEngine *engine)
         });
         SetStartTimerCallback();
         PostLooperTriggerIdleGCTask();
+        SetNotifyDeferFreezeCallback();
     } else {
         RegisterWorkerEnv(reinterpret_cast<napi_env>(engine));
     }
@@ -586,6 +607,20 @@ void ArkIdleMonitor::StopIdleMonitorTimerTaskAndPostSleepTask()
     }
     PostMonitorTask(SLEEP_MONITORING_INTERVAL);
 #endif
+}
+
+void ArkIdleMonitor::ReportDataToRSS(bool isGCStart)
+{
+    uint32_t resType = OHOS::ResourceSchedule::ResType::RES_TYPE_GC_EVENT;
+    auto pid = getpid();
+    auto bundleName = JSNApi::GetBundleName(mainVM_);
+    std::unordered_map<std::string, std::string> eventParams {
+        { "pid", std::to_string(pid) },
+        { "bundleName", bundleName }
+    };
+    HILOG_INFO("idle gc: ReportDataToRSS %{public}d, pid: %{public}d, bundleName: %{public}s",
+        isGCStart, pid, bundleName.c_str());
+    OHOS::ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, isGCStart, eventParams);
 }
 
 
