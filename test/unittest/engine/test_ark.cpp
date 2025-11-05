@@ -408,3 +408,127 @@ HWTEST_F(NativeEngineTest, SetRawHeapTrimLevelTest001, testing::ext::TestSize.Le
 
     engine_->SetRawHeapTrimLevel(1); // test value
 }
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest001
+ * @tc.desc: Test idle Monitor deferfreeze
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest001, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+    uint32_t oldCount = arkIdleMonitor->GetDeferfreezeRSSCount();
+
+    arkIdleMonitor->NotifyChangeBackgroundState(true);
+    ASSERT_TRUE(arkIdleMonitor->IsInBackground());
+    sleep(1);
+
+    ASSERT_TRUE(arkIdleMonitor->GetDeferfreezeRSSCount() == oldCount + 1);
+
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+
+    arkIdleMonitor->NotifyChangeBackgroundState(false);
+    ASSERT_FALSE(arkIdleMonitor->IsInBackground());
+
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+}
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest002
+ * @tc.desc: Test idle Monitor deferfreeze
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest002, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+    uint32_t oldCount = arkIdleMonitor->GetDeferfreezeRSSCount();
+
+    arkIdleMonitor->NotifyChangeBackgroundState(true);
+    arkIdleMonitor->NotifyChangeBackgroundState(true);
+    ASSERT_TRUE(arkIdleMonitor->IsInBackground());
+    sleep(1);
+
+    ASSERT_TRUE(arkIdleMonitor->GetDeferfreezeRSSCount() == oldCount + 1);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+
+    arkIdleMonitor->NotifyChangeBackgroundState(false);
+    ASSERT_FALSE(arkIdleMonitor->IsInBackground());
+}
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest003
+ * @tc.desc: Test idle Monitor deferfreeze
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest003, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+    uint32_t oldCount = arkIdleMonitor->GetDeferfreezeRSSCount();
+
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+    arkIdleMonitor->NotifyFreeze(true);
+    ASSERT_TRUE(arkIdleMonitor->GetDeferfreezeRSSCount() == oldCount);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->SetSwitchToBackground(true);
+    ASSERT_TRUE(arkIdleMonitor->IsSwitchToBackground());
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    arkIdleMonitor->NotifyFreeze(true);
+    ASSERT_TRUE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_TRUE(arkIdleMonitor->GetDeferfreezeRSSCount() == (++oldCount));
+
+    arkIdleMonitor->NotifyFreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+}
+
+/**
+ * @tc.name: IdleMonitorDeferfreezeTest003
+ * @tc.desc: Test idle Monitor deferfreeze
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, IdleMonitorDeferfreezeTest003, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+    uint32_t oldCount = arkIdleMonitor->GetDeferfreezeRSSCount();
+
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyFreeze(false);
+
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_TRUE(arkIdleMonitor->GetDeferfreezeRSSCount() == oldCount);
+
+    arkIdleMonitor->SetSwitchToBackground(true);
+    ASSERT_TRUE(arkIdleMonitor->IsSwitchToBackground());
+
+    arkIdleMonitor->NotifyFreeze(true);
+    ASSERT_TRUE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_TRUE(arkIdleMonitor->GetDeferfreezeRSSCount() == (++oldCount));
+
+    arkIdleMonitor->NotifyFreeze(false);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackground());
+}
+
