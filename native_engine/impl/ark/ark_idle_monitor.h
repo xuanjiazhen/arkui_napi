@@ -184,6 +184,7 @@ public:
     void PostLooperTriggerIdleGCTask();
     void EnableIdleGC(NativeEngine *engine);
     void UnregisterEnv(NativeEngine *engine);
+    void NotifyFreeze(bool needFreeze);
 
 private:
     double GetCpuUsage() const;
@@ -205,6 +206,7 @@ private:
     void StopIdleMonitorTimerTaskAndPostSleepTask();
     void CheckShortIdleTask(int64_t timestamp, int idleTime);
     void PostSwitchBackgroundGCTask();
+    void ReportDataToRSS(bool isGCStart);
     static uint64_t GetIdleMonitoringInterval();
 
     static std::shared_ptr<ArkIdleMonitor> instance_;
@@ -232,6 +234,7 @@ private:
 
     std::atomic<bool> idleState_ {false};
     std::atomic<bool> inBackground_ {true};
+    std::atomic<bool> deferfreeze_ {false};
     std::atomic<int64_t> idleNotifyCount_ {0};
     std::atomic<int64_t> idleStartTimestamp_ {0};
     std::atomic<int64_t> totalIdleDuration_ {0};
