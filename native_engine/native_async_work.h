@@ -84,6 +84,7 @@ private:
     std::mutex workAsyncMutex_;
     std::queue<NativeAsyncWorkDataPointer> asyncWorkRecvData_;
     std::string traceDescription_;
+    std::string taskName_;
 #ifdef ENABLE_CONTAINER_SCOPE
     int32_t containerScopeId_;
 #endif
