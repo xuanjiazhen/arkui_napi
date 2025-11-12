@@ -24,7 +24,7 @@ using namespace OHOS;
 using namespace OHOS::HiviewDFX;
 
 namespace {
-constexpr HiLogLabel LABEL = { LOG_CORE, 0xD003901, "CJ-FFIBindNative" };
+constexpr HiLogLabel LABEL = { LOG_CORE, 0xD003F03, "CJ-FFIBindNative" };
 } // namespace
 
 FFIDataManager* FFIDataManager::GetInstance()
@@ -39,7 +39,7 @@ void FFIDataManager::StoreFFIData(const sptr<FFIData>& data)
     int64_t id = data->GetID();
     // 0 represents invalid status
     if (id == 0) {
-        HiLog::Fatal(LABEL, "FFIData store invalid key");
+        HiLog::Debug(LABEL, "FFIData store invalid key");
         return;
     }
     HiLog::Info(LABEL, "FFIData store_ key put in: %{public}" PRId64, id);
@@ -56,7 +56,7 @@ int64_t FFIDataManager::NewFFIDataId()
 {
     std::lock_guard<std::recursive_mutex> lock(mtx);
     if (static_cast<int64_t>(ffiDataStore_.size()) >= maxCapacity) {
-        HiLog::Fatal(LABEL, "FFIData store_ over max capacity: %{public}" PRId64, maxCapacity);
+        HiLog::Debug(LABEL, "FFIData store_ over max capacity: %{public}" PRId64, maxCapacity);
         // 0 represents invalid status in CJ RemoteData, will be handled by CJ Exception
         return 0;
     }
@@ -68,7 +68,7 @@ int64_t FFIDataManager::NewFFIDataId()
     }
     // It means there is no one available id, When resetTimes come to UpperBound 2.
     if (resetTimes >= resetTimeUpperBound) {
-        HiLog::Fatal(LABEL, "FFIData id run out");
+        HiLog::Debug(LABEL, "FFIData id run out");
         // 0 represents invalid status in CJ RemoteData, will be handled by CJ Exception
         return 0;
     }

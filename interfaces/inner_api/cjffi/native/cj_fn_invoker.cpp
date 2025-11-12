@@ -23,7 +23,7 @@ using namespace OHOS;
 using namespace OHOS::HiviewDFX;
 
 namespace {
-constexpr HiLogLabel LABEL = { LOG_CORE, 0xD003901, "CJ-FFIFuncs" };
+constexpr HiLogLabel LABEL = { LOG_CORE, 0xD003F03, "CJ-FFIFuncs" };
 } // namespace
 
 CJFFIFnInvoker* CJFFIFnInvoker::GetInstance()
@@ -35,7 +35,7 @@ CJFFIFnInvoker* CJFFIFnInvoker::GetInstance()
 const FFIAtCPackage& CJFFIFnInvoker::GetCJFuncs()
 {
     if (!fnLoaded_) {
-        HiLog::Fatal(LABEL, "CJ-FFI functions not registered yet!");
+        HiLog::Debug(LABEL, "CJ-FFI functions not registered yet!");
     }
     return cjFFIFn_;
 }
@@ -44,7 +44,7 @@ bool CJFFIFnInvoker::FFIDataExist(int64_t id) const
 {
     auto cjFunc = cjFFIFn_.atCOHOSFFIExistFFIDataExist;
     if (!cjFunc) {
-        HiLog::Fatal(LABEL, "CJ-FFI atCOHOSFFIExistFFIDataExist is unregistered!");
+        HiLog::Debug(LABEL, "CJ-FFI atCOHOSFFIExistFFIDataExist is unregistered!");
         return false;
     }
     return cjFunc(id);
@@ -54,7 +54,7 @@ bool CJFFIFnInvoker::ReleaseFFIData(int64_t id) const
 {
     auto cjFunc = cjFFIFn_.atCOHOSFFIReleaseFFIData;
     if (!cjFunc) {
-        HiLog::Fatal(LABEL, "CJ-FFI atCOHOSFFIReleaseFFIData is unregistered!");
+        HiLog::Debug(LABEL, "CJ-FFI atCOHOSFFIReleaseFFIData is unregistered!");
         return false;
     }
     return cjFunc(id);
@@ -64,7 +64,7 @@ bool CJFFIFnInvoker::ReleaseRemoteData(int64_t id) const
 {
     auto cjFunc = cjFFIFn_.atCOHOSFFIReleaseRemoteData;
     if (!cjFunc) {
-        HiLog::Fatal(LABEL, "CJ-FFI atCOHOSFFIReleaseRemoteData is unregistered!");
+        HiLog::Debug(LABEL, "CJ-FFI atCOHOSFFIReleaseRemoteData is unregistered!");
         return false;
     }
     return cjFunc(id);
@@ -74,7 +74,7 @@ void CJFFIFnInvoker::ThrowCJError(const std::string& msg) const
 {
     auto cjFunc = cjFFIFn_.atCOHOSFFICJThrow;
     if (!cjFunc) {
-        HiLog::Fatal(LABEL, "CJ-FFI atCOHOSFFICJThrow is unregistered!");
+        HiLog::Debug(LABEL, "CJ-FFI atCOHOSFFICJThrow is unregistered!");
         return;
     }
     cjFunc(msg.c_str());
@@ -84,7 +84,7 @@ void CJFFIFnInvoker::InvokeLambda(int64_t lambdaId, int32_t argc, void** argv, v
 {
     auto cjFunc = cjFFIFn_.atCOHOSFFICallbackInvoker;
     if (!cjFunc) {
-        HiLog::Fatal(LABEL, "CJ-FFI callback invoker atCOHOSFFICallbackInvoker is unregistered!");
+        HiLog::Debug(LABEL, "CJ-FFI callback invoker atCOHOSFFICallbackInvoker is unregistered!");
         return;
     }
     cjFunc(lambdaId, argc, argv, result);
