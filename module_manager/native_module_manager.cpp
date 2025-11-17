@@ -32,6 +32,9 @@
 #include "utils/log.h"
 
 #define NDK "ndk"
+#define PASS_THROUGH "passthrough"
+#define PASSTHROUGH_INDIRECT "passthrough_indirect"
+#define VENDOR "vendor"
 #define ALLOW_ALL_SHARED_LIBS "allow_all_shared_libs"
 
 namespace {
@@ -449,8 +452,7 @@ void NativeModuleManager::CreateSharedLibsSonames()
 }
 #endif
 
-void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const char* lib_ld_path,
-                                            [[maybe_unused]] const bool& isSystemApp)
+void NativeModuleManager::CreateLdNamespaceOfSystemApp(const std::string moduleName, const char* lib_ld_path)
 {
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
@@ -465,42 +467,105 @@ void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const 
     Dl_namespace ndk_ns;
     dlns_get(NDK, &ndk_ns);
 
-    if (isSystemApp) {
-        /*
-         * The app's so may have the same name as the system library, LOCAL_NS_PREFERED means linker will check
-         * and use the app's so first.
-         */
-        dlns_create2(&ns, lib_ld_path, LOCAL_NS_PREFERED);
-        // Performs a namespace check on the full path passed directly or the full path converted after setting rpath.
-        dlns_set_namespace_separated(nsName.c_str(), true);
-        // Allows access to subdirectories of this directory for shared objects (so).
-        dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
-        // System app can visit all ndk and default ns libs.
-        if (strlen(ndk_ns.name) > 0) {
-            dlns_inherit(&ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&ndk_ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&current_ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
+    /*
+    * The app's so may have the same name as the system library, LOCAL_NS_PREFERED means linker will check
+    * and use the app's so first.
+    */
+    dlns_create2(&ns, lib_ld_path, LOCAL_NS_PREFERED);
+    // Performs a namespace check on the full path passed directly or the full path converted after setting rpath.
+    dlns_set_namespace_separated(nsName.c_str(), true);
+    // Allows access to subdirectories of this directory for shared objects (so).
+    dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
+    // System app can visit all ndk and default ns libs.
+    if (strlen(ndk_ns.name) > 0) {
+        dlns_inherit(&ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
+        dlns_inherit(&ndk_ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
+        dlns_inherit(&current_ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
+        dlns_inherit(&ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
+    }
+    Dl_namespace passthrough_ns;
+    if (dlns_get(PASS_THROUGH, &passthrough_ns) == 0) {
+        if (strlen(passthrough_ns.name) > 0) {
+            dlns_inherit(&ns, &passthrough_ns, ALLOW_ALL_SHARED_LIBS);
         }
     } else {
-        dlns_create2(&ns, lib_ld_path, 0);
-        // Performs a namespace check on the full path passed directly or the full path converted after setting rpath.
-        dlns_set_namespace_separated(nsName.c_str(), true);
-        // Allows access to subdirectories of this directory for shared objects (so).
-        dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
-        // Non-system app can visit all ndk ns libs and default ns shared libs.
-        if (!sharedLibsSonames_) {
-            CreateSharedLibsSonames();
-        }
-        dlns_inherit(&ns, &current_ns, sharedLibsSonames_);
-        if (strlen(ndk_ns.name) > 0) {
-            dlns_inherit(&ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&ndk_ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
-            dlns_inherit(&current_ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
-        }
+        MODULEMNG_HILOG_DEBUG("dlns_get passthrough failed");
     }
 
     nsMap_[moduleName] = ns;
+#endif
+}
+
+void NativeModuleManager::CreateLdNamespaceOfNotSystemApp(const std::string moduleName, const char* lib_ld_path)
+{
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
+    Dl_namespace current_ns;
+    Dl_namespace ns;
+
+    // Create module ns.
+    std::string nsName = MODULE_NS + moduleName;
+    dlns_init(&ns, nsName.c_str());
+    dlns_get(nullptr, &current_ns);
+
+    Dl_namespace ndk_ns;
+    dlns_get(NDK, &ndk_ns);
+
+    dlns_create2(&ns, lib_ld_path, 0);
+    // Performs a namespace check on the full path passed directly or the full path converted after setting rpath.
+    dlns_set_namespace_separated(nsName.c_str(), true);
+    // Allows access to subdirectories of this directory for shared objects (so).
+    dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
+    // Non-system app can visit all ndk ns libs and default ns shared libs.
+    if (!sharedLibsSonames_) {
+        CreateSharedLibsSonames();
+    }
+    dlns_inherit(&ns, &current_ns, sharedLibsSonames_);
+    if (strlen(ndk_ns.name) > 0) {
+        dlns_inherit(&ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
+        dlns_inherit(&ndk_ns, &current_ns, ALLOW_ALL_SHARED_LIBS);
+        dlns_inherit(&current_ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
+    }
+    Dl_namespace passthrough_ns;
+    if (dlns_get(PASS_THROUGH, &passthrough_ns) == 0) {
+        if (strlen(passthrough_ns.name) > 0) {
+            dlns_inherit(&ns, &passthrough_ns, ALLOW_ALL_SHARED_LIBS);
+        }
+    } else {
+        MODULEMNG_HILOG_DEBUG("dlns_get passthrough failed");
+    }
+
+    Dl_namespace passthrough_indirect_ns;
+    if (dlns_get(PASSTHROUGH_INDIRECT, &passthrough_indirect_ns) == 0) {
+        if (strlen(passthrough_indirect_ns.name) > 0) {
+            dlns_inherit(&ns, &passthrough_indirect_ns, ALLOW_ALL_SHARED_LIBS);
+        }
+    } else {
+        MODULEMNG_HILOG_DEBUG("dlns_get passthrough_indirect failed");
+    }
+
+    Dl_namespace vendor_ns;
+    if (dlns_get(VENDOR, &vendor_ns) == 0) {
+        if (strlen(vendor_ns.name) > 0) {
+            dlns_inherit(&ns, &vendor_ns, ALLOW_ALL_SHARED_LIBS);
+        }
+    } else {
+        MODULEMNG_HILOG_DEBUG("dlns_get vendor failed");
+    }
+    nsMap_[moduleName] = ns;
+#endif
+}
+
+void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const char* lib_ld_path,
+                                            [[maybe_unused]] const bool& isSystemApp)
+{
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
+    if (isSystemApp) {
+        CreateLdNamespaceOfSystemApp(moduleName, lib_ld_path);
+    } else {
+        CreateLdNamespaceOfNotSystemApp(moduleName, lib_ld_path);
+    }
 
     MODULEMNG_HILOG_DEBUG("end. moduleName: %{public}s, path: %{public}s", moduleName.c_str(), lib_ld_path);
 #endif

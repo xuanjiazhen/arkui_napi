@@ -156,6 +156,8 @@ private:
     bool UnloadModuleLibrary(LIBHANDLE handle);
     bool CloseModuleLibrary(LIBHANDLE handle);
     void CreateLdNamespace(const std::string moduleName, const char* lib_ld_path, const bool& isSystemApp);
+    void CreateLdNamespaceOfSystemApp(const std::string moduleName, const char* lib_ld_path);
+    void CreateLdNamespaceOfNotSystemApp(const std::string moduleName, const char* lib_ld_path);
     bool IsExistedPath(const char* pathKey) const;
     void EmplaceModuleLib(const std::string moduleKey, LIBHANDLE lib);
     bool RemoveModuleLib(const std::string moduleKey);
