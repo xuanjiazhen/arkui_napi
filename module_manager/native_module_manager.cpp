@@ -474,7 +474,9 @@ void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const 
         // Performs a namespace check on the full path passed directly or the full path converted after setting rpath.
         dlns_set_namespace_separated(nsName.c_str(), true);
         // Allows access to subdirectories of this directory for shared objects (so).
-        dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
+        if (lib_ld_path != "") {
+            dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
+        }
         // System app can visit all ndk and default ns libs.
         if (strlen(ndk_ns.name) > 0) {
             dlns_inherit(&ns, &ndk_ns, ALLOW_ALL_SHARED_LIBS);
@@ -487,7 +489,9 @@ void NativeModuleManager::CreateLdNamespace(const std::string moduleName, const 
         // Performs a namespace check on the full path passed directly or the full path converted after setting rpath.
         dlns_set_namespace_separated(nsName.c_str(), true);
         // Allows access to subdirectories of this directory for shared objects (so).
-        dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
+        if (lib_ld_path != "") {
+            dlns_set_namespace_permitted_paths(nsName.c_str(), lib_ld_path);
+        }
         // Non-system app can visit all ndk ns libs and default ns shared libs.
         if (!sharedLibsSonames_) {
             CreateSharedLibsSonames();
