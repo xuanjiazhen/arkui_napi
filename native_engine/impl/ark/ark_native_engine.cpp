@@ -131,6 +131,7 @@ constexpr int NAPI_CALL_STACK = 2; // just for napi call stack
 
 std::string ArkNativeEngine::tempModuleName_ {""};
 bool ArkNativeEngine::napiProfilerEnabled {false};
+bool ArkNativeEngine::napiApiTraceEnabled {false};
 bool ArkNativeEngine::napiProfilerParamReaded {false};
 PermissionCheckCallback ArkNativeEngine::permissionCheckCallback_ {nullptr};
 std::atomic<NapiModuleValidateCallback> ArkNativeEngine::moduleValidateCallback_ {nullptr};
@@ -1224,7 +1225,15 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
                         StartTrace(HITRACE_TAG_ACE, "Developer::NativeCallBack::One");
 #endif
 #endif
-            result = cb(env, runtimeInfo);
+            if (ArkNativeEngine::napiApiTraceEnabled) {
+                Local<panda::FunctionRef> fn = runtimeInfo->GetFunctionRef();
+                auto apiName = fn->GetName(vm)->ToString(vm);
+                StartTrace(HITRACE_TAG_ACE, "napi execute::" + apiName);
+                result = cb(env, runtimeInfo);
+                FinishTrace(HITRACE_TAG_ACE);
+            } else {
+                result = cb(env, runtimeInfo);
+            }
 #if ECMASCRIPT_ENABLE_INTERPRETER_ARKUINAITVE_TRACE
 #ifdef ENABLE_HITRACE
                         FinishTrace(HITRACE_TAG_ACE);
@@ -1236,7 +1245,15 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
                         StartTrace(HITRACE_TAG_ACE, "Developer::NativeCallBack::Two");
 #endif
 #endif
-            result = cb(env, runtimeInfo);
+            if (ArkNativeEngine::napiApiTraceEnabled) {
+                Local<panda::FunctionRef> fn = runtimeInfo->GetFunctionRef();
+                auto apiName = fn->GetName(vm)->ToString(vm);
+                StartTrace(HITRACE_TAG_ACE, "napi execute::" + apiName);
+                result = cb(env, runtimeInfo);
+                FinishTrace(HITRACE_TAG_ACE);
+            } else {
+                result = cb(env, runtimeInfo);
+            }
 #if ECMASCRIPT_ENABLE_INTERPRETER_ARKUINAITVE_TRACE
 #ifdef ENABLE_HITRACE
                         FinishTrace(HITRACE_TAG_ACE);
@@ -3270,6 +3287,12 @@ void ArkNativeEngine::EnableNapiProfiler()
             napiProfilerParam, sizeof(napiProfilerParam));
         if (ret > 0 && strcmp(napiProfilerParam, "true") == 0) {
             ArkNativeEngine::napiProfilerEnabled = true;
+        }
+
+        ret = GetParameter("persist.hiviewdfx.napiapitrace.enabled", "false",
+            napiProfilerParam, sizeof(napiProfilerParam));
+        if (ret > 0 && strcmp(napiProfilerParam, "true") == 0) {
+            ArkNativeEngine::napiApiTraceEnabled = true;
         }
         ArkNativeEngine::napiProfilerParamReaded = true;
     }
