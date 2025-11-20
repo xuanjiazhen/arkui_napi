@@ -157,6 +157,8 @@ HWTEST_F(NapiSendableTest, IsSendableTest001, testing::ext::TestSize.Level1)
     ASSERT_EQ(isShared, true);
 }
 
+// test
+
 HWTEST_F(NapiSendableTest, IsSendableTest002, testing::ext::TestSize.Level1)
 {
     static size_t LENGTH = 1024;
