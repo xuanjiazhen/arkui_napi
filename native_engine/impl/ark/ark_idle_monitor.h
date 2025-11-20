@@ -45,6 +45,8 @@ class SharedMemController;
 class ArkIdleMonitor {
 using Clock = std::chrono::high_resolution_clock;
 using TRIGGER_IDLE_GC_TYPE = panda::JSNApi::TRIGGER_IDLE_GC_TYPE;
+using ReportDataFunc = void (*)(uint32_t resType, int64_t value,
+    const std::unordered_map<std::string, std::string>& payload);
 public:
     ArkIdleMonitor(){};
     ~ArkIdleMonitor();
@@ -236,6 +238,7 @@ private:
     void CheckShortIdleTask(int64_t timestamp, int idleTime);
     void PostSwitchBackgroundGCTask();
     void ReportDataToRSS(bool isGCStart);
+    ReportDataFunc LoadReportDataFunc();
     static uint64_t GetIdleMonitoringInterval();
 
     static std::shared_ptr<ArkIdleMonitor> instance_;
@@ -260,6 +263,8 @@ private:
     static constexpr uint32_t IDLE_WORKER_TRIGGER_COUNT = 1; // it needs over IDLE_INBACKGROUND_CHECK_LENGTH
     static constexpr uint32_t IDLE_WORKER_CHECK_TASK_COUNT = 4;
     static constexpr uint32_t IDLE_WORKER_CHECK_TASK_COUNT_BACKGROUND = 1;
+    // Needs to be synchronized with ResType in the res_type.h file.
+    static constexpr uint32_t RES_TYPE_GC_EVENT = 185;
 
     std::atomic<bool> idleState_ {false};
     std::atomic<bool> inBackground_ {true};
@@ -294,6 +299,7 @@ private:
     static bool gEnableIdleGC;
 #endif
     static bool gEnableDeferFreeze;
+    ReportDataFunc reportDataFunc_ {nullptr};
 };
 
 }
