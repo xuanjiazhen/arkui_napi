@@ -12,10 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "ark_idle_monitor.h"
 
-
+#ifdef LINUX_PLATFORM
+#include <dlfcn.h>
+#endif
 #include "utils/log.h"
 #if defined(ENABLE_FFRT)
 #include "ffrt.h"
@@ -33,12 +34,12 @@
 #include "memory_trace.h"
 #endif
 #include "ark_native_engine.h"
-#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
-#include "res_sched_client.h"
-#include "res_type.h"
-#endif
+
 
 namespace panda::ecmascript {
+const std::string RES_SCHED_CLIENT_SO = "libressched_client.z.so";
+using ReportDataFunc = void (*)(uint32_t resType, int64_t value,
+    const std::unordered_map<std::string, std::string>& payload);
 #if defined(ENABLE_EVENT_HANDLER)
 static constexpr uint64_t IDLE_GC_TIME_MIN = 1000;
 static constexpr uint64_t IDLE_GC_TIME_MAX = 10000;
@@ -279,6 +280,7 @@ void ArkIdleMonitor::NotifyMainThreadTryCompressGCByBackground()
         if (CheckWorkerEnvQueueAllInIdle(IDLE_WORKER_CHECK_TASK_COUNT_BACKGROUND)) {
             JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
         } else {
+            HILOG_INFO("ArkIdleMonitor::NotifyMainThreadTryCompressGCByBackground NotifyNeedFreeze");
             NotifyNeedFreeze(true);
         }
     };
@@ -514,8 +516,7 @@ void ArkIdleMonitor::SwitchBackgroundCheckGCTask(int64_t timestamp, int64_t idle
     int64_t sumIdleDuration = (GetTotalIdleDuration() - idleDuration) + (nowTimestamp - GetNotifyTimestamp());
     double idlePercentage = static_cast<double>(sumIdleDuration) / static_cast<double>(sumDuration);
     double cpuUsage = GetCpuUsage();
-    if (idlePercentage > BACKGROUND_IDLE_RATIO && cpuUsage <= IDLE_BACKGROUND_CPU_USAGE &&
-        sumDuration < static_cast<int64_t>(gDelayOverTime)) {
+    if (idlePercentage > BACKGROUND_IDLE_RATIO && cpuUsage <= IDLE_BACKGROUND_CPU_USAGE) {
         NotifyMainThreadTryCompressGCByBackground();
     } else {
         HILOG_INFO("ArkIdleMonitor cancel BGGCTask,idlePer:%{public}.2f;cpuUsage:%{public}.2f;duration:%{public}s",
@@ -629,20 +630,46 @@ void ArkIdleMonitor::StopIdleMonitorTimerTaskAndPostSleepTask()
 
 void ArkIdleMonitor::ReportDataToRSS(bool needFreeze)
 {
+#ifdef LINUX_PLATFORM
     auto pid = getpid();
     auto bundleName = JSNApi::GetBundleName(mainVM_);
-    HILOG_INFO("ArkIdleMonitor: ReportDataToRSS %{public}d, pid: %{public}d, bundleName: %{public}s",
-        needFreeze, pid, bundleName.c_str());
-#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
-    uint32_t resType = OHOS::ResourceSchedule::ResType::RES_TYPE_GC_EVENT;
     std::unordered_map<std::string, std::string> eventParams {
         { "pid", std::to_string(pid) },
         { "bundleName", bundleName }
     };
-    OHOS::ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, needFreeze, eventParams);
+    if (!reportDataFunc_) {
+        reportDataFunc_ = LoadReportDataFunc();
+    }
+    if (reportDataFunc_ != nullptr) {
+        reportDataFunc_(RES_TYPE_GC_EVENT, needFreeze, eventParams);
+        HILOG_INFO("ArkIdleMonitor: ReportDataToRSS %{public}d, pid: %{public}d, bundleName: %{public}s",
+            needFreeze, pid, bundleName.c_str());
+    } else {
+        HILOG_WARN("ArkIdleMonitor: ReportDataToRSS func is nullptr.");
+    }
+#else
+    HILOG_DEBUG("ArkIdleMonitor: Only linux does not support ReportDataToRSS");
 #endif
 }
 
+
+ReportDataFunc ArkIdleMonitor::LoadReportDataFunc()
+{
+#ifdef LINUX_PLATFORM
+    auto handle = dlopen(RES_SCHED_CLIENT_SO.c_str(), RTLD_NOW);
+    auto func = reinterpret_cast<ReportDataFunc>(dlsym(handle, "ReportData"));
+    if (func == nullptr) {
+        dlclose(handle);
+        HILOG_ERROR("ArkIdleMonitor: LoadReportDataFunc failed!");
+        return nullptr;
+    }
+    HILOG_INFO("ArkIdleMonitor: LoadReportDataFunc success.");
+    return func;
+#else
+    HILOG_DEBUG("ArkIdleMonitor: Only linux does not support LoadReportDataFunc");
+    return nullptr;
+#endif
+}
 
 std::shared_ptr<ArkIdleMonitor> ArkIdleMonitor::instance_ = std::make_shared<ArkIdleMonitor>();
 
