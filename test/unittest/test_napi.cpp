@@ -10072,6 +10072,21 @@ HWTEST_F(NapiBasicTest, NapiThrowErrorTest001, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: NapiThrowErrorTest
+ * @tc.desc: Test interface of napi_throw_business_error
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiThrowBusinessErrorTest001, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int validCode = 100;
+    // call napi_throw_business_error interface with nullptr msg
+    auto res = napi_throw_business_error(env, validCode, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+/**
  * @tc.name: NapiThrowTypeErrorTest
  * @tc.desc: Test interface of napi_throw_type_error
  * @tc.type: FUNC
