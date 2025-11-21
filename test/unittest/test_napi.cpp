@@ -766,7 +766,6 @@ HWTEST_F(NapiBasicTest, StringTest006, testing::ext::TestSize.Level1)
     ASSERT_STREQ(testStr, buffer);
     ASSERT_EQ(testStrLength, strLength);
     delete []buffer;
-    buffer = nullptr;
 }
 
 /**
@@ -806,7 +805,6 @@ HWTEST_F(NapiBasicTest, StringTest007, testing::ext::TestSize.Level1)
     ASSERT_EQ(static_cast<uint8_t>(backslashPos[0]), 0x5C);
 
     delete[] buffer;
-    buffer = nullptr;
 }
 
 /**
@@ -837,7 +835,6 @@ HWTEST_F(NapiBasicTest, StringTest008, testing::ext::TestSize.Level1)
     ASSERT_EQ(strLength, testStrLength);
 
     delete[] buffer;
-    buffer = nullptr;
 }
 
 /**
@@ -876,7 +873,6 @@ HWTEST_F(NapiBasicTest, StringTest009, testing::ext::TestSize.Level1)
     ASSERT_EQ(static_cast<uint8_t>(rep[2]), 0xBD);
 
     delete[] buffer;
-    buffer = nullptr;
 }
 
 /**
@@ -10209,6 +10205,21 @@ HWTEST_F(NapiBasicTest, NapiThrowErrorTest001, testing::ext::TestSize.Level1)
     ASSERT_EQ(res, napi_invalid_arg);
 }
 
+/**
+ * @tc.name: NapiThrowErrorTest
+ * @tc.desc: Test interface of napi_throw_business_error
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiThrowBusinessErrorTest001, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    int validCode = 100;
+    // call napi_throw_business_error interface with nullptr msg
+    auto res = napi_throw_business_error(env, validCode, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
 /**
  * @tc.name: NapiThrowTypeErrorTest
  * @tc.desc: Test interface of napi_throw_type_error
