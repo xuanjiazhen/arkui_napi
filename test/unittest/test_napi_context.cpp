@@ -3032,6 +3032,23 @@ HWTEST_F(NapiContextTest, NapiThrowErrorTest001, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: NapiThrowBusinessErrorTest001
+ * @tc.desc: Test napi_throw_business_error when env is a context env.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, NapiThrowBusinessErrorTest001, testing::ext::TestSize.Level1)
+{
+    CheckContextEnv();
+    napi_env env = reinterpret_cast<napi_env>(multiContextEngine_);
+
+    ASSERT_CHECK_CALL(napi_throw_business_error(env, TEST_ERROR_CODE, TEST_ERROR_MESSAGE));
+
+    bool isExceptionPending = false;
+    ASSERT_CHECK_CALL(napi_is_exception_pending(env, &isExceptionPending));
+    ASSERT_TRUE(isExceptionPending);
+}
+
+/**
  * @tc.name: NapiThrowTypeErrorTest001
  * @tc.desc: Test napi_throw_type_error when env is a context env.
  * @tc.type: FUNC
