@@ -4744,7 +4744,8 @@ NAPI_EXTERN napi_status napi_get_strong_reference_value(
     CHECK_ARG(env, result);
     CROSS_THREAD_CHECK(env);
 
-    Local<JSValueRef> local(reinterpret_cast<uintptr_t>(ref));
+    auto vm = engine->GetEcmaVm();
+    Local<JSValueRef> local(vm, reinterpret_cast<uintptr_t>(ref));
     *result = reinterpret_cast<napi_value>(JsValueFromLocalValue(local));
 
     return napi_clear_last_error(env);
