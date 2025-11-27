@@ -24,7 +24,6 @@
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "native_api_internal.h"
 #include "native_engine/impl/ark/ark_native_reference.h"
-#include "native_engine/impl/ark/ark_sendable_native_reference.h"
 #include "native_engine/native_create_env.h"
 #include "native_engine/native_utils.h"
 #include "native_engine/worker_manager.h"
@@ -60,6 +59,7 @@ using panda::ecmascript::EcmaVM;
 static constexpr size_t MAX_BYTE_LENGTH = 2097152;
 static constexpr size_t ONEMIB_BYTE_SIZE = 1048576;
 static constexpr size_t SMALL_STRING_SIZE = 16;
+static constexpr uint64_t NAPI_SENDABLE_REF_MASK = 4; // 0100
 
 class HandleScopeWrapper {
 public:
@@ -4764,43 +4764,14 @@ NAPI_EXTERN napi_status napi_create_strong_sendable_reference(napi_env env,
         return napi_set_last_error(env, napi_invalid_arg);
     }
 
-    auto nativeValue = LocalValueFromJsValue(value);
-    if (!nativeValue->IsSendable(engine->GetEcmaVm())) {
+    if (!LocalValueFromJsValue(value)->IsSendable(engine->GetEcmaVm())) {
         HILOG_ERROR("Can not create sendable reference from a non-sendable value");
         return napi_set_last_error(env, napi_object_expected);
     }
 
-    auto ref = new ArkSendableNativeReference(engine, nativeValue);
-
-    *result = reinterpret_cast<napi_sendable_ref>(ref);
-    return napi_clear_last_error(env);
-}
-
-NAPI_EXTERN napi_status napi_delete_strong_sendable_reference(napi_env env,
-                                                              napi_sendable_ref ref)
-{
-    CHECK_ENV(env);
-    CHECK_ARG(env, ref);
-
-    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
-    if (!engine->IsMainEnvContext()) {
-        HILOG_ERROR("multi-context does not support sendable feature");
-        return napi_set_last_error(env, napi_invalid_arg);
-    }
-    auto reference = reinterpret_cast<ArkSendableNativeReference*>(ref);
-    {
-        // Create scope to recycle handles created from reference->Get.
-        HandleScopeWrapper(reinterpret_cast<NativeEngine*>(env));
-        napi_value value = reference->Get(engine);
-        if (!LocalValueFromJsValue(value)->IsSendable(engine->GetEcmaVm())) {
-            HILOG_ERROR("Can not delete a non-sendable reference by napi_delete_strong_sendable_reference.");
-            return napi_set_last_error(env, napi_generic_failure);
-        }
-    }
-    reference->DeleteSendableRef(engine);
-    delete reference;
-    reference = nullptr;
-
+    uintptr_t ref = JSNApi::GetSendableGlobalHandleAddr(engine->GetEcmaVm(), reinterpret_cast<uintptr_t>(value));
+    uintptr_t maskRef = static_cast<uintptr_t>(static_cast<uint64_t>(ref) | NAPI_SENDABLE_REF_MASK);
+    *result = reinterpret_cast<napi_sendable_ref>(maskRef);
     return napi_clear_last_error(env);
 }
 
@@ -4817,12 +4788,53 @@ NAPI_EXTERN napi_status napi_get_strong_sendable_reference_value(napi_env env,
         HILOG_ERROR("multi-context does not support sendable feature");
         return napi_set_last_error(env, napi_invalid_arg);
     }
-    auto reference = reinterpret_cast<ArkSendableNativeReference*>(ref);
-    napi_value value = reference->Get(engine);
-    if (!LocalValueFromJsValue(value)->IsSendable(engine->GetEcmaVm())) {
-        HILOG_ERROR("Can not get sendable value from a non-sendable reference.");
+
+    // check sendable ref ptr
+    uintptr_t refPtr = reinterpret_cast<uintptr_t>(ref);
+    if (!(static_cast<uint64_t>(refPtr) & NAPI_SENDABLE_REF_MASK)) {
+        HILOG_ERROR("Invaild args. ref is not created by napi_create_strong_sendable_reference");
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+
+    auto vm = engine->GetEcmaVm();
+    refPtr = reinterpret_cast<uintptr_t>(static_cast<uint64_t>(refPtr) & ~NAPI_SENDABLE_REF_MASK);
+    if (!JSNApi::SendableHandleIsAlive(vm, refPtr)) {
+        HILOG_ERROR("sendable ref is not alive");
         return napi_set_last_error(env, napi_generic_failure);
     }
-    *result = value;
+
+    Local<JSValueRef> local(vm, refPtr);
+    *result = JsValueFromLocalValue(local);
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_delete_strong_sendable_reference(napi_env env,
+                                                              napi_sendable_ref ref)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    if (!engine->IsMainEnvContext()) {
+        HILOG_ERROR("multi-context does not support sendable feature");
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+
+    // check sendable ref ptr
+    uintptr_t refPtr = reinterpret_cast<uintptr_t>(ref);
+    if (!(static_cast<uint64_t>(refPtr) & NAPI_SENDABLE_REF_MASK)) {
+        HILOG_ERROR("Invaild args. ref is not created by napi_create_strong_sendable_reference");
+        return napi_set_last_error(env, napi_invalid_arg);
+    }
+
+    auto vm = engine->GetEcmaVm();
+    refPtr = reinterpret_cast<uintptr_t>(static_cast<uint64_t>(refPtr) & ~NAPI_SENDABLE_REF_MASK);
+    if (!JSNApi::SendableHandleIsAlive(vm, refPtr)) {
+        HILOG_ERROR("sendable ref is not alive");
+        return napi_set_last_error(env, napi_generic_failure);
+    }
+    JSNApi::DisposeSendableGlobalHandleAddr(vm, refPtr);
+
     return napi_clear_last_error(env);
 }
