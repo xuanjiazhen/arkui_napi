@@ -24,6 +24,8 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <unordered_set>
+#include <set>
 
 #if defined(ENABLE_EVENT_HANDLER)
 #include "event_handler.h"
@@ -143,21 +145,14 @@ public:
 
     void RegisterWorkerEnv(napi_env workerEnv)
     {
-        std::lock_guard<std::mutex> lock(queueMutex_);
-        workerEnvQueue_.push(workerEnv);
+        std::lock_guard<std::mutex> lock(envSetMutex_);
+        workerEnvSet_.insert(workerEnv);
     }
 
     void UnregisterWorkerEnv(napi_env workerEnv)
     {
-        std::lock_guard<std::mutex> lock(queueMutex_);
-        for (size_t i = 0; i < workerEnvQueue_.size(); i++) {
-            napi_env env = workerEnvQueue_.front();
-            workerEnvQueue_.pop();
-            if (env == workerEnv) {
-                return;
-            }
-            workerEnvQueue_.push(env);
-        }
+        std::lock_guard<std::mutex> lock(envSetMutex_);
+        workerEnvSet_.erase(workerEnv);
     }
 
     template<typename T, int N>
@@ -214,6 +209,7 @@ public:
     void EnableIdleGC(NativeEngine *engine);
     void UnregisterEnv(NativeEngine *engine);
     void NotifyNeedFreeze(bool needFreeze);
+    void NotifyNextCompressGC(bool isNeedNextGC, bool isNeedFreeze);
 
 private:
     double GetCpuUsage() const;
@@ -226,7 +222,6 @@ private:
     void IntervalMonitor();
     void NotifyMainThreadTryCompressGC();
     void NotifyMainThreadTryCompressGCByBackground();
-    void NotifyOneWorkerThreadTryCompressGC();
     void ClearIdleStats();
     void TryTriggerGC(TriggerGCType gcType);
     void PostIdleCheckTask();
@@ -272,6 +267,7 @@ private:
     int64_t lastTotalIdleDuration_ {0};
     int64_t startRecordTimestamp_ {0};
     int64_t intervalTimestamp_ {0};
+    int64_t triggerTaskStartTimestamp_ {0};
     bool started_ {false};
     bool triggeredGC_ {false};
     bool needCheckIntervalIdle_ = {true};
@@ -285,8 +281,9 @@ private:
     RingBuffer<int64_t, IDLE_CHECK_INTERVAL_LENGTH> recordedIdleNotifyInterval_;
     RingBuffer<int64_t, IDLE_CHECK_INTERVAL_LENGTH> recordedRunningNotifyInterval_;
     std::mutex timerMutex_;
-    std::mutex queueMutex_;
-    std::queue<napi_env> workerEnvQueue_;
+    std::mutex envSetMutex_;
+    std::set<napi_env> workerEnvSet_;
+    std::set<napi_env> performedGCThreadSet_;
     static uint64_t gIdleMonitoringInterval;
     static uint64_t gDelayOverTime;
 #if defined(ENABLE_EVENT_HANDLER)
