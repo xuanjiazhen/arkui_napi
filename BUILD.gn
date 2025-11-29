@@ -279,6 +279,13 @@ if (is_arkui_x) {
 
         if (target_cpu == "arm64") {
           ldflags += [ "-Wl,--aarch64-inline-plt" ]
+          if (defined(build_ext_path)) {
+            ldflags += [ 
+              "-Wl,--emit-relocs", 
+              "-Wl,--no-relax", 
+              "-mno-fix-cortex-a53-843419" 
+            ]
+          }
         }
       }
     }
