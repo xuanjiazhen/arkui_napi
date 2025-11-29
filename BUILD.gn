@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import("napi.gni")
+import("//foundation/arkui/ace_engine/ace_config.gni")
 
 if (ark_standalone_build) {
   import("$build_root/ark.gni")
@@ -279,9 +280,41 @@ if (is_arkui_x) {
 
         if (target_cpu == "arm64") {
           ldflags += [ "-Wl,--aarch64-inline-plt" ]
+          if (defined(build_ext_path)) {
+            ldflags += [ 
+              "-Wl,--emit-relocs", 
+              "-Wl,--no-relax", 
+              "-mno-fix-cortex-a53-843419" 
+            ]
+          }
         }
       }
     }
+  }
+}
+
+config("container_scope_config") {
+  visibility = [ ":*" ]
+  include_dirs = [ "$ace_root/frameworks" ]
+}
+ 
+ohos_shared_library("ace_container_scope") {
+  public_configs = [ ":container_scope_config" ]
+ 
+  configs = [ "$ace_root:ace_config" ]
+ 
+  sources = [ "$ace_root/frameworks/core/common/container_scope.cpp" ]
+ 
+  subsystem_name = "arkui"
+  innerapi_tags = [ "platformsdk_indirect" ]
+  part_name = "napi"
+ 
+  if (is_ohos && is_clang && target_cpu == "arm64" && defined(build_ext_path)) {
+    ldflags = [ 
+      "-Wl,--emit-relocs",
+      "-Wl,--no-relax", 
+      "-mno-fix-cortex-a53-843419" 
+    ]
   }
 }
 
