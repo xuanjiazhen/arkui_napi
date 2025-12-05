@@ -2591,7 +2591,7 @@ NAPI_EXTERN napi_status napi_throw_error(napi_env env, const char* code, const c
     return napi_clear_last_error(env);
 }
 
-NAPI_EXTERN napi_status napi_throw_business_error(napi_env env, int32_t code, const char* msg)
+NAPI_EXTERN napi_status napi_throw_business_error(napi_env env, int32_t errorCode, const char* msg)
 {
     CHECK_ENV(env);
     RETURN_STATUS_IF_FALSE(
