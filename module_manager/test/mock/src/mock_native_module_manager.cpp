@@ -80,7 +80,8 @@ bool ModuleLoadChecker::CheckModuleLoadable(const char* moduleName,
 NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleName,
                                                            char nativeModulePath[][NAPI_PATH_MAX],
                                                            NativeModule*& cacheNativeModule,
-                                                           NativeModuleHeadTailStruct& cacheHeadTailStruct)
+                                                           NativeModuleHeadTailStruct& cacheHeadTailStruct
+                                                           bool isLoadingStatusValid)
 {
     GTEST_LOG_(INFO) << g_mockFindNativeModuleByCache;
     return g_mockFindNativeModuleByCache;
