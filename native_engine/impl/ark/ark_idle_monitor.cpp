@@ -433,11 +433,16 @@ void ArkIdleMonitor::NotifyChangeBackgroundState(bool inBackground)
         return;
     }
 #if defined(ENABLE_FFRT)
-    if (started_ && inBackground) {
-        HILOG_DEBUG("ArkIdleMonitor post check switch background gc task");
+    if (!started_) {
+        HILOG_DEBUG("ArkIdleMonitor is not start.");
+        return;
+    }
+    if (inBackground) {
         StopIdleMonitorTimerTask();
         CheckWorkerEnvQueue();
         PostSwitchBackgroundGCTask();
+    } else {
+        isSwitchToBackgroundTask_.store(false, std::memory_order_relaxed);
     }
 #endif
 }
