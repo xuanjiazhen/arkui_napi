@@ -2992,6 +2992,25 @@ HWTEST_F(NapiBasicTest, CreateRuntimeTest001, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: CreateRuntimeTest002
+ * @tc.desc: Test create runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateRuntimeTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv = nullptr;
+    napi_status status = napi_create_runtime(env, &newEnv);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv, nullptr);
+    auto hostVM = engine->GetEcmaVm();
+    auto workerVM = reinterpret_cast<NativeEngine*>(newEnv)->GetEcmaVm();
+    ASSERT_EQ(JSNApi::GetUncatchableErrorHandler(hostVM), JSNApi::GetUncatchableErrorHandler(workerVM));
+    delete reinterpret_cast<NativeEngine *>(newEnv);
+}
+
+/**
  * @tc.name: DestroyRuntimeTest001
  * @tc.desc: Test destroy runtime.
  * @tc.type: FUNC
@@ -3005,6 +3024,26 @@ HWTEST_F(NapiBasicTest, DestroyRuntimeTest001, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_ok);
     status = napi_destroy_runtime(newEnv);
     ASSERT_EQ(status, napi_ok);
+}
+
+
+/**
+ * @tc.name: CreateLimitRuntimeTest001
+ * @tc.desc: Test create runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv = nullptr;
+    napi_status status = napi_create_limit_runtime(env, &newEnv);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv, nullptr);
+    auto hostVM = engine->GetEcmaVm();
+    auto workerVM = reinterpret_cast<NativeEngine*>(newEnv)->GetEcmaVm();
+    ASSERT_EQ(JSNApi::GetUncatchableErrorHandler(hostVM), JSNApi::GetUncatchableErrorHandler(workerVM));
+    delete reinterpret_cast<NativeEngine *>(newEnv);
 }
 
 /**
