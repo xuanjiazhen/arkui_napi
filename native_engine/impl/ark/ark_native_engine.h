@@ -518,7 +518,6 @@ private:
     // ecma vm
     EcmaVM* vm_ = nullptr;
     bool needStop_ = false;
-    panda::LocalScope topScope_;
     panda::Global<panda::JSValueRef> context_;
 
     // for context env

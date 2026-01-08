@@ -486,7 +486,6 @@ void ArkNativeEngine::CopyPropertyApiFilter(const std::unique_ptr<ApiAllowListCh
 
 ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker) : NativeEngine(jsEngine),
                                                                                      vm_(vm),
-                                                                                     topScope_(vm),
                                                                                      isLimitedWorker_(isLimitedWorker),
                                                                                      isMainEnvContext_(true)
 {
@@ -565,7 +564,6 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 ArkNativeEngine::ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<JSValueRef>& context)
     : NativeEngine(parent),
       vm_(vm),
-      topScope_(vm),
       context_(vm, context),
       parentEngine_(reinterpret_cast<ArkNativeEngine*>(parent)),
       containerScopeEnable_(parent->IsContainerScopeEnabled()),
