@@ -3011,6 +3011,121 @@ HWTEST_F(NapiBasicTest, CreateRuntimeTest002, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: CreateRuntimeTest003
+ * @tc.desc: Test create runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateRuntimeTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv = nullptr;
+    napi_status status = napi_create_runtime(env, &newEnv);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv, nullptr);
+    auto workerVM = reinterpret_cast<NativeEngine*>(newEnv)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM, handler);
+    JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM);
+    EXPECT_NE(func, nullptr);
+    delete reinterpret_cast<NativeEngine *>(newEnv);
+}
+
+/**
+ * @tc.name: CreateRuntimeTest004
+ * @tc.desc: Test create runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateRuntimeTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    auto workerVM1 = reinterpret_cast<NativeEngine*>(newEnv1)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM1, handler);
+
+    napi_env newEnv2 = nullptr;
+    status = napi_create_runtime(newEnv1, &newEnv2);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv2, nullptr);
+    auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+    JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+    EXPECT_NE(func, nullptr);
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+    delete reinterpret_cast<NativeEngine *>(newEnv2);
+}
+
+/**
+ * @tc.name: CreateRuntimeTest005
+ * @tc.desc: Test create runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateRuntimeTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    auto workerVM1 = reinterpret_cast<NativeEngine*>(newEnv1)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM1, handler);
+    std::thread t1([newEnv1]() {
+        napi_env newEnv2 = nullptr;
+        napi_status status2 = napi_create_runtime(newEnv1, &newEnv2);
+        ASSERT_EQ(status2, napi_ok);
+        ASSERT_NE(newEnv2, nullptr);
+        auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+        JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+        EXPECT_NE(func, nullptr);
+        delete reinterpret_cast<NativeEngine *>(newEnv2);
+    });
+    t1.join();
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+}
+
+/**
+ * @tc.name: CreateRuntimeTest006
+ * @tc.desc: Test create runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateRuntimeTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    std::thread t1([newEnv1]() {
+        napi_env newEnv2 = nullptr;
+        napi_status status2 = napi_create_runtime(newEnv1, &newEnv2);
+        ASSERT_EQ(status2, napi_ok);
+        ASSERT_NE(newEnv2, nullptr);
+        auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+        JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+        EXPECT_EQ(func, nullptr);
+        delete reinterpret_cast<NativeEngine *>(newEnv2);
+    });
+    t1.join();
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+}
+
+/**
  * @tc.name: DestroyRuntimeTest001
  * @tc.desc: Test destroy runtime.
  * @tc.type: FUNC
@@ -3043,6 +3158,251 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest001, testing::ext::TestSize.Level1
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM);
     EXPECT_EQ(func, nullptr); // no function registered in unittest
     delete reinterpret_cast<NativeEngine *>(newEnv);
+}
+
+/**
+ * @tc.name: CreateLimitRuntimeTest002
+ * @tc.desc: Test create limite runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv = nullptr;
+    napi_status status = napi_create_limit_runtime(env, &newEnv);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv, nullptr);
+    auto workerVM = reinterpret_cast<NativeEngine*>(newEnv)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM, handler);
+    JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM);
+    EXPECT_NE(func, nullptr);
+    delete reinterpret_cast<NativeEngine *>(newEnv);
+}
+
+/**
+ * @tc.name: CreateLimitRuntimeTest003
+ * @tc.desc: Test create limite runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_limit_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    auto workerVM1 = reinterpret_cast<NativeEngine*>(newEnv1)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM1, handler);
+
+    napi_env newEnv2 = nullptr;
+    status = napi_create_limit_runtime(newEnv1, &newEnv2);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv2, nullptr);
+    auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+    JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+    EXPECT_NE(func, nullptr);
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+    delete reinterpret_cast<NativeEngine *>(newEnv2);
+}
+
+/**
+ * @tc.name: CreateLimitRuntimeTest004
+ * @tc.desc: Test create limite runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    auto workerVM1 = reinterpret_cast<NativeEngine*>(newEnv1)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM1, handler);
+
+    napi_env newEnv2 = nullptr;
+    status = napi_create_limit_runtime(newEnv1, &newEnv2);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv2, nullptr);
+    auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+    JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+    EXPECT_NE(func, nullptr);
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+    delete reinterpret_cast<NativeEngine *>(newEnv2);
+}
+
+/**
+ * @tc.name: CreateLimitRuntimeTest005
+ * @tc.desc: Test create limite runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_limit_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    auto workerVM1 = reinterpret_cast<NativeEngine*>(newEnv1)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM1, handler);
+
+    napi_env newEnv2 = nullptr;
+    status = napi_create_runtime(newEnv1, &newEnv2);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv2, nullptr);
+    auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+    JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+    EXPECT_NE(func, nullptr);
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+    delete reinterpret_cast<NativeEngine *>(newEnv2);
+}
+
+/**
+ * @tc.name: CreateLimitRuntimeTest006
+ * @tc.desc: Test create limite runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_limit_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    auto workerVM1 = reinterpret_cast<NativeEngine*>(newEnv1)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM1, handler);
+    std::thread t1([newEnv1]() {
+        napi_env newEnv2 = nullptr;
+        napi_status status2 = napi_create_limit_runtime(newEnv1, &newEnv2);
+        ASSERT_EQ(status2, napi_ok);
+        ASSERT_NE(newEnv2, nullptr);
+        auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+        JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+        EXPECT_NE(func, nullptr);
+        delete reinterpret_cast<NativeEngine *>(newEnv2);
+    });
+    t1.join();
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+}
+
+/**
+ * @tc.name: CreateLimitRuntimeTest007
+ * @tc.desc: Test create limite runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest007, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_limit_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    std::thread t1([newEnv1]() {
+        napi_env newEnv2 = nullptr;
+        napi_status status2 = napi_create_limit_runtime(newEnv1, &newEnv2);
+        ASSERT_EQ(status2, napi_ok);
+        ASSERT_NE(newEnv2, nullptr);
+        auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+        JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+        EXPECT_EQ(func, nullptr);
+        delete reinterpret_cast<NativeEngine *>(newEnv2);
+    });
+    t1.join();
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+}
+
+/**
+ * @tc.name: CreateLimitRuntimeTest008
+ * @tc.desc: Test create limite runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest008, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_limit_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    auto workerVM1 = reinterpret_cast<NativeEngine*>(newEnv1)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM1, handler);
+
+    std::thread t1([newEnv1]() {
+        napi_env newEnv2 = nullptr;
+        napi_status status2 = napi_create_runtime(newEnv1, &newEnv2);
+        ASSERT_EQ(status2, napi_ok);
+        ASSERT_NE(newEnv2, nullptr);
+        auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+        JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+        EXPECT_NE(func, nullptr);
+        delete reinterpret_cast<NativeEngine *>(newEnv2);
+    });
+    t1.join();
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
+}
+
+/**
+ * @tc.name: CreateLimitRuntimeTest009
+ * @tc.desc: Test create limite runtime.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest009, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_env newEnv1 = nullptr;
+    napi_status status = napi_create_runtime(env, &newEnv1);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_NE(newEnv1, nullptr);
+    auto workerVM1 = reinterpret_cast<NativeEngine*>(newEnv1)->GetEcmaVm();
+    UncatchableErrorHandler handler = [](panda::TryCatch& tryCatch) {
+        // nothing to do in unittest
+        return;
+    }
+    JSNApi::RegisterUncatchableErrorHandler(workerVM1, handler);
+
+    std::thread t1([newEnv1]() {
+        napi_env newEnv2 = nullptr;
+        napi_status status2 = napi_create_limit_runtime(newEnv1, &newEnv2);
+        ASSERT_EQ(status2, napi_ok);
+        ASSERT_NE(newEnv2, nullptr);
+        auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
+        JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
+        EXPECT_NE(func, nullptr);
+        delete reinterpret_cast<NativeEngine *>(newEnv2);
+    });
+    t1.join();
+    delete reinterpret_cast<NativeEngine *>(newEnv1);
 }
 
 /**
