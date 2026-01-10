@@ -1039,6 +1039,202 @@ HWTEST_F(NapiBasicTest, ExternalTest003, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: ExternalSTest001
+ * @tc.desc: Test external_s type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ExternalSTest001, testing::ext::TestSize.Level1)
+{
+    // English
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag externalTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    const char testStr[] = "test";
+    napi_value external = nullptr;
+    napi_create_external_s(
+        env, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, &externalTypeTag, &external);
+
+    ASSERT_CHECK_VALUE_TYPE(env, external, napi_external);
+    void* tmpExternal = nullptr;
+    napi_get_value_external_s(env, external, &externalTypeTag, &tmpExternal);
+    ASSERT_TRUE(tmpExternal);
+    ASSERT_EQ(tmpExternal, testStr);
+}
+
+/**
+ * @tc.name: ExternalSTest002
+ * @tc.desc: Test external_s type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ExternalSTest002, testing::ext::TestSize.Level1)
+{
+    // Chinese
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag externalTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    const char testStr[] = "中测";
+    napi_value external = nullptr;
+    napi_create_external_s(
+        env, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, &externalTypeTag, &external);
+
+    ASSERT_CHECK_VALUE_TYPE(env, external, napi_external);
+    void* tmpExternal = nullptr;
+    napi_get_value_external_s(env, external, &externalTypeTag, &tmpExternal);
+    ASSERT_TRUE(tmpExternal);
+    ASSERT_EQ(tmpExternal, testStr);
+}
+
+/**
+ * @tc.name: ExternalSTest003
+ * @tc.desc: Test external_s type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ExternalSTest003, testing::ext::TestSize.Level1)
+{
+    // number
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag externalTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    const char testStr[] = "123456";
+    napi_value external = nullptr;
+    napi_create_external_s(
+        env, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, &externalTypeTag, &external);
+
+    ASSERT_CHECK_VALUE_TYPE(env, external, napi_external);
+    void* tmpExternal = nullptr;
+    napi_get_value_external_s(env, external, &externalTypeTag, &tmpExternal);
+    ASSERT_TRUE(tmpExternal);
+    ASSERT_EQ(tmpExternal, testStr);
+}
+
+/**
+ * @tc.name: ExternalSTest004
+ * @tc.desc: Test external_s type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ExternalSTest004, testing::ext::TestSize.Level1)
+{
+    // wrong type_tag
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag createTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    static const napi_type_tag getTypeTag = {
+        0x8111455d128d4e2d,  // lower
+        0x9297e80a58cf0a9c   // upper
+    };
+    const char testStr[] = "test";
+    napi_value external = nullptr;
+    napi_create_external_s(
+        env, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, &createTypeTag, &external);
+
+    ASSERT_CHECK_VALUE_TYPE(env, external, napi_external);
+    void* tmpExternal = nullptr;
+    napi_status res = napi_get_value_external_s(env, external, &getTypeTag, &tmpExternal);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: ExternalSTest005
+ * @tc.desc: Test external_s type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ExternalSTest005, testing::ext::TestSize.Level1)
+{
+    // WrapperData test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag getTypeTag = {
+        0x8111455d128d4e2d,  // lower
+        0x9297e80a58cf0a9c   // upper
+    };
+    const char testStr[] = "test";
+    napi_value external = nullptr;
+    napi_create_external(
+        env, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, &external);
+
+    ASSERT_CHECK_VALUE_TYPE(env, external, napi_external);
+    void* tmpExternal = nullptr;
+    napi_status res = napi_get_value_external_s(env, external, &getTypeTag, &tmpExternal);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: ExternalSTest006
+ * @tc.desc: Test external_s type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ExternalSTest006, testing::ext::TestSize.Level1)
+{
+    // test nativepointer
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    void *tmpExternal = nullptr;
+    static const napi_type_tag getTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_get_value_external_s(env, obj, &getTypeTag, &tmpExternal);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
+/**
+ * @tc.name: ExternalSTest007
+ * @tc.desc: Test external_s type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ExternalSTest007, testing::ext::TestSize.Level1)
+{
+    // GC test
+    UVLoopRunner runner(engine_);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const EcmaVM* vm = reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm();
+    static bool finalizeCalled = false;
+    static const napi_type_tag externalTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    auto finalizeCb = [](napi_env env, void* data, void* hint) {
+        finalizeCalled = true;
+    };
+    const char testStr[] = "test";
+    napi_handle_scope scope;
+    napi_open_handle_scope(env, &scope);
+    napi_value external = nullptr;
+    napi_create_external_s(
+        env, (void*)testStr,
+        finalizeCb, (void*)testStr, &externalTypeTag, &external);
+
+    ASSERT_CHECK_VALUE_TYPE(env, external, napi_external);
+    void* tmpExternal = nullptr;
+    napi_get_value_external_s(env, external, &externalTypeTag, &tmpExternal);
+    napi_close_handle_scope(env, scope);
+    ASSERT_TRUE(tmpExternal);
+    ASSERT_EQ(tmpExternal, testStr);
+    panda::JSNApi::TriggerGC(vm, panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+    runner.Run();
+    ASSERT_TRUE(finalizeCalled);
+}
+
+/**
  * @tc.name: ObjectTest001
  * @tc.desc: Test object type.
  * @tc.type: FUNC
@@ -2906,6 +3102,216 @@ HWTEST_F(NapiBasicTest, ObjectWrapperTest006, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: ObjectWrapperSTest001
+ * @tc.desc: Test object wrapper.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ObjectWrapperSTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_status res = napi_ok;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_value testClass = nullptr;
+    res = napi_define_class(
+        env, "TestClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+            return thisVar;
+        },
+        nullptr, 0, nullptr, &testClass);
+    ASSERT_EQ(res, napi_ok);
+
+    napi_value instanceValue = nullptr;
+    res = napi_new_instance(env, testClass, 0, nullptr, &instanceValue);
+    ASSERT_EQ(res, napi_ok);
+
+    const char* testStr = "test";
+    res = napi_wrap_s(env, instanceValue, (void*)testStr,
+        [](napi_env env, void* data, void* hint) {}, nullptr, &wrapTypeTag, nullptr);
+    ASSERT_EQ(res, napi_ok);
+
+    char* tmpTestStr = nullptr;
+    res = napi_unwrap_s(env, instanceValue, &wrapTypeTag, (void**)&tmpTestStr);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_STREQ(testStr, tmpTestStr);
+
+    char* tmpTestStr1 = nullptr;
+    res = napi_remove_wrap(env, instanceValue, (void**)&tmpTestStr1);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_STREQ(testStr, tmpTestStr1);
+}
+
+/**
+ * @tc.name: ObjectWrapperSTest002
+ * @tc.desc: Test object wrapper.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ObjectWrapperSTest002, testing::ext::TestSize.Level1)
+{
+    // different type_tag
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_status res = napi_ok;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    static const napi_type_tag unwrapTypeTag = {
+        0x8111455d128d4e2d,  // lower
+        0x9297e80a58cf0a9c   // upper
+    };
+
+    napi_value testClass = nullptr;
+    res = napi_define_class(
+        env, "TestClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+            return thisVar;
+        },
+        nullptr, 0, nullptr, &testClass);
+    ASSERT_EQ(res, napi_ok);
+
+    napi_value instanceValue = nullptr;
+    res = napi_new_instance(env, testClass, 0, nullptr, &instanceValue);
+    ASSERT_EQ(res, napi_ok);
+
+    const char* testStr = "test";
+    res = napi_wrap_s(env, instanceValue, (void*)testStr,
+        [](napi_env env, void* data, void* hint) {}, nullptr, &wrapTypeTag, nullptr);
+    ASSERT_EQ(res, napi_ok);
+
+    char* tmpTestStr = nullptr;
+    res = napi_unwrap_s(env, instanceValue, &unwrapTypeTag, (void**)&tmpTestStr);
+    ASSERT_EQ(res, napi_invalid_arg);
+
+    char* tmpTestStr1 = nullptr;
+    res = napi_remove_wrap(env, instanceValue, (void**)&tmpTestStr1);
+    ASSERT_STREQ(testStr, tmpTestStr1);
+    ASSERT_EQ(res, napi_ok);
+}
+
+/**
+ * @tc.name: ObjectWrapperSTest003
+ * @tc.desc: Test object wrapper.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ObjectWrapperSTest003, testing::ext::TestSize.Level1)
+{
+    // GC test
+    UVLoopRunner runner(engine_);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const EcmaVM* vm = reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm();
+    static bool finalizeCalled = false;
+    auto finalizeCb = [](napi_env env, void* data, void* hint) {
+        finalizeCalled = true;
+    };
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value obj = nullptr;
+    napi_handle_scope scope;
+    {
+        ASSERT_EQ(napi_open_handle_scope(env, &scope), napi_ok);
+        ASSERT_EQ(napi_create_object(env, &obj), napi_ok);
+        ASSERT_EQ(napi_wrap_s(env, obj, (void*)"test_data",
+            finalizeCb, nullptr, &wrapTypeTag, nullptr), napi_ok);
+        ASSERT_EQ(napi_close_handle_scope(env, scope), napi_ok);
+    }
+    panda::JSNApi::TriggerGC(vm, panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+    runner.Run();
+    ASSERT_TRUE(finalizeCalled);
+}
+
+/**
+ * @tc.name: ObjectWrapperSTest004
+ * @tc.desc: Test object wrapper.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ObjectWrapperSTest004, testing::ext::TestSize.Level1)
+{
+    // napi_wrap AND napi_unwrap_s
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    napi_ref result;
+    char *testStr = nullptr;
+    static const napi_type_tag unwrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_wrap(env, obj, (void *)TEST_STRING,
+        [](napi_env, void* data, void* hint) {}, nullptr, &result);
+    ASSERT_EQ(status, napi_ok);
+    status = napi_unwrap_s(env, obj, &unwrapTypeTag, (void **)&testStr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: ObjectWrapperSTest005
+ * @tc.desc: Test object wrapper.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, ObjectWrapperSTest005, testing::ext::TestSize.Level1)
+{
+    // wrap twice
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_status res = napi_ok;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_value testClass = nullptr;
+    res = napi_define_class(
+        env, "TestClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+            return thisVar;
+        },
+        nullptr, 0, nullptr, &testClass);
+    ASSERT_EQ(res, napi_ok);
+
+    napi_value instanceValue = nullptr;
+    res = napi_new_instance(env, testClass, 0, nullptr, &instanceValue);
+    ASSERT_EQ(res, napi_ok);
+
+    const char* testStr1 = "wrap1";
+    res = napi_wrap_s(env, instanceValue, (void*)testStr1,
+        [](napi_env env, void* data, void* hint) {}, nullptr, &wrapTypeTag, nullptr);
+    ASSERT_EQ(res, napi_ok);
+
+    char* tmpTestStr = nullptr;
+    res = napi_unwrap_s(env, instanceValue, &wrapTypeTag, (void**)&tmpTestStr);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_STREQ(testStr1, tmpTestStr);
+
+    const char* testStr2 = "wrap2";
+    res = napi_wrap_s(env, instanceValue, (void*)testStr2,
+        [](napi_env env, void* data, void* hint) {}, nullptr, &wrapTypeTag, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+
+    res = napi_unwrap_s(env, instanceValue, &wrapTypeTag, (void**)&tmpTestStr);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_STREQ(testStr1, tmpTestStr);
+
+    char* tmpTestStr1 = nullptr;
+    res = napi_remove_wrap(env, instanceValue, (void**)&tmpTestStr1);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_STREQ(testStr1, tmpTestStr1);
+}
+
+/**
  * @tc.name: StrictEqualsTest001
  * @tc.desc: Test date type.
  * @tc.type: FUNC
@@ -3742,6 +4148,258 @@ HWTEST_F(NapiBasicTest, WrapEnhanceTest002, testing::ext::TestSize.Level1)
     char* tempTestStr1 = nullptr;
     napi_remove_wrap(env, instanceValue, (void**)&tempTestStr1);
     ASSERT_STREQ(testWrapStr, tempTestStr1);
+}
+
+/**
+ * @tc.name: WrapEnhanceSTest001
+ * @tc.desc: Test wrap with size and finalize_cb execute sync.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, WrapEnhanceSTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    napi_value testWrapClass = nullptr;
+    napi_define_class(
+        env, "TestWrapClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+            return thisVar;
+        },
+        nullptr, 0, nullptr, &testWrapClass);
+
+    napi_value instanceValue = nullptr;
+    napi_new_instance(env, testWrapClass, 0, nullptr, &instanceValue);
+
+    const char* testWrapStr = "WrapEnhance";
+    size_t size = sizeof(*testWrapStr) / sizeof(char);
+    napi_wrap_enhance_s(
+        env, instanceValue, (void*)testWrapStr, [](napi_env env, void* data, void* hint) {}, false, nullptr, size,
+        &wrapTypeTag, nullptr);
+
+    char* tempTestStr = nullptr;
+    napi_unwrap_s(env, instanceValue, &wrapTypeTag, (void**)&tempTestStr);
+    ASSERT_STREQ(testWrapStr, tempTestStr);
+
+    char* tempTestStr1 = nullptr;
+    napi_remove_wrap(env, instanceValue, (void**)&tempTestStr1);
+    ASSERT_STREQ(testWrapStr, tempTestStr1);
+}
+
+/**
+ * @tc.name: WrapEnhanceSTest002
+ * @tc.desc: Test wrap with size and finalize_cb execute async.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, WrapEnhanceSTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    napi_value testWrapClass = nullptr;
+    napi_define_class(
+        env, "TestWrapClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+            return thisVar;
+        },
+        nullptr, 0, nullptr, &testWrapClass);
+
+    napi_value instanceValue = nullptr;
+    napi_new_instance(env, testWrapClass, 0, nullptr, &instanceValue);
+
+    const char* testWrapStr = "WrapEnhance";
+    size_t size = sizeof(*testWrapStr) / sizeof(char);
+    napi_wrap_enhance_s(
+        env, instanceValue, (void*)testWrapStr, [](napi_env env, void* data, void* hint) {}, true, nullptr, size,
+        &wrapTypeTag, nullptr);
+
+    char* tempTestStr = nullptr;
+    napi_unwrap_s(env, instanceValue, &wrapTypeTag, (void**)&tempTestStr);
+    ASSERT_STREQ(testWrapStr, tempTestStr);
+
+    char* tempTestStr1 = nullptr;
+    napi_remove_wrap(env, instanceValue, (void**)&tempTestStr1);
+    ASSERT_STREQ(testWrapStr, tempTestStr1);
+}
+
+/**
+ * @tc.name: WrapEnhanceSTest003
+ * @tc.desc: Test wrap with size and finalize_cb execute sync.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, WrapEnhanceSTest003, testing::ext::TestSize.Level1)
+{
+    // GC
+    UVLoopRunner runner(engine_);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const EcmaVM* vm = reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm();
+    static bool finalizeCalled = false;
+    auto finalizeCb = [](napi_env env, void* data, void* hint) {
+        finalizeCalled = true;
+    };
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    const char* testWrapStr = "WrapEnhance";
+    size_t size = sizeof(*testWrapStr) / sizeof(char);
+    napi_value obj = nullptr;
+    napi_handle_scope scope;
+    {
+        ASSERT_EQ(napi_open_handle_scope(env, &scope), napi_ok);
+        ASSERT_EQ(napi_create_object(env, &obj), napi_ok);
+        ASSERT_EQ(napi_wrap_enhance_s(env, obj, (void*)testWrapStr, finalizeCb,
+                                      false, nullptr, size, &wrapTypeTag, nullptr), napi_ok);
+        ASSERT_EQ(napi_close_handle_scope(env, scope), napi_ok);
+    }
+    panda::JSNApi::TriggerGC(vm, panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+    runner.Run();
+    ASSERT_TRUE(finalizeCalled);
+}
+
+/**
+ * @tc.name: WrapEnhanceSTest004
+ * @tc.desc: Test wrap with size and finalize_cb execute async.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, WrapEnhanceSTest004, testing::ext::TestSize.Level1)
+{
+    // GC
+    UVLoopRunner runner(engine_);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const EcmaVM* vm = reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm();
+    static bool finalizeCalled = false;
+    auto finalizeCb = [](napi_env env, void* data, void* hint) {
+        finalizeCalled = true;
+    };
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    const char* testWrapStr = "WrapEnhance";
+    size_t size = sizeof(*testWrapStr) / sizeof(char);
+    napi_value obj = nullptr;
+    napi_handle_scope scope;
+    {
+        ASSERT_EQ(napi_open_handle_scope(env, &scope), napi_ok);
+        ASSERT_EQ(napi_create_object(env, &obj), napi_ok);
+        ASSERT_EQ(napi_wrap_enhance_s(env, obj, (void*)testWrapStr, finalizeCb,
+                                      true, nullptr, size, &wrapTypeTag, nullptr), napi_ok);
+        ASSERT_EQ(napi_close_handle_scope(env, scope), napi_ok);
+    }
+    panda::JSNApi::TriggerGC(vm, panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    runner.Run();
+    ASSERT_TRUE(finalizeCalled);
+}
+
+/**
+ * @tc.name: WrapEnhanceSTest005
+ * @tc.desc: Test wrap with size and finalize_cb execute sync.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, WrapEnhanceSTest005, testing::ext::TestSize.Level1)
+{
+    // napi_wrap_enhance_s twice
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    napi_value testWrapClass = nullptr;
+    napi_define_class(
+        env, "TestWrapClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+            return thisVar;
+        },
+        nullptr, 0, nullptr, &testWrapClass);
+
+    napi_value instanceValue = nullptr;
+    napi_new_instance(env, testWrapClass, 0, nullptr, &instanceValue);
+
+    const char* testWrapStr1 = "WrapEnhance1";
+    size_t size = sizeof(*testWrapStr1) / sizeof(char);
+    napi_wrap_enhance_s(
+        env, instanceValue, (void*)testWrapStr1, [](napi_env env, void* data, void* hint) {}, false, nullptr, size,
+        &wrapTypeTag, nullptr);
+    
+    const char* testWrapStr2 = "WrapEnhance2";
+    size = sizeof(*testWrapStr2) / sizeof(char);
+    napi_status res = napi_wrap_enhance_s(
+        env, instanceValue, (void*)testWrapStr2, [](napi_env env, void* data, void* hint) {}, false, nullptr, size,
+        &wrapTypeTag, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+
+    char* tempTestStr = nullptr;
+    napi_unwrap_s(env, instanceValue, &wrapTypeTag, (void**)&tempTestStr);
+    ASSERT_STREQ(testWrapStr1, tempTestStr);
+
+    char* tempTestStr1 = nullptr;
+    napi_remove_wrap(env, instanceValue, (void**)&tempTestStr1);
+    ASSERT_STREQ(testWrapStr1, tempTestStr1);
+}
+
+/**
+ * @tc.name: WrapEnhanceSTest006
+ * @tc.desc: Test wrap with size and finalize_cb execute sync.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, WrapEnhanceSTest006, testing::ext::TestSize.Level1)
+{
+    // napi_wrap_enhance_s twice
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    napi_value testWrapClass = nullptr;
+    napi_define_class(
+        env, "TestWrapClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+            return thisVar;
+        },
+        nullptr, 0, nullptr, &testWrapClass);
+
+    napi_value instanceValue = nullptr;
+    napi_new_instance(env, testWrapClass, 0, nullptr, &instanceValue);
+
+    const char* testWrapStr1 = "WrapEnhance1";
+    size_t size = sizeof(*testWrapStr1) / sizeof(char);
+    napi_status res = napi_wrap_enhance_s(
+        env, instanceValue, (void*)testWrapStr1, [](napi_env env, void* data, void* hint) {}, true, nullptr, size,
+        &wrapTypeTag, nullptr);
+    ASSERT_EQ(res, napi_ok);
+    
+    const char* testWrapStr2 = "WrapEnhance2";
+    size = sizeof(*testWrapStr2) / sizeof(char);
+    res = napi_wrap_enhance_s(
+        env, instanceValue, (void*)testWrapStr2, [](napi_env env, void* data, void* hint) {}, true, nullptr, size,
+        &wrapTypeTag, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+
+    char* tempTestStr = nullptr;
+    napi_unwrap_s(env, instanceValue, &wrapTypeTag, (void**)&tempTestStr);
+    ASSERT_STREQ(testWrapStr1, tempTestStr);
+
+    char* tempTestStr1 = nullptr;
+    napi_remove_wrap(env, instanceValue, (void**)&tempTestStr1);
+    ASSERT_STREQ(testWrapStr1, tempTestStr1);
 }
 
 /**
