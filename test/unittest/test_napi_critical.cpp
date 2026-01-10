@@ -2152,3 +2152,56 @@ HWTEST_F(NapiCriticalTest, NapiNonCriticalTest092, testing::ext::TestSize.Level1
     deathTest.AssertSignal(SIGABRT).AssertError(TEST_NAPI_UNCLOSED_CRITICAL_LOG);
     ASSERT_TRUE(deathTest.GetResult());
 }
+
+/**
+ * @tc.name: NapiNonCriticalTest093
+ * @tc.desc: Test interface cannot invoke while critical scope is opening.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiCriticalTest, NapiNonCriticalTest093, testing::ext::TestSize.Level1)
+{
+    BasicDeathTest deathTest([] {
+        NativeEngineProxy env;
+        napi_value object {};
+        napi_create_object(env, &object);
+        static const napi_type_tag wrapTypeTag = {
+            0xd1fde94f10374a13,
+            0x8c5a8462a7be826d
+        };
+        // test case would crash, no need release after test
+        auto data = new int { 1 };
+        napi_critical_scope scope {};
+        napi_open_critical_scope(env, &scope);
+
+        napi_wrap_enhance_s(env, object, data, FinalizeCallback<int>, true, nullptr, 0, &wrapTypeTag, nullptr);
+        napi_close_critical_scope(env, scope);
+    });
+    deathTest.AssertSignal(SIGABRT).AssertError(TEST_NAPI_UNCLOSED_CRITICAL_LOG);
+    ASSERT_TRUE(deathTest.GetResult());
+}
+
+/**
+ * @tc.name: NapiNonCriticalTest094
+ * @tc.desc: Test interface cannot invoke while critical scope is opening.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiCriticalTest, NapiNonCriticalTest094, testing::ext::TestSize.Level1)
+{
+    BasicDeathTest deathTest([] {
+        NativeEngineProxy env;
+        static const napi_type_tag getTypeTag = {
+            0x8111455d128d4e2d,  // lower
+            0x9297e80a58cf0a9c   // upper
+        };
+        napi_value object {};
+        napi_create_object(env, &object);
+        napi_critical_scope scope {};
+        napi_open_critical_scope(env, &scope);
+
+        void* result {};
+        napi_get_value_external_s(env, object, &getTypeTag, &result);
+        napi_close_critical_scope(env, scope);
+    });
+    deathTest.AssertSignal(SIGABRT).AssertError(TEST_NAPI_UNCLOSED_CRITICAL_LOG);
+    ASSERT_TRUE(deathTest.GetResult());
+}

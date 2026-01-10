@@ -753,6 +753,159 @@ HWTEST_F(NapiSendableTest, WrapSendableTest001, testing::ext::TestSize.Level1)
     ASSERT_STREQ(testStr, tmpTestStr1);
 }
 
+HWTEST_F(NapiSendableTest, WrapSendableSTest001, testing::ext::TestSize.Level1)
+{
+    // napi_wrap_sendable && napi_unwrap_sendable normal function
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_status res = napi_ok;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_value testClass = nullptr;
+    res = napi_define_sendable_class(
+        env, "TestClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+            return thisVar;
+        },
+        nullptr, 0, nullptr, nullptr, &testClass);
+    ASSERT_EQ(res, napi_ok);
+
+    napi_value instanceValue = nullptr;
+    res = napi_new_instance(env, testClass, 0, nullptr, &instanceValue);
+    ASSERT_EQ(res, napi_ok);
+
+    const char* testStr = "test";
+    res = napi_wrap_sendable_s(env, instanceValue, (void*)testStr,
+        [](napi_env env, void* data, void* hint) {}, nullptr, &wrapTypeTag);
+    ASSERT_EQ(res, napi_ok);
+
+    char* tmpTestStr = nullptr;
+    res = napi_unwrap_sendable_s(env, instanceValue, &wrapTypeTag, (void**)&tmpTestStr);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_STREQ(testStr, tmpTestStr);
+
+    char* tmpTestStr1 = nullptr;
+    res = napi_remove_wrap_sendable(env, instanceValue, (void**)&tmpTestStr1);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_STREQ(testStr, tmpTestStr1);
+}
+
+HWTEST_F(NapiSendableTest, WrapSendableSTest002, testing::ext::TestSize.Level1)
+{
+    // different type_tag
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_status res = napi_ok;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    static const napi_type_tag unwrapTypeTag = {
+        0x8111455d128d4e2d,  // lower
+        0x9297e80a58cf0a9c   // upper
+    };
+
+    napi_value testClass = nullptr;
+    res = napi_define_sendable_class(
+        env, "TestClass", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value thisVar = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+            return thisVar;
+        },
+        nullptr, 0, nullptr, nullptr, &testClass);
+    ASSERT_EQ(res, napi_ok);
+
+    napi_value instanceValue = nullptr;
+    res = napi_new_instance(env, testClass, 0, nullptr, &instanceValue);
+    ASSERT_EQ(res, napi_ok);
+
+    const char* testStr = "test";
+    res = napi_wrap_sendable_s(env, instanceValue, (void*)testStr,
+        [](napi_env env, void* data, void* hint) {}, nullptr, &wrapTypeTag);
+    ASSERT_EQ(res, napi_ok);
+
+    char* tmpTestStr = nullptr;
+    res = napi_unwrap_sendable_s(env, instanceValue, &unwrapTypeTag, (void**)&tmpTestStr);
+    ASSERT_EQ(res, napi_invalid_arg);
+
+    char* tmpTestStr1 = nullptr;
+    res = napi_remove_wrap_sendable(env, instanceValue, (void**)&tmpTestStr1);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_STREQ(testStr, tmpTestStr1);
+}
+
+HWTEST_F(NapiSendableTest, WrapSendableSTest003, testing::ext::TestSize.Level1)
+{
+    // GC test
+    UVLoopRunner runner(engine_);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const EcmaVM* vm = reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm();
+
+    static bool finalizeCalled = false;
+    auto finalizeCb = [](napi_env env, void* data, void* hint) {
+        finalizeCalled = true;
+    };
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+
+    {
+        napi_handle_scope scope;
+        ASSERT_EQ(napi_open_handle_scope(env, &scope), napi_ok);
+
+        napi_value val_true;
+        ASSERT_EQ(napi_get_boolean(env, true, &val_true), napi_ok);
+
+        napi_property_descriptor desc[] = {
+            DECLARE_NAPI_DEFAULT_PROPERTY("x", val_true),
+        };
+
+        napi_value obj;
+        ASSERT_EQ(napi_create_sendable_object_with_properties(env, 1, desc, &obj), napi_ok);
+        ASSERT_EQ(napi_wrap_sendable_s(env, obj, (void*)"test", finalizeCb, nullptr, &wrapTypeTag), napi_ok);
+        ASSERT_EQ(napi_close_handle_scope(env, scope), napi_ok);
+    }
+
+    panda::JSNApi::TriggerGC(vm, panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::SHARED_FULL_GC);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    runner.Run();
+    ASSERT_TRUE(finalizeCalled);
+}
+
+HWTEST_F(NapiSendableTest, WrapSendableSTest004, testing::ext::TestSize.Level1)
+{
+    // napi_wrap_sendable && napi_unwrap_sendable_s
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value val_true;
+    ASSERT_EQ(napi_get_boolean(env, true, &val_true), napi_ok);
+    napi_property_descriptor desc[] = {
+        DECLARE_NAPI_DEFAULT_PROPERTY("x", val_true),
+    };
+
+    napi_value obj;
+    const char* testStr = "test";
+    ASSERT_EQ(napi_create_sendable_object_with_properties(env, 1, desc, &obj), napi_ok);
+    ASSERT_EQ(napi_wrap_sendable(env, obj, (void*)testStr, [](napi_env env, void* data, void* hint) {},
+        nullptr), napi_ok);
+    
+    char* tmpTestStr = nullptr;
+    ASSERT_EQ(napi_unwrap_sendable_s(env, obj, &wrapTypeTag, (void**)&tmpTestStr), napi_invalid_arg);
+
+    char* tmpTestStr1 = nullptr;
+    ASSERT_EQ(napi_remove_wrap_sendable(env, obj, (void**)&tmpTestStr1), napi_ok);
+    ASSERT_STREQ(testStr, tmpTestStr1);
+}
+
 HWTEST_F(NapiSendableTest, WrapSendableWithSizeTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = (napi_env)engine_;
