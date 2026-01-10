@@ -1843,6 +1843,102 @@ HWTEST_F(NapiErrorCodeTest, NapiWrapTest006, testing::ext::TestSize.Level1)
     ASSERT_EQ(status, napi_object_expected);
 }
 
+HWTEST_F(NapiErrorCodeTest, NapiWrapSTest001, testing::ext::TestSize.Level1)
+{
+    // env test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_ref result;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_wrap_s(nullptr, obj, (void *)TEST_STRING,
+        [](napi_env, void* data, void* hint) {}, nullptr, &wrapTypeTag, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSTest002, testing::ext::TestSize.Level1)
+{
+    // js_object test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    napi_ref result;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_status status = napi_wrap_s(env, obj, (void *)TEST_STRING,
+        [](napi_env, void* data, void* hint) {}, nullptr, &wrapTypeTag, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSTest003, testing::ext::TestSize.Level1)
+{
+    // native_object test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_ref result;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_wrap_s(env, obj, nullptr,
+        [](napi_env, void* data, void* hint) {}, nullptr, &wrapTypeTag, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSTest004, testing::ext::TestSize.Level1)
+{
+    // finalize_cb test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_ref result;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_wrap_s(env, obj, (void *)TEST_STRING, nullptr, nullptr, &wrapTypeTag, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSTest005, testing::ext::TestSize.Level1)
+{
+    // type_tag test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_ref result;
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_wrap_s(env, obj, (void *)TEST_STRING,
+        [](napi_env, void* data, void* hint) {}, nullptr, nullptr, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSTest006, testing::ext::TestSize.Level1)
+{
+    // js_object is not ArkTS Object
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    napi_ref result;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_int64(env, INT_TWO, &obj);
+    napi_status status = napi_wrap_s(env, obj, (void *)TEST_STRING,
+        [](napi_env, void* data, void* hint) {}, nullptr, &wrapTypeTag, &result);
+    ASSERT_EQ(status, napi_object_expected);
+}
+
 HWTEST_F(NapiErrorCodeTest, NapiUnwrapTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
@@ -1909,6 +2005,80 @@ HWTEST_F(NapiErrorCodeTest, NapiUnwrapTest006, testing::ext::TestSize.Level1)
     napi_create_function(env, nullptr, 0, func, nullptr, &obj);
     napi_status status = napi_unwrap(env, obj, (void **)testStr);
     ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnwrapSTest001, testing::ext::TestSize.Level1)
+{
+    // env test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    char *testStr = nullptr;
+    static const napi_type_tag unwrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_unwrap_s(nullptr, obj, &unwrapTypeTag, (void **)&testStr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnwrapSTest002, testing::ext::TestSize.Level1)
+{
+    // js_object test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    char *testStr = nullptr;
+    static const napi_type_tag unwrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_status status = napi_unwrap_s(env, obj, &unwrapTypeTag, (void **)&testStr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnwrapSTest003, testing::ext::TestSize.Level1)
+{
+    // result test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    static const napi_type_tag unwrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_unwrap_s(env, obj, &unwrapTypeTag, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnwrapSTest004, testing::ext::TestSize.Level1)
+{
+    // type_tag test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    char *testStr = nullptr;
+
+    napi_create_object(env, &obj);
+    napi_status status = napi_unwrap_s(env, obj, nullptr, (void **)&testStr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnwrapSTest005, testing::ext::TestSize.Level1)
+{
+    // js_object is not ArkTS Object
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj = nullptr;
+    char *testStr = nullptr;
+    static const napi_type_tag unwrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    napi_create_int64(env, INT_TWO, &obj);
+    napi_status status = napi_unwrap_s(env, obj, &unwrapTypeTag, (void **)&testStr);
+    ASSERT_EQ(status, napi_object_expected);
 }
 
 HWTEST_F(NapiErrorCodeTest, NapiRemoveWrapTest001, testing::ext::TestSize.Level1)
@@ -2050,5 +2220,348 @@ HWTEST_F(NapiErrorCodeTest, CreateStringUtf8WithReplacementTest003, testing::ext
     napi_value* result = nullptr;
 
     napi_status status = napi_create_string_utf8_with_replacement(env, str, length, result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSendableSTest001, testing::ext::TestSize.Level1)
+{
+    // env test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value valTrue;
+    ASSERT_EQ(napi_get_boolean(env, true, &valTrue), napi_ok);
+    napi_property_descriptor desc[] = {
+        DECLARE_NAPI_DEFAULT_PROPERTY("x", valTrue),
+    };
+
+    napi_value obj;
+    ASSERT_EQ(napi_create_sendable_object_with_properties(env, 1, desc, &obj), napi_ok);
+    ASSERT_EQ(napi_wrap_sendable_s(nullptr, obj, (void*)"test",
+                                   [](napi_env env, void* data, void* hint) {},
+                                   nullptr, &wrapTypeTag), napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSendableSTest002, testing::ext::TestSize.Level1)
+{
+    // js_object test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value valTrue;
+    ASSERT_EQ(napi_get_boolean(env, true, &valTrue), napi_ok);
+    ASSERT_EQ(napi_wrap_sendable_s(env, nullptr, (void*)"test",
+                                   [](napi_env env, void* data, void* hint) {},
+                                   nullptr, &wrapTypeTag), napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSendableSTest003, testing::ext::TestSize.Level1)
+{
+    // native_object test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value valTrue;
+    ASSERT_EQ(napi_get_boolean(env, true, &valTrue), napi_ok);
+    napi_property_descriptor desc[] = {
+        DECLARE_NAPI_DEFAULT_PROPERTY("x", valTrue),
+    };
+
+    napi_value obj;
+    ASSERT_EQ(napi_create_sendable_object_with_properties(env, 1, desc, &obj), napi_ok);
+    ASSERT_EQ(napi_wrap_sendable_s(env, obj, nullptr,
+                                   [](napi_env env, void* data, void* hint) {},
+                                   nullptr, &wrapTypeTag), napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSendableSTest004, testing::ext::TestSize.Level1)
+{
+    // type_tag test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value valTrue;
+    ASSERT_EQ(napi_get_boolean(env, true, &valTrue), napi_ok);
+    napi_property_descriptor desc[] = {
+        DECLARE_NAPI_DEFAULT_PROPERTY("x", valTrue),
+    };
+
+    napi_value obj;
+    ASSERT_EQ(napi_create_sendable_object_with_properties(env, 1, desc, &obj), napi_ok);
+    ASSERT_EQ(napi_wrap_sendable_s(env, obj, (void*)"test",
+                                   [](napi_env env, void* data, void* hint) {},
+                                   nullptr, nullptr), napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapSendableSTest005, testing::ext::TestSize.Level1)
+{
+    // js_object  is not Sendable Object
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+
+    napi_value obj;
+    ASSERT_EQ(napi_create_object(env, &obj), napi_ok);
+    ASSERT_EQ(napi_wrap_sendable_s(env, obj, (void*)"test",
+                                   [](napi_env env, void* data, void* hint) {},
+                                   nullptr, &wrapTypeTag), napi_object_expected);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnWrapSendableSTest001, testing::ext::TestSize.Level1)
+{
+    // env test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value valTrue;
+    ASSERT_EQ(napi_get_boolean(env, true, &valTrue), napi_ok);
+    napi_property_descriptor desc[] = {
+        DECLARE_NAPI_DEFAULT_PROPERTY("x", valTrue),
+    };
+
+    napi_value obj;
+    char* tmpTestStr = nullptr;
+    ASSERT_EQ(napi_create_sendable_object_with_properties(env, 1, desc, &obj), napi_ok);
+    ASSERT_EQ(napi_unwrap_sendable_s(nullptr, obj, &wrapTypeTag, (void**)&tmpTestStr),
+                                     napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnWrapSendableSTest002, testing::ext::TestSize.Level1)
+{
+    // js_object test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    char* tmpTestStr = nullptr;
+    ASSERT_EQ(napi_unwrap_sendable_s(env, nullptr, &wrapTypeTag, (void**)&tmpTestStr),
+                                     napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnWrapSendableSTest003, testing::ext::TestSize.Level1)
+{
+    // result test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value valTrue;
+    ASSERT_EQ(napi_get_boolean(env, true, &valTrue), napi_ok);
+    napi_property_descriptor desc[] = {
+        DECLARE_NAPI_DEFAULT_PROPERTY("x", valTrue),
+    };
+
+    napi_value obj;
+    ASSERT_EQ(napi_create_sendable_object_with_properties(env, 1, desc, &obj), napi_ok);
+    ASSERT_EQ(napi_unwrap_sendable_s(env, obj, &wrapTypeTag, nullptr),
+                                     napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiUnWrapSendableSTest004, testing::ext::TestSize.Level1)
+{
+    // type_tag test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value valTrue;
+    ASSERT_EQ(napi_get_boolean(env, true, &valTrue), napi_ok);
+    napi_property_descriptor desc[] = {
+        DECLARE_NAPI_DEFAULT_PROPERTY("x", valTrue),
+    };
+
+    napi_value obj;
+    char* tmpTestStr = nullptr;
+    ASSERT_EQ(napi_create_sendable_object_with_properties(env, 1, desc, &obj), napi_ok);
+    ASSERT_EQ(napi_unwrap_sendable_s(env, obj, nullptr, (void**)&tmpTestStr),
+                                     napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapEnhanceSTest001, testing::ext::TestSize.Level1)
+{
+    // env test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    const char* testWrapStr = "WrapEnhance";
+    size_t size = sizeof(*testWrapStr) / sizeof(char);
+    napi_create_object(env, &obj);
+
+    napi_status status = napi_wrap_enhance_s(
+        nullptr, obj, (void*)testWrapStr,
+        [](napi_env env, void* data, void* hint) {}, false, nullptr, size,
+        &wrapTypeTag, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapEnhanceSTest002, testing::ext::TestSize.Level1)
+{
+    // js_object test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    const char* testWrapStr = "WrapEnhance";
+    size_t size = sizeof(*testWrapStr) / sizeof(char);
+
+    napi_status status = napi_wrap_enhance_s(
+        env, nullptr, (void*)testWrapStr,
+        [](napi_env env, void* data, void* hint) {}, false, nullptr, size,
+        &wrapTypeTag, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapEnhanceSTest003, testing::ext::TestSize.Level1)
+{
+    // native_object test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+    static const napi_type_tag wrapTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+
+    const char* testWrapStr = "WrapEnhance";
+    size_t size = sizeof(*testWrapStr) / sizeof(char);
+    napi_create_object(env, &obj);
+
+    napi_status status = napi_wrap_enhance_s(
+        env, obj, nullptr,
+        [](napi_env env, void* data, void* hint) {}, false, nullptr, size,
+        &wrapTypeTag, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiWrapEnhanceSTest004, testing::ext::TestSize.Level1)
+{
+    // type_tag test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    napi_value obj;
+
+    const char* testWrapStr = "WrapEnhance";
+    size_t size = sizeof(*testWrapStr) / sizeof(char);
+    napi_create_object(env, &obj);
+
+    napi_status status = napi_wrap_enhance_s(
+        env, obj, (void*)testWrapStr,
+        [](napi_env env, void* data, void* hint) {}, false, nullptr, size,
+        nullptr, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiCreateExternalSTest001, testing::ext::TestSize.Level1)
+{
+    // env test
+    static const napi_type_tag externalTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    const char testStr[] = "test";
+    napi_value external = nullptr;
+    auto res = napi_create_external_s(
+        nullptr, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, &externalTypeTag, &external);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiCreateExternalSTest002, testing::ext::TestSize.Level1)
+{
+    // type_tag test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const char testStr[] = "test";
+    napi_value external = nullptr;
+    auto res = napi_create_external_s(
+        env, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, nullptr, &external);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiCreateExternalSTest003, testing::ext::TestSize.Level1)
+{
+    // result test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag externalTypeTag = {
+        0xd1fde94f10374a13,  // lower
+        0x8c5a8462a7be826d   // upper
+    };
+    const char testStr[] = "test";
+
+    auto res = napi_create_external_s(
+        env, (void*)testStr,
+        [](napi_env env, void* data, void* hint) { ASSERT_STREQ((const char*)data, (const char*)hint); },
+        (void*)testStr, &externalTypeTag, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiGetValueExternalSTest001, testing::ext::TestSize.Level1)
+{
+    // env test
+    static const napi_type_tag typeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value external = nullptr;
+    void* result = nullptr;
+    napi_status status = napi_get_value_external_s(nullptr, external, &typeTag, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiGetValueExternalSTest002, testing::ext::TestSize.Level1)
+{
+    // value test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag typeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+
+    void* result = nullptr;
+    napi_status status = napi_get_value_external_s(env, nullptr, &typeTag, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiGetValueExternalSTest003, testing::ext::TestSize.Level1)
+{
+    // type_tag test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag typeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value external;
+    ASSERT_EQ(napi_create_external_s(env, (void*)"data", nullptr, nullptr, &typeTag, &external), napi_ok);
+
+    void* result = nullptr;
+    napi_status status = napi_get_value_external_s(env, external, nullptr, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+HWTEST_F(NapiErrorCodeTest, NapiGetValueExternalSTest004, testing::ext::TestSize.Level1)
+{
+    // result test
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    static const napi_type_tag typeTag = {
+        0xd1fde94f10374a13,
+        0x8c5a8462a7be826d
+    };
+    napi_value external;
+    ASSERT_EQ(napi_create_external_s(env, (void*)"data", nullptr, nullptr, &typeTag, &external), napi_ok);
+
+    napi_status status = napi_get_value_external_s(env, external, &typeTag, nullptr);
     ASSERT_EQ(status, napi_invalid_arg);
 }
