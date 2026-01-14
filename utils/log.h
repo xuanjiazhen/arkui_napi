@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,6 +25,12 @@
 #include "utils/macros.h"
 
 #define __FILENAME__ strrchr(__FILE__, '/') + 1
+
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#elif defined(__GNUC__) || defined(__GNUG__)
+#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
 
 #if defined(MAC_PLATFORM) || defined(WINDOWS_PLATFORM) || defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM) || \
     defined(LINUX_PLATFORM)
