@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -31,6 +31,10 @@ config("ace_napi_config") {
   cflags_cc = []
   if (is_mingw || is_mac || is_linux || ark_standalone_build) {
     defines += [ "PREVIEW" ]
+  }
+
+  if (!is_debug) {
+    defines += [ "NDEBUG" ]
   }
 
   if ("${target_platform}" == "watch" || is_wearable_product) {
@@ -210,7 +214,11 @@ ohos_source_set("ace_napi_static") {
     external_deps += [ "ets_runtime:libark_jsruntime" ]
   }
 
-  cflags_cc = [ "-Wno-missing-braces" ]
+  if (is_mac) {
+    cflags_cc = [ "-Wno-missing-braces", "-Wno-vla-extension" ]
+  } else {
+    cflags_cc = [ "-Wno-missing-braces" ]
+  }
   if (ark_standalone_build &&
       (is_debug || (defined(is_fastverify) && is_fastverify))) {
     cflags_cc += [
