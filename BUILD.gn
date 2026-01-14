@@ -184,6 +184,8 @@ ohos_source_set("ace_napi_static") {
     } else if (product_name != "ohos-sdk") {
       external_deps += [ "ace_engine:ace_container_scope" ]
       defines += [ "ENABLE_CONTAINER_SCOPE_SEND_EVENT" ]
+    } else if (is_mac) {
+      external_deps += [ "runtime_core:libarkbase_static" ]
     }
   }
 
@@ -210,7 +212,11 @@ ohos_source_set("ace_napi_static") {
     external_deps += [ "ets_runtime:libark_jsruntime" ]
   }
 
-  cflags_cc = [ "-Wno-missing-braces" ]
+  if (is_mac) {
+    cflags_cc = [ "-Wno-missing-braces", "-Wno-vla-extension" ]
+  } else {
+    cflags_cc = [ "-Wno-missing-braces" ]
+  }
   if (ark_standalone_build &&
       (is_debug || (defined(is_fastverify) && is_fastverify))) {
     cflags_cc += [
