@@ -17,6 +17,7 @@
 
 #if defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM)
 #include <signal.h>
+#include <dlfcn.h>
 #endif
 #include "utils/log.h"
 #if defined(ENABLE_FFRT)
@@ -35,12 +36,11 @@
 #include "memory_trace.h"
 #endif
 #include "ark_native_engine.h"
-#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
-#include "res_sched_client.h"
-#include "res_type.h"
-#endif
 
 namespace panda::ecmascript {
+const std::string RES_SCHED_CLIENT_SO = "libressched_client.z.so";
+using ReportDataFunc = void (*)(uint32_t resType, int64_t value,
+    const std::unordered_map<std::string, std::string>& payload);
 #if defined(ENABLE_EVENT_HANDLER)
 static constexpr uint64_t IDLE_GC_TIME_MIN = 1000;
 static constexpr uint64_t IDLE_GC_TIME_MAX = 10000;
@@ -185,7 +185,11 @@ void ArkIdleMonitor::IntervalMonitor()
             numberOfHighIdleTimeRatio_ >= checkCounts &&
             intervalDuration < static_cast<int64_t>(gDelayOverTime)) {
         triggerTaskStartTimestamp_ = nowTimestamp;
-        NotifyMainThreadTryCompressGC();
+        if (IsInBackground()) {
+            TryTriggerCompressGCOfProcess();
+        } else {
+            NotifyMainThreadTryCompressGC();
+        }
         PostMonitorTask(SLEEP_MONITORING_INTERVAL);
         ClearIdleStats();
     } else {
@@ -243,29 +247,13 @@ void ArkIdleMonitor::NotifyMainThreadTryCompressGC()
             cpuUsage);
         return;
     }
-    if (mainThreadHandler_ == nullptr) {
-        mainThreadHandler_ = std::make_shared<OHOS::AppExecFwk::EventHandler>(
-            OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
-    };
     if (mainVM_ == nullptr) {
         return;
     }
-    if (isBackgroundTask_.load()) {
-        HILOG_DEBUG("ArkIdleMonitor::NotifyMainThreadTryCompressGC isBackgroundTask_ is true");
-        return;
-    }
-    HILOG_DEBUG("ArkIdleMonitor::NotifyMainThreadTryCompressGC isBackgroundTask_ set true");
-    isBackgroundTask_.store(true, std::memory_order_relaxed);
     auto task = [this]() {
         JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::FULL_GC);
-        if (IsInBackground()) {
-            if (workerEnvSet_.empty()) {
-                JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
-            }
-        } else {
-            if (CheckWorkerEnvQueueAllInIdle(IDLE_WORKER_TRIGGER_COUNT)) {
-                JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
-            }
+        if (CheckWorkerEnvQueueAllInIdle(IDLE_WORKER_TRIGGER_COUNT)) {
+            JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
         }
     };
     mainThreadHandler_->PostTask(task, "ARKTS_IDLE_COMPRESS", 0, OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
@@ -278,17 +266,8 @@ void ArkIdleMonitor::NotifyMainThreadTryCompressGCByBackground()
     if (mainVM_ == nullptr) {
         return;
     }
-    if (mainThreadHandler_ == nullptr) {
-        mainThreadHandler_ = std::make_shared<OHOS::AppExecFwk::EventHandler>(
-            OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
-    };
+
     isSwitchToBackgroundTask_.store(true, std::memory_order_relaxed);
-    if (isBackgroundTask_.load()) {
-        HILOG_DEBUG("ArkIdleMonitor::NotifyMainThreadTryCompressGCByBackground isBackgroundTask_ is true");
-        return;
-    }
-    isBackgroundTask_.store(true, std::memory_order_relaxed);
-    HILOG_DEBUG("ArkIdleMonitor::NotifyMainThreadTryCompressGCByBackground isBackgroundTask_ set true");
     auto task = [this]() {
         JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::FULL_GC);
         if (workerEnvSet_.empty()) {
@@ -316,11 +295,7 @@ void ArkIdleMonitor::SetStartTimerCallback()
 void ArkIdleMonitor::NotifyNeedFreeze(bool needFreeze)
 {
 #if defined(ENABLE_EVENT_HANDLER)
-    if (needFreeze) {
-        isBackgroundTask_.store(false, std::memory_order_relaxed);
-        performedGCThreadSet_.clear();
-    }
-    if (!gEnableDeferFreeze || !isSwitchToBackgroundTask_.load()) {
+    if (!gEnableDeferFreeze || !IsSwitchToBackgroundTask()) {
         return;
     }
     if (!needFreeze) {
@@ -334,7 +309,7 @@ void ArkIdleMonitor::NotifyNeedFreeze(bool needFreeze)
     } else {
         if (deferfreeze_.load(std::memory_order_relaxed)) {
             deferfreeze_.store(false, std::memory_order_relaxed);
-            isSwitchToBackgroundTask_.store(false, std::memory_order_relaxed);
+            SetSwitchToBackgroundTask(false);
             ReportDataToRSS(true);
         } else {
             // It is not in a delayed freeze state, so there is no need to notify the freeze
@@ -386,16 +361,20 @@ void ArkIdleMonitor::EnableIdleGC(NativeEngine *engine)
     if (gEnableIdleGC && JSNApi::IsJSMainThreadOfEcmaVM(vm)) {
         SetMainThreadEcmaVM(vm);
         JSNApi::SetTriggerGCTaskCallback(vm, [engine](TriggerGCData& data) {
-            engine->PostTriggerGCTask(data);
+            engine->PostTriggerGCTask(data, nullptr);
         });
         SetStartTimerCallback();
         PostLooperTriggerIdleGCTask();
-        JSNApi::SetNotifyNextCompressGCCallback([this](bool isNeedNextGC, bool isNeedFreeze) {
-            NotifyNextCompressGC(isNeedNextGC, isNeedFreeze);
+        JSNApi::SetNotifyDeferFreezeCallback([this](bool isNeedFreeze) {
+            NotifyNeedFreeze(isNeedFreeze);
         });
     } else {
         RegisterWorkerEnv(reinterpret_cast<napi_env>(engine));
     }
+    if (mainThreadHandler_ == nullptr) {
+        mainThreadHandler_ = std::make_shared<OHOS::AppExecFwk::EventHandler>(
+            OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
+    };
 #endif
 }
 
@@ -473,10 +452,6 @@ bool ArkIdleMonitor::CheckIntervalIdle(int64_t timestamp, int64_t idleDuration)
 #endif
 #if defined(ENABLE_EVENT_HANDLER)
     if (idlePercentage > SHORT_IDLE_RATIO && mainVM_!= nullptr) {
-        if (mainThreadHandler_ == nullptr) {
-            mainThreadHandler_ = std::make_shared<OHOS::AppExecFwk::EventHandler>(
-                OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
-        };
         auto task = [this]() {
             triggeredGC_ = JSNApi::NotifyLooperIdleStart(mainVM_, 0, 0);
             needCheckIntervalIdle_ = false;
@@ -531,11 +506,11 @@ void ArkIdleMonitor::SwitchBackgroundCheckGCTask(int64_t timestamp, int64_t idle
     int64_t sumIdleDuration = (GetTotalIdleDuration() - idleDuration) + (nowTimestamp - GetNotifyTimestamp());
     double idlePercentage = static_cast<double>(sumIdleDuration) / static_cast<double>(sumDuration);
     double cpuUsage = GetCpuUsage();
-    if (idlePercentage > BACKGROUND_IDLE_RATIO && cpuUsage <= IDLE_BACKGROUND_CPU_USAGE &&
-        sumDuration < static_cast<int64_t>(gDelayOverTime)) {
+    if (idlePercentage > BACKGROUND_IDLE_RATIO && sumDuration < static_cast<int64_t>(gDelayOverTime)) {
         triggerTaskStartTimestamp_ = nowTimestamp;
         CheckWorkerEnvQueue();
-        NotifyMainThreadTryCompressGCByBackground();
+        SetSwitchToBackgroundTask(true);
+        TryTriggerCompressGCOfProcess();
     } else {
         HILOG_INFO("ArkIdleMonitor cancel BGGCTask,idlePer:%{public}.2f;cpuUsage:%{public}.2f;duration:%{public}s",
             idlePercentage, cpuUsage, std::to_string(sumDuration).c_str());
@@ -604,11 +579,6 @@ void ArkIdleMonitor::NotifyNextCompressGC([[maybe_unused]] bool isNeedNextGC, [[
         NotifyNeedFreeze(false);
         return;
     }
-    if (!IsInBackground()) {
-        isBackgroundTask_.store(false, std::memory_order_relaxed);
-        performedGCThreadSet_.clear();
-        return;
-    }
     auto nowTimestamp = std::chrono::time_point_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now()).time_since_epoch().count();
     napi_env needGCEnv = nullptr;
@@ -655,17 +625,13 @@ void ArkIdleMonitor::NotifyNextCompressGC([[maybe_unused]] bool isNeedNextGC, [[
         performedGCThreadSet_.insert(needGCEnv);
         std::pair<void*, uint8_t> data(reinterpret_cast<void*>(const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm())),
             static_cast<uint8_t>(TRIGGER_IDLE_GC_TYPE::FULL_GC));
-            arkNativeEngine->PostTriggerGCTask(data);
+            arkNativeEngine->PostTriggerGCTask(data, nullptr);
     } else {
         if (!isAllInIdle) {
             NotifyNeedFreeze(true);
             return;
         }
         if (performedGCThreadSet_.size() > 0) {
-            if (mainThreadHandler_ == nullptr) {
-                mainThreadHandler_ = std::make_shared<OHOS::AppExecFwk::EventHandler>(
-                    OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
-            };
             auto task = [this]() {
                 JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
             };
@@ -679,7 +645,7 @@ void ArkIdleMonitor::NotifyNextCompressGC([[maybe_unused]] bool isNeedNextGC, [[
             performedGCThreadSet_.insert(idleEnv);
             std::pair<void*, uint8_t> data(reinterpret_cast<void*>(const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm())),
                 static_cast<uint8_t>(TRIGGER_IDLE_GC_TYPE::FULL_GC));
-            arkNativeEngine->PostTriggerGCTask(data);
+            arkNativeEngine->PostTriggerGCTask(data, nullptr);
         } else {
             NotifyNeedFreeze(true);
         }
@@ -721,17 +687,43 @@ void ArkIdleMonitor::StopIdleMonitorTimerTaskAndPostSleepTask()
 
 void ArkIdleMonitor::ReportDataToRSS(bool needFreeze)
 {
+#if defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM)
     auto pid = getpid();
     auto bundleName = JSNApi::GetBundleName(mainVM_);
-    HILOG_INFO("ArkIdleMonitor: ReportDataToRSS %{public}d, pid: %{public}d, bundleName: %{public}s",
-        needFreeze, pid, bundleName.c_str());
-#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
-    uint32_t resType = OHOS::ResourceSchedule::ResType::RES_TYPE_GC_EVENT;
     std::unordered_map<std::string, std::string> eventParams {
         { "pid", std::to_string(pid) },
         { "bundleName", bundleName }
     };
-    OHOS::ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, needFreeze, eventParams);
+    if (!reportDataFunc_) {
+        reportDataFunc_ = LoadReportDataFunc();
+    }
+    if (reportDataFunc_ != nullptr) {
+        reportDataFunc_(RES_TYPE_GC_EVENT, needFreeze, eventParams);
+        HILOG_INFO("ArkIdleMonitor: ReportDataToRSS %{public}d, pid: %{public}d, bundleName: %{public}s",
+            needFreeze, pid, bundleName.c_str());
+    } else {
+        HILOG_WARN("ArkIdleMonitor: ReportDataToRSS func is nullptr.");
+    }
+#else
+    HILOG_INFO("ArkIdleMonitor: Only linux supports LoadReportDataFunc");
+#endif
+}
+
+ReportDataFunc ArkIdleMonitor::LoadReportDataFunc()
+{
+#if defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM)
+    auto handle = dlopen(RES_SCHED_CLIENT_SO.c_str(), RTLD_NOW);
+    auto func = reinterpret_cast<ReportDataFunc>(dlsym(handle, "ReportData"));
+    if (func == nullptr) {
+        dlclose(handle);
+        HILOG_ERROR("ArkIdleMonitor: LoadReportDataFunc failed!");
+        return nullptr;
+    }
+    HILOG_INFO("ArkIdleMonitor: LoadReportDataFunc success.");
+    return func;
+#else
+    HILOG_DEBUG("ArkIdleMonitor: Only linux supports LoadReportDataFunc");
+    return nullptr;
 #endif
 }
 
@@ -742,5 +734,130 @@ std::shared_ptr<ArkIdleMonitor> ArkIdleMonitor::GetInstance()
 {
     return instance_;
 }
+
+bool ArkIdleMonitor::CheckIfInBackgroundInCompressGC()
+{
+    if (!IsInBackground() && IsSwitchToBackgroundTask()) {
+        deferfreeze_.store(false, std::memory_order_relaxed);
+        SetSwitchToBackgroundTask(false);
+        return false;
+    }
+    return true;
 }
 
+void ArkIdleMonitor::TryTriggerCompressGCOfProcess()
+{
+    NotifyNeedFreeze(false);
+#if defined(ENABLE_EVENT_HANDLER)
+    // trigger main thread local gc.
+    auto mainThreadLocalTask = [this]() {
+        HILOG_DEBUG("ArkIdleMonitor: try trigger local full gc start");
+        std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
+        JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::FULL_GC);
+        HILOG_DEBUG("ArkIdleMonitor: try trigger local full gc end");
+        gcFinishCV_.notify_one();
+    };
+#endif
+    
+    {
+#ifdef ENABLE_HITRACE
+        StartTrace(HITRACE_TAG_ACE, "TriggerMainThreadLocalGC");
+#endif
+#if defined(ENABLE_EVENT_HANDLER)
+        std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
+        mainThreadHandler_->PostTask(mainThreadLocalTask, "ARKTS_IDLE_COMPRESS", 0,
+            OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
+        gcFinishCV_.wait(lock);
+#endif
+#ifdef ENABLE_HITRACE
+        FinishTrace(HITRACE_TAG_ACE);
+#endif
+    }
+
+    // cancel gc if in high cpu usage.
+    double cpuUsage = GetCpuUsage();
+    if (cpuUsage > IDLE_BACKGROUND_CPU_USAGE) {
+        NotifyNeedFreeze(true);
+        SetSwitchToBackgroundTask(false);
+        HILOG_INFO("ArkIdleMonitor: cancel process gc because high cpu usage:%{public}.2f", cpuUsage);
+        return ;
+    }
+
+    bool isAllInIdle = true;
+
+    // Traverse all threads to attempt to trigger the compression GC
+    for (auto it = workerEnvSet_.begin(); it != workerEnvSet_.end();) {
+        if (!CheckIfInBackgroundInCompressGC()) {
+            return;
+        }
+
+        auto arkNativeEngine = reinterpret_cast<ArkNativeEngine*>(*it);
+#if (defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM))
+        if (kill(arkNativeEngine->GetSysTid(), 0) != 0) {
+            HILOG_ERROR("ArkIdleMonitor: tid: %{public}u is dead!", arkNativeEngine->GetSysTid());
+            it = workerEnvSet_.erase(it);
+            continue;
+        }
+#endif
+
+        if (arkNativeEngine->GetWorkerThreadState()->GetCheckCount() == 0) {
+            ++it;
+            isAllInIdle = false;
+            continue;
+        }
+
+        size_t expectedSize = JSNApi::GetEcmaVMExpectedMemoryReclamationSize(arkNativeEngine->GetEcmaVm());
+        HILOG_DEBUG("ArkIdleMonitor:checkcount:%{public}d,expectedSize:%{public}zu,threadid:%{public}u",
+            arkNativeEngine->GetWorkerThreadState()->GetCheckCount(), expectedSize, arkNativeEngine->GetSysTid());
+
+        if (expectedSize > IDLE_MIN_EXPECT_RECLAIM_SIZE) {
+#ifdef ENABLE_HITRACE
+            StartTrace(HITRACE_TAG_ACE, "TriggerWorkerThreadLocalGC");
+#endif
+            std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
+            std::pair<void*, uint8_t> data(reinterpret_cast<void*>(const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm())),
+                static_cast<uint8_t>(TRIGGER_IDLE_GC_TYPE::FULL_GC));
+
+            auto callbackTask = []() {
+                HILOG_DEBUG("ArkIdleMonitor: try trigger thread full gc end");
+                ArkIdleMonitor::GetInstance()->GCTaskFinishedCallback();
+            };
+            HILOG_DEBUG("ArkIdleMonitor: try trigger thread full gc start,tid: %{public}u",
+                arkNativeEngine->GetSysTid());
+            arkNativeEngine->PostTriggerGCTask(data, callbackTask);
+            gcFinishCV_.wait_for(lock, std::chrono::milliseconds(SHORT_IDLE_DELAY_INTERVAL));
+#ifdef ENABLE_HITRACE
+            FinishTrace(HITRACE_TAG_ACE);
+#endif
+        }
+        ++it;
+    }
+
+#if defined(ENABLE_EVENT_HANDLER)
+    // try trigger shared gc
+    auto mainThreadSharedTask = [this]() {
+        HILOG_DEBUG("ArkIdleMonitor: try trigger shared full gc");
+        std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
+        JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+        gcFinishCV_.notify_one();
+    };
+#endif
+    if (isAllInIdle && CheckIfInBackgroundInCompressGC()) {
+#ifdef ENABLE_HITRACE
+        StartTrace(HITRACE_TAG_ACE, "TriggerMainThreadSharedGC");
+#endif
+#if defined(ENABLE_EVENT_HANDLER)
+        std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
+        mainThreadHandler_->PostTask(mainThreadSharedTask, "ARKTS_IDLE_SHARED_COMPRESS", 0,
+            OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
+        gcFinishCV_.wait(lock);
+#endif
+#ifdef ENABLE_HITRACE
+        FinishTrace(HITRACE_TAG_ACE);
+#endif
+    } else {
+        NotifyNeedFreeze(true);
+        HILOG_WARN("ArkIdleMonitor: app is not in idle or in background.");
+    }
+}
+}
