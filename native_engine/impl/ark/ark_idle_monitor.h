@@ -53,6 +53,12 @@ public:
 
     static std::shared_ptr<ArkIdleMonitor> GetInstance();
 
+    void GCTaskFinishedCallback()
+    {
+        std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
+        gcFinishCV_.notify_one();
+    }
+
     void SetEnableDeferFreeze(bool state)
     {
         gEnableDeferFreeze = state;
@@ -218,6 +224,7 @@ private:
     bool CheckLowRunningDurationState() const;
     bool CheckIntervalIdle(int64_t timestamp, int64_t idleDuration);
     bool CheckWorkerEnvQueueAllInIdle(uint32_t idleCount);
+    bool CheckIfInBackgroundInCompressGC();
     void SwitchBackgroundCheckGCTask(int64_t timestamp, int64_t idleDuration);
     void IntervalMonitor();
     void NotifyMainThreadTryCompressGC();
@@ -231,6 +238,7 @@ private:
     void CheckShortIdleTask(int64_t timestamp, int idleTime);
     void PostSwitchBackgroundGCTask();
     void ReportDataToRSS(bool isGCStart);
+    void TryTriggerCompressGCOfProcess();
     static uint64_t GetIdleMonitoringInterval();
 
     static std::shared_ptr<ArkIdleMonitor> instance_;
@@ -293,6 +301,9 @@ private:
     static bool gEnableIdleGC;
 #endif
     static bool gEnableDeferFreeze;
+
+    std::mutex waitGCFinishjedMutex_;
+    std::condition_variable gcFinishCV_;
 };
 
 }
