@@ -63,12 +63,22 @@ public:
     void RemoveFFIData(int64_t id)
     {
         std::lock_guard<std::recursive_mutex> lock(mtx);
-        ffiDataStore_.erase(id);
+        auto itor = ffiDataStore_.find(id);
+        if (itor == ffiDataStore_.end()) {
+            return;
+        }
+        sptr<FFIData> keepAlive = std::move(itor->second);
+        ffiDataStore_.erase(itor);
     }
     void RemoveRemoteData(int64_t id)
     {
         std::lock_guard<std::recursive_mutex> lock(mtx);
-        remoteDataStore_.erase(id);
+        auto itor = remoteDataStore_.find(id);
+        if (itor == remoteDataStore_.end()) {
+            return;
+        }
+        sptr<RemoteData> keepAlive = std::move(itor->second);
+        remoteDataStore_.erase(itor);
     }
 
     int64_t NewFFIDataId();
