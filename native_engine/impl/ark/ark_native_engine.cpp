@@ -2626,6 +2626,18 @@ void ArkNativeEngine::SetMultithreadingDetectionEnabled(napi_env env, bool enabl
     DFXJSNApi::SetMultithreadingDetectionEnabled(vm, enabled);
 }
 
+std::string ArkNativeEngine::GetMinimumAbcVersionSupportedAtStaRuntime(napi_env env)
+{
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    DFXJSNApi::GetMinimumAbcVersionSupportedAtStaRuntime(vm);
+}
+
+std::string ArkNativeEngine::GetMaximumAbcVersionSupportedAtStaRuntime(napi_env env)
+{
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    DFXJSNApi::GetMaximumAbcVersionSupportedAtStaRuntime(vm);
+}
+
 void ArkNativeEngine::GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
