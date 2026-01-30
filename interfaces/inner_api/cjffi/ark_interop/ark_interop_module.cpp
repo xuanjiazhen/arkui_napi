@@ -16,6 +16,13 @@
 #include <unordered_map>
 
 #include <node_api.h>
+#ifdef __WINDOWS__
+#include <windows.h>
+#define IS_MAIN_THREAD() GetCurrentThreadId() == 1
+#else
+#include <unistd.h>
+#define IS_MAIN_THREAD() getpid() == gettid()
+#endif
 
 #include "ark_interop_internal.h"
 #include "ark_interop_external.h"
@@ -78,6 +85,7 @@ panda::JSValueRef* ARKTS_LoadModule(ARKTS_Env env, const char* dllName)
 {
     LOGD("ARKTS_LoadCJModule start: %{public}s", dllName);
     static std::mutex globalMutex;
+    static bool isStackSwitchEnabled = false;
     std::lock_guard lock(globalMutex);
     panda::JsiFastNativeScope fastNativeScope(reinterpret_cast<panda::EcmaVM*>(env));
     // HandleScope
@@ -93,6 +101,14 @@ panda::JSValueRef* ARKTS_LoadModule(ARKTS_Env env, const char* dllName)
         LOGE("start cj runtime failed");
         return ARKTSInner_Escape(env, scope, undefined);
     }
+
+    // first EcmaVM at main thread will be trait as main vm.
+    if (!isStackSwitchEnabled && IS_MAIN_THREAD()) {
+        runtime->registerStackInfoCallbacks(ARKTS_UpdateStackInfo);
+        runtime->registerArkVMInRuntime(reinterpret_cast<unsigned long long>(env));
+        isStackSwitchEnabled = true;
+    }
+
     if (!g_cjModuleCallbacks || !g_cjModuleCallbacks->hasModuleHandle(dllName)) {
         if (!runtime->loadCJModule(dllName)) {
             LOGE("load cj library failed, try load as native");
