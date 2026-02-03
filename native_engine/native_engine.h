@@ -127,6 +127,7 @@ using AppFreezeFilterCallback = std::function<bool(const int32_t pid, const bool
     std::string &eventConfig)>;
 using EcmaVM = panda::ecmascript::EcmaVM;
 using JsFrameInfo = panda::ecmascript::JsFrameInfo;
+using HeapMemoryInfo = panda::ecmascript::HeapMemoryInfo;
 using NapiOnWorkerErrorCallback = std::function<bool(napi_env env,
     napi_value exception, std::string name, uint32_t type)>;
 using NapiOnMainThreadErrorCallback = std::function<bool(napi_env env,
@@ -285,6 +286,7 @@ public:
         = 0;
     virtual void GetMainThreadStackTrace(napi_env env, std::string &stackTraceStr) = 0;
     virtual void SetMultithreadingDetectionEnabled(napi_env env, bool enabled) = 0;
+    virtual std::vector<HeapMemoryInfo> GetAllHeapMemoryInfo(napi_env env) = 0;
     virtual void GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr) = 0;
     virtual void SerializeJSError(napi_env env, napi_value object, bool defaultTransfer,
                                   bool defaultCloneSendable, void** result) = 0;
