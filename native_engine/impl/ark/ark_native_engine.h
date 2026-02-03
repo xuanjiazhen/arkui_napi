@@ -279,6 +279,7 @@ public:
         override;
     void GetMainThreadStackTrace(napi_env env, std::string &stackTraceStr) override;
     void SetMultithreadingDetectionEnabled(napi_env env, bool enabled) override;
+    std::vector<VMThreadInfo> GetAllVMThreadsInfo(napi_env env) override;
     void GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr) override;
     void SerializeJSError(napi_env env, napi_value object, bool defaultTransfer, bool defaultCloneSendable,
                           void** result) override;
