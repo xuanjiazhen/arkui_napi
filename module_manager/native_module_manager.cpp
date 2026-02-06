@@ -23,6 +23,11 @@
 #include <sstream>
 #include <unistd.h>
 
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
+#include <nlohmann/json.hpp>
+#endif
+
 #ifdef ENABLE_HITRACE
 #include "hitrace_meter.h"
 #endif
@@ -391,6 +396,90 @@ bool NativeModuleManager::CreateTailNativeModule()
 
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
+constexpr char GREYLIST_CONFIG_PATH[] = "/data/service/el0/public/musl_namespace_config/greylist.json";
+
+// Helper function to validate library name format
+static bool IsValidLibName(const std::string& libName)
+{
+    if (libName.empty()) {
+        return false;
+    }
+
+    // Check if it ends with .so
+    if (libName.size() < 3 || libName.substr(libName.size() - 3) != ".so") {
+        MODULEMNG_HILOG_WARN("lib name must end with .so: %{public}s", libName.c_str());
+        return false;
+    }
+
+    return true;
+}
+
+bool NativeModuleManager::LoadGreylistConfig(std::vector<std::string>& greylistLibs)
+{
+    MODULEMNG_HILOG_DEBUG("enter");
+    greylistLibs.clear();
+
+    // Check if greylist config file exists
+    if (access(GREYLIST_CONFIG_PATH, F_OK) != 0) {
+        MODULEMNG_HILOG_DEBUG("greylist config file not found: %{public}s", GREYLIST_CONFIG_PATH);
+        return false;
+    }
+
+    // Read the config file
+    std::ifstream configFile(GREYLIST_CONFIG_PATH);
+    if (!configFile.is_open()) {
+        MODULEMNG_HILOG_ERROR("failed to open greylist config file: %{public}s", GREYLIST_CONFIG_PATH);
+        return false;
+    }
+
+    // Parse JSON using nlohmann::json
+    nlohmann::json greylistConfig;
+    try {
+        configFile >> greylistConfig;
+        configFile.close();
+
+        if (greylistConfig.is_discarded()) {
+            MODULEMNG_HILOG_ERROR("greylist config json discarded error");
+            return false;
+        }
+
+        // Validate JSON structure (should be an array)
+        if (!greylistConfig.is_array()) {
+            MODULEMNG_HILOG_ERROR("greylist config is not a valid JSON array");
+            return false;
+        }
+
+        // Iterate through the array
+        for (const auto& item : greylistConfig) {
+            if (!item.is_string()) {
+                MODULEMNG_HILOG_WARN("greylist config contains non-string item, skipping");
+                continue;
+            }
+
+            std::string libName = item.get<std::string>();
+
+            // Validate library name format
+            if (IsValidLibName(libName)) {
+                greylistLibs.push_back(libName);
+                MODULEMNG_HILOG_DEBUG("added greylist lib: %{public}s", libName.c_str());
+            } else if (!libName.empty()) {
+                MODULEMNG_HILOG_WARN("invalid lib name in greylist: %{public}s, skipping", libName.c_str());
+            }
+        }
+
+        MODULEMNG_HILOG_DEBUG("loaded %{public}zu libs from greylist", greylistLibs.size());
+        return !greylistLibs.empty();
+    } catch (const nlohmann::json::exception& e) {
+        MODULEMNG_HILOG_ERROR("failed to parse greylist config json: %{public}s", e.what());
+        configFile.close();
+        return false;
+    } catch (const std::exception& e) {
+        MODULEMNG_HILOG_ERROR("unexpected error parsing greylist config: %{public}s", e.what());
+        configFile.close();
+        return false;
+    }
+}
+
 void NativeModuleManager::CreateSharedLibsSonames()
 {
     MODULEMNG_HILOG_DEBUG("enter");
@@ -448,11 +537,20 @@ void NativeModuleManager::CreateSharedLibsSonames()
         "libOpenCL.so",
     };
 
+    // Load greylist config
+    std::vector<std::string> greylistLibs;
+    LoadGreylistConfig(greylistLibs);
+
     size_t allowListLength = sizeof(allowList) / sizeof(char*);
     int32_t sharedLibsSonamesLength = 1;
     for (size_t i = 0; i < allowListLength; i++) {
         sharedLibsSonamesLength += strlen(allowList[i]) + 1;
     }
+    // Add length for greylist libs
+    for (const auto& lib : greylistLibs) {
+        sharedLibsSonamesLength += lib.length() + 1;
+    }
+
     sharedLibsSonames_ = new char[sharedLibsSonamesLength];
     int32_t cursor = 0;
     for (size_t i = 0; i < allowListLength; i++) {
@@ -463,7 +561,17 @@ void NativeModuleManager::CreateSharedLibsSonames()
         }
         cursor += strlen(allowList[i]) + 1;
     }
+    // Append greylist libs
+    for (const auto& lib : greylistLibs) {
+        if (sprintf_s(sharedLibsSonames_ + cursor, sharedLibsSonamesLength - cursor, "%s:", lib.c_str()) == -1) {
+            delete[] sharedLibsSonames_;
+            sharedLibsSonames_ = nullptr;
+            return;
+        }
+        cursor += lib.length() + 1;
+    }
     sharedLibsSonames_[cursor] = '\0';
+    MODULEMNG_HILOG_DEBUG("sharedLibsSonames_ created with greylist");
 }
 #endif
 
@@ -1402,7 +1510,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleNam
     }
     std::string loadingNativeModuleKey = GetLoadingNativeModuleKey();
     if (result && checkLoadingNativeModule && !strcasecmp(loadingNativeModuleKey.c_str(), moduleName)) {
-        MODULEMNG_HILOG_DEBUG("Module is loading: %{public}s, not use", moduleName);
+        MODULEMNG_HILOG_INFO("Module is loading: %{public}s, not use", moduleName);
 #if defined(ANDROID_PLATFORM)
         cacheHeadTailStruct.matchLoadingNativeModule = cacheHeadTailStruct.matchLoadingNativeModule ?
             cacheHeadTailStruct.matchLoadingNativeModule : result;

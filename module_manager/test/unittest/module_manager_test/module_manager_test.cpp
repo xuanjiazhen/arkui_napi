@@ -39,6 +39,10 @@ public:
     void SetUp();
 
     void TearDown();
+
+    // Helper methods for config file backup and restore
+    bool BackupGreylistConfig(const std::string& configPath, const std::string& backupPath);
+    bool RestoreGreylistConfig(const std::string& configPath, const std::string& backupPath);
 };
 
 void ModuleManagerTest::SetUpTestCase() {}
@@ -53,6 +57,54 @@ void ModuleManagerTest::SetUp()
 void ModuleManagerTest::TearDown()
 {
     MockResetModuleManagerState();
+}
+
+bool ModuleManagerTest::BackupGreylistConfig(const std::string& configPath, const std::string& backupPath)
+{
+    // Check if config file exists
+    if (access(configPath.c_str(), F_OK) != 0) {
+        // File doesn't exist, no need to backup
+        return true;
+    }
+
+    // Copy file to backup
+    std::ifstream src(configPath, std::ios::binary);
+    std::ofstream dst(backupPath, std::ios::binary);
+    if (!src.is_open() || !dst.is_open()) {
+        return false;
+    }
+
+    dst << src.rdbuf();
+    src.close();
+    dst.close();
+    return true;
+}
+
+bool ModuleManagerTest::RestoreGreylistConfig(const std::string& configPath, const std::string& backupPath)
+{
+    // Check if backup file exists
+    if (access(backupPath.c_str(), F_OK) != 0) {
+        // No backup file, remove test config if it exists
+        if (access(configPath.c_str(), F_OK) == 0) {
+            remove(configPath.c_str());
+        }
+        return true;
+    }
+
+    // Restore from backup
+    std::ifstream src(backupPath, std::ios::binary);
+    std::ofstream dst(configPath, std::ios::binary);
+    if (!src.is_open() || !dst.is_open()) {
+        return false;
+    }
+
+    dst << src.rdbuf();
+    src.close();
+    dst.close();
+
+    // Remove backup file
+    remove(backupPath.c_str());
+    return true;
 }
 
 void ModuleManagerTest::InitNativeModule(NativeModule* nativeModule, std::string moduleName)
@@ -924,4 +976,282 @@ HWTEST_F(ModuleManagerTest, CheckNativeListChanged_ShouldReturnFalseWhenAllNameM
     delete moduleManager.tailNativeModule_;
     moduleManager.tailNativeModule_ = nullptr;
     GTEST_LOG_(INFO) << "CheckNativeListChanged_ShouldReturnFalseWhenAllNameMatch end";
+}
+
+/*
+ * @tc.name: LoadGreylistConfig_WhenConfigFileNotExists
+ * @tc.desc: test LoadGreylistConfig when greylist config file does not exist
+ * @tc.type: FUNC
+ * @tc.require: #I76XTV
+ */
+HWTEST_F(ModuleManagerTest, LoadGreylistConfig_WhenConfigFileNotExists, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigFileNotExists starts";
+
+    std::shared_ptr<NativeModuleManager> moduleManager = std::make_shared<NativeModuleManager>();
+    ASSERT_NE(nullptr, moduleManager);
+
+    // CreateSharedLibsSonames should succeed even when greylist config does not exist
+    moduleManager->CreateSharedLibsSonames();
+    EXPECT_NE(moduleManager->sharedLibsSonames_, nullptr);
+    EXPECT_NE(moduleManager->sharedLibsSonames_[0], '\0');
+
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigFileNotExists end";
+}
+
+/*
+ * @tc.name: LoadGreylistConfig_WhenConfigFileExists
+ * @tc.desc: test LoadGreylistConfig when greylist config file exists with valid content
+ * @tc.type: FUNC
+ * @tc.require: #I76XTV
+ */
+HWTEST_F(ModuleManagerTest, LoadGreylistConfig_WhenConfigFileExists, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigFileExists starts";
+
+    std::shared_ptr<NativeModuleManager> moduleManager = std::make_shared<NativeModuleManager>();
+    ASSERT_NE(nullptr, moduleManager);
+
+    const char* configPath = "/data/service/el0/public/musl_namespace_config/greylist.json";
+    const char* backupPath = "/data/service/el0/public/musl_namespace_config/greylist.json.bak";
+    const char* testConfigContent = "[\"libtest1.so\", \"libtest2.so\", \"libtest3.z.so\"]";
+
+    // Backup existing config file if exists
+    ASSERT_TRUE(BackupGreylistConfig(configPath, backupPath));
+
+    system("mkdir -p /data/service/el0/public/musl_namespace_config");
+
+    std::ofstream configFile(configPath);
+    if (configFile.is_open()) {
+        configFile << testConfigContent;
+        configFile.close();
+
+        moduleManager->CreateSharedLibsSonames();
+        EXPECT_NE(moduleManager->sharedLibsSonames_, nullptr);
+
+        std::string sonames(moduleManager->sharedLibsSonames_);
+        EXPECT_NE(sonames.find("libtest1.so"), std::string::npos);
+        EXPECT_NE(sonames.find("libtest2.so"), std::string::npos);
+        EXPECT_NE(sonames.find("libtest3.z.so"), std::string::npos);
+    }
+
+    // Restore original config file
+    ASSERT_TRUE(RestoreGreylistConfig(configPath, backupPath));
+
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigFileExists end";
+}
+
+/*
+ * @tc.name: LoadGreylistConfig_WhenConfigFileIsEmpty
+ * @tc.desc: test LoadGreylistConfig when greylist config file exists but is empty
+ * @tc.type: FUNC
+ * @tc.require: #I76XTV
+ */
+HWTEST_F(ModuleManagerTest, LoadGreylistConfig_WhenConfigFileIsEmpty, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigFileIsEmpty starts";
+
+    std::shared_ptr<NativeModuleManager> moduleManager = std::make_shared<NativeModuleManager>();
+    ASSERT_NE(nullptr, moduleManager);
+
+    const char* configPath = "/data/service/el0/public/musl_namespace_config/greylist.json";
+    const char* backupPath = "/data/service/el0/public/musl_namespace_config/greylist.json.bak";
+
+    // Backup existing config file if exists
+    ASSERT_TRUE(BackupGreylistConfig(configPath, backupPath));
+
+    system("mkdir -p /data/service/el0/public/musl_namespace_config");
+
+    std::ofstream configFile(configPath);
+    if (configFile.is_open()) {
+        configFile << "[]";
+        configFile.close();
+
+        moduleManager->CreateSharedLibsSonames();
+        EXPECT_NE(moduleManager->sharedLibsSonames_, nullptr);
+        EXPECT_NE(moduleManager->sharedLibsSonames_[0], '\0');
+    }
+
+    // Restore original config file
+    ASSERT_TRUE(RestoreGreylistConfig(configPath, backupPath));
+
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigFileIsEmpty end";
+}
+
+/*
+ * @tc.name: LoadGreylistConfig_WhenConfigFileHasInvalidFormat
+ * @tc.desc: test LoadGreylistConfig when greylist config file has invalid format
+ * @tc.type: FUNC
+ * @tc.require: #I76XTV
+ */
+HWTEST_F(ModuleManagerTest, LoadGreylistConfig_WhenConfigFileHasInvalidFormat, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigFileHasInvalidFormat starts";
+
+    std::shared_ptr<NativeModuleManager> moduleManager = std::make_shared<NativeModuleManager>();
+    ASSERT_NE(nullptr, moduleManager);
+
+    const char* configPath = "/data/service/el0/public/musl_namespace_config/greylist.json";
+    const char* backupPath = "/data/service/el0/public/musl_namespace_config/greylist.json.bak";
+
+    // Backup existing config file if exists
+    ASSERT_TRUE(BackupGreylistConfig(configPath, backupPath));
+
+    system("mkdir -p /data/service/el0/public/musl_namespace_config");
+
+    std::ofstream configFile(configPath);
+    if (configFile.is_open()) {
+        configFile << "invalid json content";
+        configFile.close();
+
+        moduleManager->CreateSharedLibsSonames();
+        EXPECT_NE(moduleManager->sharedLibsSonames_, nullptr);
+    }
+
+    // Restore original config file
+    ASSERT_TRUE(RestoreGreylistConfig(configPath, backupPath));
+
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigFileHasInvalidFormat end";
+}
+
+/*
+ * @tc.name: CreateSharedLibsSonames_WhenGreylistHasLibraries
+ * @tc.desc: test CreateSharedLibsSonames correctly merges greylist libraries
+ * @tc.type: FUNC
+ * @tc.require: #I76XTV
+ */
+HWTEST_F(ModuleManagerTest, CreateSharedLibsSonames_WhenGreylistHasLibraries, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "CreateSharedLibsSonames_WhenGreylistHasLibraries starts";
+
+    std::shared_ptr<NativeModuleManager> moduleManager = std::make_shared<NativeModuleManager>();
+    ASSERT_NE(nullptr, moduleManager);
+
+    const char* configPath = "/data/service/el0/public/musl_namespace_config/greylist.json";
+    const char* backupPath = "/data/service/el0/public/musl_namespace_config/greylist.json.bak";
+    const char* testConfigContent = "[\"libcustom1.z.so\", \"libcustom2.ndk.so\"]";
+
+    // Backup existing config file if exists
+    ASSERT_TRUE(BackupGreylistConfig(configPath, backupPath));
+
+    system("mkdir -p /data/service/el0/public/musl_namespace_config");
+
+    std::ofstream configFile(configPath);
+    if (configFile.is_open()) {
+        configFile << testConfigContent;
+        configFile.close();
+
+        moduleManager->CreateSharedLibsSonames();
+        EXPECT_NE(moduleManager->sharedLibsSonames_, nullptr);
+
+        std::string sonames(moduleManager->sharedLibsSonames_);
+        EXPECT_NE(sonames.find("libc.so"), std::string::npos);
+        EXPECT_NE(sonames.find("libace_napi.z.so"), std::string::npos);
+
+        EXPECT_NE(sonames.find("libcustom1.z.so"), std::string::npos);
+        EXPECT_NE(sonames.find("libcustom2.ndk.so"), std::string::npos);
+
+        size_t pos = 0;
+        int libCount = 0;
+        while ((pos = sonames.find(':', pos)) != std::string::npos) {
+            libCount++;
+            pos++;
+        }
+        EXPECT_GT(libCount, 0);
+    }
+
+    // Restore original config file
+    ASSERT_TRUE(RestoreGreylistConfig(configPath, backupPath));
+
+    GTEST_LOG_(INFO) << "CreateSharedLibsSonames_WhenGreylistHasLibraries end";
+}
+
+/*
+ * @tc.name: LoadGreylistConfig_WhenConfigHasInvalidLibNames
+ * @tc.desc: test LoadGreylistConfig rejects library names not ending with .so
+ * @tc.type: FUNC
+ * @tc.require: #I76XTV
+ */
+HWTEST_F(ModuleManagerTest, LoadGreylistConfig_WhenConfigHasInvalidLibNames, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigHasInvalidLibNames starts";
+
+    std::shared_ptr<NativeModuleManager> moduleManager = std::make_shared<NativeModuleManager>();
+    ASSERT_NE(nullptr, moduleManager);
+
+    const char* configPath = "/data/service/el0/public/musl_namespace_config/greylist.json";
+    const char* backupPath = "/data/service/el0/public/musl_namespace_config/greylist.json.bak";
+
+    // Backup existing config file if exists
+    ASSERT_TRUE(BackupGreylistConfig(configPath, backupPath));
+
+    system("mkdir -p /data/service/el0/public/musl_namespace_config");
+
+    std::ofstream configFile(configPath);
+    if (configFile.is_open()) {
+        // Mix of valid and invalid lib names (only .so ending is checked)
+        configFile << "[\"libvalid1.z.so\", \"libinvalid\", \"libvalid2.so\", \"libinvalid.dll\"]";
+        configFile.close();
+
+        moduleManager->CreateSharedLibsSonames();
+        EXPECT_NE(moduleManager->sharedLibsSonames_, nullptr);
+
+        std::string sonames(moduleManager->sharedLibsSonames_);
+        // Valid libs (ending with .so) should be present
+        EXPECT_NE(sonames.find("libvalid1.z.so"), std::string::npos);
+        EXPECT_NE(sonames.find("libvalid2.so"), std::string::npos);
+        // Invalid libs (not ending with .so) should NOT be present
+        EXPECT_EQ(sonames.find("libinvalid"), std::string::npos);
+        EXPECT_EQ(sonames.find("libinvalid.dll"), std::string::npos);
+    }
+
+    // Restore original config file
+    ASSERT_TRUE(RestoreGreylistConfig(configPath, backupPath));
+
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_WhenConfigHasInvalidLibNames end";
+}
+
+/*
+ * @tc.name: LoadGreylistConfig_AcceptsSpecialCharacters
+ * @tc.desc: test LoadGreylistConfig accepts library names with special characters (only .so ending is checked)
+ * @tc.type: FUNC
+ * @tc.require: #I76XTV
+ */
+HWTEST_F(ModuleManagerTest, LoadGreylistConfig_AcceptsSpecialCharacters, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_AcceptsSpecialCharacters starts";
+
+    std::shared_ptr<NativeModuleManager> moduleManager = std::make_shared<NativeModuleManager>();
+    ASSERT_NE(nullptr, moduleManager);
+
+    const char* configPath = "/data/service/el0/public/musl_namespace_config/greylist.json";
+    const char* backupPath = "/data/service/el0/public/musl_namespace_config/greylist.json.bak";
+
+    // Backup existing config file if exists
+    ASSERT_TRUE(BackupGreylistConfig(configPath, backupPath));
+
+    system("mkdir -p /data/service/el0/public/musl_namespace_config");
+
+    std::ofstream configFile(configPath);
+    if (configFile.is_open()) {
+        // Library names with special characters (should be accepted as long as they end with .so)
+        configFile << "[\"lib-test.so\", \"lib_test.so\", \"lib.test.so\", \"lib测试.so\", \"libvalid.so\"]";
+        configFile.close();
+
+        moduleManager->CreateSharedLibsSonames();
+        EXPECT_NE(moduleManager->sharedLibsSonames_, nullptr);
+
+        std::string sonames(moduleManager->sharedLibsSonames_);
+        // All libs ending with .so should be present
+        EXPECT_NE(sonames.find("lib-test.so"), std::string::npos);
+        EXPECT_NE(sonames.find("lib_test.so"), std::string::npos);
+        EXPECT_NE(sonames.find("lib.test.so"), std::string::npos);
+        EXPECT_NE(sonames.find("lib测试.so"), std::string::npos);
+        EXPECT_NE(sonames.find("libvalid.so"), std::string::npos);
+    }
+
+    // Restore original config file
+    ASSERT_TRUE(RestoreGreylistConfig(configPath, backupPath));
+
+    GTEST_LOG_(INFO) << "LoadGreylistConfig_AcceptsSpecialCharacters end";
 }
