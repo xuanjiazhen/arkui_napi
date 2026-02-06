@@ -680,6 +680,7 @@ bool ArkNativeEngine::IsReadyToDelete()
 
 void ArkNativeEngine::Delete()
 {
+    HILOG_DEBUG("Deleting Ark Context Engine, id %{public}" PRIu64, GetId());
     context_.FreeGlobalHandleAddr();
     delete this;
 }
