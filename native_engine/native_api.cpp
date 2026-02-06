@@ -1381,6 +1381,7 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
         CHECK_ARG(env, argv);
     }
 
+    HILOG_DEBUG("napi_call_function start func: %{public}p", reinterpret_cast<void *>(func));
     auto vm = reinterpret_cast<NativeEngine *>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
