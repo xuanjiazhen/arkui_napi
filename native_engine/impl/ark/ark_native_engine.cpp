@@ -680,6 +680,7 @@ bool ArkNativeEngine::IsReadyToDelete()
 
 void ArkNativeEngine::Delete()
 {
+    HILOG_DEBUG("Deleting Ark Context Engine, id %{public}" PRIu64, GetId());
     context_.FreeGlobalHandleAddr();
     delete this;
 }
@@ -756,7 +757,9 @@ Local<JSValueRef> ArkNativeEngine::GetContext() const
 const EcmaVM* ArkNativeEngine::GetEcmaVm() const
 {
     if (HasCriticalScope()) {
-        HILOG_FATAL("napi cannot invoke under critical scope, id: %{public}" PRIu64, GetId());
+        HILOG_FATAL("napi cannot invoke under critical scope, id: %{public}" PRIu64
+                    ", criticalScopeCounter ptr: %{public}p, criticalScopeCounter: %{public}" PRIu64,
+                    GetId(), criticalScopeCounter_.get(), *criticalScopeCounter_);
     }
     return GetEcmaVmCritical();
 }
