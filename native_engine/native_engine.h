@@ -674,6 +674,7 @@ protected:
 public:
     uint64_t openHandleScopes_ = 0;
     panda::Local<panda::ObjectRef> lastException_;
+    std::shared_ptr<uint64_t> criticalScopeCounter_ {};
 
 private:
     std::string moduleName_;
@@ -714,7 +715,6 @@ private:
 #define DCL_STORAGE_COUNTER(type, _name, storage, _LOAD) type (storage) { 0 };
     NAPI_COUNTER_METHOD(DCL_STORAGE_COUNTER)
 #undef DCL_STORAGE_COUNTER
-    std::shared_ptr<uint64_t> criticalScopeCounter_ {};
 
     std::atomic_bool isStopping_ { false };
 
