@@ -161,6 +161,7 @@ ohos_source_set("ace_napi_static") {
       "hitrace:libhitracechain",
       "hiview:libucollection_client",
       "init:libbegetutil",
+      "json:nlohmann_json_static",
       "resource_schedule_service:ressched_client",
       "samgr:samgr_proxy",
     ]

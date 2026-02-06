@@ -41,6 +41,7 @@
                 "ffrt",
                 "bounds_checking_function",
                 "init",
+                "json",
                 "runtime_core",
                 "ace_engine",
                 "resource_schedule_service",
