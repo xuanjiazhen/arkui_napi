@@ -24,7 +24,7 @@ using panda::ObjectRef;
 
 static constexpr int32_t MAX_THREAD_SAFE_COUNT = 128;
 static constexpr size_t SMALL_STRING_SIZE = 16;
-static constexpr size_t INT_ARG_2 = 2;
+static constexpr int32_t INT_ARG_2 = 2;
 
 struct WrapperData {
     void* data;
@@ -739,7 +739,7 @@ NAPI_EXTERN napi_status napi_unwrap_s(napi_env env, napi_value js_object, const 
     *result = nullptr;
     if (val->IsObjectWithoutSwitchState(vm)) {
         Local<panda::ObjectRef> ext(val);
-        size_t fieldCount = ext->GetNativePointerFieldCount(vm);
+        int32_t fieldCount = ext->GetNativePointerFieldCount(vm);
         if (fieldCount != INT_ARG_2) {
             HILOG_ERROR("napi_unwrap_s: expected  2 native fields");
             return napi_set_last_error(env, napi_invalid_arg);
@@ -865,7 +865,7 @@ NAPI_EXTERN napi_status napi_unwrap_sendable_s(napi_env env,
     panda::JsiFastNativeScope fastNativeScope(vm);
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsSendableObject(vm), napi_object_expected);
     Local<ObjectRef> nativeObject(nativeValue);
-    size_t fieldCount = nativeObject->GetNativePointerFieldCount(vm);
+    int32_t fieldCount = nativeObject->GetNativePointerFieldCount(vm);
     if (fieldCount != INT_ARG_2) {
         HILOG_ERROR("napi_unwrap_sendable_s: expected 2 native fields");
         return napi_set_last_error(env, napi_invalid_arg);
