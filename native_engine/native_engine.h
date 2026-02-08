@@ -284,6 +284,7 @@ public:
     virtual bool BuildJsStackInfoListWithCustomDepth(std::vector<JsFrameInfo>& jsFrames)
         = 0;
     virtual void GetMainThreadStackTrace(napi_env env, std::string &stackTraceStr) = 0;
+    virtual void SetMemoryPressureListener(napi_env env, double threshold, napi_value callback) = 0;
     virtual void GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr) = 0;
     virtual bool DeleteWorker(NativeEngine* workerEngine) = 0;
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true) = 0;

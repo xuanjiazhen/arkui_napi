@@ -2599,6 +2599,17 @@ void ArkNativeEngine::GetMainThreadStackTrace(napi_env env, std::string &stackTr
     DFXJSNApi::GetMainThreadStackTrace(vm, stackTraceStr);
 }
 
+void ArkNativeEngine::SetMemoryPressureListener(napi_env env, double threshold, napi_value callback)
+{
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    DFXJSNApi::SetMemoryPressureListener(vm, env, threshold, callback);
+}
+
+void ArkNativeEngine::SetMemoryPressureListener()
+{
+    DFXJSNApi::ClearMemoryPressureListener();
+}
+
 void ArkNativeEngine::GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();

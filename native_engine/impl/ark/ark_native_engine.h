@@ -278,6 +278,8 @@ public:
     bool BuildJsStackInfoListWithCustomDepth(std::vector<JsFrameInfo>& jsFrames)
         override;
     void GetMainThreadStackTrace(napi_env env, std::string &stackTraceStr) override;
+    void SetMemoryPressureListener(napi_env env, double threshold, napi_value callback) override;
+    void SetMemoryPressureListener();
     void GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr) override;
 
     bool DeleteWorker(NativeEngine* workerEngine) override;
