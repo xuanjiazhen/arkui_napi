@@ -2626,6 +2626,11 @@ void ArkNativeEngine::SetMultithreadingDetectionEnabled(napi_env env, bool enabl
     DFXJSNApi::SetMultithreadingDetectionEnabled(vm, enabled);
 }
 
+std::vector<panda::ecmascript::HeapMemoryInfo> ArkNativeEngine::GetAllHeapMemoryInfo()
+{
+    return JSNApi::GetAllHeapMemoryInfo();
+}
+
 void ArkNativeEngine::GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
