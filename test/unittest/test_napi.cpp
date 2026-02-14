@@ -17198,3 +17198,937 @@ HWTEST_F(NapiBasicTest, EnableLocalHandleDetectionTest003, testing::ext::TestSiz
     ASSERT_FALSE(result);
     engine_->loop_ = originalLoop;
 }
+// ========================== callsite info & property fast tests ========================== //
+
+/**
+ * @tc.name: NapiCreateCallsiteInfoTest001
+ * @tc.desc: Happy path: create callsite info succeeds, result non-null, cleanup.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateCallsiteInfoTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+    ASSERT_NE(info, nullptr);
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiCreateCallsiteInfoTest002
+ * @tc.desc: Null result pointer returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateCallsiteInfoTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_status status = napi_create_callsite_info(env, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiCreateCallsiteInfoTest003
+ * @tc.desc: Create two infos, both succeed and are distinct pointers.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiCreateCallsiteInfoTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_callsite_info info1 = nullptr;
+    napi_callsite_info info2 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info1));
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info2));
+    ASSERT_NE(info1, nullptr);
+    ASSERT_NE(info2, nullptr);
+    ASSERT_NE(info1, info2);
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info1));
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info2));
+}
+
+/**
+ * @tc.name: NapiDeleteCallsiteInfoTest001
+ * @tc.desc: Delete valid callsite info returns napi_ok.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiDeleteCallsiteInfoTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+    ASSERT_NE(info, nullptr);
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiDeleteCallsiteInfoTest002
+ * @tc.desc: Delete nullptr info returns napi_ok (no CHECK_ARG on info param).
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiDeleteCallsiteInfoTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, nullptr));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest001
+ * @tc.desc: Happy path: set normally, get via fast API, verify value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_FORTYTWO, &val));
+    ASSERT_CHECK_CALL(napi_set_property(env, obj, key, val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, key, info, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_number);
+
+    int32_t intResult = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result, &intResult));
+    ASSERT_EQ(intResult, INT_FORTYTWO);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest002
+ * @tc.desc: IC cache reuse: call twice with same key+info, both return correct value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "val", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_HUNDRED, &val));
+    ASSERT_CHECK_CALL(napi_set_property(env, obj, key, val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result1 = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, key, info, &result1));
+    int32_t intResult1 = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result1, &intResult1));
+    ASSERT_EQ(intResult1, INT_HUNDRED);
+
+    // Second call reuses IC cache
+    napi_value result2 = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, key, info, &result2));
+    int32_t intResult2 = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result2, &intResult2));
+    ASSERT_EQ(intResult2, INT_HUNDRED);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest003
+ * @tc.desc: Null object returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    napi_status status = napi_get_property_fast(env, nullptr, key, info, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest004
+ * @tc.desc: Null key returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    napi_status status = napi_get_property_fast(env, obj, nullptr, info, &result);
+    ASSERT_EQ(status, napi_invalid_arg);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest005
+ * @tc.desc: Null result returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_status status = napi_get_property_fast(env, obj, key, info, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest006
+ * @tc.desc: Non-object receiver (number) returns napi_object_expected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value numVal = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &numVal));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    napi_status status = napi_get_property_fast(env, numVal, key, info, &result);
+    ASSERT_EQ(status, napi_object_expected);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest007
+ * @tc.desc: Null callsite info still works via slow path fallback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest007, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "y", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_THREE, &val));
+    ASSERT_CHECK_CALL(napi_set_property(env, obj, key, val));
+
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, key, nullptr, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_number);
+
+    int32_t intResult = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result, &intResult));
+    ASSERT_EQ(intResult, INT_THREE);
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest008
+ * @tc.desc: Get non-existent property returns napi_undefined.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest008, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "nonexistent", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, key, info, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_undefined);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest009
+ * @tc.desc: Non-object receiver (boolean) returns napi_object_expected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest009, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value boolVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_boolean(env, true, &boolVal));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    napi_status status = napi_get_property_fast(env, boolVal, key, info, &result);
+    ASSERT_EQ(status, napi_object_expected);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest010
+ * @tc.desc: Non-object receiver (null) returns napi_object_expected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest010, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value nullVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_null(env, &nullVal));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    napi_status status = napi_get_property_fast(env, nullVal, key, info, &result);
+    ASSERT_EQ(status, napi_object_expected);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest011
+ * @tc.desc: Non-object receiver (undefined) returns napi_object_expected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest011, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value undefVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_undefined(env, &undefVal));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    napi_status status = napi_get_property_fast(env, undefVal, key, info, &result);
+    ASSERT_EQ(status, napi_object_expected);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiGetPropertyFastTest012
+ * @tc.desc: Function receiver: functions are valid objects, get property works.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetPropertyFastTest012, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    auto callback = [](napi_env env, napi_callback_info info) -> napi_value {
+        return nullptr;
+    };
+    napi_value funcVal = nullptr;
+    ASSERT_CHECK_CALL(napi_create_function(env, "testFunc", NAPI_AUTO_LENGTH, callback, nullptr, &funcVal));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "myProp", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_TWO, &val));
+    ASSERT_CHECK_CALL(napi_set_property(env, funcVal, key, val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, funcVal, key, info, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_number);
+
+    int32_t intResult = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result, &intResult));
+    ASSERT_EQ(intResult, INT_TWO);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest001
+ * @tc.desc: Happy path: set via fast API, verify with normal get.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "a", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_FORTYTWO, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, key, val, info));
+
+    // Verify with normal get
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property(env, obj, key, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_number);
+
+    int32_t intResult = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result, &intResult));
+    ASSERT_EQ(intResult, INT_FORTYTWO);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest002
+ * @tc.desc: IC cache hit: repeated store same key+info, last value wins.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "counter", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_value val1 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &val1));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, key, val1, info));
+
+    // Second call reuses IC cache, overwrites value
+    napi_value val2 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_TWO, &val2));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, key, val2, info));
+
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property(env, obj, key, &result));
+    int32_t intResult = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result, &intResult));
+    ASSERT_EQ(intResult, INT_TWO);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest003
+ * @tc.desc: Null object returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_status status = napi_set_property_fast(env, nullptr, key, val, info);
+    ASSERT_EQ(status, napi_invalid_arg);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest004
+ * @tc.desc: Null key returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_status status = napi_set_property_fast(env, obj, nullptr, val, info);
+    ASSERT_EQ(status, napi_invalid_arg);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest005
+ * @tc.desc: Null value returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_status status = napi_set_property_fast(env, obj, key, nullptr, info);
+    ASSERT_EQ(status, napi_invalid_arg);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest006
+ * @tc.desc: Non-object receiver (number) returns napi_object_expected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value numVal = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &numVal));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_TWO, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_status status = napi_set_property_fast(env, numVal, key, val, info);
+    ASSERT_EQ(status, napi_object_expected);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest007
+ * @tc.desc: Null callsite info still works via slow path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest007, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "z", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_THREE, &val));
+
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, key, val, nullptr));
+
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property(env, obj, key, &result));
+    int32_t intResult = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result, &intResult));
+    ASSERT_EQ(intResult, INT_THREE);
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest008
+ * @tc.desc: Non-object receiver (boolean) returns napi_object_expected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest008, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value boolVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_boolean(env, true, &boolVal));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_status status = napi_set_property_fast(env, boolVal, key, val, info);
+    ASSERT_EQ(status, napi_object_expected);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest009
+ * @tc.desc: Non-object receiver (null) returns napi_object_expected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest009, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value nullVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_null(env, &nullVal));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_status status = napi_set_property_fast(env, nullVal, key, val, info);
+    ASSERT_EQ(status, napi_object_expected);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest010
+ * @tc.desc: Non-object receiver (undefined) returns napi_object_expected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest010, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value undefVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_undefined(env, &undefVal));
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "x", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    napi_status status = napi_set_property_fast(env, undefVal, key, val, info);
+    ASSERT_EQ(status, napi_object_expected);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiSetPropertyFastTest011
+ * @tc.desc: Function receiver: functions are valid objects, set property works.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiSetPropertyFastTest011, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    auto callback = [](napi_env env, napi_callback_info info) -> napi_value {
+        return nullptr;
+    };
+    napi_value funcVal = nullptr;
+    ASSERT_CHECK_CALL(napi_create_function(env, "testFunc", NAPI_AUTO_LENGTH, callback, nullptr, &funcVal));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "myProp", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_TWO, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, funcVal, key, val, info));
+
+    // Verify with normal get
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property(env, funcVal, key, &result));
+    int32_t intResult = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result, &intResult));
+    ASSERT_EQ(intResult, INT_TWO);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+// ========================== Cross-API & advanced scenarios ========================== //
+
+/**
+ * @tc.name: NapiPropertyFastRoundTripTest001
+ * @tc.desc: Set via fast API, get via fast API (same callsite info for both).
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiPropertyFastRoundTripTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "round", NAPI_AUTO_LENGTH, &key));
+    napi_value val = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_FORTYTWO, &val));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, key, val, info));
+
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, key, info, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_number);
+
+    int32_t intResult = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result, &intResult));
+    ASSERT_EQ(intResult, INT_FORTYTWO);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiPropertyFastRoundTripTest002
+ * @tc.desc: Set via normal API then get via fast; set via fast then get via normal.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiPropertyFastRoundTripTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_value key1 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "normalSet", NAPI_AUTO_LENGTH, &key1));
+    napi_value val1 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &val1));
+    ASSERT_CHECK_CALL(napi_set_property(env, obj, key1, val1));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    // Get via fast after normal set
+    napi_value result1 = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, key1, info, &result1));
+    int32_t intResult1 = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result1, &intResult1));
+    ASSERT_EQ(intResult1, INT_ONE);
+
+    // Set via fast, get via normal
+    napi_value key2 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "fastSet", NAPI_AUTO_LENGTH, &key2));
+    napi_value val2 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_TWO, &val2));
+
+    napi_callsite_info info2 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info2));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, key2, val2, info2));
+
+    napi_value result2 = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property(env, obj, key2, &result2));
+    int32_t intResult2 = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result2, &intResult2));
+    ASSERT_EQ(intResult2, INT_TWO);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info2));
+}
+
+/**
+ * @tc.name: NapiPropertyFastMultiKeyTest001
+ * @tc.desc: Multiple different keys through same callsite info — exercises KEY_IC polymorphism.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiPropertyFastMultiKeyTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    // Set three different keys through the same info
+    napi_value keyA = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "keyA", NAPI_AUTO_LENGTH, &keyA));
+    napi_value valA = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &valA));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, keyA, valA, info));
+
+    napi_value keyB = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "keyB", NAPI_AUTO_LENGTH, &keyB));
+    napi_value valB = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_TWO, &valB));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, keyB, valB, info));
+
+    napi_value keyC = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "keyC", NAPI_AUTO_LENGTH, &keyC));
+    napi_value valC = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_THREE, &valC));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, keyC, valC, info));
+
+    // Get all three through same info
+    napi_value resultA = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, keyA, info, &resultA));
+    int32_t intA = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, resultA, &intA));
+    ASSERT_EQ(intA, INT_ONE);
+
+    napi_value resultB = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, keyB, info, &resultB));
+    int32_t intB = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, resultB, &intB));
+    ASSERT_EQ(intB, INT_TWO);
+
+    napi_value resultC = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, keyC, info, &resultC));
+    int32_t intC = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, resultC, &intC));
+    ASSERT_EQ(intC, INT_THREE);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiPropertyFastMultiObjectTest001
+ * @tc.desc: Same key+info across different objects — exercises IC with different HClasses.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiPropertyFastMultiObjectTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+
+    napi_value key = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "shared", NAPI_AUTO_LENGTH, &key));
+
+    napi_callsite_info info = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &info));
+
+    // Object 1: only "shared" property
+    napi_value obj1 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj1));
+    napi_value val1 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_ONE, &val1));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj1, key, val1, info));
+
+    // Object 2: has "extra" property first (different HClass), then "shared"
+    napi_value obj2 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj2));
+    napi_value extraKey = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "extra", NAPI_AUTO_LENGTH, &extraKey));
+    napi_value extraVal = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_HUNDRED, &extraVal));
+    ASSERT_CHECK_CALL(napi_set_property(env, obj2, extraKey, extraVal));
+    napi_value val2 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_int32(env, INT_TWO, &val2));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj2, key, val2, info));
+
+    // Verify both objects
+    napi_value result1 = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj1, key, info, &result1));
+    int32_t intResult1 = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result1, &intResult1));
+    ASSERT_EQ(intResult1, INT_ONE);
+
+    napi_value result2 = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj2, key, info, &result2));
+    int32_t intResult2 = 0;
+    ASSERT_CHECK_CALL(napi_get_value_int32(env, result2, &intResult2));
+    ASSERT_EQ(intResult2, INT_TWO);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, info));
+}
+
+/**
+ * @tc.name: NapiPropertyFastValueTypesTest001
+ * @tc.desc: Set/get various value types (string, boolean, double, null, undefined) via fast API.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiPropertyFastValueTypesTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+
+    napi_callsite_info setInfo = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &setInfo));
+    napi_callsite_info getInfo = nullptr;
+    ASSERT_CHECK_CALL(napi_create_callsite_info(env, &getInfo));
+
+    // String value
+    napi_value strKey = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "strProp", NAPI_AUTO_LENGTH, &strKey));
+    napi_value strVal = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, TEST_STRING, NAPI_AUTO_LENGTH, &strVal));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, strKey, strVal, setInfo));
+
+    napi_value strResult = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, strKey, getInfo, &strResult));
+    ASSERT_CHECK_VALUE_TYPE(env, strResult, napi_string);
+
+    // Boolean value
+    napi_value boolKey = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "boolProp", NAPI_AUTO_LENGTH, &boolKey));
+    napi_value boolVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_boolean(env, true, &boolVal));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, boolKey, boolVal, setInfo));
+
+    napi_value boolResult = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, boolKey, getInfo, &boolResult));
+    ASSERT_CHECK_VALUE_TYPE(env, boolResult, napi_boolean);
+    bool boolOut = false;
+    ASSERT_CHECK_CALL(napi_get_value_bool(env, boolResult, &boolOut));
+    ASSERT_TRUE(boolOut);
+
+    // Double value
+    napi_value dblKey = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "dblProp", NAPI_AUTO_LENGTH, &dblKey));
+    napi_value dblVal = nullptr;
+    ASSERT_CHECK_CALL(napi_create_double(env, TEST_DOUBLE, &dblVal));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, dblKey, dblVal, setInfo));
+
+    napi_value dblResult = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, dblKey, getInfo, &dblResult));
+    ASSERT_CHECK_VALUE_TYPE(env, dblResult, napi_number);
+    double dblOut = 0.0;
+    ASSERT_CHECK_CALL(napi_get_value_double(env, dblResult, &dblOut));
+    ASSERT_DOUBLE_EQ(dblOut, TEST_DOUBLE);
+
+    // Null value
+    napi_value nullKey = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "nullProp", NAPI_AUTO_LENGTH, &nullKey));
+    napi_value nullVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_null(env, &nullVal));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, nullKey, nullVal, setInfo));
+
+    napi_value nullResult = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, nullKey, getInfo, &nullResult));
+    ASSERT_CHECK_VALUE_TYPE(env, nullResult, napi_null);
+
+    // Undefined value
+    napi_value undefKey = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, "undefProp", NAPI_AUTO_LENGTH, &undefKey));
+    napi_value undefVal = nullptr;
+    ASSERT_CHECK_CALL(napi_get_undefined(env, &undefVal));
+    ASSERT_CHECK_CALL(napi_set_property_fast(env, obj, undefKey, undefVal, setInfo));
+
+    napi_value undefResult = nullptr;
+    ASSERT_CHECK_CALL(napi_get_property_fast(env, obj, undefKey, getInfo, &undefResult));
+    ASSERT_CHECK_VALUE_TYPE(env, undefResult, napi_undefined);
+
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, setInfo));
+    ASSERT_CHECK_CALL(napi_delete_callsite_info(env, getInfo));
+}
