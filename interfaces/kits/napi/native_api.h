@@ -244,6 +244,25 @@ NAPI_EXTERN napi_status napi_create_external_string_ascii(napi_env env,
                                                           napi_finalize_callback finalize_callback,
                                                           void* finalize_hint,
                                                           napi_value* result);
+
+// ================================== callsite IC for property access ================================== //
+typedef struct napi_callsite_info__* napi_callsite_info;
+
+NAPI_EXTERN napi_status napi_create_callsite_info(napi_env env,
+                                                  napi_callsite_info* result);
+NAPI_EXTERN napi_status napi_delete_callsite_info(napi_env env,
+                                                  napi_callsite_info info);
+NAPI_EXTERN napi_status napi_get_property_fast(napi_env env,
+                                               napi_value object,
+                                               napi_value key,
+                                               napi_callsite_info info,
+                                               napi_value* result);
+NAPI_EXTERN napi_status napi_set_property_fast(napi_env env,
+                                               napi_value object,
+                                               napi_value key,
+                                               napi_value value,
+                                               napi_callsite_info info);
+
 #ifdef __cplusplus
 }
 #endif
