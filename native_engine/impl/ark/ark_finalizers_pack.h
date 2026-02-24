@@ -25,7 +25,6 @@ class NativeEngine;
 using RefFinalizer = std::pair<NapiNativeFinalize, std::tuple<NativeEngine*, void*, void*>>;
 using RefAsyncFinalizer = std::pair<NapiNativeFinalize, std::pair<void*, void*>>;
 using ArkFinalizersPackFinishNotify = std::function<void(size_t totalNativeBindingSize)>;
-using ArkCrashHolder = panda::ArkCrashHolder;
 
 class ArkFinalizersPack {
 public:
