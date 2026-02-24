@@ -356,7 +356,7 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
     uv_call_specify_task(loop);
 #endif
         if (callJsCallback_ != nullptr) {
-            callJsCallback_(engine_, func_, context_, data);
+            engine_->ExecuteCallback(callJsCallback_, engine_, func_, context_, data);
             if (engine_->HasCriticalScope()) {
                 HILOG_FATAL("critical scope still open after user callback (ID: %{public}" PRIuPTR ") returned",
                             reinterpret_cast<uintptr_t>(callJsCallback_));
@@ -413,7 +413,7 @@ void NativeSafeAsyncWork::CleanUp()
     HILOG_DEBUG("NativeSafeAsyncWork::CleanUp called");
     bool isValidTraceId = SaveAndSetTraceId();
     if (finalizeCallback_ != nullptr) {
-        finalizeCallback_(engine_, finalizeData_, context_);
+        NativeEngine::ExecuteCallback(finalizeCallback_, engine_, finalizeData_, context_);
     }
 
     // clean data

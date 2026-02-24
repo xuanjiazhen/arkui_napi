@@ -619,6 +619,13 @@ public:
         return instanceId_;
     };
 
+    template <typename T, typename... Args>
+    static inline void ExecuteCallback(T&& call, Args... args) {
+        panda::ArkCrashHolder holder("NAPI", __FUNCTION__);
+        holder.UpdateCallbackPtr(reinterpret_cast<uintptr_t>(call));
+        call(args...);
+    }
+
 private:
     void InitUvField();
 
