@@ -100,7 +100,6 @@ using panda::SymbolRef;
 using panda::IntegerRef;
 using panda::DateRef;
 using panda::BigIntRef;
-using ArkCrashHolder = panda::ArkCrashHolder;
 using ArkIdleMonitor = panda::ecmascript::ArkIdleMonitor;
 using AsyncNativeCallbacksPack = panda::AsyncNativeCallbacksPack;
 using EcmaVM = panda::ecmascript::EcmaVM;
@@ -2079,12 +2078,10 @@ __attribute__((optnone)) void ArkNativeEngine::RunAsyncCallbacks(std::vector<Ref
 #ifdef ENABLE_HITRACE
     StartTrace(HITRACE_TAG_ACE, "RunFinalizeCallbacks:" + std::to_string(finalizers->size()));
 #endif
-    INIT_CRASH_HOLDER(holder, "NAPI");
     for (auto iter : (*finalizers)) {
         NapiNativeFinalize callback = iter.first;
         std::pair<void*, void*> &param = iter.second;
-        holder.UpdateCallbackPtr(reinterpret_cast<uintptr_t>(callback));
-        callback(nullptr, std::get<0>(param), std::get<1>(param)); // 1 is the param.
+        ExecuteCallback(callback, nullptr, std::get<0>(param), std::get<1>(param)); // 1 is the param.
     }
 #ifdef ENABLE_HITRACE
     FinishTrace(HITRACE_TAG_ACE);
