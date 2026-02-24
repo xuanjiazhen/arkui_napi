@@ -45,6 +45,8 @@ constexpr size_t TRACEID_PARAM_SIZE = 10;
 using namespace OHOS::HiviewDFX;
 #endif
 
+#include "ecmascript/napi/include/jsnapi_expo.h"
+
 // static methods start
 void NativeSafeAsyncWork::AsyncCallback(uv_async_t* asyncHandler)
 {
@@ -356,6 +358,7 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
     uv_call_specify_task(loop);
 #endif
         if (callJsCallback_ != nullptr) {
+            INIT_CRASH_HOLDER_AND_UPDATE_CALLBACK_PTR(holder, "NAPI", callJsCallback_);
             callJsCallback_(engine_, func_, context_, data);
             if (engine_->HasCriticalScope()) {
                 HILOG_FATAL("critical scope still open after user callback (ID: %{public}" PRIuPTR ") returned",
@@ -413,6 +416,7 @@ void NativeSafeAsyncWork::CleanUp()
     HILOG_DEBUG("NativeSafeAsyncWork::CleanUp called");
     bool isValidTraceId = SaveAndSetTraceId();
     if (finalizeCallback_ != nullptr) {
+        INIT_CRASH_HOLDER_AND_UPDATE_CALLBACK_PTR(holder, "NAPI", finalizeCallback_);
         finalizeCallback_(engine_, finalizeData_, context_);
     }
 
