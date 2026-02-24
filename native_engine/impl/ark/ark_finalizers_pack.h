@@ -20,12 +20,13 @@
 
 #include "interfaces/inner_api/napi/native_node_api.h"
 
+#include "native_engine/native_engine.h"
+
 class NativeEngine;
 
 using RefFinalizer = std::pair<NapiNativeFinalize, std::tuple<NativeEngine*, void*, void*>>;
 using RefAsyncFinalizer = std::pair<NapiNativeFinalize, std::pair<void*, void*>>;
 using ArkFinalizersPackFinishNotify = std::function<void(size_t totalNativeBindingSize)>;
-using ArkCrashHolder = panda::ArkCrashHolder;
 
 class ArkFinalizersPack {
 public:
@@ -54,12 +55,10 @@ public:
     }
     void ProcessAll() const
     {
-        INIT_CRASH_HOLDER(holder, "NAPI");
         for (auto &iter : finalizers_) {
             NapiNativeFinalize callback = iter.first;
             auto &[p0, p1, p2] = iter.second;
-            holder.UpdateCallbackPtr(reinterpret_cast<uintptr_t>(callback));
-            callback(reinterpret_cast<napi_env>(p0), p1, p2);
+            NativeEngine::ExecuteCallback(__FUNCTION__, callback, reinterpret_cast<napi_env>(p0), p1, p2);
         }
         NotifyFinish();
     }
