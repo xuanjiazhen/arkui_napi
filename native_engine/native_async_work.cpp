@@ -25,6 +25,7 @@
 
 #include <cinttypes>
 #include "native_api_internal.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 
 #ifdef ENABLE_CONTAINER_SCOPE
 using OHOS::Ace::ContainerScope;
@@ -283,6 +284,7 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
     // Don't use that after complete
     auto complete = that->complete_;
     auto description = that->GetTraceDescription();
+    INIT_CRASH_HOLDER_AND_UPDATE_CALLBACK_PTR(holder, "NAPI", that->complete_);
     that->complete_(engine, nstatus, that->data_);
     if (engine->HasCriticalScope()) {
         HILOG_FATAL("critical scope still open after user callback (ID: %{public}" PRIuPTR

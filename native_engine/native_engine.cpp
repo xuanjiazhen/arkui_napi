@@ -31,6 +31,8 @@
 #include "unicode/ucnv.h"
 #include "securec.h"
 
+#include "ecmascript/napi/include/jsnapi_expo.h"
+
 constexpr size_t NAME_BUFFER_SIZE = 64;
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 static constexpr int32_t API11 = 11;
@@ -1114,6 +1116,7 @@ void NativeEngine::GetInstanceData(void** data)
 void NativeEngine::FinalizerInstanceData(void)
 {
     if (instanceDataInfo_.engine != nullptr && instanceDataInfo_.callback != nullptr) {
+        INIT_CRASH_HOLDER_AND_UPDATE_CALLBACK_PTR(holder, "NAPI", instanceDataInfo_.callback);
         instanceDataInfo_.callback(instanceDataInfo_.engine, instanceDataInfo_.nativeObject, instanceDataInfo_.hint);
     }
     instanceDataInfo_.engine = nullptr;

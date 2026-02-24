@@ -100,7 +100,6 @@ using panda::SymbolRef;
 using panda::IntegerRef;
 using panda::DateRef;
 using panda::BigIntRef;
-using ArkCrashHolder = panda::ArkCrashHolder;
 using ArkIdleMonitor = panda::ecmascript::ArkIdleMonitor;
 using AsyncNativeCallbacksPack = panda::AsyncNativeCallbacksPack;
 using EcmaVM = panda::ecmascript::EcmaVM;
