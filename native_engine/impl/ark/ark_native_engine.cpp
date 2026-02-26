@@ -3399,17 +3399,6 @@ void ArkNativeEngine::EnableNapiProfiler()
 #endif
 }
 
-napi_status ArkNativeEngine::SwitchContext()
-{
-    if (context_.IsEmpty()) {
-        HILOG_ERROR("no env context exists");
-        return napi_generic_failure;
-    }
-
-    panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_));
-    return napi_ok;
-}
-
 napi_status ArkNativeEngine::DestroyContext()
 {
     if (engineState_ != ArkNativeEngineState::RUNNING) {

@@ -457,7 +457,7 @@ public:
 
     Local<JSValueRef> GetContext() const override;
 
-    napi_status SwitchContext() override;
+    inline napi_status SwitchContext() override;
 
     napi_status DestroyContext() override;
 
@@ -561,4 +561,18 @@ private:
     AppStateNotifier interopAppState_ {};
     NativeReference *globalCheckCallbackRef_ { nullptr };
 };
+
+inline napi_status ArkNativeEngine::SwitchContext()
+{
+    if (context_.IsEmpty()) {
+        HILOG_ERROR("no env context exists");
+        return napi_generic_failure;
+    }
+
+    if (!panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_))) {
+        return napi_pending_exception;
+    } else {
+        return napi_ok;
+    }
+}
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */
