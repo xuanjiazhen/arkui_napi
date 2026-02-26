@@ -1,0 +1,55 @@
+diff --git a/native_engine/impl/ark/ark_native_engine.cpp b/native_engine/impl/ark/ark_native_engine.cpp
+index 998e85c9..acb91336 100644
+--- a/native_engine/impl/ark/ark_native_engine.cpp
++++ b/native_engine/impl/ark/ark_native_engine.cpp
+@@ -16,6 +16,7 @@
+ #include "ark_native_engine.h"
+ #include <cstdint>
+ #include "ecmascript/napi/include/jsnapi_expo.h"
++#include "js_native_api_types.h"
+ #include "utils/log.h"
+ 
+ #ifdef ENABLE_HITRACE
+@@ -3316,8 +3317,11 @@ napi_status ArkNativeEngine::SwitchContext()
+         return napi_generic_failure;
+     }
+ 
+-    panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_));
+-    return napi_ok;
++    if (!panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_))) {
++        return napi_pending_exception;
++    } else {
++        return napi_ok;
++    } 
+ }
+ 
+ napi_status ArkNativeEngine::DestroyContext()
+diff --git a/native_engine/native_api.cpp b/native_engine/native_api.cpp
+index 9d8030be..5beb6fe8 100644
+--- a/native_engine/native_api.cpp
++++ b/native_engine/native_api.cpp
+@@ -4683,7 +4683,12 @@ NAPI_EXTERN napi_status napi_create_ark_context(napi_env env, napi_env* newEnv)
+ 
+ NAPI_EXTERN napi_status napi_switch_ark_context(napi_env env)
+ {
+-    NAPI_PREAMBLE(env);
++    CHECK_ENV((env));                                                          
++    RETURN_STATUS_IF_FALSE(                                                    
++        (env),                                                                 
++        (reinterpret_cast<NativeEngine*>(env))->lastException_.IsEmpty(),      
++        napi_pending_exception);                                               
++        napi_clear_last_error((env));                                          
+     auto nativeEngine = reinterpret_cast<NativeEngine*>(env);
+     // worker and taskpool will support multi-context later
+     if (!nativeEngine->IsMainThread()) {
+@@ -4695,9 +4700,8 @@ NAPI_EXTERN napi_status napi_switch_ark_context(napi_env env)
+     if (status != napi_ok) {
+         return napi_set_last_error(env, status);
+     } else {
+-        HILOG_DEBUG("switch context successfully");
++        return napi_ok;
+     }
+-    return GET_RETURN_STATUS(env);
+ }
+ 
+ NAPI_EXTERN napi_status napi_destroy_ark_context(napi_env env)
