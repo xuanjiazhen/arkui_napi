@@ -14,7 +14,6 @@
  */
 
 #include "ark_native_engine.h"
-
 #include <cinttypes>
 #include <cstdint>
 
@@ -33,6 +32,7 @@
 #include "securec.h"
 #include "utils/file.h"
 #include "utils/log.h"
+#include "js_native_api_types.h"
 #if !defined(PREVIEW) && !defined(ANDROID_PLATFORM) && !defined(IOS_PLATFORM)
 #include "parameters.h"
 #include <uv.h>
@@ -3406,8 +3406,11 @@ napi_status ArkNativeEngine::SwitchContext()
         return napi_generic_failure;
     }
 
-    panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_));
-    return napi_ok;
+    if (!panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_))) {
+        return napi_pending_exception;
+    } else {
+        return napi_ok;
+    } 
 }
 
 napi_status ArkNativeEngine::DestroyContext()
