@@ -3406,8 +3406,11 @@ napi_status ArkNativeEngine::SwitchContext()
         return napi_generic_failure;
     }
 
-    panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_));
-    return napi_ok;
+    if (!panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_))) {
+        return napi_pending_exception;
+    } else {
+        return napi_ok;
+    }
 }
 
 napi_status ArkNativeEngine::DestroyContext()
