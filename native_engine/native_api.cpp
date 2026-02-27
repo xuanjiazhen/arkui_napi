@@ -1103,15 +1103,18 @@ NAPI_EXTERN napi_status napi_set_property_fast(napi_env env, napi_value object, 
     CHECK_ARG(env, key);
     CHECK_ARG(env, value);
 
+    auto nativeValue = LocalValueFromJsValue(object);
     SWITCH_CONTEXT(env);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    bool ok = JSNApi::NapiSetPropertyFast(
+    CHECK_AND_CONVERT_TO_OBJECT(env, vm, nativeValue, obj);
+    (void)obj; // avoid compiler complain: we only want check but never use obj
+
+    JSNApi::NapiSetPropertyFast(
         vm, reinterpret_cast<uintptr_t>(object),
         reinterpret_cast<uintptr_t>(key),
         reinterpret_cast<uintptr_t>(value),
         reinterpret_cast<uintptr_t>(info));
-    RETURN_STATUS_IF_FALSE(env, ok, napi_object_expected);
 
     return GET_RETURN_STATUS(env);
 }
