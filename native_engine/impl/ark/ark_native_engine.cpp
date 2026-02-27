@@ -2626,6 +2626,28 @@ void ArkNativeEngine::SetMultithreadingDetectionEnabled(napi_env env, bool enabl
     DFXJSNApi::SetMultithreadingDetectionEnabled(vm, enabled);
 }
 
+void open_handle_scope_callback(void* eng, void** local_handle)
+{
+    napi_env env = reinterpret_cast<napi_env>(eng);
+    napi_handle_scope* result = reinterpret_cast<napi_handle_scope*>(local_handle);
+    napi_open_handle_scope(env, result);
+}
+
+void close_handle_scope_callback(void* eng, void* local_handle)
+{
+    napi_env env = reinterpret_cast<napi_env>(eng);
+    napi_handle_scope result = reinterpret_cast<napi_handle_scope>(local_handle);
+    napi_close_handle_scope(env, result);
+}
+
+void ArkNativeEngine::SetLocalHandleDetectionEnabled(bool enabled)
+{
+    if (enabled) {
+        uv_register_scope_to_loop(loop_, reinterpret_cast<void*>(this),
+                                  open_handle_scope_callback, close_handle_scope_callback);
+    }
+}
+
 void ArkNativeEngine::GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
