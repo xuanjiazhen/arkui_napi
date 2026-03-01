@@ -2632,6 +2632,17 @@ void ArkNativeEngine::GetMainThreadStackTrace(napi_env env, std::string &stackTr
     DFXJSNApi::GetMainThreadStackTrace(vm, stackTraceStr);
 }
 
+void ArkNativeEngine::onVMHeapMemoryPressure(napi_env env, double threshold, napi_value callback)
+{
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    DFXJSNApi::onVMHeapMemoryPressure(vm, env, threshold, callback);
+}
+
+void ArkNativeEngine::offVMHeapMemoryPressure()
+{
+    DFXJSNApi::offVMHeapMemoryPressure();
+}
+
 void ArkNativeEngine::SetMultithreadingDetectionEnabled(napi_env env, bool enabled)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
