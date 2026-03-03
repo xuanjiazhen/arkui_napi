@@ -395,7 +395,6 @@ uint64_t ArkIdleMonitor::GetIdleMonitoringInterval()
 
 void ArkIdleMonitor::NotifyChangeBackgroundState(bool inBackground)
 {
-    inBackground_.store(inBackground, std::memory_order_relaxed);
     ClearIdleStats();
     if (!started_ && inBackground) {
         HILOG_DEBUG("ArkIdleMonitor change to background but not started idle check");
@@ -409,6 +408,7 @@ void ArkIdleMonitor::NotifyChangeBackgroundState(bool inBackground)
         PostSwitchBackgroundGCTask();
     }
 #endif
+    inBackground_.store(inBackground, std::memory_order_release);
 }
 
 double ArkIdleMonitor::GetCpuUsage() const
