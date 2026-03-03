@@ -23,11 +23,6 @@
 #include <sstream>
 #include <unistd.h>
 
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
-    !defined(LINUX_PLATFORM)
-#include <nlohmann/json.hpp>
-#endif
-
 #ifdef ENABLE_HITRACE
 #include "hitrace_meter.h"
 #endif
@@ -432,52 +427,51 @@ bool NativeModuleManager::LoadGreylistConfig(std::vector<std::string>& greylistL
         return false;
     }
 
-    // Parse JSON using nlohmann::json
-    nlohmann::json greylistConfig;
-    try {
-        configFile >> greylistConfig;
-        configFile.close();
+    // Read entire file content
+    std::string content((std::istreambuf_iterator<char>(configFile)),
+                         std::istreambuf_iterator<char>());
+    configFile.close();
 
-        if (greylistConfig.is_discarded()) {
-            MODULEMNG_HILOG_ERROR("greylist config json discarded error");
-            return false;
-        }
-
-        // Validate JSON structure (should be an array)
-        if (!greylistConfig.is_array()) {
-            MODULEMNG_HILOG_ERROR("greylist config is not a valid JSON array");
-            return false;
-        }
-
-        // Iterate through the array
-        for (const auto& item : greylistConfig) {
-            if (!item.is_string()) {
-                MODULEMNG_HILOG_WARN("greylist config contains non-string item, skipping");
-                continue;
-            }
-
-            std::string libName = item.get<std::string>();
-
-            // Validate library name format
-            if (IsValidLibName(libName)) {
-                greylistLibs.push_back(libName);
-                MODULEMNG_HILOG_DEBUG("added greylist lib: %{public}s", libName.c_str());
-            } else if (!libName.empty()) {
-                MODULEMNG_HILOG_WARN("invalid lib name in greylist: %{public}s, skipping", libName.c_str());
-            }
-        }
-
-        MODULEMNG_HILOG_DEBUG("loaded %{public}zu libs from greylist", greylistLibs.size());
-        return !greylistLibs.empty();
-    } catch (const nlohmann::json::exception& e) {
-        MODULEMNG_HILOG_ERROR("failed to parse greylist config json: %{public}s", e.what());
-        configFile.close();
-        return false;
-    } catch (const std::exception& e) {
-        MODULEMNG_HILOG_ERROR("unexpected error parsing greylist config: %{public}s", e.what());
-        configFile.close();
+    // Simple JSON array parsing: ["lib1.so", "lib2.so"]
+    size_t start = content.find('[');
+    size_t end = content.rfind(']');
+    if (start == std::string::npos || end == std::string::npos || start >= end) {
+        MODULEMNG_HILOG_ERROR("invalid greylist config format: not a valid JSON array");
         return false;
     }
+
+    std::string arrayContent = content.substr(start + 1, end - start - 1);
+    
+    // Split by comma and parse each element
+    std::stringstream ss(arrayContent);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+        // Trim whitespace and quotes
+        size_t first = item.find_first_not_of(" \t\n\r\"");
+        size_t last = item.find_last_not_of(" \t\n\r\"");
+        
+        if (first == std::string::npos || last == std::string::npos) {
+            continue; // Empty item
+        }
+        
+        std::string libName = item.substr(first, last - first + 1);
+        
+        // Remove trailing quote if present
+        if (!libName.empty() && libName.back() == '"') {
+            libName.pop_back();
+        }
+        
+        // Validate library name format
+        if (IsValidLibName(libName)) {
+            greylistLibs.push_back(libName);
+            MODULEMNG_HILOG_DEBUG("added greylist lib: %{public}s", libName.c_str());
+        } else if (!libName.empty()) {
+            MODULEMNG_HILOG_WARN("invalid lib name in greylist: %{public}s, skipping", libName.c_str());
+        }
+    }
+
+    MODULEMNG_HILOG_DEBUG("loaded %{public}zu libs from greylist", greylistLibs.size());
+    return !greylistLibs.empty();
 }
 
 void NativeModuleManager::CreateSharedLibsSonames()
