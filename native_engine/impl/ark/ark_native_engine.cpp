@@ -1952,7 +1952,7 @@ napi_value ArkNativeEngine::NapiLoadModuleWithInfo(const char* path, const char*
 }
 
 napi_value ArkNativeEngine::NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info,
-                                                               const char* ohmurl)
+                                                               const char* ohmurl, const char* abcFilePath)
 {
     if (path == nullptr) {
         HILOG_ERROR("ArkNativeEngine:The module name is empty");
@@ -1965,7 +1965,10 @@ napi_value ArkNativeEngine::NapiLoadModuleWithInfoForHybridApp(const char* path,
     std::string modulePath;
     std::string ohmurlStr(ohmurl);
     if (module_info != nullptr) {
-        if (panda::JSNApi::IsCrossBundleHsp(vm_, ohmurl)) {
+        if (abcFilePath != nullptr) {
+            std::string abcFilePathStr(abcFilePath);
+            exportObj = panda::JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(vm_, ohmurlStr, abcFilePathStr);
+        } else if (panda::JSNApi::IsCrossBundleHsp(vm_, ohmurl)) {
             exportObj = panda::JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(vm_, ohmurlStr);
         } else {
             modulePath = module_info;
