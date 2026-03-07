@@ -60,6 +60,10 @@ NAPI_EXTERN napi_status napi_load_module_with_module_request(napi_env env,
                                                              napi_value* result);
 NAPI_EXTERN napi_status napi_set_stackinfo(napi_env env, NapiStackInfo* napi_info);
 NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, NapiStackInfo* result);
+NAPI_EXTERN napi_status napi_get_string_length_and_iscompressed(napi_env env,
+                                                                napi_value value,
+                                                                size_t* result,
+                                                                bool* isCompressed);
 
 // XGC specific internal API
 #ifdef PANDA_JS_ETS_HYBRID_MODE

@@ -586,6 +586,48 @@ HWTEST_F(NapiBasicTest, StringTest005, testing::ext::TestSize.Level1)
     ASSERT_EQ(copied, 3);
 }
 
+/**
+ * @tc.name: NapiGetStringLenAndIsCompressed001
+ * @tc.desc: Test string length and isCompressed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringLenAndIsCompressed001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "中文,English,123456,!@#$%$#^%&";
+    size_t testStrLength = strlen(testStr);
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, testStrLength, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    size_t strLength = 0;
+    bool isCompressed = false;
+    ASSERT_CHECK_CALL(napi_get_string_length_and_iscompressed(env, result, &strLength, &isCompressed));
+    ASSERT_EQ(testStrLength, strLength);
+    ASSERT_FALSE(isCompressed);
+}
+
+/**
+ * @tc.name: NapiGetStringLenAndIsCompressed002
+ * @tc.desc: Test string length and isCompressed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringLenAndIsCompressed002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "HelloWorld123";
+    size_t testStrLength = strlen(testStr);
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, testStrLength, &result));
+    
+    size_t strLength = 0;
+    bool isCompressed = false;
+    ASSERT_CHECK_CALL(napi_get_string_length_and_iscompressed(env, result, &strLength, &isCompressed));
+    
+    ASSERT_EQ(testStrLength, strLength);
+    ASSERT_TRUE(isCompressed);
+}
+
 HWTEST_F(NapiBasicTest, ExternalStringTest001, testing::ext::TestSize.Level1)
 {
     napi_env env = (napi_env)engine_;
