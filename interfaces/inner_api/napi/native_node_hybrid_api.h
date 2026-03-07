@@ -79,6 +79,11 @@ NAPI_EXTERN napi_status napi_create_xref(napi_env env,
                                          uint32_t initial_refcount,
                                          napi_ref* result);
 
+NAPI_EXTERN napi_status napi_get_string_length_and_iscompressed(napi_env env,
+                                                                napi_value value,
+                                                                size_t* result,
+                                                                bool* isCompressed);
+
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env, void* inputIface, void** outputIface);
 
 NAPI_EXTERN napi_status napi_mark_attach_with_xref(napi_env env,
