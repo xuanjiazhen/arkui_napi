@@ -61,6 +61,11 @@ NAPI_EXTERN napi_status napi_load_module_with_module_request(napi_env env,
 NAPI_EXTERN napi_status napi_set_stackinfo(napi_env env, NapiStackInfo* napi_info);
 NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, NapiStackInfo* result);
 
+NAPI_EXTERN napi_status napi_get_string_length_and_iscompressed(napi_env env,
+                                                                napi_value value,
+                                                                size_t* result,
+                                                                bool* isCompressed);
+
 // XGC specific internal API
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
@@ -94,13 +99,14 @@ NAPI_EXTERN napi_status napi_is_alive_object(napi_env env, napi_ref ref, bool* r
 NAPI_EXTERN napi_status napi_is_contain_object(napi_env env, napi_ref ref, bool* result);
 NAPI_EXTERN napi_status napi_is_xref_type(napi_env env, napi_value js_object, bool* result);
 NAPI_EXTERN napi_status napi_get_ets_implements(napi_env env, napi_value value, napi_value* result);
-NAPI_EXTERN napi_status napi_deserialize_hybrid(napi_env env, void* buffer, napi_value* object);
-NAPI_EXTERN napi_status napi_setup_hybrid_environment(napi_env env);
 NAPI_EXTERN napi_status napi_serialize_hybrid(napi_env env,
                                               napi_value object,
                                               napi_value transfer_list,
                                               napi_value clone_list, void** result);
- NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
+NAPI_EXTERN napi_status napi_setup_hybrid_environment(napi_env env);
+NAPI_EXTERN napi_status
+napi_serialize_hybrid(napi_env env, napi_value object, napi_value transfer_list, napi_value clone_list, void** result);
+NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_value js_object,
                                             void* native_object,
                                             napi_finalize finalize_cb,

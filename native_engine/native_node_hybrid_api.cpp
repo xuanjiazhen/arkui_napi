@@ -31,6 +31,7 @@
 
 using panda::ObjectRef;
 using panda::PropertyAttribute;
+using panda::StringRef;
 static constexpr char NAME_SPACE_TAG = '@';
 NAPI_EXTERN napi_status napi_load_module_with_info_hybrid(napi_env env,
                                                           const char* path,
@@ -80,6 +81,33 @@ NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, NapiStackInfo* result)
     auto res = panda::JSNApi::GetStackInfo(vm);
     result->stackStart = res.stackStart;
     result->stackSize = res.stackSize;
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_string_length_and_iscompressed(napi_env env,
+                                                                napi_value value,
+                                                                size_t* result,
+                                                                bool* isCompressed)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
+    Local<panda::StringRef> stringVal(nativeValue);
+
+    CHECK_ARG(env, isCompressed);
+    *isCompressed = stringVal->IsCompressed(vm);
+    CHECK_ARG(env, result);
+    if (*isCompressed) {
+        *result = stringVal->Utf8Length(vm, true) - 1;
+    } else {
+        *result = stringVal->Length(vm);
+    }
+
     return napi_clear_last_error(env);
 }
 
