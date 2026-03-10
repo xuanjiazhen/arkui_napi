@@ -15,12 +15,14 @@
 
 #include "native_module_manager.h"
 
+#include <cerrno>
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
 #include <mutex>
 #include <sstream>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifdef ENABLE_HITRACE
@@ -423,7 +425,21 @@ bool NativeModuleManager::LoadGreylistConfig(std::vector<std::string>& greylistL
     // Read the config file
     std::ifstream configFile(GREYLIST_CONFIG_PATH);
     if (!configFile.is_open()) {
-        MODULEMNG_HILOG_ERROR("failed to open greylist config file: %{public}s", GREYLIST_CONFIG_PATH);
+        int err = errno;
+        MODULEMNG_HILOG_ERROR("failed to open greylist config file: %{public}s, errno=%{public}d, reason=%{public}s",
+                              GREYLIST_CONFIG_PATH, err, strerror(err));
+        
+        // Additional diagnostics
+        struct stat st;
+        if (stat(GREYLIST_CONFIG_PATH, &st) == 0) {
+            MODULEMNG_HILOG_ERROR("file exists, mode=%{public}o, uid=%{public}u, gid=%{public}u, size=%{public}ld",
+                                  st.st_mode, st.st_uid, st.st_gid, st.st_size);
+            if (access(GREYLIST_CONFIG_PATH, R_OK) != 0) {
+                MODULEMNG_HILOG_ERROR("no read permission, errno=%{public}d", errno);
+            }
+        } else {
+            MODULEMNG_HILOG_ERROR("stat failed, errno=%{public}d, reason=%{public}s", errno, strerror(errno));
+        }
         return false;
     }
 
