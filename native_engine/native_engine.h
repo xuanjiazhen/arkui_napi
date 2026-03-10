@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -127,6 +127,7 @@ using AppFreezeFilterCallback = std::function<bool(const int32_t pid, const bool
     std::string &eventConfig)>;
 using EcmaVM = panda::ecmascript::EcmaVM;
 using JsFrameInfo = panda::ecmascript::JsFrameInfo;
+using HeapMemoryInfo = panda::ecmascript::HeapMemoryInfo;
 using NapiOnWorkerErrorCallback = std::function<bool(napi_env env,
     napi_value exception, std::string name, uint32_t type)>;
 using NapiOnMainThreadErrorCallback = std::function<bool(napi_env env,
@@ -275,19 +276,19 @@ public:
 
     virtual void DumpHeapSnapshot(const std::string &path, bool isVmMode = true,
         DumpFormat dumpFormat = DumpFormat::JSON, bool isPrivate = false,
-        bool captureNumericValue = false, bool isJSLeakWatcher = false,
-        bool isClearNodeIdCache = false) = 0;
+        bool captureNumericValue = false, bool isJSLeakWatcher = false) = 0;
     virtual void DumpHeapSnapshot(bool isFullGC, const std::string &path,
-        const std::function<void(uint8_t)> &callback, bool isClearNodeIdCache = false) = 0;
+        const std::function<void(uint8_t)> &callback) = 0;
     virtual void DumpCpuProfile() = 0;
     virtual void DumpHeapSnapshot(bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
-        bool isPrivate = false, bool isFullGC = true, bool isClearNodeIdCache = false) = 0;
+        bool isPrivate = false, bool isFullGC = true) = 0;
     virtual bool BuildNativeAndJsStackTrace(std::string &stackTraceStr) = 0;
     virtual bool BuildJsStackTrace(std::string &stackTraceStr) = 0;
     virtual bool BuildJsStackInfoListWithCustomDepth(std::vector<JsFrameInfo>& jsFrames)
         = 0;
     virtual void GetMainThreadStackTrace(napi_env env, std::string &stackTraceStr) = 0;
     virtual void SetMultithreadingDetectionEnabled(napi_env env, bool enabled) = 0;
+    virtual std::vector<HeapMemoryInfo> GetAllVMHeapMemoryInfo() = 0;
     virtual void GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr) = 0;
     virtual void GetJsonExtraInfoForCrash(napi_env env, std::string &jsonStr, uint32_t &position) = 0;
     virtual void SerializeJSError(napi_env env, napi_value object, bool defaultTransfer,
@@ -539,8 +540,7 @@ public:
 
     virtual napi_value NapiLoadModule(const char* path) = 0;
     virtual napi_value NapiLoadModuleWithInfo(const char* path, const char* module_info) = 0;
-    virtual napi_value NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info,
-                                                          const char* ohmurl) = 0;
+    virtual napi_value NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info) = 0;
     virtual std::string GetPkgName(const std::string &moduleName) = 0;
 
     double NewAsyncId()

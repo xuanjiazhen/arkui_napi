@@ -64,8 +64,7 @@ class TraceLogClass {
 NAPI_EXTERN napi_status napi_send_event(napi_env env,
                                         const std::function<void()>& cb,
                                         napi_event_priority priority,
-                                        const char* name,
-                                        napi_event_barrier_option option)
+                                        const char* name)
 {
     CHECK_ENV(env);
     if (cb == nullptr) {
@@ -74,10 +73,6 @@ NAPI_EXTERN napi_status napi_send_event(napi_env env,
     }
     if (priority < napi_eprio_vip || priority > napi_eprio_idle) {
         HILOG_ERROR("invalid priority %{public}d", static_cast<int32_t>(priority));
-        return napi_status::napi_invalid_arg;
-    }
-    if (option < napi_barrier_none || option > napi_barrier_force) {
-        HILOG_ERROR("invalid option %{public}d", static_cast<int32_t>(option));
         return napi_status::napi_invalid_arg;
     }
     NativeEngine *eng = reinterpret_cast<NativeEngine *>(env);
@@ -107,7 +102,7 @@ NAPI_EXTERN napi_status napi_send_event(napi_env env,
     }
     auto safeAsyncWork = reinterpret_cast<NativeEvent*>(eng->GetDefaultFunc());
     return safeAsyncWork->SendCancelableEvent(realCb, nullptr, priority,
-                                              ((name == nullptr) ? DEFAULT_NAME: name), &handleId, option);
+                                              ((name == nullptr) ? DEFAULT_NAME: name), &handleId);
 }
 
 NAPI_EXTERN napi_status napi_send_cancelable_event(napi_env env,
@@ -115,8 +110,7 @@ NAPI_EXTERN napi_status napi_send_cancelable_event(napi_env env,
                                                    void* data,
                                                    napi_event_priority priority,
                                                    uint64_t* handleId,
-                                                   const char* name,
-                                                   napi_event_barrier_option option)
+                                                   const char* name)
 {
     CHECK_ENV(env);
     if (cb == nullptr) {
@@ -125,10 +119,6 @@ NAPI_EXTERN napi_status napi_send_cancelable_event(napi_env env,
     }
     if (priority < napi_eprio_vip || priority > napi_eprio_idle) {
         HILOG_ERROR("invalid priority %{public}d", static_cast<int32_t>(priority));
-        return napi_status::napi_invalid_arg;
-    }
-    if (option < napi_barrier_none || option > napi_barrier_force) {
-        HILOG_ERROR("invalid option %{public}d", static_cast<int32_t>(option));
         return napi_status::napi_invalid_arg;
     }
     if (handleId == nullptr) {
@@ -152,7 +142,7 @@ NAPI_EXTERN napi_status napi_send_cancelable_event(napi_env env,
     }
     auto safeAsyncWork = reinterpret_cast<NativeEvent*>(eng->GetDefaultFunc());
     return safeAsyncWork->SendCancelableEvent(cb, data, priority,
-                                              ((name == nullptr) ? DEFAULT_NAME: name), handleId, option);
+                                              ((name == nullptr) ? DEFAULT_NAME: name), handleId);
 }
 
 NAPI_EXTERN napi_status napi_cancel_event(napi_env env, uint64_t handleId, const char* name)
@@ -273,8 +263,7 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
                                              void* data,
                                              int32_t priority,
                                              const char* name,
-                                             uint64_t* handleId,
-                                             int32_t option)
+                                             uint64_t* handleId)
 {
     uint64_t eventId = GenerateUniqueID();
 #ifdef ENABLE_CONTAINER_SCOPE_SEND_EVENT
@@ -287,7 +276,7 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
             panda::LocalScope scope(vm);
             callback(data);
         };
-        napi_status sentEventRes = SendEventByEventHandler(task, eventId, priority, name, handleId, option);
+        napi_status sentEventRes = SendEventByEventHandler(task, eventId, priority, name, handleId);
         if (sentEventRes != napi_status::napi_invalid_arg) {
             return sentEventRes;
         }
@@ -302,7 +291,7 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
         callback(data);
     };
 
-    napi_status sentEventOut = SendEventByEventHandler(task, eventId, priority, name, handleId, option);
+    napi_status sentEventOut = SendEventByEventHandler(task, eventId, priority, name, handleId);
     if (sentEventOut != napi_status::napi_invalid_arg) {
         return sentEventOut;
     }
@@ -311,19 +300,18 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
 }
 
 napi_status NativeEvent::SendEventByEventHandler(const std::function<void()> &task, uint64_t eventId,
-                                                 int32_t priority, const char* name, uint64_t* handleId,
-                                                 int32_t option)
+                                                 int32_t priority, const char* name, uint64_t* handleId)
 {
 #ifdef ENABLE_EVENT_HANDLER
     if (!eventHandler_) {
         // Internal temporary code
         return napi_status::napi_invalid_arg;
     }
-    bool postRes = eventHandler_->PostTaskAtTail(task,
-                                                 std::string(name) + std::to_string(eventId),
-                                                 static_cast<EventQueue::Priority>(priority),
-                                                 {},
-                                                 static_cast<VsyncBarrierOption>(option));
+    bool postRes = eventHandler_->PostTask(task,
+                                           std::string(name) + std::to_string(eventId),
+                                           0,
+                                           static_cast<EventQueue::Priority>(priority),
+                                           {});
     std::string res = (postRes ? "ok" : "fail");
     auto evt = TraceLogClass(
         "eventHandler Send task: " + std::string(name) +

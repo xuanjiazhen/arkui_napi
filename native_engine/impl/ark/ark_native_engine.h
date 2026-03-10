@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -269,20 +269,20 @@ public:
     // isVmMode means the internal class in vm is visible.
     // isPrivate means the number and string is not visible.
     void DumpHeapSnapshot(const std::string &path, bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
-        bool isPrivate = false, bool captureNumericValue = false, bool isJSLeakWatcher = false,
-        bool isClearNodeIdCache = false) override;
+        bool isPrivate = false, bool captureNumericValue = false, bool isJSLeakWatcher = false) override;
     void DumpHeapSnapshot(bool isFullGC, const std::string &path,
-        const std::function<void(uint8_t)> &callback, bool isClearNodeIdCache = false) override;
+        const std::function<void(uint8_t)> &callback) override;
     void DumpCpuProfile() override;
     // Dump the file into faultlog for heap leak.
     void DumpHeapSnapshot(bool isVmMode = true, DumpFormat dumpFormat = DumpFormat::JSON,
-        bool isPrivate = false, bool isFullGC = true, bool isClearNodeIdCache = false) override;
+        bool isPrivate = false, bool isFullGC = true) override;
     bool BuildNativeAndJsStackTrace(std::string& stackTraceStr) override;
     bool BuildJsStackTrace(std::string& stackTraceStr) override;
     bool BuildJsStackInfoListWithCustomDepth(std::vector<JsFrameInfo>& jsFrames)
         override;
     void GetMainThreadStackTrace(napi_env env, std::string &stackTraceStr) override;
     void SetMultithreadingDetectionEnabled(napi_env env, bool enabled) override;
+    std::vector<HeapMemoryInfo> GetAllVMHeapMemoryInfo() override;
     void GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr) override;
     void GetJsonExtraInfoForCrash(napi_env env, std::string &jsonStr, uint32_t &position) override;
     void SerializeJSError(napi_env env, napi_value object, bool defaultTransfer, bool defaultCloneSendable,
@@ -357,8 +357,7 @@ public:
         const std::string& instanceName, void** instance);
     napi_value NapiLoadModule(const char* path) override;
     napi_value NapiLoadModuleWithInfo(const char* path, const char* module_info) override;
-    napi_value NapiLoadModuleWithInfoForHybridApp(
-        const char* path, const char* module_info, const char* ohmurl) override;
+    napi_value NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info) override;
     std::string GetOhmurl(std::string str);
     Local<JSValueRef> NapiLoadNativeModule(std::string path);
     NativeReference* GetPromiseRejectCallBackRef()
@@ -527,6 +526,7 @@ private:
     // ecma vm
     EcmaVM* vm_ = nullptr;
     bool needStop_ = false;
+    panda::LocalScope topScope_;
     panda::Global<panda::JSValueRef> context_;
 
     // for context env

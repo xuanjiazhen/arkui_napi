@@ -16,7 +16,6 @@
 #include <unordered_map>
 
 #include <node_api.h>
-#include <unistd.h>
 
 #include "ark_interop_internal.h"
 #include "ark_interop_external.h"
@@ -74,20 +73,6 @@ void ARKTS_SetCJModuleCallback(ARKTS_ModuleCallbacks* callback)
     g_cjModuleCallbacks = new ARKTS_ModuleCallbacks(*callback);
 }
 
-static void FixStackOverflow(OHOS::CJEnvMethods* methods, ARKTS_Env env)
-{
-    static bool fixed = false;
-    if (fixed) {
-        return;
-    }
-    if (getpid() != gettid()) {
-        return;
-    }
-    methods->registerStackInfoCallbacks(ARKTS_UpdateStackInfo);
-    methods->registerArkVMInRuntime(reinterpret_cast<unsigned long long>(env));
-    fixed = true;
-}
-
 // export but only for internal
 panda::JSValueRef* ARKTS_LoadModule(ARKTS_Env env, const char* dllName)
 {
@@ -103,7 +88,7 @@ panda::JSValueRef* ARKTS_LoadModule(ARKTS_Env env, const char* dllName)
     if (!runtime) {
         return ARKTSInner_Escape(env, scope, undefined);
     }
-    FixStackOverflow(runtime, env);
+
     if (!runtime->startRuntime()) {
         LOGE("start cj runtime failed");
         return ARKTSInner_Escape(env, scope, undefined);

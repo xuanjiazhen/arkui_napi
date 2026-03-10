@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -487,6 +487,7 @@ void ArkNativeEngine::CopyPropertyApiFilter(const std::unique_ptr<ApiAllowListCh
 
 ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorker) : NativeEngine(jsEngine),
                                                                                      vm_(vm),
+                                                                                     topScope_(vm),
                                                                                      isLimitedWorker_(isLimitedWorker),
                                                                                      isMainEnvContext_(true)
 {
@@ -565,6 +566,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 ArkNativeEngine::ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<JSValueRef>& context)
     : NativeEngine(parent),
       vm_(vm),
+      topScope_(vm),
       context_(vm, context),
       parentEngine_(reinterpret_cast<ArkNativeEngine*>(parent)),
       containerScopeEnable_(parent->IsContainerScopeEnabled()),
@@ -1949,8 +1951,7 @@ napi_value ArkNativeEngine::NapiLoadModuleWithInfo(const char* path, const char*
     return JsValueFromLocalValue(scope.Escape(exportObj));
 }
 
-napi_value ArkNativeEngine::NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info,
-                                                               const char* ohmurl)
+napi_value ArkNativeEngine::NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info)
 {
     if (path == nullptr) {
         HILOG_ERROR("ArkNativeEngine:The module name is empty");
@@ -1961,14 +1962,9 @@ napi_value ArkNativeEngine::NapiLoadModuleWithInfoForHybridApp(const char* path,
     Local<ObjectRef> exportObj(undefObj);
     std::string inputPath(path);
     std::string modulePath;
-    std::string ohmurlStr(ohmurl);
     if (module_info != nullptr) {
-        if (panda::JSNApi::IsCrossBundleHsp(vm_, ohmurl)) {
-            exportObj = panda::JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(vm_, ohmurlStr);
-        } else {
-            modulePath = module_info;
-            exportObj = panda::JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(vm_, inputPath, modulePath);
-        }
+        modulePath = module_info;
+        exportObj = panda::JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(vm_, inputPath, modulePath);
     } else {
         exportObj = NapiLoadNativeModule(inputPath);
     }
@@ -2524,13 +2520,11 @@ void ArkNativeEngine::PromiseRejectCallback(void* info)
 }
 
 void ArkNativeEngine::DumpHeapSnapshot(const std::string &path, bool isVmMode, DumpFormat dumpFormat,
-                                       bool isPrivate, bool captureNumericValue, bool isJSLeakWatcher,
-                                       bool isClearNodeIdCache)
+                                       bool isPrivate, bool captureNumericValue, bool isJSLeakWatcher)
 {
     panda::ecmascript::DumpSnapShotOption dumpOption;
     dumpOption.isVmMode = isVmMode;
     dumpOption.isSync = true;
-    dumpOption.isClearNodeIdCache = isClearNodeIdCache;
     if (dumpFormat == DumpFormat::JSON) {
         dumpOption.dumpFormat = panda::ecmascript::DumpFormat::JSON;
         dumpOption.isPrivate = isPrivate;
@@ -2551,15 +2545,13 @@ void ArkNativeEngine::DumpHeapSnapshot(const std::string &path, bool isVmMode, D
 }
 
 void ArkNativeEngine::DumpHeapSnapshot(bool isFullGC, const std::string &path,
-                                       const std::function<void(uint8_t)> &callback,
-                                       bool isClearNodeIdCache)
+                                       const std::function<void(uint8_t)> &callback)
 {
     panda::ecmascript::DumpSnapShotOption dumpOption;
     dumpOption.isVmMode = true;
     dumpOption.isPrivate = false;
     dumpOption.isFullGC = isFullGC;
     dumpOption.isSync = false;
-    dumpOption.isClearNodeIdCache = isClearNodeIdCache;
     dumpOption.dumpFormat = panda::ecmascript::DumpFormat::BINARY;
     DFXJSNApi::DumpHeapSnapshot(vm_, path, dumpOption, callback);
 }
@@ -2569,15 +2561,13 @@ void ArkNativeEngine::DumpCpuProfile()
     DFXJSNApi::DumpCpuProfile(vm_);
 }
 
-void ArkNativeEngine::DumpHeapSnapshot(bool isVmMode, DumpFormat dumpFormat, bool isPrivate, bool isFullGC,
-                                       bool isClearNodeIdCache)
+void ArkNativeEngine::DumpHeapSnapshot(bool isVmMode, DumpFormat dumpFormat, bool isPrivate, bool isFullGC)
 {
     panda::ecmascript::DumpSnapShotOption dumpOption;
     dumpOption.isVmMode = isVmMode;
     dumpOption.isPrivate = isPrivate;
     dumpOption.isFullGC = isFullGC;
     dumpOption.isSync = false;
-    dumpOption.isClearNodeIdCache = isClearNodeIdCache;
     if (dumpFormat == DumpFormat::JSON) {
         dumpOption.dumpFormat = panda::ecmascript::DumpFormat::JSON;
         DFXJSNApi::DumpHeapSnapshot(vm_, dumpOption);
@@ -2634,6 +2624,11 @@ void ArkNativeEngine::SetMultithreadingDetectionEnabled(napi_env env, bool enabl
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     DFXJSNApi::SetMultithreadingDetectionEnabled(vm, enabled);
+}
+
+std::vector<panda::ecmascript::HeapMemoryInfo> ArkNativeEngine::GetAllVMHeapMemoryInfo()
+{
+    return JSNApi::GetAllVMHeapMemoryInfo();
 }
 
 void ArkNativeEngine::GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr)
@@ -3405,15 +3400,13 @@ void ArkNativeEngine::EnableNapiProfiler()
 
 napi_status ArkNativeEngine::SwitchContext()
 {
-    int res = panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_));
-    if (res == static_cast<int>(panda::SwitchContextResult::FAILED)) {
-        return napi_pending_exception;
-    } else if (res == static_cast<int>(panda::SwitchContextResult::EMPTY)) {
+    if (context_.IsEmpty()) {
         HILOG_ERROR("no env context exists");
         return napi_generic_failure;
-    } else {
-        return napi_ok;
     }
+
+    panda::JSNApi::SwitchContext(vm_, context_.ToLocal(vm_));
+    return napi_ok;
 }
 
 napi_status ArkNativeEngine::DestroyContext()

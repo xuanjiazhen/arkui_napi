@@ -51,12 +51,6 @@ typedef enum {
     napi_eprio_idle = 4,
 } napi_event_priority;
 
-typedef enum {
-    napi_barrier_none = 0,
-    napi_barrier_need = 1,
-    napi_barrier_force = 2,
-} napi_event_barrier_option;
-
 NAPI_EXTERN napi_status napi_create_string_utf8_with_replacement(napi_env env,
                                                                  const char* str,
                                                                  size_t length, napi_value* result);
@@ -186,16 +180,13 @@ NAPI_EXTERN napi_status napi_get_print_string(napi_env env,
  * @param env The native engine.
  * @param cb CallBack in JS Thread
  * @param priority Task priority
- * @param name Task name
- * @param option VsyncBarrierOption of the event, default is no barrier.
  *
  * @return napi_status Return send event status
  */
 NAPI_EXTERN napi_status napi_send_event(napi_env env,
                                         const std::function<void()>& cb,
                                         napi_event_priority priority,
-                                        const char* name = nullptr,
-                                        napi_event_barrier_option option = napi_barrier_none);
+                                        const char* name = nullptr);
 /*
  * @brief Send a task to the JS Thread
  *
@@ -205,7 +196,6 @@ NAPI_EXTERN napi_status napi_send_event(napi_env env,
  * @param priority Task priority.
  * @param handleId Handle to cancel a task.
  * @param name Task name, Use the task name and handleId as the tag of task.
- * @param option VsyncBarrierOption of the event, default is no barrier.
  *
  * @return napi_status Return send event status
  */
@@ -214,8 +204,7 @@ NAPI_EXTERN napi_status napi_send_cancelable_event(napi_env env,
                                                    void* data,
                                                    napi_event_priority priority,
                                                    uint64_t* handleId,
-                                                   const char* name,
-                                                   napi_event_barrier_option option = napi_barrier_none);
+                                                   const char* name);
 /*
  * @brief Send a task to the JS Thread
  *

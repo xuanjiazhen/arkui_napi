@@ -471,13 +471,14 @@ HWTEST_F(NapiArkIdleMonitorTest, IdleMonitorSetEnableIdleGCTest002, testing::ext
 }
 #endif
 
+
 #if defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM)
 /**
- * @tc.name: IdleMonitorLoadReportDataFuncTest001
+ * @tc.name: IdleMonitorLoadReportDataFunc001
  * @tc.desc: load
  * @tc.type: FUNC
  */
-HWTEST_F(NapiArkIdleMonitorTest, IdleMonitorLoadReportDataFuncTest001, testing::ext::TestSize.Level0)
+HWTEST_F(NapiArkIdleMonitorTest, IdleMonitorLoadReportDataFunc001, testing::ext::TestSize.Level0)
 {
     ASSERT_NE(engine_, nullptr);
 
@@ -485,4 +486,5 @@ HWTEST_F(NapiArkIdleMonitorTest, IdleMonitorLoadReportDataFuncTest001, testing::
     ReportDataFunc func = arkIdleMonitor->LoadReportDataFunc();
     ASSERT_TRUE(func != nullptr);
 }
+
 #endif
