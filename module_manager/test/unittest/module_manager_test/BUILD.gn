@@ -19,6 +19,7 @@ ohos_unittest("module_manager_test") {
 
   sources = [
     "../../mock/src/mock_native_module_manager.cpp",
+    "../../mock/src/link_time_mock.cpp",
     "module_manager_test.cpp",
   ]
 
@@ -28,7 +29,23 @@ ohos_unittest("module_manager_test") {
     "../../mock/include",
   ]
 
-  cflags = []
+  # Link-time function wrapping: redirect system calls to __wrap_xxx
+  # C-style: fopen -> __wrap_fopen
+  # C++ style (std::ifstream): open/read/close/lseek/fstat -> __wrap_xxx
+  ldflags = [
+    "-Wl,--wrap,access",
+    "-Wl,--wrap,fopen",
+    "-Wl,--wrap,stat",
+    "-Wl,--wrap,open",
+    "-Wl,--wrap,read",
+    "-Wl,--wrap,write",
+    "-Wl,--wrap,close",
+    "-Wl,--wrap,lseek",
+    "-Wl,--wrap,fstat",
+  ]
+
+  # Disable built-in function optimization to ensure wrapping works
+  cflags = [ "-fno-builtin" ]
 
   deps = [ "../../../..:ace_napi" ]
 
@@ -36,7 +53,7 @@ ohos_unittest("module_manager_test") {
 
   external_deps = [
     "googletest:gmock_main",
-    "googletest:gtest_main",
+    "googletest:gtest_main"
   ]
 }
 
