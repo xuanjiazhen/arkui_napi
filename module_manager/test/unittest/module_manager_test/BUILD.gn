@@ -14,11 +14,16 @@
 import("//build/test.gni")
 import("//foundation/arkui/napi/napi.gni")
 
+# ============================================================================
+# 使用 dlsym Mock (运行时 Mock) 方案
+# ============================================================================
+
 ohos_unittest("module_manager_test") {
   module_out_path = module_output_path
 
   sources = [
     "../../mock/src/mock_native_module_manager.cpp",
+    "../../mock/src/dlsym_mock.cpp",
     "module_manager_test.cpp",
   ]
 
@@ -28,15 +33,13 @@ ohos_unittest("module_manager_test") {
     "../../mock/include",
   ]
 
-  cflags = []
-
   deps = [ "../../../..:ace_napi" ]
 
   configs = []
 
   external_deps = [
     "googletest:gmock_main",
-    "googletest:gtest_main",
+    "googletest:gtest_main"
   ]
 }
 

@@ -437,9 +437,13 @@ bool NativeModuleManager::LoadGreylistConfig(std::vector<std::string>& greylistL
     configFile.close();
 
     // Simple JSON array parsing: ["lib1.so", "lib2.so"]
+    // JSON array must have exactly one pair of brackets
     size_t start = content.find('[');
     size_t end = content.rfind(']');
-    if (start == std::string::npos || end == std::string::npos || start >= end) {
+    size_t lastOpenBracket = content.rfind('[');
+    size_t firstCloseBracket = content.find(']');
+    if (start == std::string::npos || end == std::string::npos ||
+        start != lastOpenBracket || end != firstCloseBracket || start >= end) {
         MODULEMNG_HILOG_ERROR("invalid greylist config format: not a valid JSON array");
         return false;
     }
