@@ -406,6 +406,7 @@ public:
     virtual void SetReleaseWorkerSafeMemFunc(ReleaseWorkerSafeMemFunc func);
     ReleaseWorkerSafeMemFunc GetReleaseWorkerSafeMemFunc() const;
 
+    virtual void SetExternalClearCallback(std::function<void()>&& func);
     // call init worker func
     virtual bool CallInitWorkerFunc(NativeEngine* engine);
     virtual bool CallGetAssetFunc(const std::string& uri, uint8_t **buff, size_t *buffSize,
