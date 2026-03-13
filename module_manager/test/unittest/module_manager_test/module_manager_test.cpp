@@ -990,7 +990,7 @@ HWTEST_F(ModuleManagerTest, LoadGreylistConfig_WithMock_MergeLibraries, TestSize
 
     DlsymMockGuard mockGuard;
     mockGuard.SetFileContent(GREYLIST_CONFIG_PATH_LT,
-        "[\"libcustom1.z.so\", \"libcustom2.ndk.so\"]");
+        "[\"libcustom1.z.so\", \"libcustom2.z.so\"]");
 
     auto moduleManager = std::make_shared<NativeModuleManager>();
     ASSERT_NE(nullptr, moduleManager);
@@ -1002,7 +1002,7 @@ HWTEST_F(ModuleManagerTest, LoadGreylistConfig_WithMock_MergeLibraries, TestSize
     EXPECT_NE(sonames.find("libc.so"), std::string::npos);
     EXPECT_NE(sonames.find("libace_napi.z.so"), std::string::npos);
     EXPECT_NE(sonames.find("libcustom1.z.so"), std::string::npos);
-    EXPECT_NE(sonames.find("libcustom2.ndk.so"), std::string::npos);
+    EXPECT_NE(sonames.find("libcustom2.z.so"), std::string::npos);
 
     size_t pos = 0;
     int libCount = 0;

@@ -394,6 +394,7 @@ bool NativeModuleManager::CreateTailNativeModule()
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
     !defined(LINUX_PLATFORM)
 constexpr char GREYLIST_CONFIG_PATH[] = "/data/service/el0/public/musl_namespace_config/greylist.json";
+constexpr static int32_t SO_SUFFIX_LENGTH = 3;
 
 // Helper function to validate library name format
 static bool IsValidLibName(const std::string& libName)
@@ -403,7 +404,8 @@ static bool IsValidLibName(const std::string& libName)
     }
 
     // Check if it ends with .so
-    if (libName.size() < 3 || libName.substr(libName.size() - 3) != ".so") {
+    if (libName.size() < SO_SUFFIX_LENGTH ||
+        libName.substr(libName.size() - SO_SUFFIX_LENGTH) != ".so") {
         MODULEMNG_HILOG_WARN("lib name must end with .so: %{public}s", libName.c_str());
         return false;
     }
@@ -457,7 +459,6 @@ bool NativeModuleManager::LoadGreylistConfig(std::vector<std::string>& greylistL
         // Trim whitespace and quotes
         size_t first = item.find_first_not_of(" \t\n\r\"");
         size_t last = item.find_last_not_of(" \t\n\r\"");
-
         if (first == std::string::npos || last == std::string::npos) {
             continue; // Empty item
         }

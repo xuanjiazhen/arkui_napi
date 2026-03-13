@@ -30,15 +30,14 @@
 #define DLSYM_MOCK_H
 
 #include <stddef.h>
-#include <sys/types.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct stat;
 
 /*
  * ============================================================================
@@ -46,15 +45,15 @@ struct stat;
  * ============================================================================
  */
 
-typedef int (*dlsym_access_func_t)(const char*, int);
-typedef int (*dlsym_open_func_t)(const char*, int, ...);
-typedef ssize_t (*dlsym_read_func_t)(int, void*, size_t);
-typedef ssize_t (*dlsym_write_func_t)(int, const void*, size_t);
-typedef int (*dlsym_close_func_t)(int);
-typedef off_t (*dlsym_lseek_func_t)(int, off_t, int);
-typedef int (*dlsym_stat_func_t)(const char*, struct stat*);
-typedef int (*dlsym_fstat_func_t)(int, struct stat*);
-typedef FILE* (*dlsym_fopen_func_t)(const char*, const char*);
+typedef int (*DlsymAccessFuncPtr)(const char*, int);
+typedef int (*DlsymOpenFuncPtr)(const char*, int, ...);
+typedef ssize_t (*DlsymReadFuncPtr)(int, void*, size_t);
+typedef ssize_t (*DlsymWriteFuncPtr)(int, const void*, size_t);
+typedef int (*DlsymCloseFuncPtr)(int);
+typedef off_t (*DlsymLseekFuncPtr)(int, off_t, int);
+typedef int (*DlsymStatFuncPtr)(const char*, struct stat*);
+typedef int (*DlsymFstatFuncPtr)(int, struct stat*);
+typedef FILE* (*DlsymFopenFuncPtr)(const char*, const char*);
 
 /*
  * ============================================================================
@@ -62,12 +61,12 @@ typedef FILE* (*dlsym_fopen_func_t)(const char*, const char*);
  * ============================================================================
  */
 
-void DlsymMock_Enable(void);
-void DlsymMock_Disable(void);
-void DlsymMock_SetFileContent(const char* path, const char* content);
-void DlsymMock_SetFileExists(const char* path, int exists);
-void DlsymMock_ClearAll(void);
-int DlsymMock_IsEnabled(void);
+void DlsymMockEnable(void);
+void DlsymMockDisable(void);
+void DlsymMockSetFileContent(const char* path, const char* content);
+void DlsymMockSetFileExists(const char* path, int exists);
+void DlsymMockClearAll(void);
+int DlsymMockIsEnabled(void);
 
 /*
  * ============================================================================
@@ -75,7 +74,7 @@ int DlsymMock_IsEnabled(void);
  * ============================================================================
  */
 
-void DlsymMock_SetDebugMode(int enable);
+void DlsymMockSetDebugMode(int enable);
 
 #ifdef __cplusplus
 }
