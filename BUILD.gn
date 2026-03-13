@@ -386,6 +386,8 @@ if (!ark_standalone_build) {
 
   group("napi_packages") {
     deps = [
+        "sample/native_module_timer:timer_utils",
+        "sample/native_module_console:console",
       ":ace_napi",
       "interfaces/inner_api/cjffi/ark_interop:ark_interop"
     ]
@@ -401,6 +403,7 @@ if (!ark_standalone_build) {
         "sample/native_module_calc:calc",
         "sample/native_module_calc:number",
         "sample/native_module_callback:callback",
+        "sample/native_module_console:console",
         "sample/native_module_demo:demo",
         "sample/native_module_netserver:netserver",
         "sample/native_module_reference:reference",
@@ -415,7 +418,6 @@ if (!ark_standalone_build) {
         "sample/native_module_math_suite:math_suite",
         "sample/native_module_object_suite:object_suite",
         "sample/native_module_string_suite:string_suite",
-        "sample/native_module_timer:timer_utils",
         "test/fuzztest:fuzztest",
         "test/unittest:unittest",
       ]
