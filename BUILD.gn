@@ -415,6 +415,7 @@ if (!ark_standalone_build) {
         "sample/native_module_math_suite:math_suite",
         "sample/native_module_object_suite:object_suite",
         "sample/native_module_string_suite:string_suite",
+        "sample/native_module_timer:timer_utils",
         "test/fuzztest:fuzztest",
         "test/unittest:unittest",
       ]
