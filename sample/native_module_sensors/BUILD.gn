@@ -1,0 +1,13 @@
+import("//foundation/arkui/napi/napi.gni")
+
+napi_module("native_module_sensors") {
+  sources = [
+    "napi_sensors.cpp"
+  ]
+  include_dirs = [
+    "//foundation/arkui/napi/interfaces/kits/napi"
+  ]
+  deps = [
+    "//foundation/arkui/napi:core"
+  ]
+}
