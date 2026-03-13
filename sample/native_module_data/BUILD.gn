@@ -1,0 +1,20 @@
+import("../../napi.gni")
+
+target("native_module_data") {
+  output_dir = "$root_out_dir/sample/native_module_data"
+  output_name = "native_module_data"
+  sources = [
+    "napi_data.cpp",
+  ]
+  include_dirs = [
+    "../../interfaces/kits/napi",
+    "../../native_engine/impl/ark",
+  ]
+  deps = [
+    "//foundation/arkui/napi:arkui_napi_core",
+  ]
+  configs = [
+    "//foundation/arkui/napi:arkui_napi_config",
+  ]
+  visibility = [ "//foundation/arkui/napi:*" ]
+}
