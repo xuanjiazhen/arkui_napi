@@ -486,6 +486,66 @@ HWTEST_F(NapiArkIdleMonitorTest, IdleMonitorSetEnableIdleGCTest002, testing::ext
 }
 #endif
 
+/**
+ * @tc.name: IdleMonitorSetRSNodeFlushMessageTest001
+ * @tc.desc: Test SetRSNodeFlushMessage callback functionality
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiArkIdleMonitorTest, IdleMonitorSetRSNodeFlushMessageTest001, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+
+    bool callbackCalled = false;
+    auto callback = [&callbackCalled]() {
+        callbackCalled = true;
+    };
+
+    arkIdleMonitor->SetRSNodeFlushMessage(std::move(callback));
+
+    arkIdleMonitor->SetEnableDeferFreeze(true);
+    arkIdleMonitor->SetSwitchToBackgroundTask(true);
+    arkIdleMonitor->SetDeferfreeze(false);
+
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_TRUE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(true);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackgroundTask());
+}
+
+/**
+ * @tc.name: IdleMonitorSetRSNodeFlushMessageTest002
+ * @tc.desc: Test SetRSNodeFlushMessage with null callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiArkIdleMonitorTest, IdleMonitorSetRSNodeFlushMessageTest002, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    EcmaVM *vm = const_cast<EcmaVM*>(reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm());
+
+    auto arkIdleMonitor = ArkIdleMonitor::GetInstance();
+    arkIdleMonitor->SetMainThreadEcmaVM(vm);
+
+    std::function<void()> nullCallback = nullptr;
+    arkIdleMonitor->SetRSNodeFlushMessage(std::move(nullCallback));
+
+    arkIdleMonitor->SetEnableDeferFreeze(true);
+    arkIdleMonitor->SetSwitchToBackgroundTask(true);
+    arkIdleMonitor->SetDeferfreeze(false);
+
+    arkIdleMonitor->NotifyNeedFreeze(false);
+    ASSERT_TRUE(arkIdleMonitor->IsDeferfreeze());
+
+    arkIdleMonitor->NotifyNeedFreeze(true);
+    ASSERT_FALSE(arkIdleMonitor->IsDeferfreeze());
+    ASSERT_FALSE(arkIdleMonitor->IsSwitchToBackgroundTask());
+}
+
 #if defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM)
 /**
  * @tc.name: NapiArkIdleMonitorLoadReportDataFuncTest001

@@ -213,6 +213,11 @@ public:
         }
     }
 
+    void SetRSNodeFlushMessage(std::function<void()>&& func)
+    {
+        rsdetachNodeFlushCallback_ = std::move(func);
+    }
+
     template<typename T, int N>
     class RingBuffer {
     public:
@@ -359,7 +364,7 @@ private:
     static bool gEnableDeferFreeze;
     void* dynamicLoadHandle_ {nullptr};
     ReportDataFunc reportDataFunc_ {nullptr};
-
+    std::function<void()> rsdetachNodeFlushCallback_;
     std::mutex waitGCFinishjedMutex_;
     std::condition_variable gcFinishCV_;
     std::atomic<bool> duringBackgroundTask_ {false};

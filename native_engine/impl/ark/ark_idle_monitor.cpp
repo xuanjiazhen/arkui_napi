@@ -299,6 +299,10 @@ void ArkIdleMonitor::NotifyNeedFreeze(bool needFreeze)
         if (deferfreeze_.load(std::memory_order_relaxed)) {
             deferfreeze_.store(false, std::memory_order_relaxed);
             SetSwitchToBackgroundTask(false);
+            if (rsdetachNodeFlushCallback_) {
+                HILOG_DEBUG("ArkIdleMonitor: Notify RS Node flush.");
+                rsdetachNodeFlushCallback_();
+            }
             ReportDataToRSS(true);
         } else {
             // It is not in a delayed freeze state, so there is no need to notify the freeze
