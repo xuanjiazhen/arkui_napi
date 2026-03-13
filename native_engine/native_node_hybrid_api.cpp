@@ -82,6 +82,39 @@ NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, NapiStackInfo* result)
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env,
+                                                          napi_value value,
+                                                          void *string_object,
+                                                          size_t *length)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, string_object);
+    CHECK_ARG(env, length);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
+    Local<panda::StringRef> stringVal(nativeValue);
+
+    auto *strObject = reinterpret_cast<std::string*>(string_object);
+    auto isCompressed = stringVal->IsCompressed(vm);
+    size_t initLength = 0;
+    if (isCompressed) {
+        initLength = stringVal->Length(vm);
+    } else {
+        initLength = stringVal->Length(vm) * 4;
+    }
+    strObject->resize(initLength);
+    auto *buf = strObject->data();
+    uint32_t copied = stringVal->WriteUtf8(vm, buf, initLength, true);
+    strObject->resize(copied - 1);
+    *length = copied - 1;
+    return napi_clear_last_error(env);
+}
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
                                        napi_value js_object,
