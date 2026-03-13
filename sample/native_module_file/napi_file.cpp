@@ -28,6 +28,12 @@ namespace fs = std::filesystem;
 
 namespace {
 
+constexpr int DIR_PERMISSIONS = 0755;
+constexpr int TEMP_FILE_SIZE = 16;
+constexpr int TEMP_DIR_SIZE = 16;
+constexpr char TEMP_FILE_TEMPLATE[] = "/tmp/temp_XXXXXX";
+constexpr char TEMP_DIR_TEMPLATE[] = "/tmp/temp_XXXXXX";
+
 // 读取文件
 std::string read_file(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
@@ -108,7 +114,7 @@ void rename_file(const std::string& old_path, const std::string& new_path) {
 
 // 创建目录
 void create_directory(const std::string& path) {
-    if (mkdir(path.c_str(), 0755) != 0) {
+    if (mkdir(path.c_str(), DIR_PERMISSIONS) != 0) {
         throw std::runtime_error("Failed to create directory");
     }
 }
@@ -240,7 +246,8 @@ std::string absolute_path(const std::string& path) {
 
 // 创建临时文件
 std::string create_temp_file() {
-    char temp_name[] = "/tmp/temp_XXXXXX";
+    char temp_name[TEMP_FILE_SIZE];
+    strcpy(temp_name, TEMP_FILE_TEMPLATE);
     int fd = mkstemp(temp_name);
     if (fd == -1) {
         throw std::runtime_error("Failed to create temporary file");
@@ -251,7 +258,8 @@ std::string create_temp_file() {
 
 // 创建临时目录
 std::string create_temp_directory() {
-    char temp_name[] = "/tmp/temp_XXXXXX";
+    char temp_name[TEMP_DIR_SIZE];
+    strcpy(temp_name, TEMP_DIR_TEMPLATE);
     char* dir = mkdtemp(temp_name);
     if (dir == nullptr) {
         throw std::runtime_error("Failed to create temporary directory");
@@ -304,7 +312,11 @@ void chown_file(const std::string& path, uid_t owner, gid_t group) {
 static napi_value ReadFile(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
     
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
@@ -312,16 +324,29 @@ static napi_value ReadFile(napi_env env, napi_callback_info info) {
     }
     
     size_t pathLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* pathBuffer = new char[pathLength + 1];
-    napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] pathBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string path(pathBuffer);
     delete[] pathBuffer;
     
     try {
         std::string content = read_file(path);
         napi_value result;
-        napi_create_string_utf8(env, content.c_str(), NAPI_AUTO_LENGTH, &result);
+        status = napi_create_string_utf8(env, content.c_str(), NAPI_AUTO_LENGTH, &result);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+            return nullptr;
+        }
         return result;
     } catch (const std::exception& e) {
         napi_throw_error(env, "File error", e.what());
@@ -333,7 +358,11 @@ static napi_value ReadFile(napi_env env, napi_callback_info info) {
 static napi_value WriteFile(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
     
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected file path and content");
@@ -341,23 +370,45 @@ static napi_value WriteFile(napi_env env, napi_callback_info info) {
     }
     
     size_t pathLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* pathBuffer = new char[pathLength + 1];
-    napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] pathBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string path(pathBuffer);
     delete[] pathBuffer;
     
     size_t contentLength;
-    napi_get_value_string_utf8(env, args[1], nullptr, 0, &contentLength);
+    status = napi_get_value_string_utf8(env, args[1], nullptr, 0, &contentLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* contentBuffer = new char[contentLength + 1];
-    napi_get_value_string_utf8(env, args[1], contentBuffer, contentLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[1], contentBuffer, contentLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] contentBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string content(contentBuffer);
     delete[] contentBuffer;
     
     try {
         write_file(path, content);
         napi_value result;
-        napi_get_undefined(env, &result);
+        status = napi_get_undefined(env, &result);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to get undefined");
+            return nullptr;
+        }
         return result;
     } catch (const std::exception& e) {
         napi_throw_error(env, "File error", e.what());
@@ -600,7 +651,11 @@ static napi_value DeleteDirectory(napi_env env, napi_callback_info info) {
 static napi_value ListDirectory(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
     
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected directory path");
@@ -608,21 +663,42 @@ static napi_value ListDirectory(napi_env env, napi_callback_info info) {
     }
     
     size_t pathLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* pathBuffer = new char[pathLength + 1];
-    napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] pathBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string path(pathBuffer);
     delete[] pathBuffer;
     
     try {
         std::vector<std::string> entries = list_directory(path);
         napi_value result;
-        napi_create_array(env, &result);
+        status = napi_create_array(env, &result);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create array");
+            return nullptr;
+        }
         
         for (size_t i = 0; i < entries.size(); i++) {
             napi_value entry;
-            napi_create_string_utf8(env, entries[i].c_str(), NAPI_AUTO_LENGTH, &entry);
-            napi_set_element(env, result, i, entry);
+            status = napi_create_string_utf8(env, entries[i].c_str(), NAPI_AUTO_LENGTH, &entry);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+                return nullptr;
+            }
+            status = napi_set_element(env, result, i, entry);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to set element");
+                return nullptr;
+            }
         }
         
         return result;
@@ -737,7 +813,11 @@ static napi_value GetFileSize(napi_env env, napi_callback_info info) {
 static napi_value GetFileStats(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
     
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
@@ -745,9 +825,18 @@ static napi_value GetFileStats(napi_env env, napi_callback_info info) {
     }
     
     size_t pathLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* pathBuffer = new char[pathLength + 1];
-    napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] pathBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string path(pathBuffer);
     delete[] pathBuffer;
     
@@ -758,16 +847,47 @@ static napi_value GetFileStats(napi_env env, napi_callback_info info) {
         }
         
         napi_value result;
-        napi_create_object(env, &result);
+        status = napi_create_object(env, &result);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create object");
+            return nullptr;
+        }
         
-        napi_value size, mode, mtime;
-        napi_create_double(env, static_cast<double>(buffer.st_size), &size);
-        napi_create_double(env, static_cast<double>(buffer.st_mode), &mode);
-        napi_create_double(env, static_cast<double>(buffer.st_mtime), &mtime);
+        napi_value size;
+        status = napi_create_double(env, static_cast<double>(buffer.st_size), &size);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, result, "size", size);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
         
-        napi_set_named_property(env, result, "size", size);
-        napi_set_named_property(env, result, "mode", mode);
-        napi_set_named_property(env, result, "mtime", mtime);
+        napi_value mode;
+        status = napi_create_double(env, static_cast<double>(buffer.st_mode), &mode);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, result, "mode", mode);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
+        
+        napi_value mtime;
+        status = napi_create_double(env, static_cast<double>(buffer.st_mtime), &mtime);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, result, "mtime", mtime);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
         
         return result;
     } catch (const std::exception& e) {
@@ -1277,7 +1397,8 @@ static napi_value Chown(napi_env env, napi_callback_info info) {
     std::string path(pathBuffer);
     delete[] pathBuffer;
     
-    double owner, group;
+    double owner = 0.0;
+    double group = 0.0;
     napi_get_value_double(env, args[1], &owner);
     napi_get_value_double(env, args[2], &group);
     
@@ -1331,7 +1452,11 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"chown", nullptr, Chown, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
     
-    napi_define_properties(env, exports, sizeof(descriptors) / sizeof(descriptors[0]), descriptors);
+    napi_status status = napi_define_properties(env, exports, sizeof(descriptors) / sizeof(descriptors[0]), descriptors);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to define properties");
+        return nullptr;
+    }
     return exports;
 }
 
