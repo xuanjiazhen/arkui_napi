@@ -15742,3 +15742,254 @@ HWTEST_F(NapiBasicTest, NapiDeleteStrongRefTest005, testing::ext::TestSize.Level
     ASSERT_CHECK_CALL(napi_typeof(env, value, &result));
     ASSERT_NE(result, napi_object);
 }
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest001
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with basic ASCII string
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "Hello, World!";
+    size_t testStrLength = strlen(testStr);
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, testStrLength, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &str));
+    ASSERT_EQ(str, testStr);
+    ASSERT_EQ(str.length(), testStrLength);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest002
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with Chinese characters
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "中文字符测试";
+    size_t testStrLength = strlen(testStr);
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, testStrLength, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &str));
+    ASSERT_EQ(str, testStr);
+    ASSERT_EQ(str.length(), testStrLength);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest003
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with emoji characters
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest003, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "😊😂🤣❤️😍😒👌😘";
+    size_t testStrLength = strlen(testStr);
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, testStrLength, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &str));
+    ASSERT_EQ(str, testStr);
+    ASSERT_EQ(str.length(), testStrLength);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest004
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with empty string
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest004, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "";
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, strlen(testStr), &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &str));
+    ASSERT_EQ(str, testStr);
+    ASSERT_EQ(str.length(), 0);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest005
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with special characters
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest005, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "`~!@#$%^&*()_+[]\\";
+    size_t testStrLength = strlen(testStr);
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, testStrLength, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &str));
+    ASSERT_EQ(str, testStr);
+    ASSERT_EQ(str.length(), testStrLength);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest006
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with mixed characters
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest006, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "中文,English,123456,!@#$%$#^%&12345";
+    size_t testStrLength = strlen(testStr);
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, testStrLength, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &str));
+    ASSERT_EQ(str, testStr);
+    ASSERT_EQ(str.length(), testStrLength);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest007
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with long string
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest007, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    std::string testStr = "Long";
+    testStr += std::string(1000, 'A');
+    testStr += "String";
+    size_t testStrLength = testStr.length();
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr.c_str(), testStrLength, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &str));
+    ASSERT_EQ(str, testStr);
+    ASSERT_EQ(str.length(), testStrLength);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest008
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with single character
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest008, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "A";
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, strlen(testStr), &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &str));
+    ASSERT_EQ(str, testStr);
+    ASSERT_EQ(str.length(), 1);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest009
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with null value parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest009, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "test";
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, strlen(testStr), &result));
+
+    std::string str;
+    // Pass nullptr for string_object - should return napi_invalid_arg
+    napi_status status = napi_get_value_string_utf8_hybrid(env, result, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest010
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid with number value
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest010, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_double(env, 123.45, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_number);
+
+    std::string str;
+    // Pass a number instead of string - should return napi_string_expected
+    napi_status status = napi_get_value_string_utf8_hybrid(env, result, &str);
+    ASSERT_EQ(status, napi_string_expected);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest011
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid consistency with standard API
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest011, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr[] = "Test String 中文 🎉";
+    size_t testStrLength = strlen(testStr);
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr, testStrLength, &result));
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_string);
+
+    // Get string using hybrid API
+    std::string hybridResult;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result, &hybridResult));
+
+    // Get string using standard API for comparison
+    size_t bufferSize = 0;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8(env, result, nullptr, 0, &bufferSize));
+    std::vector<char> standardBuffer(bufferSize);
+    size_t copiedSize = 0;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8(env, result, standardBuffer.data(), bufferSize, &copiedSize));
+    std::string standardResult(standardBuffer.data(), copiedSize);
+
+    // Both methods should produce the same result
+    ASSERT_EQ(hybridResult, standardResult);
+    ASSERT_EQ(hybridResult, testStr);
+}
+
+/**
+ * @tc.name: NapiGetStringUtf8HybridTest012
+ * @tc.desc: Test napi_get_value_string_utf8_hybrid reusing std::string
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetStringUtf8HybridTest012, testing::ext::TestSize.Level1)
+{
+    napi_env env = (napi_env)engine_;
+    const char testStr1[] = "First";
+    const char testStr2[] = "Second";
+    napi_value result1 = nullptr;
+    napi_value result2 = nullptr;
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr1, strlen(testStr1), &result1));
+    ASSERT_CHECK_CALL(napi_create_string_utf8(env, testStr2, strlen(testStr2), &result2));
+
+    // Reuse the same std::string object for multiple extractions
+    std::string str;
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result1, &str));
+    ASSERT_EQ(str, testStr1);
+
+    ASSERT_CHECK_CALL(napi_get_value_string_utf8_hybrid(env, result2, &str));
+    ASSERT_EQ(str, testStr2);
+}
