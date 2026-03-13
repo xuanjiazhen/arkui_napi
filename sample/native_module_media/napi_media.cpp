@@ -24,8 +24,24 @@
 
 #include "native_api.h"
 
-// Media module namespace
 namespace media {
+
+constexpr int DEFAULT_DURATION = 180;
+constexpr int DEFAULT_WIDTH = 1920;
+constexpr int DEFAULT_HEIGHT = 1080;
+constexpr int DEFAULT_BITRATE = 5000;
+constexpr int DEFAULT_VIDEO_BITRATE = 4000;
+constexpr int DEFAULT_AUDIO_BITRATE = 128;
+constexpr int DEFAULT_FRAME_RATE = 30;
+constexpr int DEFAULT_AUDIO_SAMPLE_RATE = 44100;
+constexpr int DEFAULT_AUDIO_CHANNELS = 2;
+constexpr int MAX_PATH_LENGTH = 1024;
+constexpr int THUMBNAIL_DELAY_MS = 500;
+constexpr int SEEK_DELAY_MS = 100;
+constexpr int SET_SOURCE_DELAY_MS = 500;
+constexpr int DEFAULT_VOLUME = 1;
+constexpr int MIN_VOLUME = 0;
+constexpr int MAX_VOLUME = 1;
 
 enum class MediaFormat {
     MP4,
@@ -94,8 +110,6 @@ struct EncoderSettings {
     std::string audioCodec = "aac";
 };
 
-
-
 class MediaProcessor {
 public:
     MediaProcessor() {
@@ -104,15 +118,15 @@ public:
         dist_ = std::uniform_real_distribution<>(0.0, 1.0);
     }
 
-    MediaMetadata analyzeMedia(const std::string& filePath) {
+    MediaMetadata AnalyzeMedia(const std::string& filePath) {
         MediaMetadata metadata;
         metadata.title = "Sample Media";
         metadata.artist = "Unknown Artist";
         metadata.album = "Unknown Album";
-        metadata.duration = 180;
-        metadata.width = 1920;
-        metadata.height = 1080;
-        metadata.bitrate = 5000;
+        metadata.duration = DEFAULT_DURATION;
+        metadata.width = DEFAULT_WIDTH;
+        metadata.height = DEFAULT_HEIGHT;
+        metadata.bitrate = DEFAULT_BITRATE;
         metadata.format = MediaFormat::MP4;
         metadata.codec = "h264/aac";
         metadata.creationDate = "2026-01-01";
@@ -120,54 +134,53 @@ public:
         return metadata;
     }
 
-    std::vector<MediaTrack> getMediaTracks(const std::string& filePath) {
+    std::vector<MediaTrack> GetMediaTracks(const std::string& filePath) {
         std::vector<MediaTrack> tracks;
-        
+
         MediaTrack videoTrack;
         videoTrack.type = MediaTrack::Type::VIDEO;
         videoTrack.codec = "h264";
-        videoTrack.bitrate = 4000;
-        videoTrack.width = 1920;
-        videoTrack.height = 1080;
-        videoTrack.frameRate = 30;
+        videoTrack.bitrate = DEFAULT_VIDEO_BITRATE;
+        videoTrack.width = DEFAULT_WIDTH;
+        videoTrack.height = DEFAULT_HEIGHT;
+        videoTrack.frameRate = DEFAULT_FRAME_RATE;
         tracks.push_back(videoTrack);
-        
+
         MediaTrack audioTrack;
         audioTrack.type = MediaTrack::Type::AUDIO;
         audioTrack.codec = "aac";
-        audioTrack.bitrate = 128;
-        audioTrack.channels = 2;
-        audioTrack.sampleRate = 44100;
+        audioTrack.bitrate = DEFAULT_AUDIO_BITRATE;
+        audioTrack.channels = DEFAULT_AUDIO_CHANNELS;
+        audioTrack.sampleRate = DEFAULT_AUDIO_SAMPLE_RATE;
         tracks.push_back(audioTrack);
-        
+
         return tracks;
     }
 
-    bool transcodeMedia(const std::string& inputPath, const std::string& outputPath, const EncoderSettings& settings) {
+    bool TranscodeMedia(const std::string& inputPath, const std::string& outputPath, const EncoderSettings& settings) {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         return true;
     }
 
-    bool extractAudio(const std::string& videoPath, const std::string& audioPath) {
+    bool ExtractAudio(const std::string& videoPath, const std::string& audioPath) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return true;
     }
 
-    bool mergeAudioVideo(const std::string& videoPath, const std::string& audioPath, const std::string& outputPath) {
+    bool MergeAudioVideo(const std::string& videoPath, const std::string& audioPath, const std::string& outputPath) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         return true;
     }
 
-    bool generateThumbnail(const std::string& videoPath, const std::string& thumbnailPath, int timeMs) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    bool GenerateThumbnail(const std::string& videoPath, const std::string& thumbnailPath, int timeMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(THUMBNAIL_DELAY_MS));
         return true;
     }
 
-    // Get media information as JSON
-    std::string getMediaInfoJSON(const std::string& filePath) {
-        MediaMetadata metadata = analyzeMedia(filePath);
-        std::vector<MediaTrack> tracks = getMediaTracks(filePath);
-        
+    std::string GetMediaInfoJson(const std::string& filePath) {
+        MediaMetadata metadata = AnalyzeMedia(filePath);
+        std::vector<MediaTrack> tracks = GetMediaTracks(filePath);
+
         std::string json = "{";
         json += "\"title\":\"" + metadata.title + "\",";
         json += "\"artist\":\"" + metadata.artist + "\",";
@@ -178,14 +191,16 @@ public:
         json += "\"bitrate\":" + std::to_string(metadata.bitrate) + ",";
         json += "\"format\":\"MP4\",";
         json += "\"codec\":\"" + metadata.codec + "\",";
-        json += "\"creationDate\":\"" + metadata.creationDate + ",";
-        json += "\"lastModified\":\"" + metadata.lastModified + ",";
+        json += "\"creationDate\":\"" + metadata.creationDate + "\",";
+        json += "\"lastModified\":\"" + metadata.lastModified + "\",";
         json += "\"tracks\":[";
-        
+
         for (size_t i = 0; i < tracks.size(); ++i) {
-            if (i > 0) json += ",";
+            if (i > 0) {
+                json += ",";
+            }
             json += "{";
-            json += "\"type\":\"" + (tracks[i].type == MediaTrack::Type::VIDEO ? "video" : 
+            json += "\"type\":\"" + (tracks[i].type == MediaTrack::Type::VIDEO ? "video" :
                                          tracks[i].type == MediaTrack::Type::AUDIO ? "audio" : "subtitle") + "\",";
             json += "\"codec\":\"" + tracks[i].codec + "\",";
             json += "\"bitrate\":" + std::to_string(tracks[i].bitrate) + ",";
@@ -199,13 +214,11 @@ public:
             }
             json += "}";
         }
-        
+
         json += "]";
         json += "}";
         return json;
     }
-
-
 
 private:
     std::mt19937 gen_;
@@ -216,14 +229,14 @@ class MediaPlayer {
 public:
     MediaPlayer() : state_(PlayerState::IDLE) {}
 
-    bool setSource(const std::string& filePath) {
+    bool SetSource(const std::string& filePath) {
         state_ = PlayerState::PREPARING;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(SET_SOURCE_DELAY_MS));
         state_ = PlayerState::READY;
         return true;
     }
 
-    bool play() {
+    bool Play() {
         if (state_ == PlayerState::READY || state_ == PlayerState::PAUSED) {
             state_ = PlayerState::PLAYING;
             return true;
@@ -231,7 +244,7 @@ public:
         return false;
     }
 
-    bool pause() {
+    bool Pause() {
         if (state_ == PlayerState::PLAYING) {
             state_ = PlayerState::PAUSED;
             return true;
@@ -239,7 +252,7 @@ public:
         return false;
     }
 
-    bool stop() {
+    bool Stop() {
         if (state_ != PlayerState::IDLE && state_ != PlayerState::ERROR) {
             state_ = PlayerState::IDLE;
             return true;
@@ -247,42 +260,42 @@ public:
         return false;
     }
 
-    bool seek(int positionMs) {
+    bool Seek(int positionMs) {
         if (state_ == PlayerState::PLAYING || state_ == PlayerState::PAUSED) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(SEEK_DELAY_MS));
             return true;
         }
         return false;
     }
 
-    bool setVolume(float volume) {
-        if (volume >= 0.0 && volume <= 1.0) {
+    bool SetVolume(float volume) {
+        if (volume >= MIN_VOLUME && volume <= MAX_VOLUME) {
             volume_ = volume;
             return true;
         }
         return false;
     }
 
-    PlayerState getState() const {
+    PlayerState GetState() const {
         return state_;
     }
 
-    int getCurrentPosition() const {
+    int GetCurrentPosition() const {
         return 0;
     }
 
-    int getDuration() const {
-        return 180000;
+    int GetDuration() const {
+        return DEFAULT_DURATION * 1000;
     }
 
 private:
     PlayerState state_;
-    float volume_ = 1.0;
+    float volume_ = DEFAULT_VOLUME;
 };
 
 class MediaUtils {
 public:
-    static std::string formatToString(MediaFormat format) {
+    static std::string FormatToString(MediaFormat format) {
         switch (format) {
             case MediaFormat::MP4: return "MP4";
             case MediaFormat::AVI: return "AVI";
@@ -298,7 +311,7 @@ public:
         }
     }
 
-    static MediaFormat stringToFormat(const std::string& formatStr) {
+    static MediaFormat StringToFormat(const std::string& formatStr) {
         if (formatStr == "MP4") return MediaFormat::MP4;
         if (formatStr == "AVI") return MediaFormat::AVI;
         if (formatStr == "MKV") return MediaFormat::MKV;
@@ -312,302 +325,577 @@ public:
         return MediaFormat::MP4;
     }
 
-    static bool validateMediaFile(const std::string& filePath) {
+    static bool ValidateMediaFile(const std::string& filePath) {
         return true;
     }
-
-
 };
 
 } // namespace media
 
-// NAPI wrapper functions
 namespace {
 
 std::shared_ptr<media::MediaProcessor> g_mediaProcessor = std::make_shared<media::MediaProcessor>();
 std::unordered_map<napi_env, std::shared_ptr<media::MediaPlayer>> g_players;
 
-// NAPI function: analyzeMedia
 napi_value AnalyzeMedia(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 1) {
         napi_throw_error(env, "BAD_ARGS", "Missing file path argument");
         return nullptr;
     }
 
-    char filePath[1024];
-    size_t filePathLength;
-    napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLength);
+    char filePath[MAX_PATH_LENGTH];
+    size_t filePathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
 
-    media::MediaMetadata metadata = g_mediaProcessor->analyzeMedia(filePath);
+    media::MediaMetadata metadata = g_mediaProcessor->AnalyzeMedia(filePath);
 
     napi_value result;
-    napi_create_object(env, &result);
+    status = napi_create_object(env, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create object");
+        return nullptr;
+    }
 
     napi_value title;
-    napi_create_string_utf8(env, metadata.title.c_str(), NAPI_AUTO_LENGTH, &title);
-    napi_set_named_property(env, result, "title", title);
+    status = napi_create_string_utf8(env, metadata.title.c_str(), NAPI_AUTO_LENGTH, &title);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "title", title);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value artist;
-    napi_create_string_utf8(env, metadata.artist.c_str(), NAPI_AUTO_LENGTH, &artist);
-    napi_set_named_property(env, result, "artist", artist);
+    status = napi_create_string_utf8(env, metadata.artist.c_str(), NAPI_AUTO_LENGTH, &artist);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "artist", artist);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value album;
-    napi_create_string_utf8(env, metadata.album.c_str(), NAPI_AUTO_LENGTH, &album);
-    napi_set_named_property(env, result, "album", album);
+    status = napi_create_string_utf8(env, metadata.album.c_str(), NAPI_AUTO_LENGTH, &album);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "album", album);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value duration;
-    napi_create_int32(env, metadata.duration, &duration);
-    napi_set_named_property(env, result, "duration", duration);
+    status = napi_create_int32(env, metadata.duration, &duration);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "duration", duration);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value width;
-    napi_create_int32(env, metadata.width, &width);
-    napi_set_named_property(env, result, "width", width);
+    status = napi_create_int32(env, metadata.width, &width);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "width", width);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value height;
-    napi_create_int32(env, metadata.height, &height);
-    napi_set_named_property(env, result, "height", height);
+    status = napi_create_int32(env, metadata.height, &height);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "height", height);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value bitrate;
-    napi_create_int32(env, metadata.bitrate, &bitrate);
-    napi_set_named_property(env, result, "bitrate", bitrate);
+    status = napi_create_int32(env, metadata.bitrate, &bitrate);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "bitrate", bitrate);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value format;
-    napi_create_string_utf8(env, media::MediaUtils::formatToString(metadata.format).c_str(), NAPI_AUTO_LENGTH, &format);
-    napi_set_named_property(env, result, "format", format);
+    status = napi_create_string_utf8(env, media::MediaUtils::FormatToString(metadata.format).c_str(), NAPI_AUTO_LENGTH, &format);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "format", format);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value codec;
-    napi_create_string_utf8(env, metadata.codec.c_str(), NAPI_AUTO_LENGTH, &codec);
-    napi_set_named_property(env, result, "codec", codec);
+    status = napi_create_string_utf8(env, metadata.codec.c_str(), NAPI_AUTO_LENGTH, &codec);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "codec", codec);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value creationDate;
-    napi_create_string_utf8(env, metadata.creationDate.c_str(), NAPI_AUTO_LENGTH, &creationDate);
-    napi_set_named_property(env, result, "creationDate", creationDate);
+    status = napi_create_string_utf8(env, metadata.creationDate.c_str(), NAPI_AUTO_LENGTH, &creationDate);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "creationDate", creationDate);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     napi_value lastModified;
-    napi_create_string_utf8(env, metadata.lastModified.c_str(), NAPI_AUTO_LENGTH, &lastModified);
-    napi_set_named_property(env, result, "lastModified", lastModified);
+    status = napi_create_string_utf8(env, metadata.lastModified.c_str(), NAPI_AUTO_LENGTH, &lastModified);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "lastModified", lastModified);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     return result;
 }
 
-// NAPI function: getMediaTracks
 napi_value GetMediaTracks(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 1) {
         napi_throw_error(env, "BAD_ARGS", "Missing file path argument");
         return nullptr;
     }
 
-    char filePath[1024];
-    size_t filePathLength;
-    napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLength);
+    char filePath[MAX_PATH_LENGTH];
+    size_t filePathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
 
-    std::vector<media::MediaTrack> tracks = g_mediaProcessor->getMediaTracks(filePath);
+    std::vector<media::MediaTrack> tracks = g_mediaProcessor->GetMediaTracks(filePath);
 
     napi_value result;
-    napi_create_array(env, &result);
+    status = napi_create_array(env, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create array");
+        return nullptr;
+    }
 
     for (size_t i = 0; i < tracks.size(); ++i) {
         napi_value track;
-        napi_create_object(env, &track);
+        status = napi_create_object(env, &track);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create object");
+            return nullptr;
+        }
 
         napi_value type;
-        napi_create_string_utf8(env, 
-            (tracks[i].type == media::MediaTrack::Type::VIDEO ? "video" : 
-             tracks[i].type == media::MediaTrack::Type::AUDIO ? "audio" : "subtitle"), 
+        status = napi_create_string_utf8(env,
+            (tracks[i].type == media::MediaTrack::Type::VIDEO ? "video" :
+             tracks[i].type == media::MediaTrack::Type::AUDIO ? "audio" : "subtitle"),
             NAPI_AUTO_LENGTH, &type);
-        napi_set_named_property(env, track, "type", type);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, track, "type", type);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
 
         napi_value codec;
-        napi_create_string_utf8(env, tracks[i].codec.c_str(), NAPI_AUTO_LENGTH, &codec);
-        napi_set_named_property(env, track, "codec", codec);
+        status = napi_create_string_utf8(env, tracks[i].codec.c_str(), NAPI_AUTO_LENGTH, &codec);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, track, "codec", codec);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
 
         napi_value bitrate;
-        napi_create_int32(env, tracks[i].bitrate, &bitrate);
-        napi_set_named_property(env, track, "bitrate", bitrate);
+        status = napi_create_int32(env, tracks[i].bitrate, &bitrate);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, track, "bitrate", bitrate);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
 
         if (tracks[i].type == media::MediaTrack::Type::AUDIO) {
             napi_value channels;
-            napi_create_int32(env, tracks[i].channels, &channels);
-            napi_set_named_property(env, track, "channels", channels);
+            status = napi_create_int32(env, tracks[i].channels, &channels);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+                return nullptr;
+            }
+            status = napi_set_named_property(env, track, "channels", channels);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+                return nullptr;
+            }
 
             napi_value sampleRate;
-            napi_create_int32(env, tracks[i].sampleRate, &sampleRate);
-            napi_set_named_property(env, track, "sampleRate", sampleRate);
+            status = napi_create_int32(env, tracks[i].sampleRate, &sampleRate);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+                return nullptr;
+            }
+            status = napi_set_named_property(env, track, "sampleRate", sampleRate);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+                return nullptr;
+            }
         } else if (tracks[i].type == media::MediaTrack::Type::VIDEO) {
             napi_value width;
-            napi_create_int32(env, tracks[i].width, &width);
-            napi_set_named_property(env, track, "width", width);
+            status = napi_create_int32(env, tracks[i].width, &width);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+                return nullptr;
+            }
+            status = napi_set_named_property(env, track, "width", width);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+                return nullptr;
+            }
 
             napi_value height;
-            napi_create_int32(env, tracks[i].height, &height);
-            napi_set_named_property(env, track, "height", height);
+            status = napi_create_int32(env, tracks[i].height, &height);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+                return nullptr;
+            }
+            status = napi_set_named_property(env, track, "height", height);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+                return nullptr;
+            }
 
             napi_value frameRate;
-            napi_create_int32(env, tracks[i].frameRate, &frameRate);
-            napi_set_named_property(env, track, "frameRate", frameRate);
+            status = napi_create_int32(env, tracks[i].frameRate, &frameRate);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+                return nullptr;
+            }
+            status = napi_set_named_property(env, track, "frameRate", frameRate);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+                return nullptr;
+            }
         }
 
-        napi_set_element(env, result, i, track);
+        status = napi_set_element(env, result, i, track);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set element");
+            return nullptr;
+        }
     }
 
     return result;
 }
 
-// NAPI function: transcodeMedia
 napi_value TranscodeMedia(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 3) {
         napi_throw_error(env, "BAD_ARGS", "Missing arguments");
         return nullptr;
     }
 
-    char inputPath[1024], outputPath[1024];
-    size_t inputPathLength, outputPathLength;
-    napi_get_value_string_utf8(env, args[0], inputPath, sizeof(inputPath), &inputPathLength);
-    napi_get_value_string_utf8(env, args[1], outputPath, sizeof(outputPath), &outputPathLength);
+    char inputPath[MAX_PATH_LENGTH];
+    char outputPath[MAX_PATH_LENGTH];
+    size_t inputPathLength = 0;
+    size_t outputPathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], inputPath, sizeof(inputPath), &inputPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
+    status = napi_get_value_string_utf8(env, args[1], outputPath, sizeof(outputPath), &outputPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
 
     media::EncoderSettings settings;
-    // Parse settings from args[2]
 
-    bool success = g_mediaProcessor->transcodeMedia(inputPath, outputPath, settings);
+    bool success = g_mediaProcessor->TranscodeMedia(inputPath, outputPath, settings);
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: extractAudio
 napi_value ExtractAudio(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 2) {
         napi_throw_error(env, "BAD_ARGS", "Missing arguments");
         return nullptr;
     }
 
-    char videoPath[1024], audioPath[1024];
-    size_t videoPathLength, audioPathLength;
-    napi_get_value_string_utf8(env, args[0], videoPath, sizeof(videoPath), &videoPathLength);
-    napi_get_value_string_utf8(env, args[1], audioPath, sizeof(audioPath), &audioPathLength);
+    char videoPath[MAX_PATH_LENGTH];
+    char audioPath[MAX_PATH_LENGTH];
+    size_t videoPathLength = 0;
+    size_t audioPathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], videoPath, sizeof(videoPath), &videoPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
+    status = napi_get_value_string_utf8(env, args[1], audioPath, sizeof(audioPath), &audioPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
 
-    bool success = g_mediaProcessor->extractAudio(videoPath, audioPath);
+    bool success = g_mediaProcessor->ExtractAudio(videoPath, audioPath);
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: mergeAudioVideo
 napi_value MergeAudioVideo(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 3) {
         napi_throw_error(env, "BAD_ARGS", "Missing arguments");
         return nullptr;
     }
 
-    char videoPath[1024], audioPath[1024], outputPath[1024];
-    size_t videoPathLength, audioPathLength, outputPathLength;
-    napi_get_value_string_utf8(env, args[0], videoPath, sizeof(videoPath), &videoPathLength);
-    napi_get_value_string_utf8(env, args[1], audioPath, sizeof(audioPath), &audioPathLength);
-    napi_get_value_string_utf8(env, args[2], outputPath, sizeof(outputPath), &outputPathLength);
+    char videoPath[MAX_PATH_LENGTH];
+    char audioPath[MAX_PATH_LENGTH];
+    char outputPath[MAX_PATH_LENGTH];
+    size_t videoPathLength = 0;
+    size_t audioPathLength = 0;
+    size_t outputPathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], videoPath, sizeof(videoPath), &videoPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
+    status = napi_get_value_string_utf8(env, args[1], audioPath, sizeof(audioPath), &audioPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
+    status = napi_get_value_string_utf8(env, args[2], outputPath, sizeof(outputPath), &outputPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
 
-    bool success = g_mediaProcessor->mergeAudioVideo(videoPath, audioPath, outputPath);
+    bool success = g_mediaProcessor->MergeAudioVideo(videoPath, audioPath, outputPath);
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: generateThumbnail
 napi_value GenerateThumbnail(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 3) {
         napi_throw_error(env, "BAD_ARGS", "Missing arguments");
         return nullptr;
     }
 
-    char videoPath[1024], thumbnailPath[1024];
-    size_t videoPathLength, thumbnailPathLength;
-    napi_get_value_string_utf8(env, args[0], videoPath, sizeof(videoPath), &videoPathLength);
-    napi_get_value_string_utf8(env, args[1], thumbnailPath, sizeof(thumbnailPath), &thumbnailPathLength);
+    char videoPath[MAX_PATH_LENGTH];
+    char thumbnailPath[MAX_PATH_LENGTH];
+    size_t videoPathLength = 0;
+    size_t thumbnailPathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], videoPath, sizeof(videoPath), &videoPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
+    status = napi_get_value_string_utf8(env, args[1], thumbnailPath, sizeof(thumbnailPath), &thumbnailPathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
 
-    int timeMs;
-    napi_get_value_int32(env, args[2], &timeMs);
+    int timeMs = 0;
+    status = napi_get_value_int32(env, args[2], &timeMs);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get int32 value");
+        return nullptr;
+    }
 
-    bool success = g_mediaProcessor->generateThumbnail(videoPath, thumbnailPath, timeMs);
+    bool success = g_mediaProcessor->GenerateThumbnail(videoPath, thumbnailPath, timeMs);
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: getMediaInfoJSON
 napi_value GetMediaInfoJSON(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 1) {
         napi_throw_error(env, "BAD_ARGS", "Missing file path argument");
         return nullptr;
     }
 
-    char filePath[1024];
-    size_t filePathLength;
-    napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLength);
+    char filePath[MAX_PATH_LENGTH];
+    size_t filePathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
 
-    std::string json = g_mediaProcessor->getMediaInfoJSON(filePath);
+    std::string json = g_mediaProcessor->GetMediaInfoJson(filePath);
 
     napi_value result;
-    napi_create_string_utf8(env, json.c_str(), NAPI_AUTO_LENGTH, &result);
+    status = napi_create_string_utf8(env, json.c_str(), NAPI_AUTO_LENGTH, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
     return result;
 }
 
-
-
-// NAPI function: createPlayer
 napi_value CreatePlayer(napi_env env, napi_callback_info info) {
     auto player = std::make_shared<media::MediaPlayer>();
     g_players[env] = player;
 
     napi_value result;
-    napi_create_object(env, &result);
+    napi_status status = napi_create_object(env, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create object");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: playerSetSource
 napi_value PlayerSetSource(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 1) {
         napi_throw_error(env, "BAD_ARGS", "Missing file path argument");
         return nullptr;
     }
 
-    char filePath[1024];
-    size_t filePathLength;
-    napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLength);
+    char filePath[MAX_PATH_LENGTH];
+    size_t filePathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
 
     auto it = g_players.find(env);
     if (it == g_players.end()) {
@@ -615,14 +903,17 @@ napi_value PlayerSetSource(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    bool success = it->second->setSource(filePath);
+    bool success = it->second->SetSource(filePath);
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: playerPlay
 napi_value PlayerPlay(napi_env env, napi_callback_info info) {
     auto it = g_players.find(env);
     if (it == g_players.end()) {
@@ -630,14 +921,17 @@ napi_value PlayerPlay(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    bool success = it->second->play();
+    bool success = it->second->Play();
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    napi_status status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: playerPause
 napi_value PlayerPause(napi_env env, napi_callback_info info) {
     auto it = g_players.find(env);
     if (it == g_players.end()) {
@@ -645,14 +939,17 @@ napi_value PlayerPause(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    bool success = it->second->pause();
+    bool success = it->second->Pause();
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    napi_status status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: playerStop
 napi_value PlayerStop(napi_env env, napi_callback_info info) {
     auto it = g_players.find(env);
     if (it == g_players.end()) {
@@ -660,26 +957,37 @@ napi_value PlayerStop(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    bool success = it->second->stop();
+    bool success = it->second->Stop();
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    napi_status status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: playerSeek
 napi_value PlayerSeek(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 1) {
         napi_throw_error(env, "BAD_ARGS", "Missing position argument");
         return nullptr;
     }
 
-    int positionMs;
-    napi_get_value_int32(env, args[0], &positionMs);
+    int positionMs = 0;
+    status = napi_get_value_int32(env, args[0], &positionMs);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get int32 value");
+        return nullptr;
+    }
 
     auto it = g_players.find(env);
     if (it == g_players.end()) {
@@ -687,26 +995,37 @@ napi_value PlayerSeek(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    bool success = it->second->seek(positionMs);
+    bool success = it->second->Seek(positionMs);
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: playerSetVolume
 napi_value PlayerSetVolume(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
 
     if (argc < 1) {
         napi_throw_error(env, "BAD_ARGS", "Missing volume argument");
         return nullptr;
     }
 
-    double volume;
-    napi_get_value_double(env, args[0], &volume);
+    double volume = 0.0;
+    status = napi_get_value_double(env, args[0], &volume);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
 
     auto it = g_players.find(env);
     if (it == g_players.end()) {
@@ -714,14 +1033,17 @@ napi_value PlayerSetVolume(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    bool success = it->second->setVolume(static_cast<float>(volume));
+    bool success = it->second->SetVolume(static_cast<float>(volume));
 
     napi_value result;
-    napi_create_bool(env, success, &result);
+    status = napi_create_bool(env, success, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create bool");
+        return nullptr;
+    }
     return result;
 }
 
-// NAPI function: playerGetState
 napi_value PlayerGetState(napi_env env, napi_callback_info info) {
     auto it = g_players.find(env);
     if (it == g_players.end()) {
@@ -729,37 +1051,43 @@ napi_value PlayerGetState(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    media::PlayerState state = it->second->getState();
+    media::PlayerState state = it->second->GetState();
     const char* stateStr = "IDLE";
     switch (state) {
-        case media::PlayerState::PREPARING: stateStr = "PREPARING";
+        case media::PlayerState::PREPARING:
+            stateStr = "PREPARING";
             break;
-        case media::PlayerState::READY: stateStr = "READY";
+        case media::PlayerState::READY:
+            stateStr = "READY";
             break;
-        case media::PlayerState::PLAYING: stateStr = "PLAYING";
+        case media::PlayerState::PLAYING:
+            stateStr = "PLAYING";
             break;
-        case media::PlayerState::PAUSED: stateStr = "PAUSED";
+        case media::PlayerState::PAUSED:
+            stateStr = "PAUSED";
             break;
-        case media::PlayerState::COMPLETED: stateStr = "COMPLETED";
+        case media::PlayerState::COMPLETED:
+            stateStr = "COMPLETED";
             break;
-        case media::PlayerState::ERROR: stateStr = "ERROR";
+        case media::PlayerState::ERROR:
+            stateStr = "ERROR";
             break;
         default:
             break;
     }
 
     napi_value result;
-    napi_create_string_utf8(env, stateStr, NAPI_AUTO_LENGTH, &result);
+    napi_status status = napi_create_string_utf8(env, stateStr, NAPI_AUTO_LENGTH, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
     return result;
 }
 
-
-
 } // namespace
 
-// Module initialization
 napi_value Init(napi_env env, napi_value exports) {
-    // Media processor functions
     napi_property_descriptor mediaProcessorProps[] = {
         {"analyzeMedia", nullptr, AnalyzeMedia, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getMediaTracks", nullptr, GetMediaTracks, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -770,9 +1098,12 @@ napi_value Init(napi_env env, napi_value exports) {
         {"getMediaInfoJSON", nullptr, GetMediaInfoJSON, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
 
-    // Media player functions
     napi_value playerObj;
-    napi_create_object(env, &playerObj);
+    napi_status status = napi_create_object(env, &playerObj);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create object");
+        return nullptr;
+    }
 
     napi_property_descriptor playerProps[] = {
         {"create", nullptr, CreatePlayer, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -785,9 +1116,21 @@ napi_value Init(napi_env env, napi_value exports) {
         {"getState", nullptr, PlayerGetState, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
 
-    napi_define_properties(env, exports, sizeof(mediaProcessorProps) / sizeof(mediaProcessorProps[0]), mediaProcessorProps);
-    napi_define_properties(env, playerObj, sizeof(playerProps) / sizeof(playerProps[0]), playerProps);
-    napi_set_named_property(env, exports, "player", playerObj);
+    status = napi_define_properties(env, exports, sizeof(mediaProcessorProps) / sizeof(mediaProcessorProps[0]), mediaProcessorProps);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to define properties");
+        return nullptr;
+    }
+    status = napi_define_properties(env, playerObj, sizeof(playerProps) / sizeof(playerProps[0]), playerProps);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to define properties");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, exports, "player", playerObj);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
 
     return exports;
 }

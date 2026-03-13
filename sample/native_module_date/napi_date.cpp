@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Huawei Device Co., Ltd.
+// Copyright (c) 2026 Huawei Technologies Co., Ltd.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,11 +22,20 @@
 
 namespace {
 
-// 时间戳类型
+constexpr int SECONDS_PER_MINUTE = 60;
+constexpr int SECONDS_PER_HOUR = 3600;
+constexpr int HOURS_PER_DAY = 24;
+constexpr int DAYS_PER_WEEK = 7;
+constexpr int DAYS_PER_YEAR = 365;
+constexpr int MONTHS_PER_YEAR = 12;
+constexpr int DAYS_IN_FEBRUARY = 28;
+constexpr int DAYS_IN_FEBRUARY_LEAP = 29;
+constexpr int BASE_YEAR = 1900;
+constexpr int QUARTER_DIVISOR = 3;
+
 typedef std::chrono::time_point<std::chrono::system_clock> TimePoint;
 
-// 时区偏移映射
-std::map<std::string, int> timezoneOffsets = {
+const std::map<std::string, int> TIMEZONE_OFFSETS = {
     {"UTC", 0},
     {"GMT", 0},
     {"CST", 8},
@@ -38,71 +47,101 @@ std::map<std::string, int> timezoneOffsets = {
     {"HST", -10}
 };
 
-// 星期几名称
-const std::string weekdays[] = {
+const std::vector<std::string> WEEKDAYS = {
     "Sunday", "Monday", "Tuesday", "Wednesday",
     "Thursday", "Friday", "Saturday"
 };
 
-// 月份名称
-const std::string months[] = {
+const std::vector<std::string> MONTHS = {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
 };
 
-// 将时间点转换为time_t
-std::time_t toTimeT(const TimePoint& tp) {
+std::time_t ToTimeT(const TimePoint& tp)
+{
     return std::chrono::system_clock::to_time_t(tp);
 }
 
-// 将time_t转换为时间点
-TimePoint fromTimeT(std::time_t tt) {
+TimePoint FromTimeT(std::time_t tt)
+{
     return std::chrono::system_clock::from_time_t(tt);
 }
 
-// 获取当前时间点
-TimePoint now() {
+TimePoint Now()
+{
     return std::chrono::system_clock::now();
 }
 
-// 检查是否为闰年
-bool isLeapYear(int year) {
-    if (year % 4 != 0) return false;
-    if (year % 100 != 0) return true;
+bool IsLeapYear(int year)
+{
+    if (year % 4 != 0) {
+        return false;
+    }
+    if (year % 100 != 0) {
+        return true;
+    }
     return year % 400 == 0;
 }
 
-// 获取月份天数
-int getDaysInMonth(int year, int month) {
+int GetDaysInMonth(int year, int month)
+{
     static const int daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    if (month == 1 && isLeapYear(year)) {
-        return 29;
+    if (month == 1 && IsLeapYear(year)) {
+        return DAYS_IN_FEBRUARY_LEAP;
     }
     return daysInMonth[month];
 }
 
-// 格式化日期时间
-std::string formatDateTime(const TimePoint& tp, const std::string& format) {
-    std::time_t tt = toTimeT(tp);
+std::string FormatDateTime(const TimePoint& tp, const std::string& format)
+{
+    std::time_t tt = ToTimeT(tp);
+    std::tm localTm = {};
     std::tm* tm = std::localtime(&tt);
+    if (tm != nullptr) {
+        localTm = *tm;
+    }
     std::stringstream ss;
-    
+
     for (size_t i = 0; i < format.size(); ++i) {
         if (format[i] == '%') {
             if (i + 1 < format.size()) {
                 switch (format[i + 1]) {
-                    case 'Y': ss << std::setw(4) << std::setfill('0') << (tm->tm_year + 1900); break;
-                    case 'm': ss << std::setw(2) << std::setfill('0') << (tm->tm_mon + 1); break;
-                    case 'd': ss << std::setw(2) << std::setfill('0') << tm->tm_mday; break;
-                    case 'H': ss << std::setw(2) << std::setfill('0') << tm->tm_hour; break;
-                    case 'M': ss << std::setw(2) << std::setfill('0') << tm->tm_min; break;
-                    case 'S': ss << std::setw(2) << std::setfill('0') << tm->tm_sec; break;
-                    case 'w': ss << tm->tm_wday; break;
-                    case 'a': ss << weekdays[tm->tm_wday].substr(0, 3); break;
-                    case 'A': ss << weekdays[tm->tm_wday]; break;
-                    case 'b': ss << months[tm->tm_mon].substr(0, 3); break;
-                    case 'B': ss << months[tm->tm_mon]; break;
-                    default: ss << format[i] << format[i + 1]; break;
+                    case 'Y':
+                        ss << std::setw(4) << std::setfill('0') << (localTm.tm_year + BASE_YEAR);
+                        break;
+                    case 'm':
+                        ss << std::setw(2) << std::setfill('0') << (localTm.tm_mon + 1);
+                        break;
+                    case 'd':
+                        ss << std::setw(2) << std::setfill('0') << localTm.tm_mday;
+                        break;
+                    case 'H':
+                        ss << std::setw(2) << std::setfill('0') << localTm.tm_hour;
+                        break;
+                    case 'M':
+                        ss << std::setw(2) << std::setfill('0') << localTm.tm_min;
+                        break;
+                    case 'S':
+                        ss << std::setw(2) << std::setfill('0') << localTm.tm_sec;
+                        break;
+                    case 'w':
+                        ss << localTm.tm_wday;
+                        break;
+                    case 'a':
+                        ss << WEEKDAYS[localTm.tm_wday].substr(0, 3);
+                        break;
+                    case 'A':
+                        ss << WEEKDAYS[localTm.tm_wday];
+                        break;
+                    case 'b':
+                        ss << MONTHS[localTm.tm_mon].substr(0, 3);
+                        break;
+                    case 'B':
+                        ss << MONTHS[localTm.tm_mon];
+                        break;
+                    default:
+                        ss << format[i] << format[i + 1];
+                        break;
                 }
                 ++i;
             } else {
@@ -112,804 +151,1283 @@ std::string formatDateTime(const TimePoint& tp, const std::string& format) {
             ss << format[i];
         }
     }
-    
+
     return ss.str();
 }
 
-// 解析日期字符串
-TimePoint parseDateTime(const std::string& dateStr, const std::string& format) {
+TimePoint ParseDateTime(const std::string& dateStr, const std::string& format)
+{
     std::tm tm = {};
     std::istringstream ss(dateStr);
-    
+
     for (size_t i = 0; i < format.size(); ++i) {
         if (format[i] == '%') {
             if (i + 1 < format.size()) {
                 switch (format[i + 1]) {
-                    case 'Y': ss >> std::get_time(&tm, "%Y"); break;
-                    case 'm': ss >> std::get_time(&tm, "%m"); break;
-                    case 'd': ss >> std::get_time(&tm, "%d"); break;
-                    case 'H': ss >> std::get_time(&tm, "%H"); break;
-                    case 'M': ss >> std::get_time(&tm, "%M"); break;
-                    case 'S': ss >> std::get_time(&tm, "%S"); break;
-                    default: break;
+                    case 'Y':
+                        ss >> std::get_time(&tm, "%Y");
+                        break;
+                    case 'm':
+                        ss >> std::get_time(&tm, "%m");
+                        break;
+                    case 'd':
+                        ss >> std::get_time(&tm, "%d");
+                        break;
+                    case 'H':
+                        ss >> std::get_time(&tm, "%H");
+                        break;
+                    case 'M':
+                        ss >> std::get_time(&tm, "%M");
+                        break;
+                    case 'S':
+                        ss >> std::get_time(&tm, "%S");
+                        break;
+                    default:
+                        break;
                 }
                 ++i;
             }
         }
     }
-    
-    return fromTimeT(std::mktime(&tm));
+
+    std::time_t tt = std::mktime(&tm);
+    return FromTimeT(tt);
 }
 
-// 计算日期差值（天数）
-double dateDiffDays(const TimePoint& start, const TimePoint& end) {
+double DateDiffDays(const TimePoint& start, const TimePoint& end)
+{
     auto duration = end - start;
     return std::chrono::duration<double, std::ratio<86400>>(duration).count();
 }
 
-// 添加天数
-TimePoint addDays(const TimePoint& tp, int days) {
-    return tp + std::chrono::hours(24 * days);
+TimePoint AddDays(const TimePoint& tp, int days)
+{
+    return tp + std::chrono::hours(HOURS_PER_DAY * days);
 }
 
-// 添加月份
-TimePoint addMonths(const TimePoint& tp, int months) {
-    std::time_t tt = toTimeT(tp);
+TimePoint AddMonths(const TimePoint& tp, int monthsToAdd)
+{
+    std::time_t tt = ToTimeT(tp);
+    std::tm localTm = {};
     std::tm* tm = std::localtime(&tt);
-    
-    int year = tm->tm_year + 1900;
-    int month = tm->tm_mon + 1;
-    int day = tm->tm_mday;
-    
-    month += months;
-    while (month > 12) {
-        month -= 12;
+    if (tm != nullptr) {
+        localTm = *tm;
+    }
+
+    int year = localTm.tm_year + BASE_YEAR;
+    int month = localTm.tm_mon + 1;
+    int day = localTm.tm_mday;
+
+    month += monthsToAdd;
+    while (month > MONTHS_PER_YEAR) {
+        month -= MONTHS_PER_YEAR;
         year++;
     }
     while (month < 1) {
-        month += 12;
+        month += MONTHS_PER_YEAR;
         year--;
     }
-    
-    int daysInMonth = getDaysInMonth(year, month - 1);
+
+    int daysInCurrentMonth = GetDaysInMonth(year, month - 1);
+    if (day > daysInCurrentMonth) {
+        day = daysInCurrentMonth;
+    }
+
+    localTm.tm_year = year - BASE_YEAR;
+    localTm.tm_mon = month - 1;
+    localTm.tm_mday = day;
+
+    return FromTimeT(std::mktime(&localTm));
+}
+
+TimePoint AddYears(const TimePoint& tp, int years)
+{
+    std::time_t tt = ToTimeT(tp);
+    std::tm localTm = {};
+    std::tm* tm = std::localtime(&tt);
+    if (tm != nullptr) {
+        localTm = *tm;
+    }
+
+    int year = localTm.tm_year + BASE_YEAR + years;
+    int month = localTm.tm_mon;
+    int day = localTm.tm_mday;
+
+    int daysInMonth = GetDaysInMonth(year, month);
     if (day > daysInMonth) {
         day = daysInMonth;
     }
-    
-    tm->tm_year = year - 1900;
-    tm->tm_mon = month - 1;
-    tm->tm_mday = day;
-    
-    return fromTimeT(std::mktime(tm));
+
+    localTm.tm_year = year - BASE_YEAR;
+    localTm.tm_mday = day;
+
+    return FromTimeT(std::mktime(&localTm));
 }
 
-// 添加年份
-TimePoint addYears(const TimePoint& tp, int years) {
-    std::time_t tt = toTimeT(tp);
+int GetDayOfWeek(const TimePoint& tp)
+{
+    std::time_t tt = ToTimeT(tp);
+    std::tm localTm = {};
     std::tm* tm = std::localtime(&tt);
-    
-    int year = tm->tm_year + 1900 + years;
-    int month = tm->tm_mon;
-    int day = tm->tm_mday;
-    
-    int daysInMonth = getDaysInMonth(year, month);
-    if (day > daysInMonth) {
-        day = daysInMonth;
+    if (tm != nullptr) {
+        localTm = *tm;
     }
-    
-    tm->tm_year = year - 1900;
-    tm->tm_mday = day;
-    
-    return fromTimeT(std::mktime(tm));
+    return localTm.tm_wday;
 }
 
-// 获取星期几
-int getDayOfWeek(const TimePoint& tp) {
-    std::time_t tt = toTimeT(tp);
+int GetQuarter(const TimePoint& tp)
+{
+    std::time_t tt = ToTimeT(tp);
+    std::tm localTm = {};
     std::tm* tm = std::localtime(&tt);
-    return tm->tm_wday;
+    if (tm != nullptr) {
+        localTm = *tm;
+    }
+    return (localTm.tm_mon / QUARTER_DIVISOR) + 1;
 }
 
-// 获取季度
-int getQuarter(const TimePoint& tp) {
-    std::time_t tt = toTimeT(tp);
+int GetWeekOfYear(const TimePoint& tp)
+{
+    std::time_t tt = ToTimeT(tp);
+    std::tm localTm = {};
     std::tm* tm = std::localtime(&tt);
-    return (tm->tm_mon / 3) + 1;
+    if (tm != nullptr) {
+        localTm = *tm;
+    }
+    return localTm.tm_yday / DAYS_PER_WEEK + 1;
 }
 
-// 获取年份的第几周
-int getWeekOfYear(const TimePoint& tp) {
-    std::time_t tt = toTimeT(tp);
-    std::tm* tm = std::localtime(&tt);
-    return tm->tm_yday / 7 + 1;
-}
-
-// 检查是否是同一天
-bool isSameDay(const TimePoint& tp1, const TimePoint& tp2) {
-    std::time_t tt1 = toTimeT(tp1);
-    std::time_t tt2 = toTimeT(tp2);
+bool IsSameDay(const TimePoint& tp1, const TimePoint& tp2)
+{
+    std::time_t tt1 = ToTimeT(tp1);
+    std::time_t tt2 = ToTimeT(tp2);
+    std::tm localTm1 = {};
+    std::tm localTm2 = {};
     std::tm* tm1 = std::localtime(&tt1);
     std::tm* tm2 = std::localtime(&tt2);
-    
-    return tm1->tm_year == tm2->tm_year && 
-           tm1->tm_mon == tm2->tm_mon && 
-           tm1->tm_mday == tm2->tm_mday;
+    if (tm1 != nullptr) {
+        localTm1 = *tm1;
+    }
+    if (tm2 != nullptr) {
+        localTm2 = *tm2;
+    }
+
+    return localTm1.tm_year == localTm2.tm_year &&
+           localTm1.tm_mon == localTm2.tm_mon &&
+           localTm1.tm_mday == localTm2.tm_mday;
 }
 
-// 检查是否在指定范围内
-bool isInRange(const TimePoint& tp, const TimePoint& start, const TimePoint& end) {
+bool IsInRange(const TimePoint& tp, const TimePoint& start, const TimePoint& end)
+{
     return tp >= start && tp <= end;
 }
 
-// 获取相对时间描述
-std::string getRelativeTime(const TimePoint& tp) {
-    auto nowTp = now();
+std::string GetRelativeTime(const TimePoint& tp)
+{
+    TimePoint nowTp = Now();
     auto duration = nowTp - tp;
-    
+
     double seconds = std::chrono::duration<double>(duration).count();
-    if (seconds < 60) {
-        return "刚刚";
+    if (seconds < SECONDS_PER_MINUTE) {
+        return "just now";
     }
-    
-    double minutes = seconds / 60;
-    if (minutes < 60) {
-        return std::to_string(static_cast<int>(minutes)) + "分钟前";
+
+    double minutes = seconds / SECONDS_PER_MINUTE;
+    if (minutes < SECONDS_PER_HOUR / SECONDS_PER_MINUTE) {
+        return std::to_string(static_cast<int>(minutes)) + " minutes ago";
     }
-    
-    double hours = minutes / 60;
-    if (hours < 24) {
-        return std::to_string(static_cast<int>(hours)) + "小时前";
+
+    double hours = minutes / SECONDS_PER_MINUTE;
+    if (hours < HOURS_PER_DAY) {
+        return std::to_string(static_cast<int>(hours)) + " hours ago";
     }
-    
-    double days = hours / 24;
+
+    double days = hours / HOURS_PER_DAY;
     if (days < 30) {
-        return std::to_string(static_cast<int>(days)) + "天前";
+        return std::to_string(static_cast<int>(days)) + " days ago";
     }
-    
+
     double months = days / 30;
-    if (months < 12) {
-        return std::to_string(static_cast<int>(months)) + "个月前";
+    if (months < MONTHS_PER_YEAR) {
+        return std::to_string(static_cast<int>(months)) + " months ago";
     }
-    
-    double years = months / 12;
-    return std::to_string(static_cast<int>(years)) + "年前";
+
+    double years = months / MONTHS_PER_YEAR;
+    return std::to_string(static_cast<int>(years)) + " years ago";
 }
 
-// 时区转换
-TimePoint convertTimezone(const TimePoint& tp, const std::string& fromTz, const std::string& toTz) {
-    int fromOffset = timezoneOffsets.count(fromTz) ? timezoneOffsets[fromTz] : 0;
-    int toOffset = timezoneOffsets.count(toTz) ? timezoneOffsets[toTz] : 0;
-    int offsetDiff = (toOffset - fromOffset) * 3600; // 转换为秒
-    
+TimePoint ConvertTimezone(const TimePoint& tp, const std::string& fromTz, const std::string& toTz)
+{
+    int fromOffset = 0;
+    int toOffset = 0;
+    auto fromIt = TIMEZONE_OFFSETS.find(fromTz);
+    if (fromIt != TIMEZONE_OFFSETS.end()) {
+        fromOffset = fromIt->second;
+    }
+    auto toIt = TIMEZONE_OFFSETS.find(toTz);
+    if (toIt != TIMEZONE_OFFSETS.end()) {
+        toOffset = toIt->second;
+    }
+    int offsetDiff = (toOffset - fromOffset) * SECONDS_PER_HOUR;
+
     return tp + std::chrono::seconds(offsetDiff);
 }
 
-// 获取ISO字符串
-std::string toISOString(const TimePoint& tp) {
-    std::time_t tt = toTimeT(tp);
+std::string ToISOString(const TimePoint& tp)
+{
+    std::time_t tt = ToTimeT(tp);
+    std::tm utcTm = {};
     std::tm* tm = std::gmtime(&tt);
+    if (tm != nullptr) {
+        utcTm = *tm;
+    }
     std::stringstream ss;
-    ss << std::setw(4) << std::setfill('0') << (tm->tm_year + 1900) << '-' 
-       << std::setw(2) << std::setfill('0') << (tm->tm_mon + 1) << '-' 
-       << std::setw(2) << std::setfill('0') << tm->tm_mday << 'T' 
-       << std::setw(2) << std::setfill('0') << tm->tm_hour << ':' 
-       << std::setw(2) << std::setfill('0') << tm->tm_min << ':' 
-       << std::setw(2) << std::setfill('0') << tm->tm_sec << 'Z';
+    ss << std::setw(4) << std::setfill('0') << (utcTm.tm_year + BASE_YEAR) << '-'
+       << std::setw(2) << std::setfill('0') << (utcTm.tm_mon + 1) << '-'
+       << std::setw(2) << std::setfill('0') << utcTm.tm_mday << 'T'
+       << std::setw(2) << std::setfill('0') << utcTm.tm_hour << ':'
+       << std::setw(2) << std::setfill('0') << utcTm.tm_min << ':'
+       << std::setw(2) << std::setfill('0') << utcTm.tm_sec << 'Z';
     return ss.str();
 }
 
-// 从ISO字符串解析
-TimePoint fromISOString(const std::string& isoStr) {
+TimePoint FromISOString(const std::string& isoStr)
+{
     std::tm tm = {};
     std::istringstream ss(isoStr);
     ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
-    return fromTimeT(std::mktime(&tm));
+    return FromTimeT(std::mktime(&tm));
 }
 
-// 计算年龄
-int calculateAge(const TimePoint& birthDate) {
-    auto nowTp = now();
-    std::time_t tt1 = toTimeT(birthDate);
-    std::time_t tt2 = toTimeT(nowTp);
+int CalculateAge(const TimePoint& birthDate)
+{
+    TimePoint nowTp = Now();
+    std::time_t tt1 = ToTimeT(birthDate);
+    std::time_t tt2 = ToTimeT(nowTp);
+    std::tm localTm1 = {};
+    std::tm localTm2 = {};
     std::tm* tm1 = std::localtime(&tt1);
     std::tm* tm2 = std::localtime(&tt2);
-    
-    int age = tm2->tm_year - tm1->tm_year;
-    if (tm2->tm_mon < tm1->tm_mon || 
-        (tm2->tm_mon == tm1->tm_mon && tm2->tm_mday < tm1->tm_mday)) {
+    if (tm1 != nullptr) {
+        localTm1 = *tm1;
+    }
+    if (tm2 != nullptr) {
+        localTm2 = *tm2;
+    }
+
+    int age = localTm2.tm_year - localTm1.tm_year;
+    if (localTm2.tm_mon < localTm1.tm_mon ||
+        (localTm2.tm_mon == localTm1.tm_mon && localTm2.tm_mday < localTm1.tm_mday)) {
         age--;
     }
     return age;
 }
 
-// 检查是否是工作日
-bool isWeekday(const TimePoint& tp) {
-    int day = getDayOfWeek(tp);
+bool IsWeekday(const TimePoint& tp)
+{
+    int day = GetDayOfWeek(tp);
     return day != 0 && day != 6;
 }
 
-// 检查是否是周末
-bool isWeekend(const TimePoint& tp) {
-    int day = getDayOfWeek(tp);
+bool IsWeekend(const TimePoint& tp)
+{
+    int day = GetDayOfWeek(tp);
     return day == 0 || day == 6;
 }
 
-} // namespace
+}
 
-// 获取当前时间戳
-static napi_value GetCurrentTimestamp(napi_env env, napi_callback_info info) {
-    auto tp = now();
+static napi_value GetCurrentTimestamp(napi_env env, napi_callback_info info)
+{
+    auto tp = Now();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
-    
+
     napi_value result;
-    napi_create_double(env, timestamp, &result);
+    napi_status status = napi_create_double(env, static_cast<double>(timestamp), &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+        return nullptr;
+    }
     return result;
 }
 
-// 格式化日期
-static napi_value FormatDate(napi_env env, napi_callback_info info) {
+static napi_value FormatDate(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp and format string");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    size_t formatLength;
-    napi_get_value_string_utf8(env, args[1], nullptr, 0, &formatLength);
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    size_t formatLength = 0;
+    status = napi_get_value_string_utf8(env, args[1], nullptr, 0, &formatLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* formatBuffer = new char[formatLength + 1];
-    napi_get_value_string_utf8(env, args[1], formatBuffer, formatLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[1], formatBuffer, formatLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] formatBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string format(formatBuffer);
     delete[] formatBuffer;
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    std::string result = formatDateTime(tp, format);
-    
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    std::string result = FormatDateTime(tp, format);
+
     napi_value resultValue;
-    napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    status = napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 解析日期字符串
-static napi_value ParseDate(napi_env env, napi_callback_info info) {
+static napi_value ParseDate(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected date string and format string");
         return nullptr;
     }
-    
-    size_t dateLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &dateLength);
+
+    size_t dateLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &dateLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* dateBuffer = new char[dateLength + 1];
-    napi_get_value_string_utf8(env, args[0], dateBuffer, dateLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], dateBuffer, dateLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] dateBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string dateStr(dateBuffer);
     delete[] dateBuffer;
-    
-    size_t formatLength;
-    napi_get_value_string_utf8(env, args[1], nullptr, 0, &formatLength);
+
+    size_t formatLength = 0;
+    status = napi_get_value_string_utf8(env, args[1], nullptr, 0, &formatLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* formatBuffer = new char[formatLength + 1];
-    napi_get_value_string_utf8(env, args[1], formatBuffer, formatLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[1], formatBuffer, formatLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] formatBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string format(formatBuffer);
     delete[] formatBuffer;
-    
-    TimePoint tp = parseDateTime(dateStr, format);
+
+    TimePoint tp = ParseDateTime(dateStr, format);
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
-    
+
     napi_value result;
-    napi_create_double(env, timestamp, &result);
+    status = napi_create_double(env, static_cast<double>(timestamp), &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+        return nullptr;
+    }
     return result;
 }
 
-// 计算日期差值
-static napi_value DateDiff(napi_env env, napi_callback_info info) {
+static napi_value DateDiff(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected two timestamps");
         return nullptr;
     }
-    
-    double timestamp1, timestamp2;
-    napi_get_value_double(env, args[0], &timestamp1);
-    napi_get_value_double(env, args[1], &timestamp2);
-    
-    TimePoint tp1 = fromTimeT(static_cast<std::time_t>(timestamp1 / 1000));
-    TimePoint tp2 = fromTimeT(static_cast<std::time_t>(timestamp2 / 1000));
-    double diff = dateDiffDays(tp1, tp2);
-    
+
+    double timestamp1 = 0.0;
+    double timestamp2 = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp1);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+    status = napi_get_value_double(env, args[1], &timestamp2);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp1 = FromTimeT(static_cast<std::time_t>(timestamp1 / 1000));
+    TimePoint tp2 = FromTimeT(static_cast<std::time_t>(timestamp2 / 1000));
+    double diff = DateDiffDays(tp1, tp2);
+
     napi_value result;
-    napi_create_double(env, diff, &result);
+    status = napi_create_double(env, diff, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+        return nullptr;
+    }
     return result;
 }
 
-// 添加天数
-static napi_value AddDays(napi_env env, napi_callback_info info) {
+static napi_value AddDays(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp and days");
         return nullptr;
     }
-    
-    double timestamp;
-    int days;
-    napi_get_value_double(env, args[0], &timestamp);
-    napi_get_value_int32(env, args[1], &days);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    TimePoint newTp = addDays(tp, days);
+
+    double timestamp = 0.0;
+    int days = 0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+    status = napi_get_value_int32(env, args[1], &days);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get int32 value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    TimePoint newTp = AddDays(tp, days);
     auto newTimestamp = std::chrono::duration_cast<std::chrono::milliseconds>(newTp.time_since_epoch()).count();
-    
+
     napi_value result;
-    napi_create_double(env, newTimestamp, &result);
+    status = napi_create_double(env, static_cast<double>(newTimestamp), &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+        return nullptr;
+    }
     return result;
 }
 
-// 添加月份
-static napi_value AddMonths(napi_env env, napi_callback_info info) {
+static napi_value AddMonths(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp and months");
         return nullptr;
     }
-    
-    double timestamp;
-    int months;
-    napi_get_value_double(env, args[0], &timestamp);
-    napi_get_value_int32(env, args[1], &months);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    TimePoint newTp = addMonths(tp, months);
+
+    double timestamp = 0.0;
+    int months = 0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+    status = napi_get_value_int32(env, args[1], &months);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get int32 value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    TimePoint newTp = AddMonths(tp, months);
     auto newTimestamp = std::chrono::duration_cast<std::chrono::milliseconds>(newTp.time_since_epoch()).count();
-    
+
     napi_value result;
-    napi_create_double(env, newTimestamp, &result);
+    status = napi_create_double(env, static_cast<double>(newTimestamp), &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+        return nullptr;
+    }
     return result;
 }
 
-// 添加年份
-static napi_value AddYears(napi_env env, napi_callback_info info) {
+static napi_value AddYears(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp and years");
         return nullptr;
     }
-    
-    double timestamp;
-    int years;
-    napi_get_value_double(env, args[0], &timestamp);
-    napi_get_value_int32(env, args[1], &years);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    TimePoint newTp = addYears(tp, years);
+
+    double timestamp = 0.0;
+    int years = 0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+    status = napi_get_value_int32(env, args[1], &years);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get int32 value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    TimePoint newTp = AddYears(tp, years);
     auto newTimestamp = std::chrono::duration_cast<std::chrono::milliseconds>(newTp.time_since_epoch()).count();
-    
+
     napi_value result;
-    napi_create_double(env, newTimestamp, &result);
+    status = napi_create_double(env, static_cast<double>(newTimestamp), &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+        return nullptr;
+    }
     return result;
 }
 
-// 检查是否为闰年
-static napi_value IsLeapYear(napi_env env, napi_callback_info info) {
+static napi_value IsLeapYear(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected year");
         return nullptr;
     }
-    
-    int year;
-    napi_get_value_int32(env, args[0], &year);
-    
-    bool result = isLeapYear(year);
+
+    int year = 0;
+    status = napi_get_value_int32(env, args[0], &year);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get int32 value");
+        return nullptr;
+    }
+
+    bool result = IsLeapYear(year);
     napi_value resultValue;
-    napi_create_boolean(env, result, &resultValue);
+    status = napi_create_boolean(env, result, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create boolean");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 获取月份天数
-static napi_value GetDaysInMonth(napi_env env, napi_callback_info info) {
+static napi_value GetDaysInMonth(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected year and month");
         return nullptr;
     }
-    
-    int year, month;
-    napi_get_value_int32(env, args[0], &year);
-    napi_get_value_int32(env, args[1], &month);
-    
-    int days = getDaysInMonth(year, month - 1); // 月份从0开始
+
+    int year = 0;
+    int month = 0;
+    status = napi_get_value_int32(env, args[0], &year);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get int32 value");
+        return nullptr;
+    }
+    status = napi_get_value_int32(env, args[1], &month);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get int32 value");
+        return nullptr;
+    }
+
+    int days = GetDaysInMonth(year, month - 1);
     napi_value result;
-    napi_create_int32(env, days, &result);
+    status = napi_create_int32(env, days, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
     return result;
 }
 
-// 获取星期几
-static napi_value GetDayOfWeek(napi_env env, napi_callback_info info) {
+static napi_value GetDayOfWeek(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    int day = getDayOfWeek(tp);
-    
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    int day = GetDayOfWeek(tp);
+
     napi_value result;
-    napi_create_int32(env, day, &result);
+    status = napi_create_int32(env, day, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
     return result;
 }
 
-// 获取季度
-static napi_value GetQuarter(napi_env env, napi_callback_info info) {
+static napi_value GetQuarter(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    int quarter = getQuarter(tp);
-    
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    int quarter = GetQuarter(tp);
+
     napi_value result;
-    napi_create_int32(env, quarter, &result);
+    status = napi_create_int32(env, quarter, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
     return result;
 }
 
-// 获取年份的第几周
-static napi_value GetWeekOfYear(napi_env env, napi_callback_info info) {
+static napi_value GetWeekOfYear(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    int week = getWeekOfYear(tp);
-    
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    int week = GetWeekOfYear(tp);
+
     napi_value result;
-    napi_create_int32(env, week, &result);
+    status = napi_create_int32(env, week, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
     return result;
 }
 
-// 检查是否是同一天
-static napi_value IsSameDay(napi_env env, napi_callback_info info) {
+static napi_value IsSameDay(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected two timestamps");
         return nullptr;
     }
-    
-    double timestamp1, timestamp2;
-    napi_get_value_double(env, args[0], &timestamp1);
-    napi_get_value_double(env, args[1], &timestamp2);
-    
-    TimePoint tp1 = fromTimeT(static_cast<std::time_t>(timestamp1 / 1000));
-    TimePoint tp2 = fromTimeT(static_cast<std::time_t>(timestamp2 / 1000));
-    bool result = isSameDay(tp1, tp2);
-    
+
+    double timestamp1 = 0.0;
+    double timestamp2 = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp1);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+    status = napi_get_value_double(env, args[1], &timestamp2);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp1 = FromTimeT(static_cast<std::time_t>(timestamp1 / 1000));
+    TimePoint tp2 = FromTimeT(static_cast<std::time_t>(timestamp2 / 1000));
+    bool result = IsSameDay(tp1, tp2);
+
     napi_value resultValue;
-    napi_create_boolean(env, result, &resultValue);
+    status = napi_create_boolean(env, result, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create boolean");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 检查是否在指定范围内
-static napi_value IsInRange(napi_env env, napi_callback_info info) {
+static napi_value IsInRange(napi_env env, napi_callback_info info)
+{
     size_t argc = 3;
     napi_value args[3];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 3) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp, start and end");
         return nullptr;
     }
-    
-    double timestamp, start, end;
-    napi_get_value_double(env, args[0], &timestamp);
-    napi_get_value_double(env, args[1], &start);
-    napi_get_value_double(env, args[2], &end);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    TimePoint startTp = fromTimeT(static_cast<std::time_t>(start / 1000));
-    TimePoint endTp = fromTimeT(static_cast<std::time_t>(end / 1000));
-    bool result = isInRange(tp, startTp, endTp);
-    
+
+    double timestamp = 0.0;
+    double start = 0.0;
+    double end = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+    status = napi_get_value_double(env, args[1], &start);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+    status = napi_get_value_double(env, args[2], &end);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    TimePoint startTp = FromTimeT(static_cast<std::time_t>(start / 1000));
+    TimePoint endTp = FromTimeT(static_cast<std::time_t>(end / 1000));
+    bool result = IsInRange(tp, startTp, endTp);
+
     napi_value resultValue;
-    napi_create_boolean(env, result, &resultValue);
+    status = napi_create_boolean(env, result, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create boolean");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 获取相对时间描述
-static napi_value GetRelativeTime(napi_env env, napi_callback_info info) {
+static napi_value GetRelativeTime(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    std::string result = getRelativeTime(tp);
-    
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    std::string result = GetRelativeTime(tp);
+
     napi_value resultValue;
-    napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    status = napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 时区转换
-static napi_value ConvertTimezone(napi_env env, napi_callback_info info) {
+static napi_value ConvertTimezone(napi_env env, napi_callback_info info)
+{
     size_t argc = 3;
     napi_value args[3];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 3) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp, from timezone and to timezone");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    size_t fromTzLength;
-    napi_get_value_string_utf8(env, args[1], nullptr, 0, &fromTzLength);
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    size_t fromTzLength = 0;
+    status = napi_get_value_string_utf8(env, args[1], nullptr, 0, &fromTzLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* fromTzBuffer = new char[fromTzLength + 1];
-    napi_get_value_string_utf8(env, args[1], fromTzBuffer, fromTzLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[1], fromTzBuffer, fromTzLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] fromTzBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string fromTz(fromTzBuffer);
     delete[] fromTzBuffer;
-    
-    size_t toTzLength;
-    napi_get_value_string_utf8(env, args[2], nullptr, 0, &toTzLength);
+
+    size_t toTzLength = 0;
+    status = napi_get_value_string_utf8(env, args[2], nullptr, 0, &toTzLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* toTzBuffer = new char[toTzLength + 1];
-    napi_get_value_string_utf8(env, args[2], toTzBuffer, toTzLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[2], toTzBuffer, toTzLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] toTzBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string toTz(toTzBuffer);
     delete[] toTzBuffer;
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    TimePoint newTp = convertTimezone(tp, fromTz, toTz);
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    TimePoint newTp = ConvertTimezone(tp, fromTz, toTz);
     auto newTimestamp = std::chrono::duration_cast<std::chrono::milliseconds>(newTp.time_since_epoch()).count();
-    
+
     napi_value result;
-    napi_create_double(env, newTimestamp, &result);
+    status = napi_create_double(env, static_cast<double>(newTimestamp), &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+        return nullptr;
+    }
     return result;
 }
 
-// 获取时间戳的各个部分
-static napi_value GetDateParts(napi_env env, napi_callback_info info) {
+static napi_value GetDateParts(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    std::time_t tt = toTimeT(tp);
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    std::time_t tt = ToTimeT(tp);
+    std::tm localTm = {};
     std::tm* tm = std::localtime(&tt);
-    
+    if (tm != nullptr) {
+        localTm = *tm;
+    }
+
     napi_value result;
-    napi_create_object(env, &result);
-    
-    napi_value year, month, day, hour, minute, second, weekday;
-    napi_create_int32(env, tm->tm_year + 1900, &year);
-    napi_create_int32(env, tm->tm_mon + 1, &month);
-    napi_create_int32(env, tm->tm_mday, &day);
-    napi_create_int32(env, tm->tm_hour, &hour);
-    napi_create_int32(env, tm->tm_min, &minute);
-    napi_create_int32(env, tm->tm_sec, &second);
-    napi_create_int32(env, tm->tm_wday, &weekday);
-    
-    napi_set_named_property(env, result, "year", year);
-    napi_set_named_property(env, result, "month", month);
-    napi_set_named_property(env, result, "day", day);
-    napi_set_named_property(env, result, "hour", hour);
-    napi_set_named_property(env, result, "minute", minute);
-    napi_set_named_property(env, result, "second", second);
-    napi_set_named_property(env, result, "weekday", weekday);
-    
+    status = napi_create_object(env, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create object");
+        return nullptr;
+    }
+
+    napi_value year;
+    napi_value month;
+    napi_value day;
+    napi_value hour;
+    napi_value minute;
+    napi_value second;
+    napi_value weekday;
+    status = napi_create_int32(env, localTm.tm_year + BASE_YEAR, &year);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_create_int32(env, localTm.tm_mon + 1, &month);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_create_int32(env, localTm.tm_mday, &day);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_create_int32(env, localTm.tm_hour, &hour);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_create_int32(env, localTm.tm_min, &minute);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_create_int32(env, localTm.tm_sec, &second);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+    status = napi_create_int32(env, localTm.tm_wday, &weekday);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
+
+    status = napi_set_named_property(env, result, "year", year);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "month", month);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "day", day);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "hour", hour);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "minute", minute);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "second", second);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
+    status = napi_set_named_property(env, result, "weekday", weekday);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+        return nullptr;
+    }
+
     return result;
 }
 
-// 格式化时间为ISO字符串
-static napi_value ToISOString(napi_env env, napi_callback_info info) {
+static napi_value ToISOString(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    std::string result = toISOString(tp);
-    
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    std::string result = ToISOString(tp);
+
     napi_value resultValue;
-    napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    status = napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 从ISO字符串解析
-static napi_value FromISOString(napi_env env, napi_callback_info info) {
+static napi_value FromISOString(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected ISO string");
         return nullptr;
     }
-    
-    size_t isoLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &isoLength);
+
+    size_t isoLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &isoLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* isoBuffer = new char[isoLength + 1];
-    napi_get_value_string_utf8(env, args[0], isoBuffer, isoLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], isoBuffer, isoLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] isoBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string isoStr(isoBuffer);
     delete[] isoBuffer;
-    
-    TimePoint tp = fromISOString(isoStr);
+
+    TimePoint tp = FromISOString(isoStr);
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
-    
+
     napi_value result;
-    napi_create_double(env, timestamp, &result);
+    status = napi_create_double(env, static_cast<double>(timestamp), &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+        return nullptr;
+    }
     return result;
 }
 
-// 获取当前日期
-static napi_value GetCurrentDate(napi_env env, napi_callback_info info) {
-    auto tp = now();
-    std::string result = formatDateTime(tp, "%Y-%m-%d");
-    
+static napi_value GetCurrentDate(napi_env env, napi_callback_info info)
+{
+    TimePoint tp = Now();
+    std::string result = FormatDateTime(tp, "%Y-%m-%d");
+
     napi_value resultValue;
-    napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    napi_status status = napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 获取当前时间
-static napi_value GetCurrentTime(napi_env env, napi_callback_info info) {
-    auto tp = now();
-    std::string result = formatDateTime(tp, "%H:%M:%S");
-    
+static napi_value GetCurrentTime(napi_env env, napi_callback_info info)
+{
+    TimePoint tp = Now();
+    std::string result = FormatDateTime(tp, "%H:%M:%S");
+
     napi_value resultValue;
-    napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    napi_status status = napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 获取当前日期时间
-static napi_value GetCurrentDateTime(napi_env env, napi_callback_info info) {
-    auto tp = now();
-    std::string result = formatDateTime(tp, "%Y-%m-%d %H:%M:%S");
-    
+static napi_value GetCurrentDateTime(napi_env env, napi_callback_info info)
+{
+    TimePoint tp = Now();
+    std::string result = FormatDateTime(tp, "%Y-%m-%d %H:%M:%S");
+
     napi_value resultValue;
-    napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    napi_status status = napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 计算年龄
-static napi_value CalculateAge(napi_env env, napi_callback_info info) {
+static napi_value CalculateAge(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected birth timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    int age = calculateAge(tp);
-    
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    int age = CalculateAge(tp);
+
     napi_value result;
-    napi_create_int32(env, age, &result);
+    status = napi_create_int32(env, age, &result);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create int32");
+        return nullptr;
+    }
     return result;
 }
 
-// 检查是否是工作日
-static napi_value IsWeekday(napi_env env, napi_callback_info info) {
+static napi_value IsWeekday(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    bool result = isWeekday(tp);
-    
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    bool result = IsWeekday(tp);
+
     napi_value resultValue;
-    napi_create_boolean(env, result, &resultValue);
+    status = napi_create_boolean(env, result, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create boolean");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 检查是否是周末
-static napi_value IsWeekend(napi_env env, napi_callback_info info) {
+static napi_value IsWeekend(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected timestamp");
         return nullptr;
     }
-    
-    double timestamp;
-    napi_get_value_double(env, args[0], &timestamp);
-    
-    TimePoint tp = fromTimeT(static_cast<std::time_t>(timestamp / 1000));
-    bool result = isWeekend(tp);
-    
+
+    double timestamp = 0.0;
+    status = napi_get_value_double(env, args[0], &timestamp);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get double value");
+        return nullptr;
+    }
+
+    TimePoint tp = FromTimeT(static_cast<std::time_t>(timestamp / 1000));
+    bool result = IsWeekend(tp);
+
     napi_value resultValue;
-    napi_create_boolean(env, result, &resultValue);
+    status = napi_create_boolean(env, result, &resultValue);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to create boolean");
+        return nullptr;
+    }
     return resultValue;
 }
 
-// 模块初始化
-static napi_value Init(napi_env env, napi_value exports) {
+static napi_value Init(napi_env env, napi_value exports)
+{
     napi_property_descriptor descriptors[] = {
         {"getCurrentTimestamp", nullptr, GetCurrentTimestamp, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"formatDate", nullptr, FormatDate, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -937,8 +1455,12 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"isWeekday", nullptr, IsWeekday, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"isWeekend", nullptr, IsWeekend, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
-    
-    napi_define_properties(env, exports, sizeof(descriptors) / sizeof(descriptors[0]), descriptors);
+
+    napi_status status = napi_define_properties(env, exports, sizeof(descriptors) / sizeof(descriptors[0]), descriptors);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to define properties");
+        return nullptr;
+    }
     return exports;
 }
 

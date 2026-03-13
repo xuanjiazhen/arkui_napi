@@ -24,8 +24,8 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
-extern const char _binary_complex_js_start[];
-extern const char _binary_complex_js_end[];
+extern const char BINARY_COMPLEX_JS_START[];
+extern const char BINARY_COMPLEX_JS_END[];
 
 /*
  * String utilities - Advanced
@@ -634,6 +634,38 @@ static napi_value GetDateComponents(napi_env env, napi_callback_info info)
     napi_value result;
     NAPI_CALL(env, napi_create_object(env, &result));
 
+    if (localTime == nullptr) {
+        napi_value year;
+        NAPI_CALL(env, napi_create_number(env, 0, &year));
+        NAPI_CALL(env, napi_set_named_property(env, result, "year", year));
+
+        napi_value month;
+        NAPI_CALL(env, napi_create_number(env, 0, &month));
+        NAPI_CALL(env, napi_set_named_property(env, result, "month", month));
+
+        napi_value day;
+        NAPI_CALL(env, napi_create_number(env, 0, &day));
+        NAPI_CALL(env, napi_set_named_property(env, result, "day", day));
+
+        napi_value hour;
+        NAPI_CALL(env, napi_create_number(env, 0, &hour));
+        NAPI_CALL(env, napi_set_named_property(env, result, "hour", hour));
+
+        napi_value minute;
+        NAPI_CALL(env, napi_create_number(env, 0, &minute));
+        NAPI_CALL(env, napi_set_named_property(env, result, "minute", minute));
+
+        napi_value second;
+        NAPI_CALL(env, napi_create_number(env, 0, &second));
+        NAPI_CALL(env, napi_set_named_property(env, result, "second", second));
+
+        napi_value weekday;
+        NAPI_CALL(env, napi_create_number(env, 0, &weekday));
+        NAPI_CALL(env, napi_set_named_property(env, result, "weekday", weekday));
+
+        return result;
+    }
+
     // Set date components
     napi_value year;
     NAPI_CALL(env, napi_create_number(env, localTime->tm_year + 1900, &year));
@@ -689,7 +721,11 @@ static napi_value FormatDate(napi_env env, napi_callback_info info)
     struct tm* localTime = localtime(&now);
 
     char buffer[256];
-    strftime(buffer, sizeof(buffer), format, localTime);
+    if (localTime != nullptr) {
+        strftime(buffer, sizeof(buffer), format, localTime);
+    } else {
+        snprintf(buffer, sizeof(buffer), "Invalid");
+    }
 
     napi_value result;
     NAPI_CALL(env, napi_create_string_utf8(env, buffer, NAPI_AUTO_LENGTH, &result));
@@ -912,11 +948,11 @@ static napi_value Init(napi_env env, napi_value exports)
 extern "C" __attribute__((visibility("default"))) void NAPI_complex_GetJSCode(const char** buf, int* bufLen)
 {
     if (buf != nullptr) {
-        *buf = _binary_complex_js_start;
+        *buf = BINARY_COMPLEX_JS_START;
     }
 
     if (bufLen != nullptr) {
-        *bufLen = _binary_complex_js_end - _binary_complex_js_start;
+        *bufLen = BINARY_COMPLEX_JS_END - BINARY_COMPLEX_JS_START;
     }
 }
 

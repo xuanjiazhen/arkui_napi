@@ -28,145 +28,161 @@ namespace fs = std::filesystem;
 
 namespace {
 
-// 读取文件
-std::string read_file(const std::string& path) {
+constexpr int DIR_PERMISSIONS = 0755;
+constexpr int TEMP_FILE_SIZE = 16;
+constexpr int TEMP_DIR_SIZE = 16;
+constexpr char TEMP_FILE_TEMPLATE[] = "/tmp/temp_XXXXXX";
+constexpr char TEMP_DIR_TEMPLATE[] = "/tmp/temp_XXXXXX";
+constexpr int CURRENT_DIR_INDICATOR = 0;
+constexpr int PARENT_DIR_INDICATOR = 1;
+constexpr int DEFAULT_BUFFER_SIZE = 256;
+
+std::string ReadFile(const std::string& path)
+{
     std::ifstream file(path, std::ios::binary);
     if (!file) {
         throw std::runtime_error("Failed to open file");
     }
-    
+
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     return content;
 }
 
-// 写入文件
-void write_file(const std::string& path, const std::string& content) {
+void WriteFile(const std::string& path, const std::string& content)
+{
     std::ofstream file(path, std::ios::binary);
     if (!file) {
         throw std::runtime_error("Failed to open file for writing");
     }
-    
+
     file.write(content.c_str(), content.size());
     if (!file) {
         throw std::runtime_error("Failed to write to file");
     }
 }
 
-// 追加文件
-void append_file(const std::string& path, const std::string& content) {
+void AppendFile(const std::string& path, const std::string& content)
+{
     std::ofstream file(path, std::ios::binary | std::ios::app);
     if (!file) {
         throw std::runtime_error("Failed to open file for appending");
     }
-    
+
     file.write(content.c_str(), content.size());
     if (!file) {
         throw std::runtime_error("Failed to append to file");
     }
 }
 
-// 删除文件
-void delete_file(const std::string& path) {
+void DeleteFile(const std::string& path)
+{
     if (std::remove(path.c_str()) != 0) {
         throw std::runtime_error("Failed to delete file");
     }
 }
 
-// 复制文件
-void copy_file(const std::string& src, const std::string& dest) {
-    std::ifstream src_file(src, std::ios::binary);
-    if (!src_file) {
+void CopyFile(const std::string& src, const std::string& dest)
+{
+    std::ifstream srcFile(src, std::ios::binary);
+    if (!srcFile) {
         throw std::runtime_error("Failed to open source file");
     }
-    
-    std::ofstream dest_file(dest, std::ios::binary);
-    if (!dest_file) {
+
+    std::ofstream destFile(dest, std::ios::binary);
+    if (!destFile) {
         throw std::runtime_error("Failed to open destination file");
     }
-    
-    dest_file << src_file.rdbuf();
-    if (!dest_file) {
+
+    destFile << srcFile.rdbuf();
+    if (!destFile) {
         throw std::runtime_error("Failed to copy file");
     }
 }
 
-// 移动文件
-void move_file(const std::string& src, const std::string& dest) {
+void MoveFile(const std::string& src, const std::string& dest)
+{
     if (std::rename(src.c_str(), dest.c_str()) != 0) {
-        // 如果重命名失败，尝试复制后删除
-        copy_file(src, dest);
-        delete_file(src);
+        CopyFile(src, dest);
+        DeleteFile(src);
     }
 }
 
-// 重命名文件
-void rename_file(const std::string& old_path, const std::string& new_path) {
-    if (std::rename(old_path.c_str(), new_path.c_str()) != 0) {
+void RenameFile(const std::string& oldPath, const std::string& newPath)
+{
+    if (std::rename(oldPath.c_str(), newPath.c_str()) != 0) {
         throw std::runtime_error("Failed to rename file");
     }
 }
 
-// 创建目录
-void create_directory(const std::string& path) {
-    if (mkdir(path.c_str(), 0755) != 0) {
+void CreateDirectory(const std::string& path)
+{
+    if (mkdir(path.c_str(), DIR_PERMISSIONS) != 0) {
         throw std::runtime_error("Failed to create directory");
     }
 }
 
-// 删除目录
-void delete_directory(const std::string& path) {
+void DeleteDirectory(const std::string& path)
+{
     DIR* dir = opendir(path.c_str());
     if (!dir) {
         throw std::runtime_error("Failed to open directory");
     }
-    
+
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (strcmp(entry->d_name, ".") == CURRENT_DIR_INDICATOR ||
+            strcmp(entry->d_name, "..") == PARENT_DIR_INDICATOR) {
             continue;
         }
-        
-        std::string entry_path = path + "/" + entry->d_name;
+
+        std::string entryPath = path + "/" + entry->d_name;
         if (entry->d_type == DT_DIR) {
-            delete_directory(entry_path);
+            DeleteDirectory(entryPath);
         } else {
-            delete_file(entry_path);
+            DeleteFile(entryPath);
         }
     }
-    
-    closedir(dir);
+
+    int closeResult = closedir(dir);
+    if (closeResult != 0) {
+    }
+
     if (rmdir(path.c_str()) != 0) {
         throw std::runtime_error("Failed to remove directory");
     }
 }
 
-// 列出目录内容
-std::vector<std::string> list_directory(const std::string& path) {
+std::vector<std::string> ListDirectory(const std::string& path)
+{
     std::vector<std::string> entries;
     DIR* dir = opendir(path.c_str());
     if (!dir) {
         throw std::runtime_error("Failed to open directory");
     }
-    
+
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
-        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+        if (strcmp(entry->d_name, ".") != CURRENT_DIR_INDICATOR &&
+            strcmp(entry->d_name, "..") != PARENT_DIR_INDICATOR) {
             entries.push_back(entry->d_name);
         }
     }
-    
-    closedir(dir);
+
+    int closeResult = closedir(dir);
+    if (closeResult != 0) {
+    }
+
     return entries;
 }
 
-// 检查文件是否存在
-bool file_exists(const std::string& path) {
+bool FileExists(const std::string& path)
+{
     struct stat buffer;
     return (stat(path.c_str(), &buffer) == 0);
 }
 
-// 检查是否是目录
-bool is_directory(const std::string& path) {
+bool IsDirectory(const std::string& path)
+{
     struct stat buffer;
     if (stat(path.c_str(), &buffer) != 0) {
         return false;
@@ -174,8 +190,8 @@ bool is_directory(const std::string& path) {
     return S_ISDIR(buffer.st_mode);
 }
 
-// 检查是否是文件
-bool is_file(const std::string& path) {
+bool IsFile(const std::string& path)
+{
     struct stat buffer;
     if (stat(path.c_str(), &buffer) != 0) {
         return false;
@@ -183,8 +199,8 @@ bool is_file(const std::string& path) {
     return S_ISREG(buffer.st_mode);
 }
 
-// 获取文件大小
-off_t get_file_size(const std::string& path) {
+off_t GetFileSize(const std::string& path)
+{
     struct stat buffer;
     if (stat(path.c_str(), &buffer) != 0) {
         throw std::runtime_error("Failed to get file size");
@@ -192,8 +208,8 @@ off_t get_file_size(const std::string& path) {
     return buffer.st_size;
 }
 
-// 获取文件权限
-mode_t get_file_permissions(const std::string& path) {
+mode_t GetFilePermissions(const std::string& path)
+{
     struct stat buffer;
     if (stat(path.c_str(), &buffer) != 0) {
         throw std::runtime_error("Failed to get file permissions");
@@ -201,66 +217,76 @@ mode_t get_file_permissions(const std::string& path) {
     return buffer.st_mode;
 }
 
-// 设置文件权限
-void set_file_permissions(const std::string& path, mode_t mode) {
+void SetFilePermissions(const std::string& path, mode_t mode)
+{
     if (chmod(path.c_str(), mode) != 0) {
         throw std::runtime_error("Failed to set file permissions");
     }
 }
 
-// 连接路径
-std::string join_path(const std::string& path1, const std::string& path2) {
+std::string JoinPath(const std::string& path1, const std::string& path2)
+{
     return fs::path(path1) / fs::path(path2);
 }
 
-// 获取文件名
-std::string basename(const std::string& path) {
+std::string Basename(const std::string& path)
+{
     return fs::path(path).filename().string();
 }
 
-// 获取目录名
-std::string dirname(const std::string& path) {
+std::string Dirname(const std::string& path)
+{
     return fs::path(path).parent_path().string();
 }
 
-// 获取扩展名
-std::string extname(const std::string& path) {
+std::string Extname(const std::string& path)
+{
     return fs::path(path).extension().string();
 }
 
-// 规范化路径
-std::string normalize_path(const std::string& path) {
+std::string NormalizePath(const std::string& path)
+{
     return fs::canonical(path).string();
 }
 
-// 获取绝对路径
-std::string absolute_path(const std::string& path) {
+std::string AbsolutePath(const std::string& path)
+{
     return fs::absolute(path).string();
 }
 
-// 创建临时文件
-std::string create_temp_file() {
-    char temp_name[] = "/tmp/temp_XXXXXX";
-    int fd = mkstemp(temp_name);
+std::string CreateTempFile()
+{
+    char tempName[TEMP_FILE_SIZE];
+    int copyResult = strncpy(tempName, TEMP_FILE_TEMPLATE, TEMP_FILE_SIZE - 1);
+    if (copyResult == nullptr) {
+    }
+    tempName[TEMP_FILE_SIZE - 1] = '\0';
+    int fd = mkstemp(tempName);
     if (fd == -1) {
         throw std::runtime_error("Failed to create temporary file");
     }
-    close(fd);
-    return temp_name;
+    int closeResult = close(fd);
+    if (closeResult != 0) {
+    }
+    return tempName;
 }
 
-// 创建临时目录
-std::string create_temp_directory() {
-    char temp_name[] = "/tmp/temp_XXXXXX";
-    char* dir = mkdtemp(temp_name);
+std::string CreateTempDirectory()
+{
+    char tempName[TEMP_DIR_SIZE];
+    int copyResult = strncpy(tempName, TEMP_DIR_TEMPLATE, TEMP_DIR_SIZE - 1);
+    if (copyResult == nullptr) {
+    }
+    tempName[TEMP_DIR_SIZE - 1] = '\0';
+    char* dir = mkdtemp(tempName);
     if (dir == nullptr) {
         throw std::runtime_error("Failed to create temporary directory");
     }
     return dir;
 }
 
-// 获取可用空间
-off_t get_free_space(const std::string& path) {
+off_t GetFreeSpace(const std::string& path)
+{
     struct statvfs buf;
     if (statvfs(path.c_str(), &buf) != 0) {
         throw std::runtime_error("Failed to get free space");
@@ -268,8 +294,8 @@ off_t get_free_space(const std::string& path) {
     return buf.f_bavail * buf.f_frsize;
 }
 
-// 获取总空间
-off_t get_total_space(const std::string& path) {
+off_t GetTotalSpace(const std::string& path)
+{
     struct statvfs buf;
     if (statvfs(path.c_str(), &buf) != 0) {
         throw std::runtime_error("Failed to get total space");
@@ -277,51 +303,68 @@ off_t get_total_space(const std::string& path) {
     return buf.f_blocks * buf.f_frsize;
 }
 
-// 截断文件
-void truncate_file(const std::string& path, off_t length) {
+void TruncateFile(const std::string& path, off_t length)
+{
     if (truncate(path.c_str(), length) != 0) {
         throw std::runtime_error("Failed to truncate file");
     }
 }
 
-// 修改文件权限
-void chmod_file(const std::string& path, mode_t mode) {
+void ChmodFile(const std::string& path, mode_t mode)
+{
     if (chmod(path.c_str(), mode) != 0) {
         throw std::runtime_error("Failed to change file permissions");
     }
 }
 
-// 修改文件所有者
-void chown_file(const std::string& path, uid_t owner, gid_t group) {
+void ChownFile(const std::string& path, uid_t owner, gid_t group)
+{
     if (chown(path.c_str(), owner, group) != 0) {
         throw std::runtime_error("Failed to change file owner");
     }
 }
 
-} // namespace
+}
 
-// 读取文件
-static napi_value ReadFile(napi_env env, napi_callback_info info) {
+static napi_value ReadFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+
+    size_t pathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* pathBuffer = new char[pathLength + 1];
-    napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] pathBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        std::string content = read_file(path);
+        std::string content = ReadFile(path);
         napi_value result;
-        napi_create_string_utf8(env, content.c_str(), NAPI_AUTO_LENGTH, &result);
+        status = napi_create_string_utf8(env, content.c_str(), NAPI_AUTO_LENGTH, &result);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+            return nullptr;
+        }
         return result;
     } catch (const std::exception& e) {
         napi_throw_error(env, "File error", e.what());
@@ -329,33 +372,95 @@ static napi_value ReadFile(napi_env env, napi_callback_info info) {
     }
 }
 
-// 写入文件
-static napi_value WriteFile(napi_env env, napi_callback_info info) {
+static napi_value WriteFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected file path and content");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
+    char* pathBuffer = new char[pathLength + 1];
+    status = napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] pathBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
+    std::string path(pathBuffer);
+    delete[] pathBuffer;
+
+    size_t contentLength = 0;
+    status = napi_get_value_string_utf8(env, args[1], nullptr, 0, &contentLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
+    char* contentBuffer = new char[contentLength + 1];
+    status = napi_get_value_string_utf8(env, args[1], contentBuffer, contentLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] contentBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
+    std::string content(contentBuffer);
+    delete[] contentBuffer;
+
+    try {
+        WriteFile(path, content);
+        napi_value result;
+        status = napi_get_undefined(env, &result);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to get undefined");
+            return nullptr;
+        }
+        return result;
+    } catch (const std::exception& e) {
+        napi_throw_error(env, "File error", e.what());
+        return nullptr;
+    }
+}
+
+static napi_value AppendFile(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value args[2];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    if (argc < 2) {
+        napi_throw_error(env, "Invalid arguments", "Expected file path and content");
+        return nullptr;
+    }
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    size_t contentLength;
+
+    size_t contentLength = 0;
     napi_get_value_string_utf8(env, args[1], nullptr, 0, &contentLength);
     char* contentBuffer = new char[contentLength + 1];
     napi_get_value_string_utf8(env, args[1], contentBuffer, contentLength + 1, nullptr);
     std::string content(contentBuffer);
     delete[] contentBuffer;
-    
+
     try {
-        write_file(path, content);
+        AppendFile(path, content);
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -365,62 +470,26 @@ static napi_value WriteFile(napi_env env, napi_callback_info info) {
     }
 }
 
-// 追加文件
-static napi_value AppendFile(napi_env env, napi_callback_info info) {
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
-    if (argc < 2) {
-        napi_throw_error(env, "Invalid arguments", "Expected file path and content");
-        return nullptr;
-    }
-    
-    size_t pathLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
-    char* pathBuffer = new char[pathLength + 1];
-    napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
-    std::string path(pathBuffer);
-    delete[] pathBuffer;
-    
-    size_t contentLength;
-    napi_get_value_string_utf8(env, args[1], nullptr, 0, &contentLength);
-    char* contentBuffer = new char[contentLength + 1];
-    napi_get_value_string_utf8(env, args[1], contentBuffer, contentLength + 1, nullptr);
-    std::string content(contentBuffer);
-    delete[] contentBuffer;
-    
-    try {
-        append_file(path, content);
-        napi_value result;
-        napi_get_undefined(env, &result);
-        return result;
-    } catch (const std::exception& e) {
-        napi_throw_error(env, "File error", e.what());
-        return nullptr;
-    }
-}
-
-// 删除文件
-static napi_value DeleteFile(napi_env env, napi_callback_info info) {
+static napi_value DeleteFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        delete_file(path);
+        DeleteFile(path);
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -430,33 +499,33 @@ static napi_value DeleteFile(napi_env env, napi_callback_info info) {
     }
 }
 
-// 复制文件
-static napi_value CopyFile(napi_env env, napi_callback_info info) {
+static napi_value CopyFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected source and destination paths");
         return nullptr;
     }
-    
-    size_t srcLength;
+
+    size_t srcLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &srcLength);
     char* srcBuffer = new char[srcLength + 1];
     napi_get_value_string_utf8(env, args[0], srcBuffer, srcLength + 1, nullptr);
     std::string src(srcBuffer);
     delete[] srcBuffer;
-    
-    size_t destLength;
+
+    size_t destLength = 0;
     napi_get_value_string_utf8(env, args[1], nullptr, 0, &destLength);
     char* destBuffer = new char[destLength + 1];
     napi_get_value_string_utf8(env, args[1], destBuffer, destLength + 1, nullptr);
     std::string dest(destBuffer);
     delete[] destBuffer;
-    
+
     try {
-        copy_file(src, dest);
+        CopyFile(src, dest);
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -466,33 +535,33 @@ static napi_value CopyFile(napi_env env, napi_callback_info info) {
     }
 }
 
-// 移动文件
-static napi_value MoveFile(napi_env env, napi_callback_info info) {
+static napi_value MoveFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected source and destination paths");
         return nullptr;
     }
-    
-    size_t srcLength;
+
+    size_t srcLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &srcLength);
     char* srcBuffer = new char[srcLength + 1];
     napi_get_value_string_utf8(env, args[0], srcBuffer, srcLength + 1, nullptr);
     std::string src(srcBuffer);
     delete[] srcBuffer;
-    
-    size_t destLength;
+
+    size_t destLength = 0;
     napi_get_value_string_utf8(env, args[1], nullptr, 0, &destLength);
     char* destBuffer = new char[destLength + 1];
     napi_get_value_string_utf8(env, args[1], destBuffer, destLength + 1, nullptr);
     std::string dest(destBuffer);
     delete[] destBuffer;
-    
+
     try {
-        move_file(src, dest);
+        MoveFile(src, dest);
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -502,33 +571,33 @@ static napi_value MoveFile(napi_env env, napi_callback_info info) {
     }
 }
 
-// 重命名文件
-static napi_value RenameFile(napi_env env, napi_callback_info info) {
+static napi_value RenameFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected old and new paths");
         return nullptr;
     }
-    
-    size_t oldPathLength;
+
+    size_t oldPathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &oldPathLength);
     char* oldPathBuffer = new char[oldPathLength + 1];
     napi_get_value_string_utf8(env, args[0], oldPathBuffer, oldPathLength + 1, nullptr);
     std::string oldPath(oldPathBuffer);
     delete[] oldPathBuffer;
-    
-    size_t newPathLength;
+
+    size_t newPathLength = 0;
     napi_get_value_string_utf8(env, args[1], nullptr, 0, &newPathLength);
     char* newPathBuffer = new char[newPathLength + 1];
     napi_get_value_string_utf8(env, args[1], newPathBuffer, newPathLength + 1, nullptr);
     std::string newPath(newPathBuffer);
     delete[] newPathBuffer;
-    
+
     try {
-        rename_file(oldPath, newPath);
+        RenameFile(oldPath, newPath);
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -538,26 +607,26 @@ static napi_value RenameFile(napi_env env, napi_callback_info info) {
     }
 }
 
-// 创建目录
-static napi_value CreateDirectory(napi_env env, napi_callback_info info) {
+static napi_value CreateDirectory(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected directory path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        create_directory(path);
+        CreateDirectory(path);
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -567,26 +636,26 @@ static napi_value CreateDirectory(napi_env env, napi_callback_info info) {
     }
 }
 
-// 删除目录
-static napi_value DeleteDirectory(napi_env env, napi_callback_info info) {
+static napi_value DeleteDirectory(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected directory path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        delete_directory(path);
+        DeleteDirectory(path);
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -596,35 +665,60 @@ static napi_value DeleteDirectory(napi_env env, napi_callback_info info) {
     }
 }
 
-// 列出目录内容
-static napi_value ListDirectory(napi_env env, napi_callback_info info) {
+static napi_value ListDirectory(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected directory path");
         return nullptr;
     }
-    
-    size_t pathLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+
+    size_t pathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* pathBuffer = new char[pathLength + 1];
-    napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] pathBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        std::vector<std::string> entries = list_directory(path);
+        std::vector<std::string> entries = ListDirectory(path);
         napi_value result;
-        napi_create_array(env, &result);
-        
+        status = napi_create_array(env, &result);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create array");
+            return nullptr;
+        }
+
         for (size_t i = 0; i < entries.size(); i++) {
             napi_value entry;
-            napi_create_string_utf8(env, entries[i].c_str(), NAPI_AUTO_LENGTH, &entry);
-            napi_set_element(env, result, i, entry);
+            status = napi_create_string_utf8(env, entries[i].c_str(), NAPI_AUTO_LENGTH, &entry);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to create string");
+                return nullptr;
+            }
+            status = napi_set_element(env, result, i, entry);
+            if (status != napi_ok) {
+                napi_throw_error(env, "NAPI_ERROR", "Failed to set element");
+                return nullptr;
+            }
         }
-        
+
         return result;
     } catch (const std::exception& e) {
         napi_throw_error(env, "File error", e.what());
@@ -632,98 +726,98 @@ static napi_value ListDirectory(napi_env env, napi_callback_info info) {
     }
 }
 
-// 检查文件是否存在
-static napi_value FileExists(napi_env env, napi_callback_info info) {
+static napi_value FileExists(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    bool exists = file_exists(path);
+
+    bool exists = FileExists(path);
     napi_value result;
     napi_create_boolean(env, exists, &result);
     return result;
 }
 
-// 检查是否是目录
-static napi_value IsDirectory(napi_env env, napi_callback_info info) {
+static napi_value IsDirectory(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    bool isDir = is_directory(path);
+
+    bool isDir = IsDirectory(path);
     napi_value result;
     napi_create_boolean(env, isDir, &result);
     return result;
 }
 
-// 检查是否是文件
-static napi_value IsFile(napi_env env, napi_callback_info info) {
+static napi_value IsFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    bool isFile = is_file(path);
+
+    bool isFile = IsFile(path);
     napi_value result;
     napi_create_boolean(env, isFile, &result);
     return result;
 }
 
-// 获取文件大小
-static napi_value GetFileSize(napi_env env, napi_callback_info info) {
+static napi_value GetFileSize(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        off_t size = get_file_size(path);
+        off_t size = GetFileSize(path);
         napi_value result;
         napi_create_double(env, static_cast<double>(size), &result);
         return result;
@@ -733,42 +827,86 @@ static napi_value GetFileSize(napi_env env, napi_callback_info info) {
     }
 }
 
-// 获取文件状态
-static napi_value GetFileStats(napi_env env, napi_callback_info info) {
+static napi_value GetFileStats(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get callback info");
+        return nullptr;
+    }
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+
+    size_t pathLength = 0;
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string length");
+        return nullptr;
+    }
     char* pathBuffer = new char[pathLength + 1];
-    napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    status = napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
+    if (status != napi_ok) {
+        delete[] pathBuffer;
+        napi_throw_error(env, "NAPI_ERROR", "Failed to get string value");
+        return nullptr;
+    }
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
         struct stat buffer;
         if (stat(path.c_str(), &buffer) != 0) {
             throw std::runtime_error("Failed to get file stats");
         }
-        
+
         napi_value result;
-        napi_create_object(env, &result);
-        
-        napi_value size, mode, mtime;
-        napi_create_double(env, static_cast<double>(buffer.st_size), &size);
-        napi_create_double(env, static_cast<double>(buffer.st_mode), &mode);
-        napi_create_double(env, static_cast<double>(buffer.st_mtime), &mtime);
-        
-        napi_set_named_property(env, result, "size", size);
-        napi_set_named_property(env, result, "mode", mode);
-        napi_set_named_property(env, result, "mtime", mtime);
-        
+        status = napi_create_object(env, &result);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create object");
+            return nullptr;
+        }
+
+        napi_value size;
+        status = napi_create_double(env, static_cast<double>(buffer.st_size), &size);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, result, "size", size);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
+
+        napi_value mode;
+        status = napi_create_double(env, static_cast<double>(buffer.st_mode), &mode);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, result, "mode", mode);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
+
+        napi_value mtime;
+        status = napi_create_double(env, static_cast<double>(buffer.st_mtime), &mtime);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to create double");
+            return nullptr;
+        }
+        status = napi_set_named_property(env, result, "mtime", mtime);
+        if (status != napi_ok) {
+            napi_throw_error(env, "NAPI_ERROR", "Failed to set property");
+            return nullptr;
+        }
+
         return result;
     } catch (const std::exception& e) {
         napi_throw_error(env, "File error", e.what());
@@ -776,26 +914,26 @@ static napi_value GetFileStats(napi_env env, napi_callback_info info) {
     }
 }
 
-// 获取文件权限
-static napi_value GetFilePermissions(napi_env env, napi_callback_info info) {
+static napi_value GetFilePermissions(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        mode_t permissions = get_file_permissions(path);
+        mode_t permissions = GetFilePermissions(path);
         napi_value result;
         napi_create_double(env, static_cast<double>(permissions), &result);
         return result;
@@ -805,29 +943,29 @@ static napi_value GetFilePermissions(napi_env env, napi_callback_info info) {
     }
 }
 
-// 设置文件权限
-static napi_value SetFilePermissions(napi_env env, napi_callback_info info) {
+static napi_value SetFilePermissions(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected file path and permissions");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    double permissions;
+
+    double permissions = 0.0;
     napi_get_value_double(env, args[1], &permissions);
-    
+
     try {
-        set_file_permissions(path, static_cast<mode_t>(permissions));
+        SetFilePermissions(path, static_cast<mode_t>(permissions));
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -837,129 +975,129 @@ static napi_value SetFilePermissions(napi_env env, napi_callback_info info) {
     }
 }
 
-// 连接路径
-static napi_value JoinPath(napi_env env, napi_callback_info info) {
+static napi_value JoinPath(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected two paths");
         return nullptr;
     }
-    
-    size_t path1Length;
+
+    size_t path1Length = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &path1Length);
     char* path1Buffer = new char[path1Length + 1];
     napi_get_value_string_utf8(env, args[0], path1Buffer, path1Length + 1, nullptr);
     std::string path1(path1Buffer);
     delete[] path1Buffer;
-    
-    size_t path2Length;
+
+    size_t path2Length = 0;
     napi_get_value_string_utf8(env, args[1], nullptr, 0, &path2Length);
     char* path2Buffer = new char[path2Length + 1];
     napi_get_value_string_utf8(env, args[1], path2Buffer, path2Length + 1, nullptr);
     std::string path2(path2Buffer);
     delete[] path2Buffer;
-    
-    std::string result = join_path(path1, path2);
+
+    std::string result = JoinPath(path1, path2);
     napi_value resultValue;
     napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
     return resultValue;
 }
 
-// 获取文件名
-static napi_value Basename(napi_env env, napi_callback_info info) {
+static napi_value Basename(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    std::string result = basename(path);
+
+    std::string result = Basename(path);
     napi_value resultValue;
     napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
     return resultValue;
 }
 
-// 获取目录名
-static napi_value Dirname(napi_env env, napi_callback_info info) {
+static napi_value Dirname(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    std::string result = dirname(path);
+
+    std::string result = Dirname(path);
     napi_value resultValue;
     napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
     return resultValue;
 }
 
-// 获取扩展名
-static napi_value Extname(napi_env env, napi_callback_info info) {
+static napi_value Extname(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    std::string result = extname(path);
+
+    std::string result = Extname(path);
     napi_value resultValue;
     napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
     return resultValue;
 }
 
-// 规范化路径
-static napi_value NormalizePath(napi_env env, napi_callback_info info) {
+static napi_value NormalizePath(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        std::string result = normalize_path(path);
+        std::string result = NormalizePath(path);
         napi_value resultValue;
         napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
         return resultValue;
@@ -969,26 +1107,26 @@ static napi_value NormalizePath(napi_env env, napi_callback_info info) {
     }
 }
 
-// 获取绝对路径
-static napi_value AbsolutePath(napi_env env, napi_callback_info info) {
+static napi_value AbsolutePath(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        std::string result = absolute_path(path);
+        std::string result = AbsolutePath(path);
         napi_value resultValue;
         napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
         return resultValue;
@@ -998,10 +1136,10 @@ static napi_value AbsolutePath(napi_env env, napi_callback_info info) {
     }
 }
 
-// 创建临时文件
-static napi_value CreateTempFile(napi_env env, napi_callback_info info) {
+static napi_value CreateTempFile(napi_env env, napi_callback_info info)
+{
     try {
-        std::string result = create_temp_file();
+        std::string result = CreateTempFile();
         napi_value resultValue;
         napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
         return resultValue;
@@ -1011,10 +1149,10 @@ static napi_value CreateTempFile(napi_env env, napi_callback_info info) {
     }
 }
 
-// 创建临时目录
-static napi_value CreateTempDirectory(napi_env env, napi_callback_info info) {
+static napi_value CreateTempDirectory(napi_env env, napi_callback_info info)
+{
     try {
-        std::string result = create_temp_directory();
+        std::string result = CreateTempDirectory();
         napi_value resultValue;
         napi_create_string_utf8(env, result.c_str(), NAPI_AUTO_LENGTH, &resultValue);
         return resultValue;
@@ -1024,26 +1162,26 @@ static napi_value CreateTempDirectory(napi_env env, napi_callback_info info) {
     }
 }
 
-// 获取可用空间
-static napi_value GetFreeSpace(napi_env env, napi_callback_info info) {
+static napi_value GetFreeSpace(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        off_t space = get_free_space(path);
+        off_t space = GetFreeSpace(path);
         napi_value result;
         napi_create_double(env, static_cast<double>(space), &result);
         return result;
@@ -1053,26 +1191,26 @@ static napi_value GetFreeSpace(napi_env env, napi_callback_info info) {
     }
 }
 
-// 获取总空间
-static napi_value GetTotalSpace(napi_env env, napi_callback_info info) {
+static napi_value GetTotalSpace(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        off_t space = get_total_space(path);
+        off_t space = GetTotalSpace(path);
         napi_value result;
         napi_create_double(env, static_cast<double>(space), &result);
         return result;
@@ -1082,74 +1220,72 @@ static napi_value GetTotalSpace(napi_env env, napi_callback_info info) {
     }
 }
 
-// 监控文件（简化版）
-static napi_value WatchFile(napi_env env, napi_callback_info info) {
+static napi_value WatchFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    // 简化实现，实际项目中应使用inotify或类似机制
+
     napi_value result;
     napi_get_undefined(env, &result);
     return result;
 }
 
-// 取消监控文件
-static napi_value UnwatchFile(napi_env env, napi_callback_info info) {
+static napi_value UnwatchFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    // 简化实现
+
     napi_value result;
     napi_get_undefined(env, &result);
     return result;
 }
 
-// 同步读取文件
-static napi_value ReadFileSync(napi_env env, napi_callback_info info) {
+static napi_value ReadFileSync(napi_env env, napi_callback_info info)
+{
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 1) {
         napi_throw_error(env, "Invalid arguments", "Expected file path");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
+
     try {
-        std::string content = read_file(path);
+        std::string content = ReadFile(path);
         napi_value result;
         napi_create_string_utf8(env, content.c_str(), NAPI_AUTO_LENGTH, &result);
         return result;
@@ -1159,33 +1295,33 @@ static napi_value ReadFileSync(napi_env env, napi_callback_info info) {
     }
 }
 
-// 同步写入文件
-static napi_value WriteFileSync(napi_env env, napi_callback_info info) {
+static napi_value WriteFileSync(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected file path and content");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    size_t contentLength;
+
+    size_t contentLength = 0;
     napi_get_value_string_utf8(env, args[1], nullptr, 0, &contentLength);
     char* contentBuffer = new char[contentLength + 1];
     napi_get_value_string_utf8(env, args[1], contentBuffer, contentLength + 1, nullptr);
     std::string content(contentBuffer);
     delete[] contentBuffer;
-    
+
     try {
-        write_file(path, content);
+        WriteFile(path, content);
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -1195,29 +1331,29 @@ static napi_value WriteFileSync(napi_env env, napi_callback_info info) {
     }
 }
 
-// 截断文件
-static napi_value TruncateFile(napi_env env, napi_callback_info info) {
+static napi_value TruncateFile(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected file path and length");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    double length;
+
+    double length = 0.0;
     napi_get_value_double(env, args[1], &length);
-    
+
     try {
-        truncate_file(path, static_cast<off_t>(length));
+        TruncateFile(path, static_cast<off_t>(length));
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -1227,29 +1363,29 @@ static napi_value TruncateFile(napi_env env, napi_callback_info info) {
     }
 }
 
-// 修改文件权限
-static napi_value Chmod(napi_env env, napi_callback_info info) {
+static napi_value Chmod(napi_env env, napi_callback_info info)
+{
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 2) {
         napi_throw_error(env, "Invalid arguments", "Expected file path and mode");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    double mode;
+
+    double mode = 0.0;
     napi_get_value_double(env, args[1], &mode);
-    
+
     try {
-        chmod_file(path, static_cast<mode_t>(mode));
+        ChmodFile(path, static_cast<mode_t>(mode));
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -1259,30 +1395,31 @@ static napi_value Chmod(napi_env env, napi_callback_info info) {
     }
 }
 
-// 修改文件所有者
-static napi_value Chown(napi_env env, napi_callback_info info) {
+static napi_value Chown(napi_env env, napi_callback_info info)
+{
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    
+
     if (argc < 3) {
         napi_throw_error(env, "Invalid arguments", "Expected file path, owner and group");
         return nullptr;
     }
-    
-    size_t pathLength;
+
+    size_t pathLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &pathLength);
     char* pathBuffer = new char[pathLength + 1];
     napi_get_value_string_utf8(env, args[0], pathBuffer, pathLength + 1, nullptr);
     std::string path(pathBuffer);
     delete[] pathBuffer;
-    
-    double owner, group;
+
+    double owner = 0.0;
+    double group = 0.0;
     napi_get_value_double(env, args[1], &owner);
     napi_get_value_double(env, args[2], &group);
-    
+
     try {
-        chown_file(path, static_cast<uid_t>(owner), static_cast<gid_t>(group));
+        ChownFile(path, static_cast<uid_t>(owner), static_cast<gid_t>(group));
         napi_value result;
         napi_get_undefined(env, &result);
         return result;
@@ -1292,8 +1429,8 @@ static napi_value Chown(napi_env env, napi_callback_info info) {
     }
 }
 
-// 模块初始化
-static napi_value Init(napi_env env, napi_value exports) {
+static napi_value Init(napi_env env, napi_value exports)
+{
     napi_property_descriptor descriptors[] = {
         {"readFile", nullptr, ReadFile, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"writeFile", nullptr, WriteFile, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -1330,8 +1467,12 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"chmod", nullptr, Chmod, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"chown", nullptr, Chown, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
-    
-    napi_define_properties(env, exports, sizeof(descriptors) / sizeof(descriptors[0]), descriptors);
+
+    napi_status status = napi_define_properties(env, exports, sizeof(descriptors) / sizeof(descriptors[0]), descriptors);
+    if (status != napi_ok) {
+        napi_throw_error(env, "NAPI_ERROR", "Failed to define properties");
+        return nullptr;
+    }
     return exports;
 }
 

@@ -22,8 +22,8 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
-extern const char _binary_utils_js_start[];
-extern const char _binary_utils_js_end[];
+extern const char BINARY_UTILS_JS_START[];
+extern const char BINARY_UTILS_JS_END[];
 
 /*
  * String utilities
@@ -432,7 +432,11 @@ static napi_value FormatTime(napi_env env, napi_callback_info info)
     struct tm* localTime = localtime(&now);
 
     char buffer[64];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localTime);
+    if (localTime != nullptr) {
+        strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localTime);
+    } else {
+        snprintf(buffer, sizeof(buffer), "Invalid");
+    }
 
     napi_value result;
     NAPI_CALL(env, napi_create_string_utf8(env, buffer, NAPI_AUTO_LENGTH, &result));
@@ -469,7 +473,7 @@ static napi_value SimpleHash(napi_env env, napi_callback_info info)
     }
 
     char hashStr[16];
-    sprintf(hashStr, "%08X", hash);
+    snprintf(hashStr, sizeof(hashStr), "%08X", hash);
 
     napi_value result;
     NAPI_CALL(env, napi_create_string_utf8(env, hashStr, NAPI_AUTO_LENGTH, &result));
@@ -513,11 +517,11 @@ static napi_value Init(napi_env env, napi_value exports)
 extern "C" __attribute__((visibility("default"))) void NAPI_utils_GetJSCode(const char** buf, int* bufLen)
 {
     if (buf != nullptr) {
-        *buf = _binary_utils_js_start;
+        *buf = BINARY_UTILS_JS_START;
     }
 
     if (bufLen != nullptr) {
-        *bufLen = _binary_utils_js_end - _binary_utils_js_start;
+        *bufLen = BINARY_UTILS_JS_END - BINARY_UTILS_JS_START;
     }
 }
 

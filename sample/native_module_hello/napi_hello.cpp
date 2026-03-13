@@ -18,8 +18,8 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
-extern const char _binary_hello_js_start[];
-extern const char _binary_hello_js_end[];
+extern const char BINARY_HELLO_JS_START[];
+extern const char BINARY_HELLO_JS_END[];
 
 /*
  * Sync callback
@@ -46,14 +46,14 @@ static napi_value Init(napi_env env, napi_value exports)
     return exports;
 }
 
-extern "C" __attribute__((visibility("default"))) void NAPI_hello_GetJSCode(const char** buf, int* bufLen)
+extern "C" __attribute__((visibility("default"))) void NapiHelloGetJsCode(const char** buf, int* bufLen)
 {
     if (buf != nullptr) {
-        *buf = _binary_hello_js_start;
+        *buf = BINARY_HELLO_JS_START;
     }
 
     if (bufLen != nullptr) {
-        *bufLen = _binary_hello_js_end - _binary_hello_js_start;
+        *bufLen = BINARY_HELLO_JS_END - BINARY_HELLO_JS_START;
     }
 }
 
