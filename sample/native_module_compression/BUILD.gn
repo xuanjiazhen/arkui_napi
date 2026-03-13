@@ -1,0 +1,20 @@
+import("../../napi.gni")
+
+target("native_module_compression") {
+  output_dir = "$root_out_dir/sample/native_module_compression"
+  output_name = "native_module_compression"
+  sources = [
+    "napi_compression.cpp",
+  ]
+  include_dirs = [
+    "../../interfaces/kits/napi",
+    "../../native_engine/impl/ark",
+  ]
+  deps = [
+    "//foundation/arkui/napi:arkui_napi_core",
+  ]
+  configs = [
+    "//foundation/arkui/napi:arkui_napi_config",
+  ]
+  visibility = [ "//foundation/arkui/napi:*" ]
+}
