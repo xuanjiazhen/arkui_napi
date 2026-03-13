@@ -84,6 +84,77 @@ NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, NapiStackInfo* result)
     return napi_clear_last_error(env);
 }
 
+// Optimized string extraction for hybrid/interop scenarios.
+// Extracts UTF-8 encoded string from napi_value directly into std::string.
+// This is more efficient than the standard napi_get_value_string_utf8 as it:
+// 1. Requires only one function call (vs two calls for length + content)
+// 2. Automatically manages memory allocation via std::string
+// 3. Avoids intermediate buffer copying
+//
+// Parameters:
+//   env: NAPI environment
+//   value: napi_value containing the string
+//   string_object: Pointer to std::string* where the result will be stored
+//
+// Returns: napi_ok on success, error code otherwise
+//
+// Note: string_object must be a valid pointer to std::string object
+NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env, napi_value value, void* string_object)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, string_object);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
+    Local<panda::StringRef> stringVal(nativeValue);
+
+    auto *strObject = reinterpret_cast<std::string*>(string_object);
+
+    // Get string length and calculate initial buffer size
+    // Compressed strings need less space, uncompressed strings may need up to 4 bytes per UTF-16 char
+    auto isCompressed = stringVal->IsCompressed(vm);
+    uint32_t stringLen = stringVal->Length(vm);
+    size_t initLength = 0;
+
+    if (isCompressed) {
+        initLength = stringLen;
+    } else {
+        // UTF-8 can be up to 4 bytes per UTF-16 code unit
+        initLength = static_cast<size_t>(stringLen) * 4;
+    }
+
+    // Handle empty string case - set to empty string directly
+    if (initLength == 0) {
+        strObject->clear();
+        return napi_clear_last_error(env);
+    }
+
+    // Allocate buffer in std::string
+    strObject->resize(initLength);
+    auto *buf = strObject->data();
+
+    // Write UTF-8 string to buffer
+    // WriteUtf8 returns bytes written including null terminator
+    uint32_t copied = stringVal->WriteUtf8(vm, buf, initLength, true);
+
+    // WriteUtf8 returns 0 on failure, handle this case
+    if (copied == 0) {
+        HILOG_ERROR("napi_get_value_string_utf8_hybrid: WriteUtf8 failed");
+        strObject->clear();
+        return napi_set_last_error(env, napi_generic_failure);
+    }
+
+    // Resize to actual content length (excluding null terminator)
+    // copied includes null terminator, so subtract 1 to get actual string length
+    strObject->resize(copied - 1);
+
+    return napi_clear_last_error(env);
+}
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
                                        napi_value js_object,
