@@ -23,37 +23,37 @@ class DlsymMockGuard {
 public:
     DlsymMockGuard()
     {
-        DlsymMock_Enable();
+        DlsymMockEnable();
     }
     
     ~DlsymMockGuard()
     {
-        DlsymMock_Disable();
+        DlsymMockDisable();
     }
     
     void SetFileContent(const std::string& path, const std::string& content)
     {
-        DlsymMock_SetFileContent(path.c_str(), content.c_str());
+        DlsymMockSetFileContent(path.c_str(), content.c_str());
     }
     
     void SetFileNotExists(const std::string& path)
     {
-        DlsymMock_SetFileExists(path.c_str(), 0);
+        DlsymMockSetFileExists(path.c_str(), 0);
     }
     
     void SetFileExists(const std::string& path)
     {
-        DlsymMock_SetFileExists(path.c_str(), 1);
+        DlsymMockSetFileExists(path.c_str(), 1);
     }
     
     void ClearAll()
     {
-        DlsymMock_ClearAll();
+        DlsymMockClearAll();
     }
     
     void SetDebugMode(bool enable)
     {
-        DlsymMock_SetDebugMode(enable ? 1 : 0);
+        DlsymMockSetDebugMode(enable ? 1 : 0);
     }
 };
 

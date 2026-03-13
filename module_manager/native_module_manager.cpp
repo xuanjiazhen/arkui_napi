@@ -42,6 +42,7 @@
 namespace {
 constexpr static int32_t MODULE_PATH_SECONDARY_INDEX = 2;
 constexpr static int32_t NATIVE_PATH_NUMBER = 3;
+constexpr static int32_t SO_SUFFIX_LENGTH = 3;
 constexpr static int32_t IS_APP_MODULE_FLAGS = 100;
 thread_local bool g_isLoadingModule = false;
 enum ModuleLoadFailedReason : uint32_t {
@@ -403,7 +404,8 @@ static bool IsValidLibName(const std::string& libName)
     }
 
     // Check if it ends with .so
-    if (libName.size() < 3 || libName.substr(libName.size() - 3) != ".so") {
+    if (libName.size() < SO_SUFFIX_LENGTH ||
+        libName.substr(libName.size() - SO_SUFFIX_LENGTH) != ".so") {
         MODULEMNG_HILOG_WARN("lib name must end with .so: %{public}s", libName.c_str());
         return false;
     }
@@ -457,7 +459,6 @@ bool NativeModuleManager::LoadGreylistConfig(std::vector<std::string>& greylistL
         // Trim whitespace and quotes
         size_t first = item.find_first_not_of(" \t\n\r\"");
         size_t last = item.find_last_not_of(" \t\n\r\"");
-
         if (first == std::string::npos || last == std::string::npos) {
             continue; // Empty item
         }

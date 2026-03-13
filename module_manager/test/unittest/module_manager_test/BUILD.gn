@@ -31,7 +31,10 @@ ohos_unittest("module_manager_test") {
 
   cflags = []
 
-  deps = [ "../../../..:ace_napi" ]
+  deps = [
+    "../../../..:ace_napi",
+    "bounds_checking_function:libsec_shared",
+  ]
 
   configs = []
 
