@@ -299,6 +299,11 @@ void ArkIdleMonitor::NotifyNeedFreeze(bool needFreeze)
         if (deferfreeze_.load(std::memory_order_relaxed)) {
             deferfreeze_.store(false, std::memory_order_relaxed);
             SetSwitchToBackgroundTask(false);
+            if (externalClearCallback_) {
+                TraceScope trace("ArkIdleMonitor:ExternalClearCallback");
+                HILOG_DEBUG("ArkIdleMonitor: External Clear Callback.");
+                externalClearCallback_();
+            }
             ReportDataToRSS(true);
         } else {
             // It is not in a delayed freeze state, so there is no need to notify the freeze
