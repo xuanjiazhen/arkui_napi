@@ -15,22 +15,28 @@
 
 #include "dlsym_mock.h"
 
-#include <dlfcn.h>
-#include <string>
-#include <map>
-#include <set>
-#include <cstdio>
-#include <cstring>
 #include <cerrno>
 #include <cstdarg>
-#include <unistd.h>
+#include <cstdio>
+#include <cstring>
+#include <dlfcn.h>
 #include <fcntl.h>
+#include <map>
+#include <set>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <gtest/gtest.h>
 
 namespace {
+
+constexpr size_t DEBUG_LOG_BUF_SIZE = 1024;
+constexpr int MOCK_FD_START_VALUE = 20000;
+constexpr mode_t STAT_FILE_MODE = 0644;
+constexpr size_t FILE_BLOCK_SIZE = 4096;
+constexpr size_t FILE_BLOCK_MASK = 511;
 
 std::map<std::string, std::string> g_mockFileContent;
 std::set<std::string> g_mockFileExists;
@@ -43,7 +49,7 @@ struct MockFileDescriptor {
     size_t readPos;
 };
 std::map<int, MockFileDescriptor> g_mockFdTable;
-int g_nextMockFd = 20000;
+int g_nextMockFd = MOCK_FD_START_VALUE;
 void DebugLog(const char* func, const char* fmt, ...)
 {
     if (!g_debugMode) {
@@ -51,8 +57,12 @@ void DebugLog(const char* func, const char* fmt, ...)
     }
     va_list args;
     va_start(args, fmt);
-    char buf[1024];
-    vsnprintf(buf, sizeof(buf), fmt, args);
+    char buf[DEBUG_LOG_BUF_SIZE] = {0};
+    if (vsnprintf(buf, sizeof(buf), sizeof(buf) - 1, fmt, args) < 0) {
+        va_end(args);
+        GTEST_LOG_(INFO) << "[DLSYM_MOCK][" << func << "] vsnprintf failed";
+        return;
+    }
     va_end(args);
     GTEST_LOG_(INFO) << "[DLSYM_MOCK][" << func << "] " << buf;
 }
@@ -80,17 +90,17 @@ void FreeMockFd(int fd)
 }
 }
 extern "C" {
-void DlsymMock_Enable(void)
+void DlsymMockEnable(void)
 {
     g_dlsymMockEnabled = true;
-    DebugLog("DlsymMock_Enable", "Mock enabled");
+    DebugLog("DlsymMockEnable", "Mock enabled");
 }
-void DlsymMock_Disable(void)
+void DlsymMockDisable(void)
 {
     g_dlsymMockEnabled = false;
-    DebugLog("DlsymMock_Disable", "Mock disabled");
+    DebugLog("DlsymMockDisable", "Mock disabled");
 }
-void DlsymMock_SetFileContent(const char* path, const char* content)
+void DlsymMockSetFileContent(const char* path, const char* content)
 {
     if (path == nullptr) {
         return;
@@ -98,9 +108,9 @@ void DlsymMock_SetFileContent(const char* path, const char* content)
     std::string key(path);
     g_mockFileContent[key] = content ? std::string(content) : std::string();
     g_mockFileExists.insert(key);
-    DebugLog("DlsymMock_SetFileContent", "Set content for %s, size=%zu", path, g_mockFileContent[key].size());
+    DebugLog("DlsymMockSetFileContent", "Set content for %s, size=%zu", path, g_mockFileContent[key].size());
 }
-void DlsymMock_SetFileExists(const char* path, int exists)
+void DlsymMockSetFileExists(const char* path, int exists)
 {
     if (path == nullptr) {
         return;
@@ -108,39 +118,39 @@ void DlsymMock_SetFileExists(const char* path, int exists)
     std::string key(path);
     if (exists) {
         g_mockFileExists.insert(key);
-        DebugLog("DlsymMock_SetFileExists", "Mark file exists: %s", path);
+        DebugLog("DlsymMockSetFileExists", "Mark file exists: %s", path);
     } else {
         g_mockFileExists.erase(key);
         g_mockFileContent.erase(key);
-        DebugLog("DlsymMock_SetFileExists", "Mark file not exists: %s", path);
+        DebugLog("DlsymMockSetFileExists", "Mark file not exists: %s", path);
     }
 }
-void DlsymMock_ClearAll(void)
+void DlsymMockClearAll(void)
 {
     g_mockFileContent.clear();
     g_mockFileExists.clear();
     g_mockFdTable.clear();
-    DebugLog("DlsymMock_ClearAll", "All mock data cleared");
+    DebugLog("DlsymMockClearAll", "All mock data cleared");
 }
-int DlsymMock_IsEnabled(void)
+int DlsymMockIsEnabled(void)
 {
     return g_dlsymMockEnabled ? 1 : 0;
 }
-void DlsymMock_SetDebugMode(int enable)
+void DlsymMockSetDebugMode(int enable)
 {
     g_debugMode = enable ? true : false;
 }
 int access(const char* pathname, int mode)
 {
     DebugLog("access", ">>> ENTER");
-    dlsym_access_func_t real_access = reinterpret_cast<dlsym_access_func_t>(dlsym(RTLD_NEXT, "access"));
+    DlsymAccessFuncPtr realAccess = reinterpret_cast<DlsymAccessFuncPtr>(dlsym(RTLD_NEXT, "access"));
     if (!g_dlsymMockEnabled) {
-        if (real_access == nullptr) {
+        if (realAccess == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("access", ">>> PASSING THROUGH (mock disabled) path=%s", pathname ? pathname : "NULL");
-        return real_access(pathname, mode);
+        return realAccess(pathname, mode);
     }
     if (pathname == nullptr) {
         errno = EFAULT;
@@ -153,13 +163,13 @@ int access(const char* pathname, int mode)
         DebugLog("access", ">>> MOCKED: file exists: %s", pathname);
         return 0;
     }
-    if (real_access == nullptr) {
+    if (realAccess == nullptr) {
         DebugLog("access", ">>> MOCKED: file not in mock list: %s (returning ENOENT)", pathname);
         errno = ENOENT;
         return -1;
     }
     DebugLog("access", ">>> PASSING THROUGH (not in mock list) path=%s", pathname);
-    return real_access(pathname, mode);
+    return realAccess(pathname, mode);
 }
 int open(const char* pathname, int flags, ...)
 {
@@ -171,14 +181,14 @@ int open(const char* pathname, int flags, ...)
         mode = va_arg(args, mode_t);
         va_end(args);
     }
-    dlsym_open_func_t real_open = reinterpret_cast<dlsym_open_func_t>(dlsym(RTLD_NEXT, "open"));
+    DlsymOpenFuncPtr realOpen = reinterpret_cast<DlsymOpenFuncPtr>(dlsym(RTLD_NEXT, "open"));
     if (!g_dlsymMockEnabled) {
-        if (real_open == nullptr) {
+        if (realOpen == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("open", ">>> PASSING THROUGH (mock disabled) path=%s", pathname ? pathname : "NULL");
-        return real_open(pathname, flags, mode);
+        return realOpen(pathname, flags, mode);
     }
     if (pathname == nullptr) {
         errno = EFAULT;
@@ -196,34 +206,34 @@ int open(const char* pathname, int flags, ...)
         DebugLog("open", ">>> MOCKED: opened empty mock file: %s, fd=%d", pathname, fd);
         return fd;
     }
-    if (real_open == nullptr) {
+    if (realOpen == nullptr) {
         DebugLog("open", ">>> MOCKED: file not in mock list: %s (returning ENOENT)", pathname);
         errno = ENOENT;
         return -1;
     }
     DebugLog("open", ">>> PASSING THROUGH (not in mock list) path=%s", pathname);
-    return real_open(pathname, flags, mode);
+    return realOpen(pathname, flags, mode);
 }
 ssize_t read(int fd, void* buf, size_t count)
 {
     DebugLog("read", ">>> ENTER");
-    dlsym_read_func_t real_read = reinterpret_cast<dlsym_read_func_t>(dlsym(RTLD_NEXT, "read"));
+    DlsymReadFuncPtr realRead = reinterpret_cast<DlsymReadFuncPtr>(dlsym(RTLD_NEXT, "read"));
     if (!g_dlsymMockEnabled) {
-        if (real_read == nullptr) {
+        if (realRead == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("read", ">>> PASSING THROUGH (mock disabled) fd=%d", fd);
-        return real_read(fd, buf, count);
+        return realRead(fd, buf, count);
     }
     MockFileDescriptor* mockFd = GetMockFd(fd);
     if (mockFd == nullptr) {
-        if (real_read == nullptr) {
+        if (realRead == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("read", ">>> PASSING THROUGH (not a mock fd) fd=%d", fd);
-        return real_read(fd, buf, count);
+        return realRead(fd, buf, count);
     }
     if (buf == nullptr) {
         DebugLog("read", ">>> ERROR: buf is NULL");
@@ -233,7 +243,12 @@ ssize_t read(int fd, void* buf, size_t count)
     size_t remaining = mockFd->content.size() - mockFd->readPos;
     size_t toRead = (count < remaining) ? count : remaining;
     if (toRead > 0) {
-        memcpy(buf, mockFd->content.data() + mockFd->readPos, toRead);
+        errno_t ret = memcpy_s(buf, count, mockFd->content.data() + mockFd->readPos, toRead);
+        if (ret != EOK) {
+            DebugLog("read", ">>> ERROR: memcpy_s failed with %d", ret);
+            errno = EIO;
+            return -1;
+        }
         mockFd->readPos += toRead;
     }
     DebugLog("read", ">>> MOCKED: read %zu bytes from mock fd=%d", toRead, fd);
@@ -242,71 +257,71 @@ ssize_t read(int fd, void* buf, size_t count)
 ssize_t write(int fd, const void* buf, size_t count)
 {
     DebugLog("write", ">>> ENTER");
-    dlsym_write_func_t real_write = reinterpret_cast<dlsym_write_func_t>(dlsym(RTLD_NEXT, "write"));
+    DlsymWriteFuncPtr realWrite = reinterpret_cast<DlsymWriteFuncPtr>(dlsym(RTLD_NEXT, "write"));
     if (!g_dlsymMockEnabled) {
-        if (real_write == nullptr) {
+        if (realWrite == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("write", ">>> PASSING THROUGH (mock disabled) fd=%d", fd);
-        return real_write(fd, buf, count);
+        return realWrite(fd, buf, count);
     }
     if (GetMockFd(fd) != nullptr) {
         DebugLog("write", ">>> MOCKED: write to mock fd not allowed, fd=%d", fd);
         errno = EROFS;
         return -1;
     }
-    if (real_write == nullptr) {
+    if (realWrite == nullptr) {
         errno = ENOSYS;
         return -1;
     }
     DebugLog("write", ">>> PASSING THROUGH to real write, fd=%d", fd);
-    return real_write(fd, buf, count);
+    return realWrite(fd, buf, count);
 }
 int close(int fd)
 {
     DebugLog("close", ">>> ENTER");
-    dlsym_close_func_t real_close = reinterpret_cast<dlsym_close_func_t>(dlsym(RTLD_NEXT, "close"));
+    DlsymCloseFuncPtr realClose = reinterpret_cast<DlsymCloseFuncPtr>(dlsym(RTLD_NEXT, "close"));
     if (!g_dlsymMockEnabled) {
-        if (real_close == nullptr) {
+        if (realClose == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("close", ">>> PASSING THROUGH (mock disabled) fd=%d", fd);
-        return real_close(fd);
+        return realClose(fd);
     }
     if (GetMockFd(fd) != nullptr) {
         FreeMockFd(fd);
         DebugLog("close", ">>> MOCKED: closed mock fd=%d", fd);
         return 0;
     }
-    if (real_close == nullptr) {
+    if (realClose == nullptr) {
         errno = ENOSYS;
         return -1;
     }
     DebugLog("close", ">>> PASSING THROUGH to real close, fd=%d", fd);
-    return real_close(fd);
+    return realClose(fd);
 }
 off_t lseek(int fd, off_t offset, int whence)
 {
     DebugLog("lseek", ">>> ENTER");
-    dlsym_lseek_func_t real_lseek = reinterpret_cast<dlsym_lseek_func_t>(dlsym(RTLD_NEXT, "lseek"));
+    DlsymLseekFuncPtr realLseek = reinterpret_cast<DlsymLseekFuncPtr>(dlsym(RTLD_NEXT, "lseek"));
     if (!g_dlsymMockEnabled) {
-        if (real_lseek == nullptr) {
+        if (realLseek == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("lseek", ">>> PASSING THROUGH (mock disabled) fd=%d", fd);
-        return real_lseek(fd, offset, whence);
+        return realLseek(fd, offset, whence);
     }
     MockFileDescriptor* mockFd = GetMockFd(fd);
     if (mockFd == nullptr) {
-        if (real_lseek == nullptr) {
+        if (realLseek == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("lseek", ">>> PASSING THROUGH (not a mock fd) fd=%d", fd);
-        return real_lseek(fd, offset, whence);
+        return realLseek(fd, offset, whence);
     }
     off_t newPos = 0;
     switch (whence) {
@@ -338,14 +353,14 @@ off_t lseek(int fd, off_t offset, int whence)
 int stat(const char* pathname, struct stat* statbuf)
 {
     DebugLog("stat", ">>> ENTER");
-    dlsym_stat_func_t real_stat = reinterpret_cast<dlsym_stat_func_t>(dlsym(RTLD_NEXT, "stat"));
+    DlsymStatFuncPtr realStat = reinterpret_cast<DlsymStatFuncPtr>(dlsym(RTLD_NEXT, "stat"));
     if (!g_dlsymMockEnabled) {
-        if (real_stat == nullptr) {
+        if (realStat == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("stat", ">>> PASSING THROUGH (mock disabled) path=%s", pathname ? pathname : "NULL");
-        return real_stat(pathname, statbuf);
+        return realStat(pathname, statbuf);
     }
     if (pathname == nullptr || statbuf == nullptr) {
         DebugLog("stat", ">>> ERROR: pathname or statbuf is NULL");
@@ -355,42 +370,48 @@ int stat(const char* pathname, struct stat* statbuf)
     std::string key(pathname);
     auto contentIt = g_mockFileContent.find(key);
     if (contentIt != g_mockFileContent.end()) {
-        memset(statbuf, 0, sizeof(struct stat));
-        statbuf->st_mode = S_IFREG | 0644;
+        errno_t ret = memset_s(statbuf, sizeof(struct stat), 0, sizeof(struct stat));
+        if (ret != EOK) {
+            DebugLog("stat", ">>> ERROR: memset_s failed with %d", ret);
+        }
+        statbuf->st_mode = S_IFREG | STAT_FILE_MODE;
         statbuf->st_size = static_cast<off_t>(contentIt->second.size());
-        statbuf->st_blksize = 4096;
-        statbuf->st_blocks = (contentIt->second.size() + 511) / 512;
+        statbuf->st_blksize = FILE_BLOCK_SIZE;
+        statbuf->st_blocks = (contentIt->second.size() + FILE_BLOCK_MASK) / (FILE_BLOCK_MASK + 1);
         DebugLog("stat", ">>> MOCKED: returning stat for %s, size=%zu", pathname,
                  static_cast<size_t>(statbuf->st_size));
         return 0;
     }
     if (g_mockFileExists.find(key) != g_mockFileExists.end()) {
-        memset(statbuf, 0, sizeof(struct stat));
-        statbuf->st_mode = S_IFREG | 0644;
+        errno_t ret = memset_s(statbuf, sizeof(struct stat), 0, sizeof(struct stat));
+        if (ret != EOK) {
+            DebugLog("stat", ">>> ERROR: memset_s failed with %d", ret);
+        }
+        statbuf->st_mode = S_IFREG | STAT_FILE_MODE;
         statbuf->st_size = 0;
-        statbuf->st_blksize = 4096;
+        statbuf->st_blksize = FILE_BLOCK_SIZE;
         DebugLog("stat", ">>> MOCKED: returning empty stat (file exists only) %s", pathname);
         return 0;
     }
-    if (real_stat == nullptr) {
+    if (realStat == nullptr) {
         DebugLog("stat", ">>> MOCKED: file not in mock list: %s (returning ENOENT)", pathname);
         errno = ENOENT;
         return -1;
     }
     DebugLog("stat", ">>> PASSING THROUGH (not in mock list) path=%s", pathname);
-    return real_stat(pathname, statbuf);
+    return realStat(pathname, statbuf);
 }
 int fstat(int fd, struct stat* statbuf)
 {
     DebugLog("fstat", ">>> ENTER");
-    dlsym_fstat_func_t real_fstat = reinterpret_cast<dlsym_fstat_func_t>(dlsym(RTLD_NEXT, "fstat"));
+    DlsymFstatFuncPtr realFstat = reinterpret_cast<DlsymFstatFuncPtr>(dlsym(RTLD_NEXT, "fstat"));
     if (!g_dlsymMockEnabled) {
-        if (real_fstat == nullptr) {
+        if (realFstat == nullptr) {
             errno = ENOSYS;
             return -1;
         }
         DebugLog("fstat", ">>> PASSING THROUGH (mock disabled) fd=%d", fd);
-        return real_fstat(fd, statbuf);
+        return realFstat(fd, statbuf);
     }
     if (statbuf == nullptr) {
         DebugLog("fstat", ">>> ERROR: statbuf is NULL");
@@ -399,32 +420,35 @@ int fstat(int fd, struct stat* statbuf)
     }
     MockFileDescriptor* mockFd = GetMockFd(fd);
     if (mockFd != nullptr) {
-        memset(statbuf, 0, sizeof(struct stat));
-        statbuf->st_mode = S_IFREG | 0644;
+        errno_t ret = memset_s(statbuf, sizeof(struct stat), 0, sizeof(struct stat));
+        if (ret != EOK) {
+            DebugLog("fstat", ">>> ERROR: memset_s failed with %d", ret);
+        }
+        statbuf->st_mode = S_IFREG | STAT_FILE_MODE;
         statbuf->st_size = static_cast<off_t>(mockFd->content.size());
-        statbuf->st_blksize = 4096;
-        statbuf->st_blocks = (mockFd->content.size() + 511) / 512;
+        statbuf->st_blksize = FILE_BLOCK_SIZE;
+        statbuf->st_blocks = (mockFd->content.size() + FILE_BLOCK_MASK) / (FILE_BLOCK_MASK + 1);
         DebugLog("fstat", ">>> MOCKED: fd=%d is mock fd, size=%zu", fd, mockFd->content.size());
         return 0;
     }
-    if (real_fstat == nullptr) {
+    if (realFstat == nullptr) {
         errno = ENOSYS;
         return -1;
     }
     DebugLog("fstat", ">>> PASSING THROUGH (not a mock fd) fd=%d", fd);
-    return real_fstat(fd, statbuf);
+    return realFstat(fd, statbuf);
 }
 FILE* fopen(const char* pathname, const char* mode)
 {
     DebugLog("fopen", ">>> ENTER");
-    dlsym_fopen_func_t real_fopen = reinterpret_cast<dlsym_fopen_func_t>(dlsym(RTLD_NEXT, "fopen"));
+    DlsymFopenFuncPtr realFopen = reinterpret_cast<DlsymFopenFuncPtr>(dlsym(RTLD_NEXT, "fopen"));
     if (!g_dlsymMockEnabled) {
-        if (real_fopen == nullptr) {
+        if (realFopen == nullptr) {
             errno = ENOSYS;
             return nullptr;
         }
         DebugLog("fopen", ">>> PASSING THROUGH (mock disabled) path=%s", pathname ? pathname : "NULL");
-        return real_fopen(pathname, mode);
+        return realFopen(pathname, mode);
     }
     if (pathname == nullptr) {
         DebugLog("fopen", ">>> ERROR: pathname is NULL");
@@ -446,12 +470,12 @@ FILE* fopen(const char* pathname, const char* mode)
         DebugLog("fopen", ">>> MOCKED: opened empty mock file via fmemopen: %s", pathname);
         return memfile;
     }
-    if (real_fopen == nullptr) {
+    if (realFopen == nullptr) {
         DebugLog("fopen", ">>> MOCKED: file not in mock list: %s (returning ENOENT)", pathname);
         errno = ENOENT;
         return nullptr;
     }
     DebugLog("fopen", ">>> PASSING THROUGH (not in mock list) path=%s", pathname);
-    return real_fopen(pathname, mode);
+    return realFopen(pathname, mode);
 }
 }
