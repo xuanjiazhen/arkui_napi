@@ -289,7 +289,7 @@ static napi_value PasswordVerify(napi_env env, napi_callback_info info)
     std::string hash;
     NAPI_ASSERT(env, GetStringArg(env, args[0], password), "Failed to get password string");
     NAPI_ASSERT(env, GetStringArg(env, args[1], salt), "Failed to get salt string");
-    NAPI_ASSERT(env, GetStringArg(env, args[2], hash), "Failed to get hash string");
+    NAPI_ASSERT(env, GetStringArg(env, args[ARG_COUNT_2], hash), "Failed to get hash string");
 
     napi_value output;
     NAPI_CALL(env, napi_get_boolean(env, CryptoUtils::PasswordVerify(password, salt, hash), &output));
@@ -340,7 +340,7 @@ static void HashAsyncComplete(napi_env env, napi_status status, void* data)
     args[1] = result;
 
     napi_value callbackResult = nullptr;
-    napi_call_function(env, undefined, callback, 2, args, &callbackResult);
+    napi_call_function(env, undefined, callback, ARG_COUNT_2, args, &callbackResult);
 
     napi_delete_reference(env, context->callbackRef);
     napi_delete_async_work(env, context->work);
