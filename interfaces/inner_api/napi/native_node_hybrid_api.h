@@ -62,6 +62,9 @@ NAPI_EXTERN napi_status napi_load_module_with_module_request(napi_env env,
                                                              napi_value* result);
 NAPI_EXTERN napi_status napi_set_stackinfo(napi_env env, NapiStackInfo* napi_info);
 NAPI_EXTERN napi_status napi_get_stackinfo(napi_env env, NapiStackInfo* result);
+NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env,
+                                                          napi_value value,
+                                                          void* string_object);
 
 // XGC specific internal API
 #ifdef PANDA_JS_ETS_HYBRID_MODE
@@ -76,10 +79,7 @@ NAPI_EXTERN napi_status napi_xref_unwrap(napi_env env, napi_value js_object, voi
 
 NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref);
 
-NAPI_EXTERN napi_status napi_create_xref(napi_env env,
-                                         napi_value value,
-                                         uint32_t initial_refcount,
-                                         napi_ref* result);
+NAPI_EXTERN napi_status napi_create_xref(napi_env env, napi_value value, uint32_t initial_refcount, napi_ref* result);
 
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env, void* inputIface, void** outputIface);
 
@@ -98,11 +98,9 @@ NAPI_EXTERN napi_status napi_is_xref_type(napi_env env, napi_value js_object, bo
 NAPI_EXTERN napi_status napi_get_ets_implements(napi_env env, napi_value value, napi_value* result);
 NAPI_EXTERN napi_status napi_deserialize_hybrid(napi_env env, void* buffer, napi_value* object);
 NAPI_EXTERN napi_status napi_setup_hybrid_environment(napi_env env);
-NAPI_EXTERN napi_status napi_serialize_hybrid(napi_env env,
-                                              napi_value object,
-                                              napi_value transfer_list,
-                                              napi_value clone_list, void** result);
- NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
+NAPI_EXTERN napi_status
+napi_serialize_hybrid(napi_env env, napi_value object, napi_value transfer_list, napi_value clone_list, void** result);
+NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_value js_object,
                                             void* native_object,
                                             napi_finalize finalize_cb,
