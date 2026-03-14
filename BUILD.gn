@@ -416,6 +416,7 @@ if (!ark_standalone_build) {
         "sample/native_module_math_suite:math_suite",
         "sample/native_module_object_suite:object_suite",
         "sample/native_module_string_suite:string_suite",
+        "sample/native_module_reference_suite:reference_suite",
         "sample/native_module_netserver_suite:netserver_suite",
         "sample/native_module_kvstore_suite:kvstore_suite",
         "sample/native_module_json_suite:json_suite",
