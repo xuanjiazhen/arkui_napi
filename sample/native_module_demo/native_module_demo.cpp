@@ -18,6 +18,8 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
+extern napi_value RegisterDemoTests(napi_env env, napi_value exports);
+
 /*
  * Sync callback
  */
@@ -203,7 +205,7 @@ static napi_value Init(napi_env env, napi_value exports)
 
     DemoJavascriptClassInit(env, exports);
 
-    return exports;
+    return RegisterDemoTests(env, exports);
 }
 EXTERN_C_END
 

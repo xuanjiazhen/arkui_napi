@@ -17,6 +17,7 @@ ohos_shared_library("demo") {
   include_dirs = []
 
   sources = [
+    "demo_tests.cpp",
     "demo_javascript_class.cpp",
     "native_module_demo.cpp",
   ]
