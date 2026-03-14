@@ -1,0 +1,16 @@
+{
+  "markdown.validate.enabled": true,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "xaver.clang-format",
+  "[c]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  },
+  "[cpp]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  },
+  "clang-format.executable": "/home/j30058965/openharmony/prebuilts/clang/ohos/linux-x86_64/llvm/bin/clang-format",
+  "clang-format.style": "file",
+  "clang-format.fallbackStyle": "Google",
+  "C_Cpp.formatting": "clangFormat",
+  "C_Cpp.clang_format_style": "file"
+}

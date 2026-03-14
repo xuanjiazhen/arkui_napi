@@ -861,11 +861,11 @@ static napi_value RunFunctionCase(napi_env env, napi_callback_info info)
     for (int32_t round = 0; round < spec.rounds; round++) {
         napi_value invokeArgs[K_INVOKE_ARG_COUNT] = {nullptr};
         napi_value callbackResult = nullptr;
-        NAPI_CALL(
-            env, napi_create_int32(env, input + spec.bias + round * spec.stride, &invokeArgs[K_FIRST_INVOKE_INDEX]));
+        NAPI_CALL(env,
+                  napi_create_int32(env, input + spec.bias + round * spec.stride, &invokeArgs[K_FIRST_INVOKE_INDEX]));
         NAPI_CALL(env, napi_create_int32(env, spec.delta + round, &invokeArgs[K_SECOND_INVOKE_INDEX]));
         if (napi_call_function(env, undefined, args[K_CALLBACK_ARG_INDEX], K_INVOKE_ARG_COUNT, invokeArgs,
-                &callbackResult) != napi_ok) {
+                               &callbackResult) != napi_ok) {
             return nullptr;
         }
         NAPI_CALL(env, napi_set_element(env, outputs, static_cast<uint32_t>(round), callbackResult));
