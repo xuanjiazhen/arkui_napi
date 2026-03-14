@@ -141,7 +141,7 @@ static napi_value RunStringCase23(napi_env env, napi_callback_info info)
     for (size_t index = 0; index < K_TOKEN_SCENARIOS.size(); index++) {
         const auto& spec = K_TOKEN_SCENARIOS[index];
         const std::string composed = std::string(spec.prefix) + spec.separator + source + spec.separator + spec.infix +
-                                     spec.separator + spec.suffix + spec.separator + spec.label;
+            spec.separator + spec.suffix + spec.separator + spec.label;
         const std::string normalized = NormalizeTokenString(composed);
         const uint32_t segmentCount = CountSegments(normalized);
         const uint32_t underscoreCount = CountCharacter(normalized, '_');
@@ -154,8 +154,8 @@ static napi_value RunStringCase23(napi_env env, napi_callback_info info)
         longestNormalized = std::max(longestNormalized, static_cast<uint32_t>(normalized.size()));
         allMatched = allMatched && matched && segmentCount == underscoreCount + 1;
 
-        napi_value item =
-            CreateTokenDetail(env, spec, composed, normalized, segmentCount, underscoreCount, digest, matched);
+        napi_value item = CreateTokenDetail(
+            env, spec, composed, normalized, segmentCount, underscoreCount, digest, matched);
         NAPI_CALL(env, napi_set_element(env, details, index, item));
     }
 
