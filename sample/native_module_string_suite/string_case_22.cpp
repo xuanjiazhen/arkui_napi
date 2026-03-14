@@ -136,9 +136,9 @@ static napi_value RunStringCase22(napi_env env, napi_callback_info info)
         const std::string repeatedMarker = RepeatMarker(spec.marker, spec.repeat);
         const std::string text =
             std::string(spec.prefix) + source + ":" + spec.suffix + "|" + repeatedMarker + "|" + spec.label;
-        const uint32_t expectedLength = static_cast<uint32_t>(
-            std::string(spec.prefix).size() + source.size() + std::string(spec.suffix).size() + repeatedMarker.size() +
-            std::string(spec.label).size() + 3);
+        const uint32_t expectedLength =
+            static_cast<uint32_t>(std::string(spec.prefix).size() + source.size() + std::string(spec.suffix).size() +
+                                  repeatedMarker.size() + std::string(spec.label).size() + 3);
         const bool lengthMatched = expectedLength == text.size();
         const uint32_t uppercaseCount = CountUppercaseLetters(text);
         const uint32_t digitCount = CountDigits(text);
@@ -151,8 +151,7 @@ static napi_value RunStringCase22(napi_env env, napi_callback_info info)
         longestBytes = std::max(longestBytes, static_cast<uint32_t>(text.size()));
         allLengthMatched = allLengthMatched && lengthMatched;
 
-        napi_value item =
-            CreateScenarioDetail(env, spec, text, digest, uppercaseCount, digitCount, lengthMatched);
+        napi_value item = CreateScenarioDetail(env, spec, text, digest, uppercaseCount, digitCount, lengthMatched);
         NAPI_CALL(env, napi_set_element(env, details, index, item));
     }
 
@@ -167,8 +166,8 @@ static napi_value RunStringCase22(napi_env env, napi_callback_info info)
     StringSuite::SetNamedUInt32(env, result, "digitCount", totalDigits);
     StringSuite::SetNamedUInt32(env, result, "combinedDigest", combinedDigest);
     StringSuite::SetNamedBool(env, result, "allLengthMatched", allLengthMatched);
-    StringSuite::SetNamedBool(env, result, "passed",
-        allLengthMatched && totalBytes >= longestBytes && combinedDigest != 0U);
+    StringSuite::SetNamedBool(
+        env, result, "passed", allLengthMatched && totalBytes >= longestBytes && combinedDigest != 0U);
     StringSuite::SetNamedValue(env, result, "samples", details);
     return result;
 }

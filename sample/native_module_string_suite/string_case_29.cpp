@@ -133,7 +133,8 @@ static napi_value RunStringCase29(napi_env env, napi_callback_info info)
     StringSuite::SetNamedUInt32(env, result, "totalHits", totalHits);
     StringSuite::SetNamedUInt32(env, result, "digestMix", digestMix);
     StringSuite::SetNamedBool(env, result, "allFound", allFound);
-    StringSuite::SetNamedBool(env, result, "passed", allFound && totalHits >= static_cast<uint32_t>(K_SEARCH_SCENARIOS.size()));
+    StringSuite::SetNamedBool(
+        env, result, "passed", allFound && totalHits >= static_cast<uint32_t>(K_SEARCH_SCENARIOS.size()));
     StringSuite::SetNamedValue(env, result, "details", details);
     return result;
 }

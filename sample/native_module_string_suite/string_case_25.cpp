@@ -111,7 +111,7 @@ static napi_value RunStringCase25(napi_env env, napi_callback_info info)
     for (size_t index = 0; index < K_AFFIX_SCENARIOS.size(); index++) {
         const auto& spec = K_AFFIX_SCENARIOS[index];
         const std::string text = std::string(spec.prefix) + "|" + source + "|" + spec.suffix + "|" + source + "|" +
-            spec.needle + "|" + spec.label;
+                                 spec.needle + "|" + spec.label;
         const int32_t firstNeedle = static_cast<int32_t>(text.find(spec.needle));
         const int32_t lastNeedle = static_cast<int32_t>(text.rfind(spec.needle));
         const uint32_t occurrenceCount = CountOccurrences(text, spec.needle);
@@ -124,8 +124,8 @@ static napi_value RunStringCase25(napi_env env, napi_callback_info info)
         lastPositionSum += lastNeedle;
         everySourceVisible = everySourceVisible && sourceVisible;
 
-        napi_value item = CreateGridDetail(
-            env, spec, text, firstNeedle, lastNeedle, occurrenceCount, digest, sourceVisible);
+        napi_value item =
+            CreateGridDetail(env, spec, text, firstNeedle, lastNeedle, occurrenceCount, digest, sourceVisible);
         NAPI_CALL(env, napi_set_element(env, details, index, item));
     }
 
@@ -139,8 +139,8 @@ static napi_value RunStringCase25(napi_env env, napi_callback_info info)
     StringSuite::SetNamedInt32(env, result, "lastPositionSum", lastPositionSum);
     StringSuite::SetNamedUInt32(env, result, "digestMix", digestMix);
     StringSuite::SetNamedBool(env, result, "everySourceVisible", everySourceVisible);
-    StringSuite::SetNamedBool(
-        env, result, "passed", everySourceVisible && totalOccurrences >= static_cast<uint32_t>(K_AFFIX_SCENARIOS.size()));
+    StringSuite::SetNamedBool(env, result, "passed",
+        everySourceVisible && totalOccurrences >= static_cast<uint32_t>(K_AFFIX_SCENARIOS.size()));
     StringSuite::SetNamedValue(env, result, "details", details);
     return result;
 }

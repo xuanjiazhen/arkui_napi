@@ -47,10 +47,7 @@ constexpr std::array<MirrorScenarioSpec, 9> K_MIRROR_SCENARIOS = {{
     {"mirror-09", "ash", "center", "%%", 2},
 }};
 
-std::string ReverseString(const std::string& value)
-{
-    return std::string(value.rbegin(), value.rend());
-}
+std::string ReverseString(const std::string& value) { return std::string(value.rbegin(), value.rend()); }
 
 uint32_t CountSymmetryMatches(const std::string& value)
 {
@@ -141,8 +138,8 @@ static napi_value RunStringCase24(napi_env env, napi_callback_info info)
         longestMirror = std::max(longestMirror, static_cast<uint32_t>(mirrored.size()));
         allPivotsVisible = allPivotsVisible && pivotVisible;
 
-        napi_value item = CreateMirrorDetail(
-            env, spec, composed, mirrored, symmetryMatches, vowelCount, digest, pivotVisible);
+        napi_value item =
+            CreateMirrorDetail(env, spec, composed, mirrored, symmetryMatches, vowelCount, digest, pivotVisible);
         NAPI_CALL(env, napi_set_element(env, details, index, item));
     }
 

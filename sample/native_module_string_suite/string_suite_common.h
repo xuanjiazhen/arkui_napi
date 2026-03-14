@@ -24,10 +24,7 @@ inline std::string BuildIndexedName(const char* prefix, size_t caseNumber)
     return std::string(prefix) + suffix;
 }
 
-inline size_t GetCaseIndex(void* data)
-{
-    return static_cast<size_t>(reinterpret_cast<uintptr_t>(data));
-}
+inline size_t GetCaseIndex(void* data) { return static_cast<size_t>(reinterpret_cast<uintptr_t>(data)); }
 
 inline bool ReadUtf8(napi_env env, napi_value value, const char* message, std::string* result)
 {
@@ -100,8 +97,8 @@ inline void AppendStringDescriptor(std::vector<std::string>* exportNames,
     void* data = nullptr)
 {
     exportNames->push_back(std::move(exportName));
-    descriptors->push_back(napi_property_descriptor{exportNames->back().c_str(), nullptr, callback, nullptr, nullptr,
-        nullptr, napi_default, data});
+    descriptors->push_back(napi_property_descriptor{
+        exportNames->back().c_str(), nullptr, callback, nullptr, nullptr, nullptr, napi_default, data});
 }
 
 }  // namespace StringSuite

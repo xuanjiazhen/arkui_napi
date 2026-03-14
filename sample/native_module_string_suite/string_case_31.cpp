@@ -72,8 +72,8 @@ uint32_t ComputeWindowDigest(const std::string& value, uint32_t seed)
     return digest;
 }
 
-napi_value CreateWindowDetail(napi_env env, const WindowScenarioSpec& spec, const std::string& trace,
-    uint32_t digest, uint32_t windowCount, bool sourceVisible)
+napi_value CreateWindowDetail(napi_env env, const WindowScenarioSpec& spec, const std::string& trace, uint32_t digest,
+    uint32_t windowCount, bool sourceVisible)
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_object(env, &result));
@@ -113,7 +113,8 @@ static napi_value RunStringCase31(napi_env env, napi_callback_info info)
         const std::string text = std::string(spec.prefix) + ":" + source + ":" + spec.suffix + ":" + spec.label;
         const std::string trace = BuildWindowTrace(text, spec.window);
         const uint32_t digest = ComputeWindowDigest(trace, static_cast<uint32_t>(index + 81));
-        const uint32_t windowCount = trace.empty() ? 0U : static_cast<uint32_t>(std::count(trace.begin(), trace.end(), '|') + 1);
+        const uint32_t windowCount =
+            trace.empty() ? 0U : static_cast<uint32_t>(std::count(trace.begin(), trace.end(), '|') + 1);
         const bool sourceVisible = source.empty() || trace.find(source) != std::string::npos;
 
         digestMix ^= digest;
@@ -134,7 +135,8 @@ static napi_value RunStringCase31(napi_env env, napi_callback_info info)
     StringSuite::SetNamedUInt32(env, result, "longestTrace", longestTrace);
     StringSuite::SetNamedUInt32(env, result, "digestMix", digestMix);
     StringSuite::SetNamedBool(env, result, "allSourceVisible", allSourceVisible);
-    StringSuite::SetNamedBool(env, result, "passed", allSourceVisible && totalWindowCount >= static_cast<uint32_t>(K_WINDOW_SCENARIOS.size()));
+    StringSuite::SetNamedBool(env, result, "passed",
+        allSourceVisible && totalWindowCount >= static_cast<uint32_t>(K_WINDOW_SCENARIOS.size()));
     StringSuite::SetNamedValue(env, result, "details", details);
     return result;
 }

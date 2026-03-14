@@ -121,8 +121,8 @@ static napi_value RunStringCase26(napi_env env, napi_callback_info info)
     bool separatorFloor = true;
     for (size_t index = 0; index < K_BUCKET_SCENARIOS.size(); index++) {
         const auto& spec = K_BUCKET_SCENARIOS[index];
-        const std::string text = std::string(spec.left) + "|" + source + "|" + spec.infix + "|" + spec.right + "|" +
-            spec.label;
+        const std::string text =
+            std::string(spec.left) + "|" + source + "|" + spec.infix + "|" + spec.right + "|" + spec.label;
         const BucketStats stats = ScanBuckets(text);
         const uint32_t digest = ComputeBucketDigest(text, static_cast<uint32_t>(index + 31));
 
