@@ -17,6 +17,7 @@ ohos_shared_library("crypto") {
   include_dirs = []
 
   sources = [
+    "crypto_tests.cpp",
     "crypto_utils.cpp",
     "native_module_crypto.cpp",
   ]

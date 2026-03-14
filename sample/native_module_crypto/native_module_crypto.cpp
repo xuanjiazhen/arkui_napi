@@ -18,6 +18,8 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
+extern napi_value RegisterCryptoTests(napi_env env, napi_value exports);
+
 namespace {
     constexpr size_t ARG_COUNT_1 = 1;
     constexpr size_t ARG_COUNT_2 = 2;
@@ -403,7 +405,7 @@ static napi_value Init(napi_env env, napi_value exports)
 
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
 
-    return exports;
+    return RegisterCryptoTests(env, exports);
 }
 
 EXTERN_C_END
