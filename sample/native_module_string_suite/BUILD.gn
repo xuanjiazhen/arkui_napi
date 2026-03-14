@@ -18,6 +18,7 @@ ohos_shared_library("string_suite") {
     "string_case_22.cpp",
     "string_case_23.cpp",
     "string_case_24.cpp",
+    "string_case_25.cpp",
     "string_tests.cpp",
   ]
 
