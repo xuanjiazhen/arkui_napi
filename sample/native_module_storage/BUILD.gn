@@ -21,7 +21,10 @@ ohos_shared_library("storage") {
     "-g3",
   ]
 
-  sources = [ "js_storage.cpp" ]
+  sources = [
+    "js_storage.cpp",
+    "storage_tests.cpp",
+  ]
 
   deps = [ "../..:ace_napi" ]
 

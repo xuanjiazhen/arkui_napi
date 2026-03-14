@@ -15,6 +15,8 @@
 
 #include "js_storage.h"
 
+extern napi_value RegisterStorageTests(napi_env env, napi_value exports);
+
 static std::map<std::string, std::string> g_keyValueStorage;
 
 using namespace StorageBufferSize;
@@ -820,7 +822,7 @@ static napi_value StorageExport(napi_env env, napi_value exports)
     };
 
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
-    return exports;
+    return RegisterStorageTests(env, exports);
 }
 
 // storage module define
