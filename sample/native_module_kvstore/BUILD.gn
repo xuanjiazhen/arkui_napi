@@ -16,7 +16,10 @@ import("//build/ohos.gni")
 ohos_shared_library("kvstore") {
   include_dirs = []
 
-  sources = [ "native_module_kvstore.cpp" ]
+  sources = [
+    "kvstore_tests.cpp",
+    "native_module_kvstore.cpp",
+  ]
 
   deps = [ "../..:ace_napi" ]
 
