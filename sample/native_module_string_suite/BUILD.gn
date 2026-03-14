@@ -16,6 +16,7 @@ import("//build/ohos.gni")
 ohos_shared_library("string_suite") {
   sources = [
     "string_case_22.cpp",
+    "string_case_23.cpp",
     "string_tests.cpp",
   ]
 

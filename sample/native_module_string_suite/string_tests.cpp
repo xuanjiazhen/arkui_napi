@@ -22,7 +22,7 @@
 namespace {
 
 constexpr size_t K_BASE_STRING_CASE_COUNT = 21;
-constexpr size_t K_EXTRA_STRING_CASE_COUNT = 1;
+constexpr size_t K_EXTRA_STRING_CASE_COUNT = 10;
 constexpr size_t K_STRING_CASE_COUNT = K_BASE_STRING_CASE_COUNT + K_EXTRA_STRING_CASE_COUNT;
 constexpr size_t K_STRING_ARG_COUNT = 1;
 constexpr size_t K_FIRST_CASE_NUMBER = 1;
@@ -42,6 +42,7 @@ struct StringCaseSpec {
 };
 
 void RegisterStringCase22(std::vector<std::string>* exportNames, std::vector<napi_property_descriptor>* descriptors);
+void RegisterStringCase23(std::vector<std::string>* exportNames, std::vector<napi_property_descriptor>* descriptors);
 
 StringCaseSpec GetStringCaseSpec(size_t caseIndex)
 {
@@ -121,6 +122,7 @@ static napi_value InitStringSuite(napi_env env, napi_value exports)
             reinterpret_cast<void*>(static_cast<uintptr_t>(caseIndex)));
     }
     RegisterStringCase22(&exportNames, &descriptors);
+    RegisterStringCase23(&exportNames, &descriptors);
     NAPI_CALL(env, napi_define_properties(env, exports, descriptors.size(), descriptors.data()));
     return exports;
 }
