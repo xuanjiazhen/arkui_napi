@@ -22,7 +22,10 @@ gen_js_obj("calc_js") {
 }
 
 ohos_shared_library("calc") {
-  sources = [ "napi_calc.cpp" ]
+  sources = [
+    "calc_tests.cpp",
+    "napi_calc.cpp",
+  ]
 
   deps = [
     ":calc_js",

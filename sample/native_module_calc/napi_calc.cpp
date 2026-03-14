@@ -20,6 +20,7 @@
 
 extern const char _binary_calc_js_start[];
 extern const char _binary_calc_js_end[];
+extern napi_value RegisterCalcTests(napi_env env, napi_value exports);
 
 /*
  * Sync callback
@@ -65,7 +66,7 @@ static napi_value Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("add", Add),
     };
     NAPI_CALL(env, napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc));
-    return exports;
+    return RegisterCalcTests(env, exports);
 }
 
 extern "C" __attribute__((visibility("default"))) void NAPI_calc_GetJSCode(const char** buf, int* bufLen)
