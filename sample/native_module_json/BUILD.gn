@@ -16,7 +16,10 @@ import("//build/ohos.gni")
 ohos_shared_library("json") {
   include_dirs = []
 
-  sources = [ "native_module_json.cpp" ]
+  sources = [
+    "json_tests.cpp",
+    "native_module_json.cpp",
+  ]
 
   deps = [ "../..:ace_napi" ]
 
