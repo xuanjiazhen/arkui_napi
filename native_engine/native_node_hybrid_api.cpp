@@ -97,7 +97,7 @@ NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env, napi_val
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
     Local<panda::StringRef> stringVal(nativeValue);
 
-    auto &strRef = *reinterpret_cast<std::variant<std::string, std::u16string>>(string_object);
+    auto &strRef = *reinterpret_cast<std::variant<std::string, std::u16string>*>(string_object);
 
     // Get string length and calculate initial buffer size
     // Compressed strings need less space, uncompressed strings may need up to 4 bytes per UTF-16 char
@@ -105,7 +105,6 @@ NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env, napi_val
     uint32_t stringLen = stringVal->Length(vm);
     
     if (stringLen == 0) {
-        strRef.emplace<std::string>();
         return napi_clear_last_error(env);
     }
 
@@ -115,7 +114,7 @@ NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env, napi_val
     if (isCompressed) {
         auto &strU8 = strRef.emplace<std::string>();
         strU8.resize(stringLen);
-        copied = stringVal->WriteUtf8(vm, strU8.data(), stringLen, true);
+        copied = stringVal->WriteUtf8(vm, strU8.data(), stringLen, /** isWriteBuffer*/true);
     } else {
         auto &strU16 = strRef.emplace<std::u16string>();
         strU16.resize(stringLen);
@@ -125,7 +124,6 @@ NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env, napi_val
     // WriteUtf8 or WriteUtf16 returns 0 on failure, handle this case
     if (copied == 0) {
         HILOG_ERROR("napi_get_value_string_utf8_hybrid: Write failed");
-        strObject->clear();
         return napi_set_last_error(env, napi_generic_failure);
     }
 
