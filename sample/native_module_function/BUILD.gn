@@ -16,7 +16,10 @@ import("//build/ohos.gni")
 ohos_shared_library("function") {
   include_dirs = []
 
-  sources = [ "napi_function.cpp" ]
+  sources = [
+    "function_tests.cpp",
+    "napi_function.cpp",
+  ]
 
   deps = [ "../..:ace_napi" ]
 

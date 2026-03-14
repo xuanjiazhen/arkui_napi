@@ -19,6 +19,8 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
+extern napi_value RegisterFunctionTests(napi_env env, napi_value exports);
+
 static constexpr int REQUIRED_ARGS_ONE = 1;
 static constexpr int REQUIRED_ARGS_TWO = 2;
 static constexpr uint32_t MAX_ARRAY_SIZE = 1000;
@@ -155,7 +157,7 @@ static napi_value Init(napi_env env, napi_value exports)
     };
     NAPI_CALL(env, napi_define_properties(env, exports,
                                       sizeof(desc) / sizeof(desc[0]), desc));
-    return exports;
+    return RegisterFunctionTests(env, exports);
 }
 
 static napi_module functionModule = {
