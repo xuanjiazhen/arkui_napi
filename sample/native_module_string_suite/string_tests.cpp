@@ -17,16 +17,15 @@
 #include <string>
 #include <vector>
 
-#include "napi/native_api.h"
-#include "napi/native_node_api.h"
+#include "string_suite_common.h"
 
 namespace {
 
-constexpr size_t K_STRING_CASE_COUNT = 21;
+constexpr size_t K_BASE_STRING_CASE_COUNT = 21;
+constexpr size_t K_EXTRA_STRING_CASE_COUNT = 1;
+constexpr size_t K_STRING_CASE_COUNT = K_BASE_STRING_CASE_COUNT + K_EXTRA_STRING_CASE_COUNT;
 constexpr size_t K_STRING_ARG_COUNT = 1;
 constexpr size_t K_FIRST_CASE_NUMBER = 1;
-constexpr int K_CASE_NUMBER_WIDTH = 2;
-constexpr size_t K_NULL_TERMINATOR_SIZE = 1;
 constexpr size_t K_MARKER_CYCLE = 7;
 constexpr size_t K_REPEAT_CYCLE = 4;
 constexpr int32_t K_REPEAT_BASE = 1;
@@ -42,79 +41,18 @@ struct StringCaseSpec {
     int32_t repeat;
 };
 
-std::string BuildIndexedName(const char* prefix, size_t caseNumber)
-{
-    std::string suffix = std::to_string(caseNumber);
-    if (suffix.size() < static_cast<size_t>(K_CASE_NUMBER_WIDTH)) {
-        suffix.insert(0, static_cast<std::string::size_type>(K_CASE_NUMBER_WIDTH - suffix.size()), '0');
-    }
-    return std::string(prefix) + suffix;
-}
-
-size_t GetCaseIndex(void* data) { return static_cast<size_t>(reinterpret_cast<uintptr_t>(data)); }
+void RegisterStringCase22(std::vector<std::string>* exportNames, std::vector<napi_property_descriptor>* descriptors);
 
 StringCaseSpec GetStringCaseSpec(size_t caseIndex)
 {
     const size_t caseNumber = caseIndex + K_FIRST_CASE_NUMBER;
     return {
-        BuildIndexedName("stringCase", caseNumber),
-        BuildIndexedName("pre", caseNumber),
-        BuildIndexedName("suf", caseNumber),
+        StringSuite::BuildIndexedName("stringCase", caseNumber),
+        StringSuite::BuildIndexedName("pre", caseNumber),
+        StringSuite::BuildIndexedName("suf", caseNumber),
         std::string("M") + std::to_string(caseNumber % K_MARKER_CYCLE),
         static_cast<int32_t>(caseNumber % K_REPEAT_CYCLE) + K_REPEAT_BASE,
     };
-}
-
-bool ReadUtf8(napi_env env, napi_value value, const char* message, std::string* result)
-{
-    napi_valuetype type = napi_undefined;
-    if (napi_typeof(env, value, &type) != napi_ok) {
-        return false;
-    }
-    if (type != napi_string) {
-        napi_throw_type_error(env, nullptr, message);
-        return false;
-    }
-
-    size_t length = 0;
-    if (napi_get_value_string_utf8(env, value, nullptr, 0, &length) != napi_ok) {
-        return false;
-    }
-
-    std::string buffer(length + K_NULL_TERMINATOR_SIZE, '\0');
-    if (napi_get_value_string_utf8(env, value, buffer.data(), buffer.size(), &length) != napi_ok) {
-        return false;
-    }
-    buffer.resize(length);
-    *result = buffer;
-    return true;
-}
-
-bool SetNamedInt32(napi_env env, napi_value object, const char* name, int32_t value)
-{
-    napi_value napiValue = nullptr;
-    if (napi_create_int32(env, value, &napiValue) != napi_ok) {
-        return false;
-    }
-    return napi_set_named_property(env, object, name, napiValue) == napi_ok;
-}
-
-bool SetNamedBool(napi_env env, napi_value object, const char* name, bool value)
-{
-    napi_value napiValue = nullptr;
-    if (napi_get_boolean(env, value, &napiValue) != napi_ok) {
-        return false;
-    }
-    return napi_set_named_property(env, object, name, napiValue) == napi_ok;
-}
-
-bool SetNamedString(napi_env env, napi_value object, const char* name, const std::string& value)
-{
-    napi_value napiValue = nullptr;
-    if (napi_create_string_utf8(env, value.c_str(), value.size(), &napiValue) != napi_ok) {
-        return false;
-    }
-    return napi_set_named_property(env, object, name, napiValue) == napi_ok;
 }
 
 napi_value CreateStringSummary(napi_env env, const std::string& name, const std::string& text, int32_t measuredLength,
@@ -122,12 +60,12 @@ napi_value CreateStringSummary(napi_env env, const std::string& name, const std:
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_object(env, &result));
-    SetNamedString(env, result, "name", name);
-    SetNamedString(env, result, "text", text);
-    SetNamedInt32(env, result, "measuredLength", measuredLength);
-    SetNamedInt32(env, result, "expectedLength", expectedLength);
-    SetNamedBool(env, result, "containsMarker", containsMarker);
-    SetNamedBool(env, result, "passed", measuredLength == expectedLength && containsMarker);
+    StringSuite::SetNamedString(env, result, "name", name);
+    StringSuite::SetNamedString(env, result, "text", text);
+    StringSuite::SetNamedInt32(env, result, "measuredLength", measuredLength);
+    StringSuite::SetNamedInt32(env, result, "expectedLength", expectedLength);
+    StringSuite::SetNamedBool(env, result, "containsMarker", containsMarker);
+    StringSuite::SetNamedBool(env, result, "passed", measuredLength == expectedLength && containsMarker);
     return result;
 }
 
@@ -138,8 +76,8 @@ static napi_value RunStringCase(napi_env env, napi_callback_info info)
     napi_value args[K_STRING_ARG_COUNT] = {nullptr};
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, &data));
 
-    const size_t caseIndex = GetCaseIndex(data);
-    if (caseIndex >= K_STRING_CASE_COUNT) {
+    const size_t caseIndex = StringSuite::GetCaseIndex(data);
+    if (caseIndex >= K_BASE_STRING_CASE_COUNT) {
         napi_throw_error(env, nullptr, "invalid string case");
         return nullptr;
     }
@@ -149,7 +87,7 @@ static napi_value RunStringCase(napi_env env, napi_callback_info info)
         napi_throw_type_error(env, nullptr, "source is required");
         return nullptr;
     }
-    if (!ReadUtf8(env, args[0], "source must be a string", &source)) {
+    if (!StringSuite::ReadUtf8(env, args[0], "source must be a string", &source)) {
         return nullptr;
     }
 
@@ -174,13 +112,15 @@ static napi_value RunStringCase(napi_env env, napi_callback_info info)
 static napi_value InitStringSuite(napi_env env, napi_value exports)
 {
     std::vector<std::string> exportNames;
-    std::vector<napi_property_descriptor> descriptors(K_STRING_CASE_COUNT);
+    std::vector<napi_property_descriptor> descriptors;
     exportNames.reserve(K_STRING_CASE_COUNT);
-    for (size_t caseIndex = 0; caseIndex < K_STRING_CASE_COUNT; caseIndex++) {
-        exportNames.emplace_back(BuildIndexedName("testStringCase", caseIndex + K_FIRST_CASE_NUMBER));
-        descriptors[caseIndex] = napi_property_descriptor{exportNames.back().c_str(), nullptr, RunStringCase, nullptr,
-            nullptr, nullptr, napi_default, reinterpret_cast<void*>(static_cast<uintptr_t>(caseIndex))};
+    descriptors.reserve(K_STRING_CASE_COUNT);
+    for (size_t caseIndex = 0; caseIndex < K_BASE_STRING_CASE_COUNT; caseIndex++) {
+        StringSuite::AppendStringDescriptor(&exportNames, &descriptors,
+            StringSuite::BuildIndexedName("testStringCase", caseIndex + K_FIRST_CASE_NUMBER), RunStringCase,
+            reinterpret_cast<void*>(static_cast<uintptr_t>(caseIndex)));
     }
+    RegisterStringCase22(&exportNames, &descriptors);
     NAPI_CALL(env, napi_define_properties(env, exports, descriptors.size(), descriptors.data()));
     return exports;
 }
