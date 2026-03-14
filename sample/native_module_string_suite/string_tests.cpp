@@ -46,6 +46,7 @@ void RegisterStringCase23(std::vector<std::string>* exportNames, std::vector<nap
 void RegisterStringCase24(std::vector<std::string>* exportNames, std::vector<napi_property_descriptor>* descriptors);
 void RegisterStringCase25(std::vector<std::string>* exportNames, std::vector<napi_property_descriptor>* descriptors);
 void RegisterStringCase26(std::vector<std::string>* exportNames, std::vector<napi_property_descriptor>* descriptors);
+void RegisterStringCase27(std::vector<std::string>* exportNames, std::vector<napi_property_descriptor>* descriptors);
 
 StringCaseSpec GetStringCaseSpec(size_t caseIndex)
 {
@@ -129,6 +130,7 @@ static napi_value InitStringSuite(napi_env env, napi_value exports)
     RegisterStringCase24(&exportNames, &descriptors);
     RegisterStringCase25(&exportNames, &descriptors);
     RegisterStringCase26(&exportNames, &descriptors);
+    RegisterStringCase27(&exportNames, &descriptors);
     NAPI_CALL(env, napi_define_properties(env, exports, descriptors.size(), descriptors.data()));
     return exports;
 }
