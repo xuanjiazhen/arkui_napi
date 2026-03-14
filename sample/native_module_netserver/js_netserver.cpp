@@ -18,6 +18,8 @@
 
 #include "net_server.h"
 
+extern napi_value RegisterNetserverTests(napi_env env, napi_value exports);
+
 napi_value NetServer::JS_Constructor(napi_env env, napi_callback_info cbinfo)
 {
     napi_value thisVar = nullptr;
@@ -218,5 +220,5 @@ napi_value NetServer::Export(napi_env env, napi_value exports)
 
     napi_set_named_property(env, exports, "NetServer", netServerClass);
 
-    return exports;
+    return RegisterNetserverTests(env, exports);
 }

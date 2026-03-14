@@ -21,6 +21,7 @@ ohos_shared_library("netserver") {
     "js_netserver.cpp",
     "native_module_netserver.cpp",
     "net_server.cpp",
+    "netserver_tests.cpp",
   ]
 
   deps = [ "../..:ace_napi" ]
