@@ -16,7 +16,10 @@ import("//build/ohos.gni")
 ohos_shared_library("bigint") {
   include_dirs = []
 
-  sources = [ "napi_bigint.cpp" ]
+  sources = [
+    "bigint_tests.cpp",
+    "napi_bigint.cpp",
+  ]
 
   deps = [ "../..:ace_napi" ]
 
