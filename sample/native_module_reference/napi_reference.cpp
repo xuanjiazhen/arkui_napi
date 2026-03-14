@@ -19,6 +19,8 @@
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
+extern napi_value RegisterReferenceTests(napi_env env, napi_value exports);
+
 static constexpr uint32_t DEFAULT_REF_COUNT = 1;
 
 struct RefData {
@@ -237,7 +239,7 @@ static napi_value Init(napi_env env, napi_value exports)
     };
     NAPI_CALL(env, napi_define_properties(env, exports,
                                       sizeof(desc) / sizeof(desc[0]), desc));
-    return exports;
+    return RegisterReferenceTests(env, exports);
 }
 
 static napi_module referenceModule = {

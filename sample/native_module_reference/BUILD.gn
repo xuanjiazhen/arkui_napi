@@ -16,7 +16,10 @@ import("//build/ohos.gni")
 ohos_shared_library("reference") {
   include_dirs = []
 
-  sources = [ "napi_reference.cpp" ]
+  sources = [
+    "napi_reference.cpp",
+    "reference_tests.cpp",
+  ]
 
   deps = [ "../..:ace_napi" ]
 
