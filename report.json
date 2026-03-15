@@ -1,0 +1,75 @@
+{
+    "code": "20000",
+    "message": "请求成功",
+    "data": {
+        "noSolveData": false,
+        "issuesReport": {
+            "levelReport": {
+                "2": 2,
+                "3": 5
+            },
+            "noSolveReport": {
+                "noSolveLevelReport": {
+                    "2": 2,
+                    "3": 5
+                },
+                "noSolveToolReport": {
+                    "clangtidy": 7,
+                    "oat": 0,
+                    "wordstool": 0,
+                    "coding standards": 0
+                }
+            },
+            "fileNameReport": {
+                "js_encoding_helper.h": 3,
+                "js_encoding_helper.cpp": 2,
+                "js_timer_helper.cpp": 1,
+                "js_timer_helper.h": 1
+            },
+            "fossReport": {
+                "0": 0,
+                "2": 0
+            },
+            "statusReport": {
+                "0": 7
+            },
+            "ruleSystemTagsReport": [
+                {
+                    "total": 7,
+                    "toolName": "clangtidy",
+                    "ruleReports": [
+                        {
+                            "total": 5,
+                            "ruleName": "G.NAM.03-CPP 使用统一的命名风格"
+                        },
+                        {
+                            "total": 2,
+                            "ruleName": "G.FUN.01-CPP 函数功能要单一--函数参数个数"
+                        }
+                    ]
+                },
+                {
+                    "total": 0,
+                    "toolName": "coding standards",
+                    "ruleReports": []
+                },
+                {
+                    "total": 0,
+                    "toolName": "wordstool",
+                    "ruleReports": []
+                },
+                {
+                    "total": 0,
+                    "toolName": "oat",
+                    "ruleReports": []
+                }
+            ],
+            "contentReport": {
+                "invalid case style for member $DECODE_TABLE$, it should be $decodeTable$ (camelBack)": 2,
+                "function 'DateToMillis' exceeds recommended size/complexity thresholds": 2,
+                "invalid case style for member $HEX_CHARS$, it should be $hexChars$ (camelBack)": 2,
+                "invalid case style for member $PADDING$, it should be $padding$ (camelBack)": 1
+            }
+        }
+    }
+}
