@@ -34,7 +34,7 @@ static napi_value ProxySetHandler(napi_env env, napi_callback_info info)
     napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
 
     napi_valuetype valueType;
-    napi_typeof(env, argv[2], &valueType);
+    napi_typeof(env, argv[2], &valueType); // 2: index of target
 
     if (valueType == napi_undefined || valueType == napi_null) {
         // Log warning: attempt to assign property to undefined or null
@@ -43,7 +43,7 @@ static napi_value ProxySetHandler(napi_env env, napi_callback_info info)
         return result;
     }
 
-    napi_set_property(env, argv[0], argv[1], argv[2]);
+    napi_set_property(env, argv[0], argv[1], argv[2]); // 2: args of value
 
     napi_value result = nullptr;
     napi_get_boolean(env, true, &result);
@@ -210,7 +210,6 @@ static void SetterGetterFinalizer(napi_env env, void* data, void* hint)
 // Define a property with custom getter/setter. The actual value is stored in
 // heap-allocated data (.data field), not as a regular object property.
 // A finalizer ensures the memory is freed when the target object is garbage-collected.
-//
 // See:
 // - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/get
 // - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/set
