@@ -282,6 +282,13 @@ if (is_arkui_x) {
         }
       }
     }
+
+    if (!defined(ldflags)) {
+      ldflags = []
+    }
+
+    cflags = [ "-fvisibility=hidden" ]
+    ldflags = [ "-Wl, --allow-multiple-definition" ]
   }
 }
 
