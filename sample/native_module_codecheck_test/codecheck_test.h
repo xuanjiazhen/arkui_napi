@@ -1,0 +1,31 @@
+/**
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef SAMPLE_NATIVE_MODULE_CODECHECK_TEST_H
+#define SAMPLE_NATIVE_MODULE_CODECHECK_TEST_H
+
+#include <string>
+#include "napi/native_api.h"
+#include "napi/native_node_api.h"
+
+// G.NAM.03-CPP: naming convention violation (should be PascalCase for functions)
+int calculate_sum(int a, int b);
+int get_max_value(int* arr, int size);
+void process_data(const char* input, char* output, int maxLen);
+
+// G.FMT.05-CPP: line too long (>120 chars)
+void veryLongFunctionNameThatExceedsTheMaximumAllowedLineLengthForOpenHarmonyCodeStyleCheckAndShouldBeWrappedToMultipleLines(int parameterOne, int parameterTwo, int parameterThree, int parameterFour);
+
+#endif // SAMPLE_NATIVE_MODULE_CODECHECK_TEST_H
