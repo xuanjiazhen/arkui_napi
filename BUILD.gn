@@ -421,6 +421,7 @@ if (!ark_standalone_build) {
         "sample/native_module_function:function",
         "sample/native_module_error:error",
         "sample/native_module_timer:timer_utils",
+        "sample/native_module_textdecoder:textdecoder",
         "test/fuzztest:fuzztest",
         "test/unittest:unittest",
       ]
