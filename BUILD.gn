@@ -418,7 +418,8 @@ if (!ark_standalone_build) {
         "sample/native_module_string_suite:string_suite",
         "sample/native_module_string:string",
         "sample/native_module_function:function",
-        "sample/native_module_error:error",
+        "sample/native_module_number:number",
+        "sample/native_module_regex:regex",
         "test/fuzztest:fuzztest",
         "test/unittest:unittest",
       ]
