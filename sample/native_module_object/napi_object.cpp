@@ -154,7 +154,7 @@ static napi_value GetOwnPropertyNames(napi_env env, napi_callback_info info)
     napi_value result = nullptr;
     NAPI_CALL(env, napi_get_all_property_names(env, argv[ARG_INDEX_ZERO], napi_key_own_only,
                                                napi_key_enumerable | napi_key_skip_symbols,
-                                               &result));
+                                               napi_key_keep_numbers, &result));
     return result;
 }
 
@@ -188,8 +188,6 @@ static napi_value MergeObjects(napi_env env, napi_callback_info info)
         NAPI_CALL(env, napi_set_property(env, argv[ARG_INDEX_ZERO], key, value));
     }
 
-    napi_value result = nullptr;
-    NAPI_CALL(env, napi_get_reference_value(env, argv[ARG_INDEX_ZERO], &result));
     return argv[ARG_INDEX_ZERO];
 }
 
