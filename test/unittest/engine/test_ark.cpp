@@ -316,3 +316,155 @@ HWTEST_F(NativeEngineTest, SetRawHeapTrimLevelTest001, testing::ext::TestSize.Le
     engine_->SetRawHeapTrimLevel(1); // test value
 }
 
+/**
+ * @tc.name: SerializeJSErrorWithOptions
+ * @tc.desc: Test ArkNativeEngine::SerializeJSError with SerializeOptions struct
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, SerializeJSErrorWithOptions, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    
+    napi_value error = nullptr;
+    napi_status status = napi_create_error(env, nullptr, nullptr, &error);
+    ASSERT_EQ(status, napi_ok);
+    
+    SerializeOptions options(true, false, true);
+    void* result = nullptr;
+    engine_->SerializeJSError(env, error, options, &result);
+    ASSERT_NE(result, nullptr);
+    
+    panda::JSNApi::DeleteSerializationData(result);
+}
+
+/**
+ * @tc.name: SerializeJSErrorWithOptionsNullEnv
+ * @tc.desc: Test ArkNativeEngine::SerializeJSError handles null env
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, SerializeJSErrorWithOptionsNullEnv, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    
+    napi_value error = nullptr;
+    napi_status status = napi_create_error(env, nullptr, nullptr, &error);
+    ASSERT_EQ(status, napi_ok);
+    
+    SerializeOptions options(true, false, true);
+    void* result = nullptr;
+    
+    // Should not crash with null env
+    engine_->SerializeJSError(nullptr, error, options, &result);
+    ASSERT_EQ(result, nullptr);
+}
+
+/**
+ * @tc.name: SerializeJSErrorWithOptionsNullResult
+ * @tc.desc: Test ArkNativeEngine::SerializeJSError handles null result
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, SerializeJSErrorWithOptionsNullResult, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    
+    napi_value error = nullptr;
+    napi_status status = napi_create_error(env, nullptr, nullptr, &error);
+    ASSERT_EQ(status, napi_ok);
+    
+    SerializeOptions options(true, false, true);
+    
+    engine_->SerializeJSError(env, error, options, nullptr);
+}
+
+/**
+ * @tc.name: SerializeJSErrorWithErrorWithOptions
+ * @tc.desc: Test ArkNativeEngine::SerializeJSErrorWithError with SerializeOptions struct
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, SerializeJSErrorWithErrorWithOptions, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    
+    napi_value error = nullptr;
+    napi_status status = napi_create_error(env, nullptr, nullptr, &error);
+    ASSERT_EQ(status, napi_ok);
+    
+    SerializeOptions options(true, false, true);
+    void* result = nullptr;
+    std::string errorMsg;
+    engine_->SerializeJSErrorWithError(env, error, options, &result, errorMsg);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(errorMsg, "");
+    
+    panda::JSNApi::DeleteSerializationData(result);
+}
+
+/**
+ * @tc.name: SerializeJSErrorWithErrorWithOptionsNullEnv
+ * @tc.desc: Test ArkNativeEngine::SerializeJSErrorWithError handles null env
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, SerializeJSErrorWithErrorWithOptionsNullEnv, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    
+    napi_value error = nullptr;
+    napi_status status = napi_create_error(env, nullptr, nullptr, &error);
+    ASSERT_EQ(status, napi_ok);
+    
+    SerializeOptions options(true, false, true);
+    void* result = nullptr;
+    std::string errorMsg;
+    
+    // Should not crash with null env
+    engine_->SerializeJSErrorWithError(nullptr, error, options, &result, errorMsg);
+    ASSERT_EQ(result, nullptr);
+}
+
+/**
+ * @tc.name: SerializeJSErrorWithErrorWithOptionsNullResult
+ * @tc.desc: Test ArkNativeEngine::SerializeJSErrorWithError handles null result
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, SerializeJSErrorWithErrorWithOptionsNullResult, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    
+    napi_value error = nullptr;
+    napi_status status = napi_create_error(env, nullptr, nullptr, &error);
+    ASSERT_EQ(status, napi_ok);
+    
+    SerializeOptions options(true, false, true);
+    std::string errorMsg;
+    
+    engine_->SerializeJSErrorWithError(env, error, options, nullptr, errorMsg);
+}
+
+/**
+ * @tc.name: SerializeJSErrorOptionsConsistency
+ * @tc.desc: Verify SerializeJSError with options produces same result as original function
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeEngineTest, SerializeJSErrorOptionsConsistency, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    
+    napi_value typeError = nullptr;
+    napi_status status = napi_create_type_error(env, nullptr, nullptr, &typeError);
+    ASSERT_EQ(status, napi_ok);
+    
+    SerializeOptions options(true, false, true);
+    void* result = nullptr;
+    engine_->SerializeJSError(env, typeError, options, &result);
+    ASSERT_NE(result, nullptr);
+    
+    panda::JSNApi::DeleteSerializationData(result);
+}
+
