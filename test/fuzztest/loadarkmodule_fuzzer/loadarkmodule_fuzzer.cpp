@@ -36,7 +36,7 @@ public:
 
     void LoadArkModule(const void* buffer, int32_t len, const std::string& fileName)
     {
-        arkNativeEngine_->LoadArkModule(buffer, len, fileName);
+        arkNativeEngine_->LoadArkModule(buffer, len, fileName, fileName);
     }
 
     ~Engine()
