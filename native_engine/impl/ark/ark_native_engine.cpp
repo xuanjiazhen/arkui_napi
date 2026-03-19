@@ -857,8 +857,15 @@ Local<JSValueRef> ArkNativeEngine::LoadNativeModule(
         } else {
             buffer = static_cast<const void *>(module->jsCode);
         }
+        std::string filePath;
+        if (module->systemFilePath) {
+            filePath = std::string(module->systemFilePath);
+        } else {
+            HILOG_ERROR("load ark module error, filePath is nullptr");
+            filePath = "";
+        }
         auto exportObject = LoadArkModule(buffer,
-            module->jsCodeLen, fileName);
+            module->jsCodeLen, fileName, filePath);
         if (exportObject->IsUndefined()) {
             HILOG_ERROR("load module failed, fileName:%{public}s", fileName);
             return scope.Escape(exports);
@@ -3404,7 +3411,7 @@ napi_value ArkNativeEngine::RunActor(uint8_t* buffer, size_t bufferSize,
 }
 
 panda::Local<panda::ObjectRef> ArkNativeEngine::LoadArkModule(const void* buffer,
-    int32_t len, const std::string& fileName)
+    int32_t len, const std::string& fileName, const std::string& filePath)
 {
     panda::EscapeLocalScope scope(vm_);
     Local<ObjectRef> undefObj(JSValueRef::Undefined(vm_));
@@ -3418,7 +3425,7 @@ panda::Local<panda::ObjectRef> ArkNativeEngine::LoadArkModule(const void* buffer
     }
 
     // LCOV_EXCL_START
-    bool res = JSNApi::ExecuteModuleFromBuffer(vm_, buffer, len, fileName);
+    bool res = JSNApi::ExecuteModuleFromBuffer(vm_, buffer, len, fileName, filePath);
     if (!res) {
         HILOG_ERROR("Execute module failed");
         return scope.Escape(undefObj);
