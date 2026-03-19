@@ -39,8 +39,10 @@
 
 namespace panda::ecmascript {
 const std::string RES_SCHED_CLIENT_SO = "libressched_client.z.so";
+const std::string LIB_ACE_COMPATIBLE_SO = "libace_compatible.z.so";
 using ReportDataFunc = void (*)(uint32_t resType, int64_t value,
     const std::unordered_map<std::string, std::string>& payload);
+using ReportScopeErrorFun =void(*)();
 #if defined(ENABLE_EVENT_HANDLER)
 static constexpr uint64_t IDLE_GC_TIME_MIN = 1000;
 static constexpr uint64_t IDLE_GC_TIME_MAX = 10000;
@@ -637,6 +639,35 @@ ReportDataFunc ArkIdleMonitor::LoadReportDataFunc()
     HILOG_DEBUG("ArkIdleMonitor: Only linux supports LoadReportDataFunc");
     return nullptr;
 #endif
+}
+
+ReportScopeErrorFun ArkIdleMonitor::InitReportScopeError()
+{
+#if defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM)
+    if (dynamicLoadHandle_ != nullptr) {
+        dlclose(dynamicLoadHandle_);
+    }
+    dynamicLoadHandle_ = dlopen(LIB_ACE_COMPATIBLE_SO.c_str(), RTLD_NOW);
+    auto func = reinterpret_cast<ReportScopeErrorFun>(dlsym(dynamicLoadHandle_, "OHOS_ACE_ScopeErrorHivewReport"));
+    if (func == nullptr) {
+        dlclose(dynamicLoadHandle_);
+        HILOG_ERROR("ArkIdleMonitor: LoadReportDataFunc failed!");
+        return nullptr;
+    }
+    HILOG_INFO("ArkIdleMonitor: LoadReportDataFunc success.");
+    return func;
+#else
+    HILOG_DEBUG("ArkIdleMonitor: Only linux supports LoadReportDataFunc");
+    return nullptr;
+#endif
+}
+
+void ArkIdleMonitor::ReportScopeError()
+{
+    if (!reportScopeError_) {
+        reportScopeError_ = InitReportScopeError();
+    }
+    reportScopeError_();
 }
 
 ArkIdleMonitor::~ArkIdleMonitor()

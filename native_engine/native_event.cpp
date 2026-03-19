@@ -14,9 +14,9 @@
  */
 #include "native_event.h"
 #include <string>
-
 #ifdef ENABLE_CONTAINER_SCOPE_SEND_EVENT
 #include "core/common/container_scope.h"
+#include "ark_idle_monitor.h"
 #endif
 #include "native_api_internal.h"
 #if defined(ENABLE_EVENT_HANDLER)

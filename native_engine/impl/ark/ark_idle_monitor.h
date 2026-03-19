@@ -50,6 +50,7 @@ using Clock = std::chrono::high_resolution_clock;
 using TRIGGER_IDLE_GC_TYPE = panda::JSNApi::TRIGGER_IDLE_GC_TYPE;
 using ReportDataFunc = void (*)(uint32_t resType, int64_t value,
     const std::unordered_map<std::string, std::string>& payload);
+using ReportScopeErrorFun =void(*)();
 public:
     ArkIdleMonitor(){};
     ~ArkIdleMonitor();
@@ -268,6 +269,7 @@ public:
     void UnregisterEnv(NativeEngine *engine);
     void NotifyNeedFreeze(bool needFreeze);
     ReportDataFunc LoadReportDataFunc();
+    void ReportScopeError();
 
 private:
     double GetCpuUsage() const;
@@ -291,6 +293,7 @@ private:
     void ReportDataToRSS(bool needFreeze);
     void TryTriggerCompressGCOfProcess();
     static uint64_t GetIdleMonitoringInterval();
+    ReportScopeErrorFun InitReportScopeError();
 
     static std::shared_ptr<ArkIdleMonitor> instance_;
 
@@ -359,6 +362,7 @@ private:
     static bool gEnableDeferFreeze;
     void* dynamicLoadHandle_ {nullptr};
     ReportDataFunc reportDataFunc_ {nullptr};
+    ReportScopeErrorFun reportScopeError_ {nullptr};
 
     std::mutex waitGCFinishjedMutex_;
     std::condition_variable gcFinishCV_;

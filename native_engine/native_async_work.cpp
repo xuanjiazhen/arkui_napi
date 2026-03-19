@@ -21,6 +21,7 @@
 #endif
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
+#include "ark_idle_monitor.h"
 #endif
 
 #include <cinttypes>
@@ -267,6 +268,11 @@ void NativeAsyncWork::AsyncAfterWorkCallback(uv_work_t* req, int status)
             nstatus = napi_generic_failure;
     }
 #ifdef ENABLE_CONTAINER_SCOPE
+    bool report = engine->IsContainerScopeEnabled() && engine->IsContainerScopeEnabled();
+    if (OHOS::Ace::ContainerScope::CheckIdChange(that->containerScopeId_)) {
+        auto arkIdleMonitor = panda::ecmascript::ArkIdleMonitor::GetInstance();
+        arkIdleMonitor->ReportScopeError();
+    }
     ContainerScope containerScope(that->containerScopeId_, engine->IsContainerScopeEnabled());
 #endif
 

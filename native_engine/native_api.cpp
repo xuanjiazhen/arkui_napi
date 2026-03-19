@@ -18,6 +18,7 @@
 
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
+#include "ark_idle_monitor.h"
 #endif
 
 #include "ecmascript/napi/include/jsnapi.h"
@@ -1399,7 +1400,13 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
             }
         }
     }
+    bool report = OHOS::Ace::ContainerScope::CheckIdChange(scopeId) && enableContainerScope;
+    if (report) {
+        auto arkIdleMonitor = panda::ecmascript::ArkIdleMonitor::GetInstance();
+        arkIdleMonitor->ReportScopeError();
+    }
     OHOS::Ace::ContainerScope containerScope(scopeId, enableContainerScope);
+   
 #endif
     panda::JSValueRef* value =
         function->CallForNapi(vm, thisObj, reinterpret_cast<panda::JSValueRef *const*>(argv), argc);

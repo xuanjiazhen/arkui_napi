@@ -27,6 +27,7 @@
 
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
+#include "ark_idle_monitor.h"
 #endif
 
 #ifdef ENABLE_CONTAINER_SCOPE
@@ -331,7 +332,13 @@ void NativeSafeAsyncWork::ProcessAsyncHandle()
     auto vm = engine_->GetEcmaVm();
     panda::LocalScope scope(vm);
 #ifdef ENABLE_CONTAINER_SCOPE
+    bool report = OHOS::Ace::ContainerScope::CheckIdChange(containerScopeId_);
+    if (OHOS::Ace::ContainerScope::CheckIdChange(containerScopeId_) && engine_->IsContainerScopeEnabled()) {
+        auto arkIdleMonitor = panda::ecmascript::ArkIdleMonitor::GetInstance();
+        arkIdleMonitor->ReportScopeError();
+    }
     ContainerScope containerScope(containerScopeId_, engine_->IsContainerScopeEnabled());
+  
 #endif
     TryCatch tryCatch(reinterpret_cast<napi_env>(engine_));
 

@@ -19,6 +19,7 @@
 #include "ark_native_engine.h"
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "core/common/container_scope.h"
+#include "ark_idle_monitor.h"
 #endif
 
 ArkNativeDeferred::ArkNativeDeferred(ArkNativeEngine* engine, Local<PromiseCapabilityRef> deferred)
@@ -40,6 +41,11 @@ ArkNativeDeferred::~ArkNativeDeferred()
 void ArkNativeDeferred::Resolve(napi_value data)
 {
 #ifdef ENABLE_CONTAINER_SCOPE
+    bool report = OHOS::Ace::ContainerScope::CheckIdChange(scopeId_);
+    if (OHOS::Ace::ContainerScope::CheckIdChange(scopeId_) && engine_->IsContainerScopeEnabled()) {
+        auto arkIdleMonitor = panda::ecmascript::ArkIdleMonitor::GetInstance();
+        arkIdleMonitor->ReportScopeError();
+    }
     OHOS::Ace::ContainerScope containerScope(scopeId_, engine_->IsContainerScopeEnabled());
 #endif
     auto vm = engine_->GetEcmaVm();
@@ -49,6 +55,10 @@ void ArkNativeDeferred::Resolve(napi_value data)
 void ArkNativeDeferred::Reject(napi_value reason)
 {
 #ifdef ENABLE_CONTAINER_SCOPE
+    if (OHOS::Ace::ContainerScope::CheckIdChange(scopeId_) && engine_->IsContainerScopeEnabled()) {
+        auto arkIdleMonitor = panda::ecmascript::ArkIdleMonitor::GetInstance();
+        arkIdleMonitor->ReportScopeError();
+    }
     OHOS::Ace::ContainerScope containerScope(scopeId_, engine_->IsContainerScopeEnabled());
 #endif
     auto vm = engine_->GetEcmaVm();
