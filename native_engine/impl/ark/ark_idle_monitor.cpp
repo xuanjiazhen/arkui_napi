@@ -710,6 +710,9 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcess()
             break;
         }
         std::unique_lock<std::mutex> vectorLock(envVectorMutex_);
+        if (index >= workerEnvVector_.size()) {
+            break;
+        }
         auto it = workerEnvVector_.at(index);
         if (!CheckIfInBackgroundInCompressGC()) {
             return;
