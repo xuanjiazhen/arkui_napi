@@ -153,7 +153,13 @@ static napi_value Clamp(napi_env env, napi_callback_info info)
 
     NAPI_ASSERT(env, min <= max, "Min must be less than or equal to max");
 
-    double clampedValue = std::min(std::max(value, min), max);
+    double clampedValue = 0;
+    if (min < max) {
+        clampedValue = value;
+    } else {
+        clampedValue = std::min(std::max(value, min), max);
+    }
+
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_double(env, clampedValue, &result));
     return result;
@@ -277,7 +283,9 @@ static napi_value Sign(napi_env env, napi_callback_info info)
     NAPI_CALL(env, napi_get_value_double(env, argv[ARG_INDEX_ZERO], &value));
 
     double signValue = 0;
-    if (value > 0) {
+    if (std::isnan(value)) {
+        signValue = std::numeric_limits<double>::quiet_NaN();
+    } else if (value > 0) {
         signValue = 1;
     } else if (value < 0) {
         signValue = -1;
