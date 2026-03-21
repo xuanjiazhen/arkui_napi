@@ -2239,6 +2239,11 @@ void ArkNativeEngine::PostTriggerGCTask(TriggerGCData& data, GCTaskFinishedCallb
     }
 }
 
+void ArkNativeEngine::PostTriggerMemoryPressureTask(const char* heapType)
+{
+    DFXJSNApi::TriggerMemoryPressureCallback(vm_, heapType);
+}
+
 #if defined(OHOS_PLATFORM) && !defined(IOS_PLATFORM) && !defined(ANDROID_PLATFORM)
 void ArkNativeEngine::SetAttribute(bool isLimitedWorker, panda::RuntimeOption &option)
 {

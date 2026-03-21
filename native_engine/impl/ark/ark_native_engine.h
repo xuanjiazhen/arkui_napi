@@ -327,7 +327,7 @@ public:
     void SetMockModuleList(const std::map<std::string, std::string> &list) override;
     int32_t GetObjectHash(napi_env env, napi_value src) override;
 
-    // debugger
+    // debuggerSetMemoryPressureCallback
     bool IsMixedDebugEnabled();
     void JsHeapStart();
     uint64_t GetCurrentTickMillseconds();
@@ -338,6 +338,7 @@ public:
     void PostFinalizeTasks();
     void PostAsyncTask(panda::AsyncNativeCallbacksPack *callbacksPack);
     void PostTriggerGCTask(panda::TriggerGCData& data, GCTaskFinishedCallback callback = nullptr) override;
+    void PostTriggerMemoryPressureTask(const char* heapType) override;
 
     ArkFinalizersPack &GetArkFinalizersPack()
     {
