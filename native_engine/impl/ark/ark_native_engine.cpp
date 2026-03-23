@@ -54,6 +54,8 @@
 #include "memory_trace.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
+#include "ecmascript/mem/heap.h"
 
 // LCOV_EXCL_START
 struct alignas(8) HookJsConfig { // 8 is 8 bit
@@ -2638,9 +2640,18 @@ bool ArkNativeEngine::OnVMHeapMemoryPressure(napi_env env, HeapMemoryThreshold h
                                              napi_value callback)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-    DFXJSNApi::HeapMemoryPressureOptions op = {heapMemoryThreshold.localHeapThreshold,
+    auto ecmaVm = const_cast<EcmaVM*>(reinterpret_cast<const EcmaVM*>(vm));
+    ecmascript::HeapMemoryPressureOptions op = {heapMemoryThreshold.localHeapThreshold,
         heapMemoryThreshold.sharedHeapThreshold, heapMemoryThreshold.processHeapThreshold};
-    return DFXJSNApi::OnVMHeapMemoryPressure(vm, op, LocalValueFromJsValue(callback));
+
+    auto jsCallback = Local<FunctionRef>(LocalValueFromJsValue(callback));
+    ecmascript::MemoryPressureCallback cppCallback = [ecmaVm, jsCallback](const char *heapType) {
+        panda::Local<panda::JSValueRef> undefined = panda::JSValueRef::Undefined(ecmaVm);
+        panda::Local<panda::JSValueRef> argv[] = { panda::StringRef::NewFromUtf8(ecmaVm, heapType) };
+        jsCallback->Call(ecmaVm, undefined, argv, 1);
+    };
+
+    return DFXJSNApi::OnVMHeapMemoryPressure(ecmaVm, op, cppCallback);
 }
 
 void ArkNativeEngine::OffVMHeapMemoryPressure(napi_env env)
