@@ -53,7 +53,6 @@
 #include "musl_preinit_common.h"
 #include "memory_trace.h"
 #include "ecmascript/base/config.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
 
 // LCOV_EXCL_START
 struct alignas(8) HookJsConfig { // 8 is 8 bit
@@ -105,6 +104,8 @@ using ArkIdleMonitor = panda::ecmascript::ArkIdleMonitor;
 using AsyncNativeCallbacksPack = panda::AsyncNativeCallbacksPack;
 using EcmaVM = panda::ecmascript::EcmaVM;
 using TriggerGCData = panda::TriggerGCData;
+using HeapMemoryPressureOptions = panda::ecmascript::HeapMemoryPressureOptions;
+using MemoryPressureCallback = std::function<void(const char *heapType)>;
 
 static constexpr auto PANDA_MAIN_FUNCTION = "_GLOBAL::func_main_0";
 static constexpr auto PANDA_MODULE_NAME = "_GLOBAL_MODULE_NAME";
@@ -633,6 +634,7 @@ ArkNativeEngine::~ArkNativeEngine()
     for (auto&& [module, exportObj] : loadedModules_) {
         exportObj.FreeGlobalHandleAddr();
     }
+    heapMemoryPressureCallback_.FreeGlobalHandleAddr();
     // Free callbackRef
     if (promiseRejectCallbackRef_ != nullptr) {
         delete promiseRejectCallbackRef_;
@@ -2638,15 +2640,31 @@ bool ArkNativeEngine::OnVMHeapMemoryPressure(napi_env env, HeapMemoryThreshold h
                                              napi_value callback)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-    DFXJSNApi::HeapMemoryPressureOptions op = {heapMemoryThreshold.localHeapThreshold,
+    auto ecmaVm = const_cast<EcmaVM*>(reinterpret_cast<const EcmaVM*>(vm));
+    HeapMemoryPressureOptions op = {heapMemoryThreshold.localHeapThreshold,
         heapMemoryThreshold.sharedHeapThreshold, heapMemoryThreshold.processHeapThreshold};
-    return DFXJSNApi::OnVMHeapMemoryPressure(vm, op, LocalValueFromJsValue(callback));
+
+    // Save callback to member variable to prevent GC
+    heapMemoryPressureCallback_ = panda::Global<panda::JSValueRef>(ecmaVm,
+        LocalValueFromJsValue(callback));
+
+    MemoryPressureCallback memoryPressureCallback = [ecmaVm, this](const char *heapType) {
+        if (!heapMemoryPressureCallback_.IsEmpty()) {
+            panda::Local<panda::JSValueRef> undefined = panda::JSValueRef::Undefined(ecmaVm);
+            panda::Local<panda::JSValueRef> argv[] = { panda::StringRef::NewFromUtf8(ecmaVm, heapType) };
+            auto callback = Local<FunctionRef>(heapMemoryPressureCallback_.ToLocal(ecmaVm));
+            callback->Call(ecmaVm, undefined, argv, 1);
+        }
+    };
+
+    return DFXJSNApi::OnVMHeapMemoryPressure(ecmaVm, op, memoryPressureCallback);
 }
 
 void ArkNativeEngine::OffVMHeapMemoryPressure(napi_env env)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     DFXJSNApi::OffVMHeapMemoryPressure(vm);
+    heapMemoryPressureCallback_.FreeGlobalHandleAddr();
 }
 
 void ArkNativeEngine::SetMultithreadingDetectionEnabled(napi_env env, bool enabled)
