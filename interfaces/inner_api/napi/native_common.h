@@ -150,21 +150,24 @@
     }
 
 // W-writable E-enumerable C-configurable napi_default is not WEC
-#define DECLARE_NAPI_GETTER(name, getter)                                            \
-    {                                                                                \
-        (name), nullptr, nullptr, (getter), nullptr, nullptr, napi_writable, nullptr \
+#define DECLARE_NAPI_GETTER(name, getter)                                                     \
+    {                                                                                         \
+        (name), nullptr, nullptr, (getter), nullptr, nullptr,                                 \
+            static_cast<napi_property_attributes>(napi_writable | napi_configurable), nullptr \
     }
 
 // W-writable E-enumerable C-configurable napi_default is not WEC
-#define DECLARE_NAPI_SETTER(name, setter)                                            \
-    {                                                                                \
-        (name), nullptr, nullptr, nullptr, (setter), nullptr, napi_writable, nullptr \
+#define DECLARE_NAPI_SETTER(name, setter)                                                     \
+    {                                                                                         \
+        (name), nullptr, nullptr, nullptr, (setter), nullptr,                                 \
+            static_cast<napi_property_attributes>(napi_writable | napi_configurable), nullptr \
     }
 
 // W-writable E-enumerable C-configurable napi_default is not WEC
-#define DECLARE_NAPI_GETTER_SETTER(name, getter, setter)                              \
-    {                                                                                 \
-        (name), nullptr, nullptr, (getter), (setter), nullptr, napi_writable, nullptr \
+#define DECLARE_NAPI_GETTER_SETTER(name, getter, setter)                                      \
+    {                                                                                         \
+        (name), nullptr, nullptr, (getter), (setter), nullptr,                                \
+            static_cast<napi_property_attributes>(napi_writable | napi_configurable), nullptr \
     }
 
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_COMMON_H */
