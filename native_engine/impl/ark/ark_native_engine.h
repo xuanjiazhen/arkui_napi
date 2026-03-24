@@ -60,7 +60,6 @@ using JsiRuntimeCallInfo = panda::JsiRuntimeCallInfo;
 // indirect used by ace_engine and(or) ability_runtime
 using panda::Local;
 using GCTaskFinishedCallback = std::function<void()>;
-
 typedef bool (*NapiModuleValidateCallback)(const char* moduleName);
 
 class NativeTimerCallbackInfo;
@@ -544,6 +543,7 @@ private:
     NapiConcurrentCallback concurrentCallbackFunc_ { nullptr };
     NativeReference* promiseRejectCallbackRef_ { nullptr };
     NativeReference* checkCallbackRef_ { nullptr };
+    panda::Global<panda::JSValueRef> heapMemoryPressureCallback_ {};
     std::map<NativeModule*, panda::Global<panda::JSValueRef>> loadedModules_ {};
     static PermissionCheckCallback permissionCheckCallback_;
     NapiUncaughtExceptionCallback napiUncaughtExceptionCallback_ { nullptr };
