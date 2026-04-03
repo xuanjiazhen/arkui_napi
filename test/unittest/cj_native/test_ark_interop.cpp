@@ -141,6 +141,14 @@ public:
         return length;
     }
 
+    bool Has(int64_t id) const
+    {
+        if (id < 0 || id >= length) {
+            return false;
+        }
+        return items_[id].data.has_value();
+    }
+
     T& Get(int64_t id)
     {
         return items_[id].data.value();
@@ -225,6 +233,39 @@ public:
     int64_t StoreNativeData(void* data, std::function<void (void*)>deleter)
     {
         return ToId(data_.Add({data, std::move(deleter)}));
+    }
+
+    void* GetFuncAddr(int64_t id)
+    {
+        auto index = ToIndex(id);
+        if (data_.Has(index)) {
+            return &data_.Get(index);
+        }
+        return nullptr;
+    }
+
+    void SetNativeCallingCallback(std::function<void(const void*)> callback)
+    {
+        nativeCallingCallback_ = std::move(callback);
+    }
+
+    void SetNativeReturnCallback(std::function<void (const void*)> callback)
+    {
+        nativeReturnCallback_ = std::move(callback);
+    }
+
+    void NotifyNativeCalling(const void* addr)
+    {
+        if (nativeCallingCallback_) {
+            nativeCallingCallback_(addr);
+        }
+    }
+
+    void NotifyNativeReturn(const void* addr)
+    {
+        if (nativeReturnCallback_) {
+            nativeReturnCallback_(addr);
+        }
     }
 
     void* GetNativeData(int64_t id)
@@ -362,6 +403,8 @@ private:
     };
     Slab<AnyData> data_;
     std::function<void (ARKTS_Env)> finalizerCallback_;
+    std::function<void (const void*)> nativeCallingCallback_;
+    std::function<void (const void*)> nativeReturnCallback_;
 };
 
 void MockContext::Init()
@@ -413,6 +456,12 @@ void MockContext::Init()
         }
     };
     ARKTS_RegisterCycleFreeCallback(cycleFreeCallback);
+    ARKTS_RegisterAddrGetter([](ARKTS_Env, int64_t id)->void* {
+        if (instance_) {
+            return instance_->GetFuncAddr(id);
+        }
+        return nullptr;
+    });
 }
 
 MockContext* MockContext::instance_ = nullptr;
@@ -1482,7 +1531,39 @@ TEST_F(ArkInteropTest, CheckFreeContext)
     }
     EXPECT_TRUE(isDisposed);
 }
+
+TEST_F(ArkInteropTest, DebugMode)
+{
+    MockContext local;
+    auto env = local.GetEnv();
+    auto id = local.StoreFunc([](ARKTS_CallInfo) {
+        return ARKTS_CreateUndefined();
+    });
+    auto func = ARKTS_CreateFunc(env, id);
+    local.SetNativeCallingCallback([&local, id](const void* addr) {
+        EXPECT_EQ(addr, local.GetFuncAddr(id));
+    });
+    ARKTS_Call(env, func, ARKTS_CreateUndefined(), 0, nullptr);
+}
 } // namespace
+
+// mocks
+namespace panda {
+bool JSNApi::IsMixedDebugEnabled(const EcmaVM* vm)
+{
+    return true;
+}
+
+void JSNApi::NotifyNativeCalling(const EcmaVM* vm, const void* nativeAddress)
+{
+    MockContext::GetInstance()->NotifyNativeCalling(nativeAddress);
+}
+
+void JSNApi::NotifyNativeReturn(const EcmaVM* vm, const void* nativeAddress)
+{
+    MockContext::GetInstance()->NotifyNativeReturn(nativeAddress);
+}
+}
 
 int main(int argc, char** argv)
 {
