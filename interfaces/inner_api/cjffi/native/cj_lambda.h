@@ -32,6 +32,10 @@
 class FFI_EXPORT CJLambda {
     template <size_t I>
     struct TupleRuntimeHelper {
+        /**
+         * GetElementAddr.
+         *
+         */
         template <typename T>
         static void* GetElementAddr(T& tup, size_t idx)
         {
@@ -45,6 +49,10 @@ class FFI_EXPORT CJLambda {
 
     template <>
     struct TupleRuntimeHelper<0> {
+        /**
+         * GetElementAddr.
+         *
+         */
         template <typename T>
         static void* GetElementAddr(T& tup, size_t idx)
         {
@@ -53,11 +61,29 @@ class FFI_EXPORT CJLambda {
         }
     };
 
+    /**
+
+     * GetElementAddr.
+
+     *
+
+
+     */
+
     template <typename... Types>
     static inline void* GetElementAddr(std::tuple<Types...> const& tup, size_t idx)
     {
         return TupleRuntimeHelper<sizeof...(Types)>::GetElementAddr(tup, idx);
     }
+
+    /**
+
+     * GetElementAddr.
+
+     *
+
+
+     */
 
     template <typename... Types>
     static inline void* GetElementAddr(std::tuple<Types...>& tup, size_t idx)
@@ -104,6 +130,15 @@ public:
             return res;
         };
     }
+
+/**
+
+ * InvokeLambda.
+
+ *
+
+
+ */
 
 private:
     static inline void InvokeLambda(int64_t lambdaId, int32_t argc, void** argv, void* result)

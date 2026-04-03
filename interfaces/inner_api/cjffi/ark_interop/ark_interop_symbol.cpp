@@ -19,6 +19,14 @@
 using namespace panda;
 using namespace panda::ecmascript;
 
+/**
+ * @file ark_interop_symbol.cpp
+ * @brief Symbol creation, type test, and description export (description allocated via `GetValueCString`).
+ */
+
+/**
+ * @brief Creates a Symbol from a UTF-8 description; empty `description` or `length==0` uses an empty string description.
+ */
 ARKTS_Value ARKTS_CreateSymbol(ARKTS_Env env, const char* description, int32_t length)
 {
     ARKTS_ASSERT_U(env, "env is null");
@@ -36,6 +44,7 @@ ARKTS_Value ARKTS_CreateSymbol(ARKTS_Env env, const char* description, int32_t l
     return ARKTS_FromHandle(symbol);
 }
 
+/** @brief Heap object and `IsSymbol`. */
 bool ARKTS_IsSymbol(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
@@ -50,6 +59,10 @@ bool ARKTS_IsSymbol(ARKTS_Env env, ARKTS_Value value)
     return handle->IsSymbol(vm);
 }
 
+/**
+ * @brief UTF-8 C string for the description (may be `malloc`d); `nullptr` if description is `undefined` or not a string.
+ * @warning Same ownership as `ARKTS_GetValueCString`; caller must `FreeCString` when non-null.
+ */
 const char* ARKTS_GetSymbolDesc(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_P(ARKTS_IsSymbol(env, value), "value is not a symbol");
@@ -59,6 +72,7 @@ const char* ARKTS_GetSymbolDesc(ARKTS_Env env, ARKTS_Value value)
     auto symbol = BIT_CAST(value.pointer, Local<SymbolRef>);
     auto desc = symbol->GetDescription(vm);
     auto desc1 = BIT_CAST(desc, ARKTS_Value);
+    // Well-known symbols may use undefined description; only allocate a C string for real strings.
     if (ARKTS_IsString(env, desc1)) {
         return ARKTS_GetValueCString(env, BIT_CAST(desc, ARKTS_Value));
     }

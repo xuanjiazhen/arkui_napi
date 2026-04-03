@@ -23,6 +23,19 @@
 
 DECL_START
 
+/**
+ * Register the Cangjie<->ArkTS interop callback table.
+ *
+ * The Cangjie layer installs a set of callbacks (via `ARKTS_ModuleCallbacks`) so that the ArkTS runtime can
+ * notify Cangjie about lifecycle events, such as:
+ * - External finalization (drives Cangjie-side share-count decrement and table removal)
+ * - Lambda invocation and destruction
+ * - ArrayBuffer external-memory finalizers
+ * - Async task dispatch and context disposal
+ *
+ * Together these callbacks form the cross-language lifecycle loop:
+ * ArkTS GC / event loop -> C bridge -> Cangjie registries and resource release.
+ */
 EXPORT void ARKTS_SetCJModuleCallback(struct ARKTS_ModuleCallbacks* callback);
 /**
 * @deprecated use ARKTS_LoadModuleByNapiEnv instead

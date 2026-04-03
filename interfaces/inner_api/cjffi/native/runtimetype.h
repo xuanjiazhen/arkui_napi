@@ -26,11 +26,19 @@ namespace OHOS::FFI {
 class TypeBase;
 
 class RuntimeType final {
+/**
+ * Create.
+ *
+ */
 public:
     static RuntimeType Create(const char* className)
     {
         return RuntimeType(className);
     }
+    /**
+     * Create.
+     *
+     */
     template<typename Derive>
     static RuntimeType Create(const char* className)
     {
@@ -38,6 +46,10 @@ public:
         result.parents_.push_back(Derive::GetClassType());
         return result;
     }
+    /**
+     * Create.
+     *
+     */
     template<typename... Lists, typename Derive>
     static RuntimeType Create(const char* className)
     {
@@ -45,6 +57,15 @@ public:
         result.parents_.push_back(Derive::GetClassType());
         return result;
     }
+
+    /**
+
+     * IsType.
+
+     *
+
+
+     */
 
     bool IsType(RuntimeType* target)
     {
@@ -63,10 +84,28 @@ public:
         return false;
     }
 
+    /**
+
+     * GetTypeName.
+
+     *
+
+
+     */
+
     const char* GetTypeName() const
     {
         return name_;
     }
+
+/**
+
+ * RuntimeType.
+
+ *
+
+
+ */
 
 private:
     explicit RuntimeType(const char* name) : name_(name) {}
@@ -93,10 +132,23 @@ public:                                                                         
 class TypeBase {
 public:
     virtual ~TypeBase() = default;
+    /**
+     * GetRuntimeType.
+     *
+     */
     virtual RuntimeType* GetRuntimeType()
     {
         return GetClassType();
     }
+
+    /**
+
+     * DynamicCast.
+
+     *
+
+
+     */
 
     template<class O>
     O* DynamicCast()
@@ -110,6 +162,15 @@ public:
 
 private:
     friend class RuntimeType;
+
+    /**
+
+     * GetClassType.
+
+     *
+
+
+     */
 
     static RuntimeType* GetClassType()
     {

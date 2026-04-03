@@ -18,15 +18,37 @@
 using namespace OHOS::FFI;
 
 extern "C" {
+/**
+ * FfiOHOSFFIFFIDataRelease.
+ *
+ */
 void FfiOHOSFFIFFIDataRelease(int64_t id)
 {
     FFIData::Release(id);
 }
 
+/**
+
+ * FfiOHOSFFIFFIDataExist.
+
+ *
+
+
+ */
+
 bool FfiOHOSFFIFFIDataExist(int64_t id)
 {
     return FFIData::Exist(id);
 }
+
+/**
+
+ * FfiOHOSFFIRegisterCJFuncs.
+
+ *
+
+
+ */
 
 void FfiOHOSFFIRegisterCJFuncs(FFIAtCPackage cjFuncs)
 {

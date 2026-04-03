@@ -20,14 +20,23 @@
 #include "event_handler.h"
 #include "uv.h"
 
+/**
+ * @brief Attaches `uv_loop_t`'s backend fd to OHOS `EventHandler`; on read/write runs `uv_run(NOWAIT)` and schedules the next wake via `uv_backend_timeout`.
+ *
+ * Bridges libuv timer resolution to `EventHandler` when the native engine thread runs both ArkTS and libuv outside a pure poll mode.
+ */
 class COV_EXPORT UVLoopHandler : public OHOS::AppExecFwk::FileDescriptorListener,
                                  public std::enable_shared_from_this<UVLoopHandler> {
 public:
+    /** @param uvLoop uv loop tied to `ArkNativeEngine` (must be non-null). */
     explicit UVLoopHandler(uv_loop_t* uvLoop) : uvLoop_(uvLoop) {}
+    /** Readable fd: forwards to `OnTriggered`. */
     void OnReadable(int32_t) override;
+    /** Writable fd: forwards to `OnTriggered`. */
     void OnWritable(int32_t) override;
 
 private:
+    /** Runs `UV_RUN_NOWAIT` once and installs/adjusts TIMER_TASK from `uv_backend_timeout`. */
     void OnTriggered();
 
     uv_loop_t* uvLoop_ = nullptr;

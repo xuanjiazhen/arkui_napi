@@ -44,6 +44,15 @@ public:
     DISALLOW_COPY_AND_MOVE(CJFFIFnInvoker);
     static CJFFIFnInvoker* GetInstance();
 
+    /**
+
+     * RegisterCJFuncs.
+
+     *
+
+
+     */
+
     void RegisterCJFuncs(FFIAtCPackage funcs)
     {
         cjFFIFn_ = funcs;
@@ -51,6 +60,15 @@ public:
     }
 
     const FFIAtCPackage& GetCJFuncs();
+
+    /**
+
+     * CJFuncsLoaded.
+
+     *
+
+
+     */
 
     bool CJFuncsLoaded() const
     {

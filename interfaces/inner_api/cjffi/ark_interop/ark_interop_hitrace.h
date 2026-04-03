@@ -20,9 +20,17 @@
 
 #include "ark_interop_macro.h"
 
+/**
+ * @file ark_interop_hitrace.h
+ * @brief C ABI for HiTrace async spans and counters (implemented in `ark_interop_hitrace.cpp`).
+ */
+
 DECL_START
+/** @brief Starts an async trace; pair with `Finish` using the same name. */
 EXPORT void ARKTS_HiTraceStartTrace(const char* name, int32_t taskId);
+/** @brief Ends an async trace. */
 EXPORT void ARKTS_HiTraceFinishTrace(const char* name, int32_t taskId);
+/** @brief Counter-style trace. */
 EXPORT void ARKTS_HiTraceCountTrace(const char* name, int64_t count);
 DECL_END
 
