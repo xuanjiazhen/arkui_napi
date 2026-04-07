@@ -322,6 +322,7 @@ public:
     void RegisterAppStateCallback(NapiAppStateCallback callback) override;
 
     void AllowCrossThreadExecution() const override;
+    void DisallowCrossThreadExecution() const override;
     void SetThreadName(const std::string &name) override;
     static void PromiseRejectCallback(void* values);
 
