@@ -3150,6 +3150,11 @@ void ArkNativeEngine::AllowCrossThreadExecution() const
     JSNApi::AllowCrossThreadExecution(vm_);
 }
 
+void ArkNativeEngine::DisallowCrossThreadExecution() const
+{
+    JSNApi::DisallowCrossThreadExecution(vm_);
+}
+
 void ArkNativeEngine::SetThreadName(const std::string &name)
 {
     JSNApi::SetThreadName(vm_, name);

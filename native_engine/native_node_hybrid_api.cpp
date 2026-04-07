@@ -238,8 +238,11 @@ NAPI_EXTERN napi_status napi_mark_from_object(napi_env env, napi_ref ref)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, ref);
+    auto* engine = reinterpret_cast<NativeEngine*>(env);
+    engine->AllowCrossThreadExecution();
     ArkNativeReference* reference = reinterpret_cast<ArkNativeReference*>(ref);
     reference->MarkFromObject();
+    engine->DisallowCrossThreadExecution();
     return napi_clear_last_error(env);
 }
 
