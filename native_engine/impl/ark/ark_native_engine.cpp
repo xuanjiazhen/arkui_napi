@@ -33,6 +33,9 @@
 #include "securec.h"
 #include "utils/file.h"
 #include "utils/log.h"
+
+#include <limits.h>
+#include <string>
 #if !defined(PREVIEW) && !defined(ANDROID_PLATFORM) && !defined(IOS_PLATFORM)
 #include "parameters.h"
 #include <uv.h>
@@ -1949,40 +1952,114 @@ napi_value ArkNativeEngine::NapiLoadModuleWithInfo(const char* path, const char*
     return JsValueFromLocalValue(scope.Escape(exportObj));
 }
 
+namespace {
+constexpr char kHybridModuleProbe[] = "[HybridModuleProbe]";
+
+void LogHybridFsPathHint(const char* step, const std::string& candidatePath)
+{
+    if (candidatePath.empty()) {
+        HILOG_WARN("%{public}s %{public}s candidatePath empty", kHybridModuleProbe, step);
+        return;
+    }
+    char resolved[PATH_MAX + 1] = { 0 };
+    if (RealPath(candidatePath.c_str(), resolved, sizeof(resolved))) {
+        HILOG_INFO("%{public}s %{public}s RealPath OK canonical=%{public}s", kHybridModuleProbe, step, resolved);
+    } else {
+        HILOG_WARN("%{public}s %{public}s RealPath FAIL candidate=%{public}s — if load still expects package "
+            "virtual path, failure here is normal; compare with installed HAP path / module.json",
+            kHybridModuleProbe, step, candidatePath.c_str());
+    }
+}
+} // namespace
+
 napi_value ArkNativeEngine::NapiLoadModuleWithInfoForHybridApp(const char* path, const char* module_info,
                                                                const char* ohmurl, const char* abcFilePath)
 {
+    HILOG_INFO("%{public}s step=H00 enter pathPtr=%{public}p pathStr=%{public}s moduleInfoPtr=%{public}p "
+        "ohmurlPtr=%{public}p abcPtr=%{public}p",
+        kHybridModuleProbe, static_cast<const void*>(path), path != nullptr ? path : "(null)",
+        static_cast<const void*>(module_info), static_cast<const void*>(ohmurl),
+        static_cast<const void*>(abcFilePath));
     if (path == nullptr) {
         HILOG_ERROR("ArkNativeEngine:The module name is empty");
+        return nullptr;
+    }
+    HILOG_INFO("%{public}s step=H01 path non-null ok", kHybridModuleProbe);
+    if (ohmurl == nullptr) {
+        HILOG_ERROR("%{public}s step=H01b ohmurl null abort", kHybridModuleProbe);
         return nullptr;
     }
     panda::EscapeLocalScope scope(vm_);
     Local<JSValueRef> undefObj = JSValueRef::Undefined(vm_);
     Local<ObjectRef> exportObj(undefObj);
     std::string ohmurlStr(ohmurl);
-    std::string abcFilePathStr(abcFilePath);
+    std::string abcFilePathStr(abcFilePath != nullptr ? abcFilePath : "");
+    HILOG_INFO("%{public}s step=H02 strings ohmurlLen=%{public}zu abcEmpty=%{public}d ohmurl=%{public}s",
+        kHybridModuleProbe, ohmurlStr.size(), abcFilePathStr.empty() ? 1 : 0, ohmurlStr.c_str());
     if (module_info != nullptr) {
+        HILOG_INFO("%{public}s step=H03 branch module_info!=nullptr (empty string still takes hybrid branch)", 
+            kHybridModuleProbe);
         if (!abcFilePathStr.empty()) {
+            HILOG_INFO("%{public}s step=H04 branch abcFilePath non-empty -> GetModuleNameSpaceWithOhmurlForHybridApp"
+                "(ohm, abc)",
+                kHybridModuleProbe);
+            LogHybridFsPathHint("H04_abcPath", abcFilePathStr);
+            HILOG_INFO("%{public}s step=H05 before GetModuleNameSpaceWithOhmurlForHybridApp(ohm,abc)", 
+                kHybridModuleProbe);
             exportObj = panda::JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(vm_, ohmurlStr, abcFilePathStr);
-        } else if (panda::JSNApi::IsCrossBundleHsp(vm_, ohmurl)) {
-            exportObj = panda::JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(vm_, ohmurlStr);
+            HILOG_INFO("%{public}s step=H06 after GetModuleNameSpaceWithOhmurlForHybridApp(ohm,abc)", 
+                kHybridModuleProbe);
         } else {
-            auto [path, module_info] = panda::JSNApi::ResolveOhmUrl(ohmurl);
-            std::string inputPath(path);
-            std::string modulePath(module_info);
-            exportObj = panda::JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(vm_, inputPath, modulePath);
+            const bool isHsp = panda::JSNApi::IsCrossBundleHsp(vm_, ohmurl);
+            HILOG_INFO("%{public}s step=H07 IsCrossBundleHsp=%{public}d", kHybridModuleProbe, isHsp ? 1 : 0);
+            if (isHsp) {
+                HILOG_INFO("%{public}s step=H08 branch HSP -> GetModuleNameSpaceWithOhmurlForHybridApp(ohm)",
+                    kHybridModuleProbe);
+                HILOG_INFO("%{public}s step=H09 before GetModuleNameSpaceWithOhmurlForHybridApp(ohm only)",
+                    kHybridModuleProbe);
+                exportObj = panda::JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(vm_, ohmurlStr);
+                HILOG_INFO("%{public}s step=H10 after GetModuleNameSpaceWithOhmurlForHybridApp(ohm only)",
+                    kHybridModuleProbe);
+            } else {
+                HILOG_INFO("%{public}s step=H11 branch default -> ResolveOhmUrl then "
+                    "GetModuleNameSpaceWithModuleInfoForHybridApp",
+                    kHybridModuleProbe);
+                HILOG_INFO("%{public}s step=H12 before ResolveOhmUrl ohmurl=%{public}s", kHybridModuleProbe,
+                    ohmurlStr.c_str());
+                auto [resolvedFsPath, resolvedModuleInfo] = panda::JSNApi::ResolveOhmUrl(ohmurl);
+                std::string inputPath(resolvedFsPath);
+                std::string modulePath(resolvedModuleInfo);
+                HILOG_INFO("%{public}s step=H13 after ResolveOhmUrl inputPath=%{public}s modulePath=%{public}s "
+                    "inputEmpty=%{public}d moduleEmpty=%{public}d",
+                    kHybridModuleProbe, inputPath.c_str(), modulePath.c_str(),
+                    inputPath.empty() ? 1 : 0, modulePath.empty() ? 1 : 0);
+                LogHybridFsPathHint("H13a_ResolveOhmUrl_inputPath", inputPath);
+                HILOG_INFO("%{public}s step=H14 before GetModuleNameSpaceWithModuleInfoForHybridApp", 
+                    kHybridModuleProbe);
+                exportObj =
+                    panda::JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(vm_, inputPath, modulePath);
+                HILOG_INFO("%{public}s step=H15 after GetModuleNameSpaceWithModuleInfoForHybridApp", 
+                    kHybridModuleProbe);
+            }
         }
     } else {
+        HILOG_INFO("%{public}s step=H16 branch module_info==nullptr -> NapiLoadNativeModule path=%{public}s",
+            kHybridModuleProbe, path);
         std::string inputPath(path);
+        HILOG_INFO("%{public}s step=H17 before NapiLoadNativeModule", kHybridModuleProbe);
         exportObj = NapiLoadNativeModule(inputPath);
+        HILOG_INFO("%{public}s step=H18 after NapiLoadNativeModule", kHybridModuleProbe);
     }
 
+    HILOG_INFO("%{public}s step=H19 before HasPendingException check", kHybridModuleProbe);
     if (JSNApi::HasPendingException(vm_)) {
         HILOG_WARN("ArkNativeEngine:NapiLoadModuleWithInfoForHybridApp failed.");
         JSNApi::PrintExceptionInfo(vm_);
         JSNApi::GetAndClearUncaughtException(vm_); // clear exception here
+        HILOG_WARN("%{public}s step=H20 return undefined after exception", kHybridModuleProbe);
         return JsValueFromLocalValue(scope.Escape(undefObj));
     }
+    HILOG_INFO("%{public}s step=H21 return exportObj ok", kHybridModuleProbe);
     return JsValueFromLocalValue(scope.Escape(exportObj));
 }
 
