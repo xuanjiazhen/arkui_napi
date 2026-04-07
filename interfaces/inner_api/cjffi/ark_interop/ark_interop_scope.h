@@ -26,9 +26,16 @@ class EcmaVM;
 }
 
 namespace CJ {
+/**
+ * @brief Thin wrapper for Cangjie / N-API interop: exposes Panda `LocalScope` as opaque `ARKTS_Scope`.
+ *
+ * Typical use: enter a scope at native boundaries so temporaries are released before returning to JavaScript.
+ */
 class ARKTS_ScopeManager final {
 public:
+    /** Allocates `LocalScope` on `vm`; see `ark_interop_scope.cpp`. */
     static ARKTS_Scope OpenScope(panda::ecmascript::EcmaVM* vm);
+    /** Destroys the paired `LocalScope`; see `ark_interop_scope.cpp`. */
     static bool CloseScope(ARKTS_Scope target);
 };
 }

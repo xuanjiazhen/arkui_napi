@@ -27,6 +27,15 @@ using namespace panda::ecmascript;
 
 static constexpr int32_t STRING_TABLE_THRESHOLD = 128;
 
+/**
+ * @file ark_interop_string.cpp
+ * @brief UTF-8/UTF-16/Latin1 conversion with ArkTS strings; short strings use the VM string table, long ones use `WithoutStringTable`.
+ */
+
+/**
+ * @brief Creates a string from UTF-8 bytes. `size < 0` usually means NUL-terminated (see `StringRef::NewFromUtf8`).
+ *        Below `STRING_TABLE_THRESHOLD` the VM interns; otherwise allocates without the table.
+ */
 ARKTS_Value ARKTS_CreateUtf8(ARKTS_Env env, const char* value, int32_t size)
 {
     ARKTS_ASSERT_U(env, "env is null");
@@ -34,6 +43,7 @@ ARKTS_Value ARKTS_CreateUtf8(ARKTS_Env env, const char* value, int32_t size)
 
     auto vm = P_CAST(env, EcmaVM*);
     Local<JSValueRef> result;
+    // Intern/consolidate short literals; long buffers skip the global string table for memory and CPU.
     if (size < STRING_TABLE_THRESHOLD) {
         result = StringRef::NewFromUtf8(vm, value, size);
     } else {
@@ -42,6 +52,7 @@ ARKTS_Value ARKTS_CreateUtf8(ARKTS_Env env, const char* value, int32_t size)
     return ARKTS_FromHandle(result);
 }
 
+/** @brief After skipping hole, loads the heap slot and checks `IsString`. */
 bool ARKTS_IsString(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
@@ -56,6 +67,7 @@ bool ARKTS_IsString(ARKTS_Env env, ARKTS_Value value)
     return v.IsString(vm);
 }
 
+/** @brief UTF-8 length from `Utf8Length(..., true)` (VM semantics for surrogate pairs, etc.). */
 int32_t ARKTS_GetValueUtf8Size(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_I(env, "env is null");
@@ -67,6 +79,9 @@ int32_t ARKTS_GetValueUtf8Size(ARKTS_Env env, ARKTS_Value value)
     return v->Utf8Length(vm, true);
 }
 
+/**
+ * @brief Writes UTF-8 into `buffer` (at most `capacity` bytes; NUL semantics per VM); returns bytes written.
+ */
 int32_t ARKTS_GetValueUtf8(ARKTS_Env env, ARKTS_Value value, int32_t capacity, char* buffer)
 {
     ARKTS_ASSERT_I(env, "env is null");
@@ -78,6 +93,10 @@ int32_t ARKTS_GetValueUtf8(ARKTS_Env env, ARKTS_Value value, int32_t capacity, c
     return v->WriteUtf8(vm, buffer, capacity, true);
 }
 
+/**
+ * @brief `malloc`s one buffer and writes UTF-8; caller must free with `ARKTS_FreeCString`.
+ * @return `nullptr` for empty string; logs and returns `nullptr` on OOM.
+ */
 const char* ARKTS_GetValueCString(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_I(env, "env is null");
@@ -98,11 +117,13 @@ const char* ARKTS_GetValueCString(ARKTS_Env env, ARKTS_Value value)
     return result;
 }
 
+/** @brief Frees memory from `GetValueCString` (`free`). */
 void ARKTS_FreeCString(const char* src)
 {
     free(reinterpret_cast<void*>(const_cast<char*>(src)));
 }
 
+/** @brief Whether the string uses compressed storage and its UTF-16 code-unit `Length`. */
 ARKTS_StringInfo ARKTS_GetStringInfo(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT(env, "env is null", {});
@@ -118,6 +139,9 @@ ARKTS_StringInfo ARKTS_GetStringInfo(ARKTS_Env env, ARKTS_Value value)
     return { isCompressed, length };
 }
 
+/**
+ * @brief Copies raw units in internal layout: Latin1 if `IsCompressed`, else UTF-16 into `dst` (length is code units).
+ */
 void ARKTS_StringCopy(ARKTS_Env env, ARKTS_Value value, void* dst, uint32_t length)
 {
     ARKTS_ASSERT_V(env, "env is null");
@@ -134,6 +158,9 @@ void ARKTS_StringCopy(ARKTS_Env env, ARKTS_Value value, void* dst, uint32_t leng
     }
 }
 
+/**
+ * @brief Creates a string from a raw buffer: Latin1 (UTF-8 APIs) vs UTF-16 from `isCompressed`; long strings also bypass the string table.
+ */
 ARKTS_Value ARKTS_CreateString(ARKTS_Env env, bool isCompressed, uint32_t length, const void* data)
 {
     ARKTS_ASSERT_U(env, "env is null");

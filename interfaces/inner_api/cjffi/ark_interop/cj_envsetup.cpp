@@ -17,10 +17,16 @@
 
 #ifdef __LINUX__
 #include <dlfcn.h>
+/**
+ * @brief POSIX: `dlopen` with `RTLD_NOW`.
+ */
 static void* OpenLib(const char* name)
 {
     return dlopen(name, RTLD_NOW);
 }
+/**
+ * @brief POSIX: `dlsym` by symbol name.
+ */
 static void* FindSym(void* handle, const char* name)
 {
     return dlsym(handle, name);
@@ -32,10 +38,16 @@ static void* FindSym(void* handle, const char* name)
 #endif
 #elif defined(__WINDOWS__)
 #include <libloaderapi.h>
+/**
+ * @brief Windows: `LoadLibraryA`.
+ */
 static void* OpenLib(const char* name)
 {
     return LoadLibraryA(name);
 }
+/**
+ * @brief Windows: `GetProcAddress`.
+ */
 static void* FindSym(void* handle, const char* name)
 {
     return reinterpret_cast<void*>(GetProcAddress(reinterpret_cast<HMODULE>(handle), name));
@@ -47,6 +59,10 @@ static void* FindSym(void* handle, const char* name)
 #define GET_ENV_INS_NAME "OHOS_GetCJEnvInstance"
 
 namespace OHOS {
+/**
+ * @brief Loads the platform `libcj_environment` and calls `OHOS_GetCJEnvInstance` for the capability singleton.
+ * @return `CJEnvMethods*` on success; `nullptr` if the library or symbol is missing.
+ */
 CJEnvMethods* CJEnv::LoadInstance()
 {
     auto handle = OpenLib(LIB_NAME);

@@ -18,17 +18,29 @@
 #ifndef NO_HITRACE
 #include "hitrace_meter.h"
 
+/**
+ * @file ark_interop_hitrace.cpp
+ * @brief HiTrace async trace and counter wrappers (stubs when `NO_HITRACE` for builds without the service).
+ */
+
+/**
+ * @brief Starts an async trace (`HITRACE_TAG_APP`).
+ * @param name Task name (paired with `Finish`).
+ * @param taskId Task id (disambiguates concurrent instances with the same name).
+ */
 DECL_START
 void ARKTS_HiTraceStartTrace(const char* name, int32_t taskId)
 {
     StartAsyncTrace(HITRACE_TAG_APP, name, taskId);
 }
 
+/** @brief Finishes the async trace started with the same name and id. */
 void ARKTS_HiTraceFinishTrace(const char* name, int32_t taskId)
 {
     FinishAsyncTrace(HITRACE_TAG_APP, name, taskId);
 }
 
+/** @brief Emits an instantaneous counter trace point (not an async span). */
 void ARKTS_HiTraceCountTrace(const char* name, int64_t count)
 {
     CountTrace(HITRACE_TAG_APP, name, count);
@@ -36,7 +48,8 @@ void ARKTS_HiTraceCountTrace(const char* name, int64_t count)
 
 DECL_END
 #else
+/** @brief `NO_HITRACE` build: no-op stubs (no system profiling). */
 void ARKTS_HiTraceStartTrace(const char* /* name */, int32_t /* taskId */) {}
 void ARKTS_HiTraceFinishTrace(const char* /* name */, int32_t /* taskId */) {}
-void ARKTS_HiTraceCountTrace(const char* /* name */, int64_t /* taskId */) {}
+void ARKTS_HiTraceCountTrace(const char* /* name */, int64_t /* count */) {}
 #endif

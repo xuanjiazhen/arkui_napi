@@ -19,6 +19,12 @@
 #include "ark_interop_macro.h"
 #include "ark_interop_log.h"
 
+/**
+ * @file ark_interop_bigint.cpp
+ * @brief BigInt creation helpers and byte/limb order bridging for `BigIntRef::GetWordsArray`.
+ */
+
+/** @brief Constructs a VM BigInt from a single `int64_t`. */
 ARKTS_Value ARKTS_CreateBigInt(ARKTS_Env env, int64_t value)
 {
     ARKTS_ASSERT_U(env, "env is null");
@@ -28,6 +34,10 @@ ARKTS_Value ARKTS_CreateBigInt(ARKTS_Env env, int64_t value)
     return ARKTS_FromHandle(result);
 }
 
+/**
+ * @brief Reverse bytes in place to match VM limb layout expectations.
+ * @return False if `size` is odd.
+ */
 static bool ReverseBytes(uint8_t dst[], size_t size)
 {
     auto powOf2 = (size & 1) == 0;
@@ -46,6 +56,10 @@ static bool ReverseBytes(uint8_t dst[], size_t size)
 constexpr int WORD_BYTES = sizeof(uint64_t) / sizeof(uint8_t);
 constexpr int BYTE_BITS = 8;
 
+/**
+ * @brief Pack big-endian `bytes` into `uint64_t` limbs then create BigInt via `CreateBigWords`.
+ * @note The first limb may be shorter than 8 bytes.
+ */
 ARKTS_Value ARKTS_CreateBigIntWithBytes(ARKTS_Env env, bool isNegative, int64_t size, const uint8_t bytes[])
 {
     ARKTS_ASSERT_U(env, "env is null");

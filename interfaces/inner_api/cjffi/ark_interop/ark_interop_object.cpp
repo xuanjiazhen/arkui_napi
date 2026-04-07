@@ -20,9 +20,18 @@
 using namespace panda;
 using namespace panda::ecmascript;
 
+/**
+ * @file ark_interop_object.cpp
+ * @brief JSObject/property APIs: creation, type checks, own-property enumeration, defineProperty, accessors, get/set.
+ */
+
+/**
+ * @brief Whether `value` is usable as a property key: numbers are always keys; heap objects are loaded and checked for string or symbol.
+ */
 ARKTS_INLINE bool ARKTSInner_IsJSKey(ARKTS_Env env, ARKTS_Value value)
 {
     auto tag = BIT_CAST(value, JSValueRef);
+    // Array index / numeric keys may be encoded as immediate numbers, not heap objects.
     if (tag.IsNumber()) {
         return true;
     }
@@ -31,10 +40,12 @@ ARKTS_INLINE bool ARKTSInner_IsJSKey(ARKTS_Env env, ARKTS_Value value)
     }
     auto vm = P_CAST(env, EcmaVM*);
     JsiFastNativeScope nativeScope(vm);
+    // Resolve the heap slot so IsString/IsSymbol see the real object kind.
     tag = *P_CAST(value.pointer, JSValueRef*);
     return tag.IsString(vm) || tag.IsSymbol(vm);
 }
 
+/** @brief Plain empty object via `ObjectRef::New`. */
 ARKTS_Value ARKTS_CreateObject(ARKTS_Env env)
 {
     ARKTS_ASSERT_U(env, "env is null");
@@ -45,6 +56,7 @@ ARKTS_Value ARKTS_CreateObject(ARKTS_Env env)
     return ARKTS_FromHandle(result);
 }
 
+/** @brief True if `JSValueRef::IsHeapObject`. */
 bool ARKTS_IsHeapObject(ARKTS_Value value)
 {
     ARKTS_ASSERT_F(value.value, "value is null");
@@ -52,6 +64,7 @@ bool ARKTS_IsHeapObject(ARKTS_Value value)
     return v.IsHeapObject();
 }
 
+/** @brief Heap object whose `Local::IsObject` is true (excludes other heap kinds such as string/bigint). */
 bool ARKTS_IsObject(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
@@ -66,19 +79,23 @@ bool ARKTS_IsObject(ARKTS_Env env, ARKTS_Value value)
     return handle->IsObject(vm);
 }
 
+/**
+ * @brief Same idea as `Object.hasOwn` (VM `Has`): own properties only.
+ */
 bool ARKTS_HasOwnProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey)
 {
     ARKTS_ASSERT_F(env, "env is null");
     auto vm = P_CAST(env, EcmaVM*);
     panda::JsiFastNativeScope fastNativeScope(vm);
     ARKTS_ASSERT_F(ARKTS_IsHeapObject(jobj), "object is not heap object");
-    ARKTS_ASSERT_F(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+    ARKTS_ASSERT_F(ARKTSInner_IsJSKey(env, jkey), "key is not number, string or symbol");
 
     auto object = BIT_CAST(jobj, Local<ObjectRef>);
     auto key = ARKTS_ToHandle<JSValueRef>(jkey);
     return object->Has(vm, key);
 }
 
+/** @brief Array of enumerable own property names (`GetOwnEnumerablePropertyNames`). */
 ARKTS_Value ARKTS_EnumOwnProperties(ARKTS_Env env, ARKTS_Value jobj)
 {
     ARKTS_ASSERT_U(env, "env is null");
@@ -92,6 +109,9 @@ ARKTS_Value ARKTS_EnumOwnProperties(ARKTS_Env env, ARKTS_Value jobj)
     return ARKTS_FromHandle(result);
 }
 
+/**
+ * @brief Data-property `DefineProperty`; `attrs` is an `ARKTS_PropertyFlag` bitset (writable/enumerable/configurable).
+ */
 void ARKTS_DefineOwnProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Value jvalue,
     ARKTS_PropertyFlag attrs)
 {
@@ -99,7 +119,7 @@ void ARKTS_DefineOwnProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, 
     auto vm = P_CAST(env, EcmaVM*);
     panda::JsiFastNativeScope fastNativeScope(vm);
     ARKTS_ASSERT_V(ARKTS_IsHeapObject(jobj), "object is not heap object");
-    ARKTS_ASSERT_V(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+    ARKTS_ASSERT_V(ARKTSInner_IsJSKey(env, jkey), "key is not number, string or symbol");
 
     auto object = BIT_CAST(jobj, Local<ObjectRef>);
     auto key = ARKTS_ToHandle<JSValueRef>(jkey);
@@ -109,6 +129,9 @@ void ARKTS_DefineOwnProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, 
     object->DefineProperty(vm, key, attribute);
 }
 
+/**
+ * @brief Like `DefineOwnProperty` but returns VM bool success; on failure may surface errors via `ARKTSInner_ReportJSErrors`.
+ */
 bool ARKTS_DefineOwnPropertyV2(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Value jvalue,
     ARKTS_PropertyFlag attrs)
 {
@@ -116,7 +139,7 @@ bool ARKTS_DefineOwnPropertyV2(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey
     auto vm = P_CAST(env, EcmaVM*);
     panda::JsiFastNativeScope fastNativeScope(vm);
     ARKTS_ASSERT_F(ARKTS_IsHeapObject(jobj), "object is not heap object");
-    ARKTS_ASSERT_F(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+    ARKTS_ASSERT_F(ARKTSInner_IsJSKey(env, jkey), "key is not number, string or symbol");
 
     auto object = BIT_CAST(jobj, Local<ObjectRef>);
     auto key = ARKTS_ToHandle<JSValueRef>(jkey);
@@ -128,6 +151,9 @@ bool ARKTS_DefineOwnPropertyV2(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey
     return result;
 }
 
+/**
+ * @brief Defines accessor properties: getter/setter may be `Undefined` but not both; checks callability then `SetAccessorProperty`.
+ */
 void ARKTS_DefineAccessors(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Accessor accessor)
 {
     ARKTS_ASSERT_V(env, "env is null");
@@ -135,7 +161,7 @@ void ARKTS_DefineAccessors(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, AR
     panda::JsiFastNativeScope fastNativeScope(vm);
 
     ARKTS_ASSERT_V(ARKTS_IsHeapObject(jobj), "object is not heap object");
-    ARKTS_ASSERT_V(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+    ARKTS_ASSERT_V(ARKTSInner_IsJSKey(env, jkey), "key is not number, string or symbol");
 
     auto undefined = ARKTS_CreateUndefined();
 
@@ -156,6 +182,9 @@ void ARKTS_DefineAccessors(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, AR
     object->SetAccessorProperty(vm, key, handledGetter, handledSetter, attribute);
 }
 
+/**
+ * @brief Accessor variant of `DefineAccessors` returning bool and calling `ReportJSErrors` on failure.
+ */
 bool ARKTS_DefineAccessorsV2(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Accessor accessor)
 {
     ARKTS_ASSERT_F(env, "env is null");
@@ -163,7 +192,7 @@ bool ARKTS_DefineAccessorsV2(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, 
     panda::JsiFastNativeScope fastNativeScope(vm);
 
     ARKTS_ASSERT_F(ARKTS_IsHeapObject(jobj), "object is not heap object");
-    ARKTS_ASSERT_F(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+    ARKTS_ASSERT_F(ARKTSInner_IsJSKey(env, jkey), "key is not number, string or symbol");
 
     auto undefined = ARKTS_CreateUndefined();
 
@@ -186,13 +215,14 @@ bool ARKTS_DefineAccessorsV2(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, 
     return result;
 }
 
+/** @brief Ordinary `[[Set]]` / `object[key]=value` (`ObjectRef::Set`). */
 void ARKTS_SetProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_Value jvalue)
 {
     ARKTS_ASSERT_V(env, "env is null");
     auto vm = P_CAST(env, EcmaVM*);
     panda::JsiFastNativeScope fastNativeScope(vm);
     ARKTS_ASSERT_V(ARKTS_IsHeapObject(jobj), "object is not heap object");
-    ARKTS_ASSERT_V(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+    ARKTS_ASSERT_V(ARKTSInner_IsJSKey(env, jkey), "key is not number, string or symbol");
 
     auto object = BIT_CAST(jobj, Local<ObjectRef>);
     auto key = ARKTS_ToHandle<JSValueRef>(jkey);
@@ -201,13 +231,16 @@ void ARKTS_SetProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey, ARKTS_
     object->Set(vm, key, value);
 }
 
+/**
+ * @brief `[[Get]]` via `ObjectRef::Get`; if missing, VM returns the usual value (e.g. undefined).
+ */
 ARKTS_Value ARKTS_GetProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey)
 {
     ARKTS_ASSERT_U(env, "env is null");
     auto vm = P_CAST(env, EcmaVM*);
     panda::JsiFastNativeScope fastNativeScope(vm);
     ARKTS_ASSERT_U(ARKTS_IsHeapObject(jobj), "object is not heap object");
-    ARKTS_ASSERT_U(ARKTSInner_IsJSKey(env, jkey), "key is not number、string or symbol");
+    ARKTS_ASSERT_U(ARKTSInner_IsJSKey(env, jkey), "key is not number, string or symbol");
 
     auto object = BIT_CAST(jobj, Local<ObjectRef>);
     auto key = ARKTS_ToHandle<JSValueRef>(jkey);

@@ -20,19 +20,23 @@
 #include <functional>
 
 namespace OHOS {
+/** Stack-info callback: runtime invokes on error paths to tie ArkVM to native stacks. */
 using UpdateStackInfoFuncType = void(*)(unsigned long long, void *, unsigned int);
 
+/** Cangjie error projection (pointers only; lifetime owned by host). */
 struct CJErrorObject {
     const char* name;
     const char* message;
     const char* stack;
 };
 
+/** Uncaught-exception hook: HAP path plus summary/error delegate. */
 struct CJUncaughtExceptionInfo {
     const char* hapPath;
     std::function<void(const char* summary, const CJErrorObject errorObj)> uncaughtTask;
 };
 
+/** Sanitizer variant passed to the runtime. */
 enum SanitizerKind {
     NONE,
     ASAN,
@@ -40,6 +44,10 @@ enum SanitizerKind {
     HWASAN,
 };
 
+/**
+ * Exported vtable from `libcj_environment` (NS init, runtime/debugger, dlopen helpers, Ark registration, etc.).
+ * Resolved by `CJEnv::LoadInstance()` from the `OHOS_GetCJEnvInstance` symbol.
+ */
 struct CJEnvMethods {
     void (*initCJAppNS)(const std::string& path) = nullptr;
     void (*initCJSDKNS)(const std::string& path) = nullptr;
@@ -59,6 +67,7 @@ struct CJEnvMethods {
     void (*registerStackInfoCallbacks)(UpdateStackInfoFuncType uFunc) = nullptr;
 };
 
+/** Thin loader for `libcj_environment` returning the singleton vtable. */
 class CJEnv {
 public:
     static CJEnvMethods* LoadInstance();

@@ -41,6 +41,24 @@ typedef enum {
 } ARKTS_ValueType;
 
 /**
+ * C-facing ArkTS interop API (for Cangjie `foreign func` bindings).
+ *
+ * These functions let Cangjie:
+ * - Create, inspect, and invoke ArkTS values (`ARKTS_Value`)
+ * - Manage cross-language lifetimes (`ARKTS_Global` / `ARKTS_External`)
+ * - Handle scopes and error propagation
+ *
+ * Key concepts (Cangjie mapping):
+ * - `ARKTS_Global` keeps an ArkTS heap object alive while Cangjie holds a reference (maps to `JSHeapObject`).
+ * - `ARKTS_CreateExternal` wraps an `int64_t` (usually a Cangjie object id) as a JS External; GC invokes registered
+ *   callbacks so Cangjie can release (`SharedObject` / `JSExternal`).
+ *
+ * Threading / lifetime:
+ * - Most calls must run on the ArkTS runtime thread; Cangjie `JSContext` validates this.
+ * - Releasing VM handles (especially globals) may hop threads internally to stay GC-safe.
+ */
+
+/**
  * js object property descriptor attribute
  */
 typedef enum {
@@ -164,6 +182,9 @@ EXPORT bool ARKTS_IsArray(ARKTS_Env env, ARKTS_Value value);
 EXPORT ARKTS_Global ARKTS_CreateGlobal(ARKTS_Env env, ARKTS_Value value);
 EXPORT bool ARKTS_GlobalIsAlive(ARKTS_Env env, ARKTS_Global global);
 EXPORT ARKTS_Value ARKTS_GetGlobalValue(ARKTS_Global global);
+/**
+ * Disposes a global handle. May schedule cross-thread work internally so VM handles are not freed on the wrong thread.
+ */
 EXPORT void ARKTS_DisposeGlobal(ARKTS_Env env, ARKTS_Global global);
 EXPORT void ARKTS_DisposeGlobalSync(ARKTS_Env env, ARKTS_Global global);
 

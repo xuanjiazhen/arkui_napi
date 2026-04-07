@@ -15,15 +15,29 @@
 
 #include "ark_interop_scope.h"
 
+/**
+ * @file ark_interop_scope.cpp
+ * @brief C++ implementation of `ARKTS_Scope`: wraps `panda::LocalScope` so Locals do not leak across native calls.
+ */
+
 namespace CJ {
+/**
+ * @brief Opens a `LocalScope` on `vm`; returns opaque `ARKTS_Scope` (really `LocalScope*`).
+ * @param vm Target `EcmaVM*`.
+ */
 ARKTS_Scope ARKTS_ScopeManager::OpenScope(panda::ecmascript::EcmaVM* vm)
 {
     auto scopeId = new panda::LocalScope(vm);
     return P_CAST(scopeId, ARKTS_Scope);
 }
 
+/**
+ * @brief Closes and destroys `LocalScope*`; pair with `OpenScope`.
+ * @return Always `true` in the current implementation.
+ */
 bool ARKTS_ScopeManager::CloseScope(ARKTS_Scope target)
 {
+    // LocalScope destructor pops VM roots close()d in this scope; must match OpenScope's `new`.
     auto targetScope = P_CAST(target, panda::LocalScope*);
     delete targetScope;
     return true;
