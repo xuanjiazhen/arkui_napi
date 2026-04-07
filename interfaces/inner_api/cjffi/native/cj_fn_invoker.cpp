@@ -26,29 +26,11 @@ namespace {
 constexpr HiLogLabel LABEL = { LOG_CORE, 0xD003F03, "CJ-FFIFuncs" };
 } // namespace
 
-/**
-
- * CJFFIFnInvoker::GetInstance.
-
- *
-
-
- */
-
 CJFFIFnInvoker* CJFFIFnInvoker::GetInstance()
 {
     static CJFFIFnInvoker instance;
     return &instance;
 }
-
-/**
-
- * CJFFIFnInvoker::GetCJFuncs.
-
- *
-
-
- */
 
 const FFIAtCPackage& CJFFIFnInvoker::GetCJFuncs()
 {
@@ -57,15 +39,6 @@ const FFIAtCPackage& CJFFIFnInvoker::GetCJFuncs()
     }
     return cjFFIFn_;
 }
-
-/**
-
- * CJFFIFnInvoker::FFIDataExist.
-
- *
-
-
- */
 
 bool CJFFIFnInvoker::FFIDataExist(int64_t id) const
 {
@@ -77,15 +50,6 @@ bool CJFFIFnInvoker::FFIDataExist(int64_t id) const
     return cjFunc(id);
 }
 
-/**
-
- * CJFFIFnInvoker::ReleaseFFIData.
-
- *
-
-
- */
-
 bool CJFFIFnInvoker::ReleaseFFIData(int64_t id) const
 {
     auto cjFunc = cjFFIFn_.atCOHOSFFIReleaseFFIData;
@@ -95,15 +59,6 @@ bool CJFFIFnInvoker::ReleaseFFIData(int64_t id) const
     }
     return cjFunc(id);
 }
-
-/**
-
- * CJFFIFnInvoker::ReleaseRemoteData.
-
- *
-
-
- */
 
 bool CJFFIFnInvoker::ReleaseRemoteData(int64_t id) const
 {
@@ -115,15 +70,6 @@ bool CJFFIFnInvoker::ReleaseRemoteData(int64_t id) const
     return cjFunc(id);
 }
 
-/**
-
- * CJFFIFnInvoker::ThrowCJError.
-
- *
-
-
- */
-
 void CJFFIFnInvoker::ThrowCJError(const std::string& msg) const
 {
     auto cjFunc = cjFFIFn_.atCOHOSFFICJThrow;
@@ -133,15 +79,6 @@ void CJFFIFnInvoker::ThrowCJError(const std::string& msg) const
     }
     cjFunc(msg.c_str());
 }
-
-/**
-
- * CJFFIFnInvoker::InvokeLambda.
-
- *
-
-
- */
 
 void CJFFIFnInvoker::InvokeLambda(int64_t lambdaId, int32_t argc, void** argv, void* result) const
 {

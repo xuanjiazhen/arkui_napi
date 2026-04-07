@@ -39,15 +39,6 @@ public:
     DISALLOW_COPY_AND_MOVE(FFIDataManager);
     FFIDataManager() = default;
 
-    /**
-
-     * GetFFIData.
-
-     *
-
-
-     */
-
     sptr<FFIData> GetFFIData(int64_t id)
     {
         std::lock_guard<std::recursive_mutex> lock(mtx);
@@ -57,15 +48,6 @@ public:
         }
         return itor->second;
     }
-        
-    /**
-        
-     * GetRemoteData.
-        
-     *
-        
-        
-     */
         
     sptr<RemoteData> GetRemoteData(int64_t id)
     {
@@ -78,10 +60,6 @@ public:
     }
     void StoreFFIData(const sptr<FFIData>& data);
     void StoreRemoteData(const sptr<RemoteData>& data);
-    /**
-     * RemoveFFIData.
-     *
-     */
     void RemoveFFIData(int64_t id)
     {
         [[maybe_unused]] sptr<FFIData> keepAlive = nullptr;
@@ -91,10 +69,6 @@ public:
             ffiDataStore_.erase(id);
         }
     }
-    /**
-     * RemoveRemoteData.
-     *
-     */
     void RemoveRemoteData(int64_t id)
     {
         [[maybe_unused]] sptr<FFIData> keepAlive = nullptr;
@@ -117,15 +91,6 @@ private:
 
     std::unordered_map<int64_t, sptr<FFIData>> ffiDataStore_;
     std::unordered_map<int64_t, wptr<RemoteData>> remoteDataStore_;
-
-    /**
-
-     * FFIDataExist.
-
-     *
-
-
-     */
 
     bool FFIDataExist(int64_t id) const
     {
@@ -164,15 +129,6 @@ class FFI_EXPORT RemoteData : public TypeBase, public virtual RefBase {
 public:
     DISALLOW_COPY_AND_MOVE(RemoteData);
 
-    /**
-
-     * Create.
-
-     *
-
-
-     */
-
     template<class T>
     static sptr<T> Create(int64_t id)
     {
@@ -209,10 +165,6 @@ private:
 
 class FFI_EXPORT CJLambdaRemoteData : public RemoteData {
     DECL_TYPE(CJLambdaRemoteData, RemoteData)
-/**
- * CJLambdaRemoteData.
- *
- */
 public:
     explicit CJLambdaRemoteData(int64_t id): RemoteData(id) {}
 
@@ -241,15 +193,6 @@ public:
     FFIData() : id_(FFIDataManager::GetInstance()->NewFFIDataId()) {}
     ~FFIData() override;
 
-    /**
-
-     * Create.
-
-     *
-
-
-     */
-
     template<class T, class... Args>
     static sptr<T> Create(Args... args)
     {
@@ -262,15 +205,6 @@ public:
         return ref;
     }
 
-    /**
-
-     * GetData.
-
-     *
-
-
-     */
-
     template<class T>
     static sptr<T> GetData(int64_t id)
     {
@@ -281,37 +215,15 @@ public:
         return nullptr;
     }
 
-    /**
-
-     * Release.
-
-     *
-
-
-     */
-
     static void Release(int64_t id)
     {
         FFIDataManager::GetInstance()->RemoveFFIData(id);
     }
-    /**
-     * Exist.
-     *
-     */
     static bool Exist(int64_t id)
     {
         auto& store_ = FFIDataManager::GetInstance()->ffiDataStore_;
         return store_.find(id) != store_.end();
     }
-
-    /**
-
-     * GetID.
-
-     *
-
-
-     */
 
     int64_t GetID() const
     {

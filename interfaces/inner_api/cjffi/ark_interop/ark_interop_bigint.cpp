@@ -21,7 +21,7 @@
 
 /**
  * @file ark_interop_bigint.cpp
- * @brief BigInt from int64 and large byte arrays, plus limb byte-order bridging for VM `GetWordsArray`.
+ * @brief BigInt creation helpers and byte/limb order bridging for `BigIntRef::GetWordsArray`.
  */
 
 /** @brief Constructs a VM BigInt from a single `int64_t`. */
@@ -35,8 +35,8 @@ ARKTS_Value ARKTS_CreateBigInt(ARKTS_Env env, int64_t value)
 }
 
 /**
- * @brief Reverses `bytes` in place to align big-endian limbs with the layout expected by the VM.
- * @return False if `size` is odd (caller treats this as fatal).
+ * @brief Reverse bytes in place to match VM limb layout expectations.
+ * @return False if `size` is odd.
  */
 static bool ReverseBytes(uint8_t dst[], size_t size)
 {
@@ -57,8 +57,8 @@ constexpr int WORD_BYTES = sizeof(uint64_t) / sizeof(uint8_t);
 constexpr int BYTE_BITS = 8;
 
 /**
- * @brief Packs big-endian `bytes` into `uint64_t` limbs (most significant limb first) then `CreateBigWords`.
- * @note The first limb may be shorter than 8 bytes; the loop fills `u64v` from high index down.
+ * @brief Pack big-endian `bytes` into `uint64_t` limbs then create BigInt via `CreateBigWords`.
+ * @note The first limb may be shorter than 8 bytes.
  */
 ARKTS_Value ARKTS_CreateBigIntWithBytes(ARKTS_Env env, bool isNegative, int64_t size, const uint8_t bytes[])
 {
@@ -68,7 +68,6 @@ ARKTS_Value ARKTS_CreateBigIntWithBytes(ARKTS_Env env, bool isNegative, int64_t 
     
     auto vm = P_CAST(env, panda::EcmaVM*);
     
-    // Split input big-endian byte stream into uint64 limbs, MS limb at u64v[totalCnt-1].
     auto firstBytes = size % WORD_BYTES;
     auto wholeU64Cnt = size / WORD_BYTES;
     auto totalCnt = firstBytes ? wholeU64Cnt + 1 : wholeU64Cnt;
@@ -93,7 +92,6 @@ ARKTS_Value ARKTS_CreateBigIntWithBytes(ARKTS_Env env, bool isNegative, int64_t 
     return ARKTS_FromHandle(result);
 }
 
-/** @brief After loading the heap slot, checks `IsBigInt`. */
 bool ARKTS_IsBigInt(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_F(env, "env is null");
@@ -109,7 +107,6 @@ bool ARKTS_IsBigInt(ARKTS_Env env, ARKTS_Value value)
     return tag.IsBigInt(vm);
 }
 
-/** @brief Limb count times word size (8 bytes); size a buffer for `ReadBytes`. */
 int64_t ARKTS_BigIntGetByteSize(ARKTS_Env env, ARKTS_Value value)
 {
     ARKTS_ASSERT_I(ARKTS_IsBigInt(env, value), "value is not bigint");
@@ -119,9 +116,6 @@ int64_t ARKTS_BigIntGetByteSize(ARKTS_Env env, ARKTS_Value value)
     return bigint->GetWordsArraySize(vm) * WORD_BYTES;
 }
 
-/**
- * @brief Reads limbs into `bytes` (`uint64_t*` layout at the VM), then `ReverseBytes` for big-endian symmetry with `CreateBigIntWithBytes`.
- */
 void ARKTS_BigIntReadBytes(ARKTS_Env env, ARKTS_Value value, bool* isNegative, int64_t byteCount, uint8_t bytes[])
 {
     ARKTS_ASSERT_V(env, "env is null");
@@ -132,7 +126,6 @@ void ARKTS_BigIntReadBytes(ARKTS_Env env, ARKTS_Value value, bool* isNegative, i
     auto bigint = BIT_CAST(value, panda::Local<panda::BigIntRef>);
     auto u64cnt = bigint->GetWordsArraySize(vm);
     ARKTS_ASSERT_V(byteCount >= u64cnt * WORD_BYTES, "byteCount not enough");
-    // VM writes limbs as little-endian uint64 sequence in `bytes`; reverse whole buffer to match CreateBigIntWithBytes input order.
     bigint->GetWordsArray(vm, isNegative, u64cnt, reinterpret_cast<uint64_t*>(bytes));
     ARKTS_ASSERT_V(ReverseBytes(bytes, byteCount), "ReverseBytes failed");
 }

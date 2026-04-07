@@ -27,29 +27,11 @@ namespace {
 constexpr HiLogLabel LABEL = { LOG_CORE, 0xD003F03, "CJ-FFIBindNative" };
 } // namespace
 
-/**
-
- * FFIDataManager::GetInstance.
-
- *
-
-
- */
-
 FFIDataManager* FFIDataManager::GetInstance()
 {
     static FFIDataManager singleton;
     return &singleton;
 }
-
-/**
-
- * FFIDataManager::StoreFFIData.
-
- *
-
-
- */
 
 void FFIDataManager::StoreFFIData(const sptr<FFIData>& data)
 {
@@ -64,29 +46,11 @@ void FFIDataManager::StoreFFIData(const sptr<FFIData>& data)
     ffiDataStore_[id] = data;
 }
 
-/**
-
- * FFIDataManager::StoreRemoteData.
-
- *
-
-
- */
-
 void FFIDataManager::StoreRemoteData(const sptr<RemoteData>& data)
 {
     std::lock_guard<std::recursive_mutex> lock(mtx);
     remoteDataStore_[data->GetID()] = data;
 }
-
-/**
-
- * FFIDataManager::NewFFIDataId.
-
- *
-
-
- */
 
 int64_t FFIDataManager::NewFFIDataId()
 {
@@ -112,15 +76,6 @@ int64_t FFIDataManager::NewFFIDataId()
         ffiDataStore_.size());
     return curFFIDataId_;
 }
-
-/**
-
- * FFIDataManager::FFIDataIdSafeIncrease.
-
- *
-
-
- */
 
 int FFIDataManager::FFIDataIdSafeIncrease()
 {
@@ -156,15 +111,6 @@ CJLambdaRemoteData::~CJLambdaRemoteData()
     auto manager = FFIDataManager::GetInstance();
     manager->RemoveRemoteData(GetID());
 }
-
-/**
-
- * RemoteData::GetID.
-
- *
-
-
- */
 
 int64_t RemoteData::GetID() const
 {

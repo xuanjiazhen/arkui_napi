@@ -16,10 +16,6 @@
 #include "cj_common_ffi.h"
 
 extern "C" {
-/**
- * FfiGeneralSizeOfPointer.
- *
- */
 int64_t FfiGeneralSizeOfPointer()
 {
     return sizeof(void*);
