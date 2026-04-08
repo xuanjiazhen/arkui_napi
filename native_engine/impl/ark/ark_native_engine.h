@@ -26,6 +26,7 @@
 #include <mutex>
 #include <regex>
 #include <thread>
+#include <unordered_map>
 #include <unistd.h>
 
 #include "ark_idle_monitor.h"
@@ -420,7 +421,7 @@ public:
 
     static void* GetNativePtrCallBack(void* data);
     static void* GetNativeReferenceData(void* ref);
-    
+
     static void CopyPropertyApiFilter(const std::unique_ptr<ApiAllowListChecker>& apiAllowListChecker,
         const EcmaVM* ecmaVm, const panda::Local<panda::ObjectRef> exportObj,
         panda::Local<panda::ObjectRef>& exportCopy, const std::string& apiPath);

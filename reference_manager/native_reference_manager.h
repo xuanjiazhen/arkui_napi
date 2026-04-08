@@ -26,6 +26,7 @@ public:
 
     void CreateHandler(NativeReference* reference);
     void ReleaseHandler(NativeReference* reference);
+    NativeReference* GetHead() const { return references_; }
 
 private:
     NativeReference *references_ {nullptr};

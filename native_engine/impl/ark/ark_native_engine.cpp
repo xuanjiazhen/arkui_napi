@@ -27,6 +27,7 @@
 #include "ark_native_reference.h"
 #include "ark_hybrid_native_reference.h"
 #include "ark_native_timer.h"
+#include "native_async_work.h"
 #include "native_engine/native_utils.h"
 #include "native_sendable.h"
 #include "cj_support.h"
@@ -533,6 +534,13 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 
     JSNApi::SetNativePtrGetter(vm, reinterpret_cast<void*>(ArkNativeEngine::GetNativePtrCallBack));
     JSNApi::SetNativeReferenceDataGetter(vm, reinterpret_cast<void*>(ArkNativeEngine::GetNativeReferenceData));
+    JSNApi::SetGlobalHandleToNativeRefCallback(vm, reinterpret_cast<void*>(
+        [](uintptr_t globalHandleAddr) -> void* {
+            // DereferenceOf Step 1: globalHandleAddr as &Global::address_ → Global*
+            auto* globalPtr = reinterpret_cast<Global<JSValueRef>*>(globalHandleAddr);
+            // DereferenceOf Step 2: globalPtr as &ArkNativeReference::value_ → ArkNativeReference*
+            return NativeAsyncWork::DereferenceOf(&ArkNativeReference::value_, globalPtr);
+        }));
     // need to call init of base class.
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
     std::function<bool(const std::string&)> func = [moduleManager](const std::string& moduleKey) -> bool {
