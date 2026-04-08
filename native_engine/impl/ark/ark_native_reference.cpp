@@ -83,6 +83,11 @@ void ArkNativeReference::ArkNativeReferenceConstructor()
         value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
     }
 
+    // Approach 2: Store global handle address -> ref mapping in JSThread (runtime)
+    if (!value_.IsEmpty()) {
+        JSNApi::StoreGlobalRefMapping(engine_->GetEcmaVm(), GetGlobalHandleAddress(), this);
+    }
+
     if (ownership_ == ReferenceOwnerShip::RUNTIME) {
         NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
         if (referenceManager != nullptr) {
@@ -123,6 +128,8 @@ ArkNativeReference::~ArkNativeReference()
     if (value_.IsEmpty()) {
         return;
     }
+    // Approach 2: Erase global handle address -> ref mapping from JSThread (runtime)
+    JSNApi::EraseGlobalRefMapping(engine_->GetEcmaVm(), GetGlobalHandleAddress());
     SetHasDelete();
     value_.FreeGlobalHandleAddr();
     FinalizeCallback(FinalizerState::DESTRUCTION);
