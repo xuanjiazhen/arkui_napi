@@ -11186,6 +11186,87 @@ HWTEST_F(NapiBasicTest, NapiGetReferenceValueTest003, testing::ext::TestSize.Lev
 }
 
 /**
+ * @tc.name: NapiGetReferenceAddressTest
+ * @tc.desc: Test interface of napi_get_reference_global_address
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetReferenceAddressTest001, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    auto res = napi_get_reference_global_address(env, nullptr, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetReferenceAddressTest
+ * @tc.desc: Test interface of napi_get_reference_global_address
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetReferenceAddressTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    napi_value boolean = nullptr;
+    ASSERT_CHECK_CALL(napi_get_boolean(env, true, &boolean));
+
+    napi_ref booleanRef = nullptr;
+    ASSERT_CHECK_CALL(napi_create_reference(env, boolean, 1, &booleanRef));
+
+    auto res = napi_get_reference_global_address(env, booleanRef, nullptr);
+    ASSERT_EQ(res, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: NapiGetReferenceAddressTest
+ * @tc.desc: Test interface of napi_get_reference_global_address
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetReferenceAddressTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    napi_value boolean = nullptr;
+    ASSERT_CHECK_CALL(napi_get_boolean(env, true, &boolean));
+
+    napi_ref booleanRef = nullptr;
+    ASSERT_CHECK_CALL(napi_create_reference(env, boolean, 1, &booleanRef));
+
+    void* addr = nullptr;
+    auto res = napi_get_reference_global_address(env, booleanRef, &addr);
+    ASSERT_EQ(res, napi_ok);
+    ASSERT_NE(addr, nullptr);
+}
+
+/**
+ * @tc.name: NapiGetReferenceAddressTest
+ * @tc.desc: Test interface of napi_get_reference_global_address
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiGetReferenceAddressTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    napi_value boolean = nullptr;
+    ASSERT_CHECK_CALL(napi_get_boolean(env, true, &boolean));
+
+    napi_ref booleanRef = nullptr;
+    ASSERT_CHECK_CALL(napi_create_reference(env, boolean, 1, &booleanRef));
+
+    void* addr1 = nullptr;
+    void* addr2 = nullptr;
+    ASSERT_CHECK_CALL(napi_get_reference_global_address(env, booleanRef, &addr1));
+    ASSERT_CHECK_CALL(napi_get_reference_global_address(env, booleanRef, &addr2));
+    ASSERT_EQ(addr1, addr2);
+
+    ASSERT_CHECK_CALL(napi_delete_reference(env, booleanRef));
+}
+
+/**
  * @tc.name: NapiCreateArrayTest
  * @tc.desc: Test interface of napi_create_array
  * @tc.type: FUNC

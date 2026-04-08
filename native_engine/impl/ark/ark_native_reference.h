@@ -90,6 +90,10 @@ public:
     bool GetFinalRun() override;
     napi_value GetNapiValue() override;
     void ResetFinalizer()  override;
+    uintptr_t GetGlobalHandleAddress() const override
+    {
+        return reinterpret_cast<uintptr_t>(*value_);
+    }
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     void MarkFromObject(std::function<void(uintptr_t)> &visitor);
     void MarkFromObject();
