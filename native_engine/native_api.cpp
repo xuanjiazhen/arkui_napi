@@ -23,6 +23,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "native_api_internal.h"
+#include <unordered_map>
 #include "native_engine/impl/ark/ark_native_reference.h"
 #include "native_engine/impl/ark/ark_sendable_native_reference.h"
 #include "native_engine/native_create_env.h"
@@ -2563,19 +2564,39 @@ NAPI_EXTERN napi_status napi_get_reference_value(napi_env env, napi_ref ref, nap
     return napi_clear_last_error(env);
 }
 
-NAPI_EXTERN napi_status napi_get_reference_address(napi_env env, napi_ref ref, void* result)
+NAPI_EXTERN napi_status napi_get_reference_global_address(napi_env env, napi_ref ref, void** result)
 {
     CHECK_ENV(env);
     CHECK_ARG(env, ref);
     CHECK_ARG(env, result);
 
     auto reference = reinterpret_cast<NativeReference*>(ref);
-    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    *result = reinterpret_cast<void*>(reference->GetGlobalHandleAddress());
+    return napi_clear_last_error(env);
+}
 
-    napi_value local = reference->Get(engine);
-    uintptr_t globalAddr = panda::JSNApi::GetGlobalHandleAddr(
-        engine->GetEcmaVm(), reinterpret_cast<uintptr_t>(local));
-    *result = reinterpret_cast<void*>(globalAddr);
+NAPI_EXTERN napi_status napi_set_store_global_ref_mapping(napi_env env, bool enable)
+{
+    CHECK_ENV(env);
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    JSNApi::SetStoreGlobalRefMapping(engine->GetEcmaVm(), enable);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_get_global_handle_count_map(
+    napi_env env, napi_global_handle_count_info* buffer)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, buffer);
+    auto map = JSNApi::GetGlobalHandleCountMap();
+    size_t i = 0;
+    for (auto& [tid, cnt] : map) {
+        buffer[i].threadId = tid;
+        buffer[i].handleCount = cnt;
+        i++;
+    }
+    buffer[i].threadId = 0;
+    buffer[i].handleCount = 0;
     return napi_clear_last_error(env);
 }
 

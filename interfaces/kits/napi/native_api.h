@@ -225,6 +225,18 @@ NAPI_EXTERN napi_status napi_create_strong_reference(napi_env env, napi_value va
 NAPI_EXTERN napi_status napi_delete_strong_reference(napi_env env, napi_strong_ref ref);
 NAPI_EXTERN napi_status napi_get_strong_reference_value(napi_env env, napi_strong_ref ref, napi_value* result);
 
+NAPI_EXTERN napi_status napi_get_reference_global_address(napi_env env, napi_ref ref, void** result);
+NAPI_EXTERN napi_status napi_set_store_global_ref_mapping(napi_env env, bool enable);
+
+typedef struct {
+    uint32_t threadId;
+    size_t handleCount;
+} napi_global_handle_count_info;
+
+// 调用方分配足够空间，接口填充数据，末尾以 threadId == 0 标记结束
+NAPI_EXTERN napi_status napi_get_global_handle_count_map(
+    napi_env env, napi_global_handle_count_info* buffer);
+
 NAPI_EXTERN napi_status napi_open_critical_scope(napi_env env, napi_critical_scope* scope);
 NAPI_EXTERN napi_status napi_close_critical_scope(napi_env env, napi_critical_scope scope);
 NAPI_EXTERN napi_status napi_get_buffer_string_utf16_in_critical_scope(napi_env env,
