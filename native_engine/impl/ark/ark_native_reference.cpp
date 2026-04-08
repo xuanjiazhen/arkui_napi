@@ -83,6 +83,10 @@ void ArkNativeReference::ArkNativeReferenceConstructor()
         value_.SetWeakCallback(reinterpret_cast<void*>(this), FreeGlobalCallBack, NativeFinalizeCallBack);
     }
 
+    if (!value_.IsEmpty()) {
+        value_.SetRef(this);
+    }
+
     if (ownership_ == ReferenceOwnerShip::RUNTIME) {
         NativeReferenceManager* referenceManager = engine_->GetReferenceManager();
         if (referenceManager != nullptr) {
