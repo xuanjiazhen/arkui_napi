@@ -247,6 +247,7 @@ NAPI_EXTERN napi_status napi_remove_cleanup_finalizer(napi_env env, void (*fun)(
  * @return napi_status The status of the operation. Returns napi_ok if successful.
  */
 NAPI_EXTERN napi_status napi_set_module_validate_callback(napi_module_validate_callback check_callback);
+NAPI_EXTERN napi_status napi_set_store_global_ref_mapping(napi_env env, bool enable);
 NAPI_EXTERN napi_status napi_load_module_with_path(napi_env env, const char* path,
                                                    napi_value* result);
 NAPI_EXTERN napi_status napi_throw_jsvalue(napi_env env, napi_value error);

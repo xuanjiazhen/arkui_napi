@@ -657,6 +657,14 @@ NAPI_EXTERN napi_status napi_set_module_validate_callback(napi_module_validate_c
     return napi_generic_failure;
 }
 
+NAPI_EXTERN napi_status napi_set_store_global_ref_mapping(napi_env env, bool enable)
+{
+    CHECK_ENV(env);
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    JSNApi::SetStoreGlobalRefMapping(engine->GetEcmaVm(), enable);
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_create_string_utf8_with_replacement(napi_env env,
                                                                  const char* str,
                                                                  size_t length,
