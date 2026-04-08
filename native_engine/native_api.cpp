@@ -2563,6 +2563,22 @@ NAPI_EXTERN napi_status napi_get_reference_value(napi_env env, napi_ref ref, nap
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_get_reference_address(napi_env env, napi_ref ref, void* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+
+    auto reference = reinterpret_cast<NativeReference*>(ref);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+
+    napi_value local = reference->Get(engine);
+    uintptr_t globalAddr = panda::JSNApi::GetGlobalHandleAddr(
+        engine->GetEcmaVm(), reinterpret_cast<uintptr_t>(local));
+    *result = reinterpret_cast<void*>(globalAddr);
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result)
 {
     CHECK_ENV(env);
