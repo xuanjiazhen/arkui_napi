@@ -2296,6 +2296,7 @@ NAPI_EXTERN napi_status napi_remove_wrap(napi_env env, napi_value js_object, voi
     if (nativeObject->Has(vm, key)) {
         Local<panda::ObjectRef> wrapper = val;
         auto ref = reinterpret_cast<NativeReference*>(wrapper->GetNativePointerField(vm, 0));
+        wrapper->SetNativePointerField(vm, 0, nullptr, nullptr, nullptr, 0);
         nativeObject->Delete(vm, key);
         delete ref;
     } else {
