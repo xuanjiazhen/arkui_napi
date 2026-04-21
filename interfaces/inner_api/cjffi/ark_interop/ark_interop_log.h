@@ -31,18 +31,12 @@
 #define LOG_TAG "ARKTS-INTEROP"
 
 #define LOGD(...)                                           \
-if (HiLogIsLoggable(LOG_DOMAIN, LOG_TAG, LOG_DEBUG)) {      \
-    HILOG_DEBUG(LOG_CORE, __VA_ARGS__);                     \
-}
+HILOG_DEBUG(LOG_CORE, __VA_ARGS__)
 
 #define LOGI(...)                                           \
-if (HiLogIsLoggable(LOG_DOMAIN, LOG_TAG, LOG_INFO)) {       \
-    HILOG_INFO(LOG_CORE, ##__VA_ARGS__);                    \
-}
+HILOG_INFO(LOG_CORE, ##__VA_ARGS__)
 
 #define LOGE(...)                                           \
-if (HiLogIsLoggable(LOG_DOMAIN, LOG_TAG, LOG_ERROR)) {      \
-    HILOG_ERROR(LOG_CORE, __VA_ARGS__);                     \
-}
+HILOG_ERROR(LOG_CORE, __VA_ARGS__)
 
 #endif // NAPI_ARK_INTEROP_LOG_H

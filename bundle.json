@@ -1,5 +1,5 @@
 {
-    "name": "@ohos/napi",
+    "name": "@ohos/arkcompiler_napi",
     "description": "Node-API (formerly N-API) is an API for build native Addons",
     "version": "3.1",
     "license": "Apache-2.0",
@@ -11,7 +11,7 @@
     "scripts": {},
     "component": {
         "name": "napi",
-        "subsystem": "arkui",
+        "subsystem": "arkcompiler",
         "syscap": [
             "SystemCapability.ArkUI.ArkUI.Napi"
         ],
@@ -44,7 +44,8 @@
                 "runtime_core",
                 "ace_engine",
                 "resource_schedule_service",
-                "samgr"
+                "samgr",
+                "ability_runtime"
             ],
             "third_party": [
                 "jerryscript"
