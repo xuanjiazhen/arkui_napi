@@ -5,15 +5,15 @@
     "license": "Apache-2.0",
     "publishAs": "code-segment",
     "segment": {
-        "destPath": "foundation/arkui/napi"
+        "destPath": "foundation/arkcompiler/napi"
     },
     "dirs": {},
     "scripts": {},
     "component": {
         "name": "napi",
-        "subsystem": "arkui",
+        "subsystem": "arkcompiler",
         "syscap": [
-            "SystemCapability.ArkUI.ArkUI.Napi"
+            "SystemCapability.ArkCompiler.ArkCompiler.Napi"
         ],
         "features": [
           "napi_enable_container_scope",
@@ -44,7 +44,8 @@
                 "runtime_core",
                 "ace_engine",
                 "resource_schedule_service",
-                "samgr"
+                "samgr",
+                "ability_runtime"
             ],
             "third_party": [
                 "jerryscript"
@@ -53,7 +54,7 @@
         "build": {
             "group_type": {
                 "base_group": [
-                    "//foundation/arkui/napi:napi_packages"
+                    "//foundation/arkcompiler/napi:napi_packages"
                 ],
                 "fwk_group": [],
                 "service_group": []
@@ -61,62 +62,62 @@
             "inner_kits": [
                 {
                     "header": {
-                      "header_base": "//foundation/arkui/napi/interfaces/kits",
+                      "header_base": "//foundation/arkcompiler/napi/interfaces/kits",
                       "header_files": [
                           "napi/native_api.h"
                       ]
                     },
-                    "name": "//foundation/arkui/napi:ace_napi"
+                    "name": "//foundation/arkcompiler/napi:ace_napi"
                   },
                   {
                     "header": {
-                      "header_base": "//foundation/arkui/napi/interfaces/inner_api",
+                      "header_base": "//foundation/arkcompiler/napi/interfaces/inner_api",
                       "header_files": [
                           "napi/native_common.h",
                           "napi/native_node_api.h",
                           "napi/native_node_hybrid_api.h"
                       ]
                     },
-                    "name": "//foundation/arkui/napi:ace_napi"
+                    "name": "//foundation/arkcompiler/napi:ace_napi"
                   },
                   {
                     "header": {
-                      "header_base": "//foundation/arkui/napi/native_engine/",
+                      "header_base": "//foundation/arkcompiler/napi/native_engine/",
                       "header_files": [
                           "native_engine.h",
                           "worker_manager.h"
                       ]
                     },
-                    "name": "//foundation/arkui/napi:ace_napi"
+                    "name": "//foundation/arkcompiler/napi:ace_napi"
                   },
                   {
                     "header": {
-                      "header_base": "//foundation/arkui/napi/interfaces/inner_api/cjffi/cj_ffi",
+                      "header_base": "//foundation/arkcompiler/napi/interfaces/inner_api/cjffi/cj_ffi",
                       "header_files": [
                           "cj_common_ffi.h",
                           "cj_data_ffi.h"
                       ]
                     },
-                    "name": "//foundation/arkui/napi:cj_bind_ffi"
+                    "name": "//foundation/arkcompiler/napi:cj_bind_ffi"
                   },
                   {
                     "header": {
-                      "header_base": "//foundation/arkui/napi/interfaces/inner_api/cjffi/native",
+                      "header_base": "//foundation/arkcompiler/napi/interfaces/inner_api/cjffi/native",
                       "header_files": [
                           "cj_fn_invoker.h",
                           "cj_lambda.h"
                       ]
                     },
-                    "name": "//foundation/arkui/napi:cj_bind_native"
+                    "name": "//foundation/arkcompiler/napi:cj_bind_native"
                   },
                   {
                     "header": {
-                      "header_base": "//foundation/arkui/napi/interfaces/inner_api/cjffi/ark_interop",
+                      "header_base": "//foundation/arkcompiler/napi/interfaces/inner_api/cjffi/ark_interop",
                       "header_files": [
                         "ark_interop_napi.h"
                       ]
                     },
-                    "name": "//foundation/arkui/napi/interfaces/inner_api/cjffi/ark_interop:ark_interop"
+                    "name": "//foundation/arkcompiler/napi/interfaces/inner_api/cjffi/ark_interop:ark_interop"
                   },
                   {
                     "header": {
@@ -125,15 +126,15 @@
                           "jsvm.h"
                       ]
                     },
-                    "name": "//foundation/arkui/napi:napi_packages"
+                    "name": "//foundation/arkcompiler/napi:napi_packages"
                   }
             ],
             "test": [
-                "//foundation/arkui/napi:napi_packages_test",
-                "//foundation/arkui/napi/module_manager/test/unittest/module_manager_test:unittest",
-                "//foundation/arkui/napi/sample/native_module_systemtest:systemtest",
-                "//foundation/arkui/napi/test/unittest:unittest",
-                "//foundation/arkui/napi/test/fuzztest:fuzztest"
+                "//foundation/arkcompiler/napi:napi_packages_test",
+                "//foundation/arkcompiler/napi/module_manager/test/unittest/module_manager_test:unittest",
+                "//foundation/arkcompiler/napi/sample/native_module_systemtest:systemtest",
+                "//foundation/arkcompiler/napi/test/unittest:unittest",
+                "//foundation/arkcompiler/napi/test/fuzztest:fuzztest"
             ]
         }
     }
