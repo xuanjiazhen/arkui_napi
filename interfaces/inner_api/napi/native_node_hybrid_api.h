@@ -23,6 +23,7 @@
 
 #include "js_native_api.h"
 #include "native_common.h"
+#include "native_node_api.h"
 #include "node_api.h"
 
 typedef napi_value (*proxy_object_attach_cb)(napi_env env, void* data);
@@ -67,6 +68,17 @@ NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env,
                                                           void* string_object);
 NAPI_EXTERN napi_status napi_is_undefined(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_is_null(napi_env env, napi_value value, bool* result);
+NAPI_EXTERN napi_status napi_wrap_hybrid_s(napi_env env,
+                                    napi_value js_object,
+                                    void* native_object,
+                                    napi_finalize finalize_cb,
+                                    void* finalize_hint,
+                                    const napi_type_tag* type_tag,
+                                    napi_ref* result);
+NAPI_EXTERN napi_status napi_unwrap_hybrid_s(napi_env env,
+                                      napi_value js_object,
+                                      const napi_type_tag* type_tag,
+                                      void** result);
 
 // XGC specific internal API
 #ifdef PANDA_JS_ETS_HYBRID_MODE
