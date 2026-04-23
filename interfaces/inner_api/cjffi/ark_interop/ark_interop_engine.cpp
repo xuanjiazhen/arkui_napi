@@ -223,51 +223,12 @@ ARKTS_Env ARKTS_GetContext(ARKTS_Engine engine)
 
 bool ARKTS_LoadEntryFromAbc(ARKTS_Engine engine, const char* filePath, const char* entryPoint, bool forceReload)
 {
-    ARKTS_ASSERT_F(engine, "engine is null");
-    ARKTS_ASSERT_F(filePath, "filePath is null");
-    ARKTS_ASSERT_F(entryPoint, "entryPoint is null");
-
-    if (!forceReload) {
-        auto existed = engine->loadedAbcs.find(entryPoint);
-        if (existed != engine->loadedAbcs.end()) {
-            if (existed->second == filePath) {
-                return true;
-            } else {
-                LOGE("can't shadow loaded entryPoint from another .abc, entryPoint: %{public}s", entryPoint);
-                return false;
-            }
-        }
-    }
-    if (access(filePath, R_OK) != 0) {
-        LOGE("no such file: %{public}s", filePath);
-        return false;
-    }
-    auto vm = engine->vm;
-    panda::JSNApi::NotifyLoadModule(vm);
-    auto success = panda::JSNApi::Execute(vm, filePath, entryPoint);
-    if (success) {
-        engine->loadedAbcs[entryPoint] = filePath;
-    }
-    return success;
+    return false;
 }
 
 ARKTS_Value ARKTS_ImportFromEntry(ARKTS_Engine engine, const char* entryPoint, const char* importName)
 {
-    ARKTS_ASSERT_U(engine, "engine is null");
-    ARKTS_ASSERT_U(entryPoint, "entryPoint is null");
-    ARKTS_ASSERT_U(importName, "importName is null");
-
-    if (engine->loadedAbcs.find(entryPoint) == engine->loadedAbcs.end()) {
-        return ARKTS_CreateUndefined();
-    }
-
-    auto vm = engine->vm;
-    auto value = panda::JSNApi::GetExportObject(vm, entryPoint, importName);
-    if (value->IsHole()) {
-        return ARKTS_CreateUndefined();
-    }
-
-    return ARKTS_FromHandle(value);
+    return {};
 }
 
 ARKTS_Value ARKTS_Require(
