@@ -31,6 +31,7 @@ EXPORT panda::JSValueRef* ARKTS_LoadModule(ARKTS_Env env, const char* dllName);
 EXPORT panda::JSValueRef* ARKTS_LoadModuleByNapiEnv(void* env, const char* dllName);
 EXPORT void ARKTS_UpdateStackInfo(unsigned long long vmAddress, void *subStackInfo, unsigned int opKind);
 EXPORT void ARKTS_RegisterAddrGetter(void* (*callback)(ARKTS_Env, int64_t));
+EXPORT void ARKTS_UpdateArkTSHybirdPcs(ARKTS_Env env, void** pcs, int32_t size);
 
 DECL_END
 

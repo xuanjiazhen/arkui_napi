@@ -17,6 +17,7 @@
 
 #include <thread>
 #include <ecmascript/js_tagged_value.h>
+#include <dfx_jsnapi.h>
 
 #include "ark_interop_external.h"
 #include "ark_interop_internal.h"
@@ -1012,4 +1013,14 @@ ARKTS_Value ARKTS_RequireArkModule(ARKTS_Env env, const char* path, size_t pathL
     }
     ARKTSInner_ReportJSErrors(env, false);
     return ARKTS_FromHandle(result);
+}
+
+void ARKTS_UpdateArkTSHybirdPcs(ARKTS_Env env, void** pcs, int32_t size)
+{
+    ARKTS_ASSERT_V(env, "env is null");
+    ARKTS_ASSERT_V(pcs, "pcs is null");
+    ARKTS_ASSERT_V(size, "size is 0");
+
+    std::vector<void*> pcVec(pcs, pcs + size);
+    panda::DFXJSNApi::UpdateHybirdStackTrace(P_CAST(env, EcmaVM*), pcVec);
 }
