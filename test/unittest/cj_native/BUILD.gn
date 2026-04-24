@@ -26,7 +26,10 @@ ohos_unittest("test_ark_interop") {
 
   cflags = [ "-g3" ]
 
-  sources = [ "test_ark_interop.cpp" ]
+  sources = [
+    "test_ark_interop.cpp",
+    "test_ark_interop_coverage.cpp",
+  ]
 
   deps = [
     "../../..:ace_napi",
@@ -42,7 +45,8 @@ ohos_unittest("test_ark_interop") {
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "libuv:uv",
-    "c_utils:utils"
+    "c_utils:utils"，
+    "ability_runtime:cj_environment"
   ]
 }
 
