@@ -110,6 +110,9 @@ protected:
 
     virtual void ArkNativeReferenceConstructor();
 
+    void RegisterGlobalHandleRef();
+    void UnregisterGlobalHandleRef();
+
     enum ReferencePropertiesMask : uint8_t {
         DELETE_SELF_MASK = 1,
         IS_ASYNC_CALL_MASK = DELETE_SELF_MASK << 1,
