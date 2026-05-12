@@ -271,6 +271,8 @@ NAPI_EXTERN napi_status napi_set_property_with_callsite_info(napi_env env,
                                                              napi_callsite_info info,
                                                              bool* hit);
 
+NAPI_EXTERN napi_status napi_set_store_global_ref(napi_env env, bool enable);
+
 #ifdef __cplusplus
 }
 #endif
