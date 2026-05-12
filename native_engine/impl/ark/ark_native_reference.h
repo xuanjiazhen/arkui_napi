@@ -90,6 +90,7 @@ public:
     bool GetFinalRun() override;
     napi_value GetNapiValue() override;
     void ResetFinalizer()  override;
+    uintptr_t GetGlobalHandleAddress() const override;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     void MarkFromObject(std::function<void(uintptr_t)> &visitor);
     void MarkFromObject();
@@ -109,6 +110,9 @@ protected:
     {}
 
     virtual void ArkNativeReferenceConstructor();
+
+    void RegisterGlobalHandleRef();
+    void UnregisterGlobalHandleRef();
 
     enum ReferencePropertiesMask : uint8_t {
         DELETE_SELF_MASK = 1,
