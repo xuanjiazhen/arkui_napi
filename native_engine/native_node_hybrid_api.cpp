@@ -151,6 +151,28 @@ NAPI_EXTERN napi_status napi_is_null(napi_env env, napi_value value, bool* resul
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_ref_get_vm(napi_ref ref, uintptr_t &result)
+{
+    CHECK_ARG(nullptr, ref);
+
+    auto reference = reinterpret_cast<ArkNativeReference *>(ref);
+    result = reinterpret_cast<uintptr_t>(reference->GetEngine()->GetEcmaVmCritical());
+    return napi_ok;
+}
+
+NAPI_EXTERN napi_status napi_ref_get_value(napi_ref ref, uintptr_t &result)
+{
+    CHECK_ARG(nullptr, ref);
+
+    auto reference = reinterpret_cast<ArkNativeReference *>(ref);
+    napi_value value = reference->Get();
+    if (value == nullptr) {
+        return napi_invalid_arg;
+    }
+    result = reinterpret_cast<uintptr_t>(*LocalValueFromJsValue(value));
+    return napi_ok;
+}
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
                                        napi_value js_object,
