@@ -2289,12 +2289,21 @@ NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsE
     option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::INFO);
 #endif
     option.SetDebuggerLibraryPath("");
+    const EcmaVM* hostVM = reinterpret_cast<ArkNativeEngine*>(engine)->GetEcmaVmCritical();
+    if (hostVM != nullptr) {
+        bool hostAsmEnabled = JSNApi::GetEnableAsmInterpreter(hostVM);
+        option.SetEnableAsmInterpreter(hostAsmEnabled);
+        if (hostAsmEnabled) {
+            option.SetStubFile(JSNApi::GetStubFile(hostVM));
+        }
+    } else {
+        option.SetEnableAsmInterpreter(false);
+    }
     EcmaVM* vm = JSNApi::CreateJSVM(option);
     if (vm == nullptr) {
         return nullptr;
     }
     // worker adaptation mergeabc
-    const EcmaVM* hostVM = reinterpret_cast<ArkNativeEngine*>(engine)->GetEcmaVmCritical();
     JSNApi::SynchronizVMInfo(vm, hostVM);
     ArkNativeEngine* arkEngine = new ArkNativeEngine(vm, jsEngine, isLimitedWorker);
     // init callback
