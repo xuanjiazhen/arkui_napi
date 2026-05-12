@@ -17,6 +17,7 @@
 
 #include "ark_native_reference.h"
 
+#include "ecmascript/napi/include/jsnapi_expo.h"
 #include "native_engine/native_api_internal.h"
 #include "native_engine/native_utils.h"
 
@@ -91,7 +92,41 @@ void ArkNativeReference::ArkNativeReferenceConstructor()
     }
 
     engineId_ = engine_->GetId();
+    RegisterGlobalHandleRef();
 }
+
+void ArkNativeReference::RegisterGlobalHandleRef()
+{
+    EcmaVM* vm = const_cast<EcmaVM*>(engine_->GetEcmaVm());
+    if (vm == nullptr) {
+        return;
+    }
+    if (!panda::JSNApi::IsTrackGlobalRef(vm)) {
+        return;
+    }
+    uintptr_t slotAddress = value_.GetSlotAddress();
+    if (slotAddress == 0) {
+        return;
+    }
+    panda::JSNApi::StoreGlobalRefMapping(vm, slotAddress, reinterpret_cast<void*>(this));
+}
+
+void ArkNativeReference::UnregisterGlobalHandleRef()
+{
+    EcmaVM* vm = const_cast<EcmaVM*>(engine_->GetEcmaVm());
+    if (vm == nullptr) {
+        return;
+    }
+    if (!panda::JSNApi::IsTrackGlobalRef(vm)) {
+        return;
+    }
+    uintptr_t slotAddress = value_.GetSlotAddress();
+    if (slotAddress == 0) {
+        return;
+    }
+    panda::JSNApi::EraseGlobalRefMapping(vm, slotAddress);
+}
+
 
 inline void ArkNativeReference::InitProperties(bool deleteSelf, bool isAsyncCall)
 {
@@ -108,6 +143,7 @@ inline void ArkNativeReference::InitProperties(bool deleteSelf, bool isAsyncCall
 // Which would occur when EcmaVM is destroying in CleanEnv.
 ArkNativeReference::~ArkNativeReference()
 {
+    UnregisterGlobalHandleRef();
     VALID_ENGINE_CHECK(engine_, engine_, engineId_);
 
     if (!napiCallback_) {
