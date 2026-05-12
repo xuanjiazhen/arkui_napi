@@ -2289,6 +2289,18 @@ NativeEngine* ArkNativeEngine::CreateRuntimeFunc(NativeEngine* engine, void* jsE
     option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::INFO);
 #endif
     option.SetDebuggerLibraryPath("");
+#ifdef ANDROID_PLATFORM
+    const EcmaVM* hostEcmaVM = reinterpret_cast<ArkNativeEngine*>(engine)->GetEcmaVmCritical();
+    if (hostEcmaVM != nullptr) {
+        bool hostAsmEnabled = JSNApi::GetEnableAsmInterpreter(hostVM);
+        option.SetEnableAsmInterpreter(hostAsmEnabled);
+        if (hostAsmEnabled) {
+            option.SetStubFile(JSNApi::GetStubFile(hostVM));
+        }
+    } else {
+        option.SetEnableAsmInterpreter(false);
+    }
+#endif
     EcmaVM* vm = JSNApi::CreateJSVM(option);
     if (vm == nullptr) {
         return nullptr;
