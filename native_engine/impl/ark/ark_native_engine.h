@@ -339,6 +339,7 @@ public:
     void PostFinalizeTasks();
     void PostAsyncTask(panda::AsyncNativeCallbacksPack *callbacksPack);
     void PostTriggerGCTask(panda::TriggerGCData& data, GCTaskFinishedCallback callback = nullptr) override;
+    void PostSharedCCStubSwitchTask();
 
     ArkFinalizersPack &GetArkFinalizersPack()
     {
