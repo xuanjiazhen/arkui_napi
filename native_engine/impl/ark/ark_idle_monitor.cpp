@@ -846,11 +846,11 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcess()
     }
 
 #ifdef ENABLE_EVENT_HANDLER
-    // try trigger shared gc
+    // try trigger shared cc
     auto mainThreadSharedTask = [this]() {
-        HILOG_DEBUG("ArkIdleMonitor: try trigger shared full gc");
+        HILOG_DEBUG("ArkIdleMonitor: try trigger shared cc");
         std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
-        JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+        JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_CC);
         gcFinishCV_.notify_one();
     };
     if (CheckIfInBackgroundInCompressGC()) {
