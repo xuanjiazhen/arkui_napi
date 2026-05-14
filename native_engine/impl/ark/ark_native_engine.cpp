@@ -554,6 +554,10 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 
     // enable idle gc
     ArkIdleMonitor::GetInstance()->EnableIdleGC(this);
+    // enable shared cc stub switch callback
+    JSNApi::SetExecuteSharedCCStubSwitchCallback(vm, [this]() {
+        this->PostSharedCCStubSwitchTask();
+    });
 }
 
 /**
@@ -2237,6 +2241,18 @@ void ArkNativeEngine::PostTriggerGCTask(TriggerGCData& data, GCTaskFinishedCallb
         delete syncWork;
         delete triggerGCData;
     }
+}
+
+void ArkNativeEngine::PostSharedCCStubSwitchTask()
+{
+#if defined(ENABLE_EVENT_HANDLER)
+    static auto handler = std::make_shared<OHOS::AppExecFwk::EventHandler>(
+        OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
+    auto thread = vm_->GetJSThread();
+    handler->PostTask([thread]() {
+        thread->ExecuteSharedCCStubSwitch();
+    });
+#endif
 }
 
 #if defined(OHOS_PLATFORM) && !defined(IOS_PLATFORM) && !defined(ANDROID_PLATFORM)
