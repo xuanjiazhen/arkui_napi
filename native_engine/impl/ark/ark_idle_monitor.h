@@ -351,6 +351,9 @@ private:
     uint32_t numberOfHighIdleTimeRatio_ {0U};
     std::queue<int> timerHandlerQueue_;
     uint32_t handlerWaitToStopCount_ {0};
+    uint32_t mainTHreadIdleCountForCC_ {0};
+    std::atomic<bool> sharedCcPending_ {false};
+
     RingBuffer<int64_t, IDLE_CHECK_INTERVAL_LENGTH> recordedIdleNotifyInterval_;
     RingBuffer<int64_t, IDLE_CHECK_INTERVAL_LENGTH> recordedRunningNotifyInterval_;
     std::mutex timerMutex_;

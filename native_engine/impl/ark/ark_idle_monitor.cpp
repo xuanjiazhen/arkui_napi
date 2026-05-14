@@ -221,6 +221,22 @@ void ArkIdleMonitor::IntervalMonitor()
     }
     startRecordTimestamp_ = nowTimestamp;
     CheckWorkerEnvQueue();
+#if defined(ENABLE_EVENT_HANDLER)
+    mainTHreadIdleCountForCC_++;
+    if (mainTHreadIdleCountForCC_ >= 80) {
+        mainTHreadIdleCountForCC_ = 0;
+        if (!sharedCcPending_.load(std::memory_order_relaxed) && mainVM_ != nullptr) {
+            sharedCcPending_.store(true, std::memory_order_relaxed);
+            auto vm = mainVM_;
+            auto task = [this, vm]() {
+                JSNApi::TriggerIdleGC(vm, TRIGGER_IDLE_GC_TYPE::SHARED_CC);
+                sharedCcPending_.store(false, std::memory_order_relaxed);
+            };
+            mainThreadHandler_->PostTask(task, "ARKTS_SHARED_CC", 0,
+                OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
+        }
+    }
+#endif
     uint32_t checkCounts = IsInBackground() ? IDLE_INBACKGROUND_CHECK_LENGTH : IDLE_CHECK_LENGTH;
     int64_t intervalDuration = nowTimestamp - intervalTimestamp_;
     if (numberOfLowIdleNotifyCycles_ >= checkCounts &&
@@ -800,9 +816,9 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcess()
             if (expectedSize > IDLE_MIN_EXPECT_RECLAIM_SIZE) {
                 TraceScope trace("TriggerWorkerThreadLocalGC");
                 std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
-                std::pair<void*, uint8_t> data(reinterpret_cast<void*>(
+                std::pair<void*, uint16_t> data(reinterpret_cast<void*>(
                     const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm())),
-                    static_cast<uint8_t>(TRIGGER_IDLE_GC_TYPE::FULL_GC));
+                    static_cast<uint16_t>(TRIGGER_IDLE_GC_TYPE::FULL_GC));
 
                 auto callbackTask = [it]() {
                     HILOG_DEBUG("ArkIdleMonitor: try trigger thread full gc end");
