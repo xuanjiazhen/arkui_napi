@@ -565,6 +565,7 @@ ArkNativeEngine::ArkNativeEngine(EcmaVM* vm, void* jsEngine, bool isLimitedWorke
 
     // enable idle gc
     ArkIdleMonitor::GetInstance()->EnableIdleGC(this);
+    InitPostTaskToThreadCallback();
 }
 
 /**
@@ -2248,6 +2249,44 @@ void ArkNativeEngine::PostTriggerGCTask(TriggerGCData& data, GCTaskFinishedCallb
         delete syncWork;
         delete triggerGCData;
     }
+}
+
+void ArkNativeEngine::InitPostTaskToThreadCallback()
+{
+#if defined(ENABLE_EVENT_HANDLER)
+    if (JSNApi::IsJSMainThreadOfEcmaVM(vm_)) {
+        JSNApi::SetPostTaskToThreadCallback(vm_,
+            [this](std::function<void()> task) {
+                static auto handler = std::make_shared<OHOS::AppExecFwk::EventHandler>(
+                    OHOS::AppExecFwk::EventRunner::GetMainEventRunner());
+                handler->PostTask(std::move(task), "ARKTS_THREAD_TASK", 0,
+                    OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
+            });
+    } else {
+        uv_async_init(GetUVLoop(), &threadTaskAsync_,
+            [](uv_async_t *handle) {
+                auto *engine = static_cast<ArkNativeEngine *>(handle->data);
+                std::function<void()> task;
+                {
+                    std::lock_guard<std::mutex> lock(engine->threadTaskMutex_);
+                    task = std::move(engine->pendingThreadTask_);
+                    engine->pendingThreadTask_ = nullptr;
+                }
+                if (task) {
+                    task();
+                }
+            });
+        threadTaskAsync_.data = this;
+        JSNApi::SetPostTaskToThreadCallback(vm_,
+            [this](std::function<void()> task) {
+                {
+                    std::lock_guard<std::mutex> lock(threadTaskMutex_);
+                    pendingThreadTask_ = std::move(task);
+                }
+                uv_async_send(&threadTaskAsync_);
+            });
+    }
+#endif
 }
 
 #if defined(OHOS_PLATFORM) && !defined(IOS_PLATFORM) && !defined(ANDROID_PLATFORM)
