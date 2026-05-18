@@ -16,6 +16,7 @@
 #ifndef FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_HYBRID_API_H
 #define FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_HYBRID_API_H
 
+#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -112,6 +113,8 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_finalize finalize_cb,
                                             proxy_object_attach_cb proxy_cb,
                                             napi_ref* result);
+NAPI_EXTERN napi_status napi_ref_get_vm(napi_ref ref, uintptr_t &result);
+NAPI_EXTERN napi_status napi_ref_get_value(napi_ref ref, uintptr_t &result);
 #endif // PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback);
 
