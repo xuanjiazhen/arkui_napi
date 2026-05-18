@@ -1470,9 +1470,13 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     if (enableContainerScope) {
         scopeId = OHOS::Ace::ContainerScope::CurrentId();
         if (!function->IsConcurrentFunction(vm)) {
-            auto funcInfo = reinterpret_cast<NapiFunctionInfo*>(function->GetData(vm));
-            if (funcInfo != nullptr) {
-                scopeId = funcInfo->scopeId;
+            if (!function->IsNative(vm)) {
+                auto funcInfo = reinterpret_cast<NapiFunctionInfo*>(function->GetData(vm));
+                if (funcInfo != nullptr) {
+                    scopeId = funcInfo->scopeId;
+                }
+            } else {
+                HILOG_ERROR("napi_call_function: the func is not create by napi");
             }
         }
     }
