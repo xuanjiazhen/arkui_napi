@@ -2668,10 +2668,12 @@ void ArkNativeEngine::OffVMHeapMemoryPressure(napi_env env)
     DFXJSNApi::OffVMHeapMemoryPressure(vm);
 }
 
-void ArkNativeEngine::SetMultithreadingDetectionEnabled(napi_env env, bool enabled)
+void ArkNativeEngine::SetMultithreadingDetectionEnabled(napi_env env, bool enabled, bool abort,
+                                                        uint64_t frequency, uint64_t interval)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
-    DFXJSNApi::SetMultithreadingDetectionEnabled(vm, enabled);
+    DFXJSNApi::MultithreadingDetectionOptions options(abort, frequency, interval);
+    DFXJSNApi::SetMultithreadingDetectionEnabled(vm, enabled, options);
 }
 
 std::vector<panda::ecmascript::HeapMemoryInfo> ArkNativeEngine::GetAllVMHeapMemoryInfo()
