@@ -1,0 +1,81 @@
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("./config.gni")
+import("./sample/test_list.gni")
+
+config("tools_config") {
+  defines = []
+  cflags_cc = []
+
+  if (is_debug) {
+    cflags_cc += [
+      "-O0",
+      "-ggdb3",
+      "-gdwarf-4",
+    ]
+  } else {
+    defines += [ "NDEBUG" ]
+  }
+
+  if (is_ohos) {
+    defines += [ "OHOS_PLATFORM" ]
+  }
+}
+
+ohos_source_set("tools_source_set") {
+  include_dirs = [
+    "."
+  ]
+
+  configs = [ ":tools_config" ]
+
+  sources = [
+    "load_so.cpp",
+    "load_abc.cpp",
+    "parse_json.cpp",
+    "check_api.cpp",
+    "check_helper.cpp"
+  ]
+
+  deps = []
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "ets_runtime:libark_jsruntime",
+    "napi:ace_napi",
+  ]
+
+  part_name = "test"
+  subsystem_name = "test" 
+}
+
+ohos_executable("checkapi") {
+  sources = [ "main.cpp" ]
+  deps = [ "./:tools_source_set" ]
+
+  external_deps = [
+    "napi:ace_napi",
+  ]
+
+  configs = [ ":tools_config" ]
+
+  install_enable = false
+
+  part_name = "test"
+  subsystem_name = "test"
+}
+
+group("run_checkapi") {
+  deps = [ "./sample:run_test" ]
+}

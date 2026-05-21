@@ -1,0 +1,29 @@
+[
+  {
+    "apiText": "A",
+    "apiType": "class"
+  },
+  {
+    "apiText": "foo",
+    "apiType": "method",
+    "className": "A"
+  },
+  {
+    "apiText": "s_foo",
+    "apiType": "method",
+    "className": "A"
+  },
+  {
+    "apiText": "x",
+    "apiType": "field",
+    "className": "A"
+  },
+  {
+    "apiText": "bar",
+    "apiType": "method"
+  },
+  {
+    "apiText": "dd",
+    "apiType": "field"
+  }
+]
