@@ -944,3 +944,19 @@ NAPI_EXTERN napi_status napi_get_value_external_s(napi_env env,
     *result = wrapperData->data;
     return GET_RETURN_STATUS(env);
 }
+
+NAPI_EXTERN napi_status napi_is_class_constructor(napi_env env,
+                                            napi_value value,
+                                            bool* result)
+{
+
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    *result = nativeValue->IsClassConstructor(vm);
+
+    return GET_RETURN_STATUS(env);
+}
