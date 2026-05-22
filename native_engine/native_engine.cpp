@@ -927,25 +927,125 @@ void NativeEngine::CleanupHandles()
     }
 }
 
-#define BODY_COUNTER_METHOD(_type, name, storage, LOAD) \
-    void NativeEngine::Increase##name##Counter()        \
-    {                                                   \
-        (storage)++;                                    \
-    }                                                   \
-                                                        \
-    void NativeEngine::Decrease##name##Counter()        \
-    {                                                   \
-        (storage)--;                                    \
-    }                                                   \
-                                                        \
-    bool NativeEngine::Has##name() const                \
-    {                                                   \
-        return LOAD((storage)) != 0;                    \
-    }
+void NativeEngine::IncreaseWaitingRequestCounter()
+{
+    requestWaiting_++;
+}
 
-NAPI_COUNTER_METHOD(BODY_COUNTER_METHOD)
+void NativeEngine::DecreaseWaitingRequestCounter()
+{
+    requestWaiting_--;
+}
 
-#undef BODY_COUNTER_METHOD
+bool NativeEngine::HasWaitingRequest() const
+{
+    return requestWaiting_.load() != 0;
+}
+
+void NativeEngine::IncreaseListeningCounter()
+{
+    listeningCounter_++;
+}
+
+void NativeEngine::DecreaseListeningCounter()
+{
+    listeningCounter_--;
+}
+
+bool NativeEngine::HasListening() const
+{
+    return listeningCounter_.load() != 0;
+}
+
+void NativeEngine::IncreaseSubEnvCounter()
+{
+    subEnvCounter_++;
+}
+
+void NativeEngine::DecreaseSubEnvCounter()
+{
+    subEnvCounter_--;
+}
+
+bool NativeEngine::HasSubEnv() const
+{
+    return subEnvCounter_.load() != 0;
+}
+
+void NativeEngine::IncreaseActiveTsfnCounter()
+{
+    activeTsfnCounter_++;
+}
+
+void NativeEngine::DecreaseActiveTsfnCounter()
+{
+    activeTsfnCounter_--;
+}
+
+bool NativeEngine::HasActiveTsfn() const
+{
+    return activeTsfnCounter_ != 0;
+}
+
+void NativeEngine::IncreaseSubContextEnvCounter()
+{
+    subContextEnvCounter_++;
+}
+
+void NativeEngine::DecreaseSubContextEnvCounter()
+{
+    subContextEnvCounter_--;
+}
+
+bool NativeEngine::HasSubContextEnv() const
+{
+    return subContextEnvCounter_ != 0;
+}
+
+void NativeEngine::IncreaseCallbackbleRefCounter()
+{
+    callbackbleRefCounter_++;
+}
+
+void NativeEngine::DecreaseCallbackbleRefCounter()
+{
+    callbackbleRefCounter_--;
+}
+
+bool NativeEngine::HasCallbackbleRef() const
+{
+    return callbackbleRefCounter_ != 0;
+}
+
+void NativeEngine::IncreaseNonCallbackRefCounter()
+{
+    nonCallbackRefCounter_++;
+}
+
+void NativeEngine::DecreaseNonCallbackRefCounter()
+{
+    nonCallbackRefCounter_--;
+}
+
+bool NativeEngine::HasNonCallbackRef() const
+{
+    return nonCallbackRefCounter_ != 0;
+}
+
+void NativeEngine::IncreaseRuntimeOwnedRefCounter()
+{
+    runtimeOwnedRefCounter_++;
+}
+
+void NativeEngine::DecreaseRuntimeOwnedRefCounter()
+{
+    runtimeOwnedRefCounter_--;
+}
+
+bool NativeEngine::HasRuntimeOwnedRef() const
+{
+    return runtimeOwnedRefCounter_ != 0;
+}
 
 void NativeEngine::IncreaseCriticalScopeCounter()
 {

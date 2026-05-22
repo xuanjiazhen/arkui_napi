@@ -140,31 +140,6 @@ using NapiHasAllUnhandledRejectionCallback = std::function<bool()>;
 using GCTaskFinishedCallback = std::function<void()>;
 using SerializeOptions = panda::SerializeOptions;
 
-// Define method to load counter values of different types
-#define NAPI_COUNTER_ATOMIC_LOAD(storage) (storage).load()
-#define NAPI_COUNTER_INT32_LOAD(storage) (storage)
-
-// Counter macro template: used to uniformly declare and process multiple counters.
-// Usage: pass a macro XX(type, name, storage, LOAD_MACRO), which will be applied to each counter entry.
-#define NAPI_COUNTER_METHOD(XX)                                                     \
-    /* Thread-safe counters (using std::atomic<int>) */                             \
-    /* Note: async_work queue operations are NOT thread-safe, */                    \
-    /* but these counters themselves are atomic */                                  \
-    XX(std::atomic<int>, WaitingRequest, requestWaiting_, NAPI_COUNTER_ATOMIC_LOAD) \
-    XX(std::atomic<int>, Listening, listeningCounter_, NAPI_COUNTER_ATOMIC_LOAD)    \
-    /* Sub Native Engine related counters */                                        \
-    XX(std::atomic<int>, SubEnv, subEnvCounter_, NAPI_COUNTER_ATOMIC_LOAD)          \
-                                                                                    \
-    /* Non-thread-safe counters (must access/modify in the env-running thread) */   \
-    /* Thread-Safe Function (TSFN): creation is not thread-safe, */                 \
-    /* release will be done via uv_async */                                         \
-    XX(int32_t, ActiveTsfn, activeTsfnCounter_, NAPI_COUNTER_INT32_LOAD)            \
-    /* Count of Sub Context Engine instances */                                     \
-    XX(int32_t, SubContextEnv, subContextEnvCounter_, NAPI_COUNTER_INT32_LOAD)      \
-    XX(int64_t, CallbackbleRef, callbackbleRefCounter_, NAPI_COUNTER_INT32_LOAD)    \
-    XX(int64_t, NonCallbackRef, nonCallbackRefCounter_, NAPI_COUNTER_INT32_LOAD)    \
-    XX(int64_t, RuntimeOwnedRef, runtimeOwnedRefCounter_, NAPI_COUNTER_INT32_LOAD)
-
 // Heap memory threshold configuration
 struct HeapMemoryThreshold {
     double localHeapThreshold;
@@ -378,12 +353,37 @@ public:
         return workerVersion_.load() == target;
     }
 
-#define DCL_COUNTER_METHOD(_type, name, _storage, _LOAD) \
-    void Increase##name##Counter();                      \
-    void Decrease##name##Counter();                      \
-    bool Has##name() const;
-    NAPI_COUNTER_METHOD(DCL_COUNTER_METHOD)
-#undef DCL_COUNTER_METHOD
+    void IncreaseWaitingRequestCounter();
+    void DecreaseWaitingRequestCounter();
+    bool HasWaitingRequest() const;
+
+    void IncreaseListeningCounter();
+    void DecreaseListeningCounter();
+    bool HasListening() const;
+
+    void IncreaseSubEnvCounter();
+    void DecreaseSubEnvCounter();
+    bool HasSubEnv() const;
+
+    void IncreaseActiveTsfnCounter();
+    void DecreaseActiveTsfnCounter();
+    bool HasActiveTsfn() const;
+
+    void IncreaseSubContextEnvCounter();
+    void DecreaseSubContextEnvCounter();
+    bool HasSubContextEnv() const;
+
+    void IncreaseCallbackbleRefCounter();
+    void DecreaseCallbackbleRefCounter();
+    bool HasCallbackbleRef() const;
+
+    void IncreaseNonCallbackRefCounter();
+    void DecreaseNonCallbackRefCounter();
+    bool HasNonCallbackRef() const;
+
+    void IncreaseRuntimeOwnedRefCounter();
+    void DecreaseRuntimeOwnedRefCounter();
+    bool HasRuntimeOwnedRef() const;
 
     void IncreaseCriticalScopeCounter();
     void DecreaseCriticalScopeCounter();
@@ -746,9 +746,14 @@ private:
     std::unordered_map<void*, std::pair<CleanupFinalizerCallBack, uint64_t>> instanceFinalizer_;
     uint64_t instanceFinalizerCounter_ = 0;
 
-#define DCL_STORAGE_COUNTER(type, _name, storage, _LOAD) type (storage) { 0 };
-    NAPI_COUNTER_METHOD(DCL_STORAGE_COUNTER)
-#undef DCL_STORAGE_COUNTER
+    std::atomic<int> requestWaiting_ { 0 };
+    std::atomic<int> listeningCounter_ { 0 };
+    std::atomic<int> subEnvCounter_ { 0 };
+    int32_t activeTsfnCounter_ { 0 };
+    int32_t subContextEnvCounter_ { 0 };
+    int64_t callbackbleRefCounter_ { 0 };
+    int64_t nonCallbackRefCounter_ { 0 };
+    int64_t runtimeOwnedRefCounter_ { 0 };
     std::shared_ptr<uint64_t> criticalScopeCounter_ {};
 
     std::atomic_bool isStopping_ { false };
