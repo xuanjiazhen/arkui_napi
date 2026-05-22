@@ -140,31 +140,6 @@ using NapiHasAllUnhandledRejectionCallback = std::function<bool()>;
 using GCTaskFinishedCallback = std::function<void()>;
 using SerializeOptions = panda::SerializeOptions;
 
-// Define method to load counter values of different types
-#define NAPI_COUNTER_ATOMIC_LOAD(storage) (storage).load()
-#define NAPI_COUNTER_INT32_LOAD(storage) (storage)
-
-// Counter macro template: used to uniformly declare and process multiple counters.
-// Usage: pass a macro XX(type, name, storage, LOAD_MACRO), which will be applied to each counter entry.
-#define NAPI_COUNTER_METHOD(XX)                                                     \
-    /* Thread-safe counters (using std::atomic<int>) */                             \
-    /* Note: async_work queue operations are NOT thread-safe, */                    \
-    /* but these counters themselves are atomic */                                  \
-    XX(std::atomic<int>, WaitingRequest, requestWaiting_, NAPI_COUNTER_ATOMIC_LOAD) \
-    XX(std::atomic<int>, Listening, listeningCounter_, NAPI_COUNTER_ATOMIC_LOAD)    \
-    /* Sub Native Engine related counters */                                        \
-    XX(std::atomic<int>, SubEnv, subEnvCounter_, NAPI_COUNTER_ATOMIC_LOAD)          \
-                                                                                    \
-    /* Non-thread-safe counters (must access/modify in the env-running thread) */   \
-    /* Thread-Safe Function (TSFN): creation is not thread-safe, */                 \
-    /* release will be done via uv_async */                                         \
-    XX(int32_t, ActiveTsfn, activeTsfnCounter_, NAPI_COUNTER_INT32_LOAD)            \
-    /* Count of Sub Context Engine instances */                                     \
-    XX(int32_t, SubContextEnv, subContextEnvCounter_, NAPI_COUNTER_INT32_LOAD)      \
-    XX(int64_t, CallbackbleRef, callbackbleRefCounter_, NAPI_COUNTER_INT32_LOAD)    \
-    XX(int64_t, NonCallbackRef, nonCallbackRefCounter_, NAPI_COUNTER_INT32_LOAD)    \
-    XX(int64_t, RuntimeOwnedRef, runtimeOwnedRefCounter_, NAPI_COUNTER_INT32_LOAD)
-
 // Heap memory threshold configuration
 struct HeapMemoryThreshold {
     double localHeapThreshold;
@@ -336,35 +311,69 @@ public:
     virtual void TriggerFatalException(panda::Local<panda::JSValueRef> exceptionValue) = 0;
     virtual bool AdjustExternalMemory(int64_t ChangeInBytes, int64_t* AdjustedValue) = 0;
 
-#define NATIVE_ENGINE_THREAD_TYPE(XX)                   \
-    XX(MainThread, MAIN_THREAD)                         \
-    XX(WorkerThread, WORKER_THREAD)                     \
-    XX(RestrictedWorkerThread, RESTRICTEDWORKER_THREAD) \
-    XX(TaskPoolThread, TASKPOOL_THREAD)                 \
-    XX(FormThread, FORM_THREAD)                         \
-    XX(NativeThread, NATIVE_THREAD)
-
-#define GEN_THREAD_TYPE_METHOD(name, type)                                               \
-    void Mark##name()                                                                    \
-    {                                                                                    \
-        jsThreadType_.Update(static_cast<uintptr_t>(JSThreadType::type));                \
-    }                                                                                    \
-    bool Is##name() const                                                                \
-    {                                                                                    \
-        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::type; \
+void MarkMainThread()
+    {
+        jsThreadType_.Update(static_cast<uintptr_t>(JSThreadType::MAIN_THREAD));
+    }
+    bool IsMainThread() const
+    {
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::MAIN_THREAD;
     }
 
-    NATIVE_ENGINE_THREAD_TYPE(GEN_THREAD_TYPE_METHOD)
+    void MarkWorkerThread()
+    {
+        jsThreadType_.Update(static_cast<uintptr_t>(JSThreadType::WORKER_THREAD));
+    }
+    bool IsWorkerThread() const
+    {
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::WORKER_THREAD;
+    }
 
-#undef GEN_THREAD_TYPE_METHOD
+    void MarkRestrictedWorkerThread()
+    {
+        jsThreadType_.Update(static_cast<uintptr_t>(JSThreadType::RESTRICTEDWORKER_THREAD));
+    }
+    bool IsRestrictedWorkerThread() const
+    {
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::RESTRICTEDWORKER_THREAD;
+    }
+
+    void MarkTaskPoolThread()
+    {
+        jsThreadType_.Update(static_cast<uintptr_t>(JSThreadType::TASKPOOL_THREAD));
+    }
+    bool IsTaskPoolThread() const
+    {
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::TASKPOOL_THREAD;
+    }
+
+    void MarkFormThread()
+    {
+        jsThreadType_.Update(static_cast<uintptr_t>(JSThreadType::FORM_THREAD));
+    }
+    bool IsFormThread() const
+    {
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::FORM_THREAD;
+    }
+
+    void MarkNativeThread()
+    {
+        jsThreadType_.Update(static_cast<uintptr_t>(JSThreadType::NATIVE_THREAD));
+    }
+    bool IsNativeThread() const
+    {
+        return static_cast<JSThreadType>(jsThreadType_.GetData()) == JSThreadType::NATIVE_THREAD;
+    }
 
 private:
-    // the old worker api use before api9, the new worker api start with api9
-#define GEN_THREAD_TYPE_ENUM(_, type) type,
-    enum JSThreadType { NATIVE_ENGINE_THREAD_TYPE(GEN_THREAD_TYPE_ENUM) };
-#undef GEN_THREAD_TYPE_ENUM
-
-#undef NATIVE_ENGINE_THREAD_TYPE
+    enum JSThreadType {
+        MAIN_THREAD,
+        WORKER_THREAD,
+        RESTRICTEDWORKER_THREAD,
+        TASKPOOL_THREAD,
+        FORM_THREAD,
+        NATIVE_THREAD
+    };
 
     DataProtector jsThreadType_ {DataProtector(uintptr_t(JSThreadType::MAIN_THREAD))};
 
@@ -378,12 +387,37 @@ public:
         return workerVersion_.load() == target;
     }
 
-#define DCL_COUNTER_METHOD(_type, name, _storage, _LOAD) \
-    void Increase##name##Counter();                      \
-    void Decrease##name##Counter();                      \
-    bool Has##name() const;
-    NAPI_COUNTER_METHOD(DCL_COUNTER_METHOD)
-#undef DCL_COUNTER_METHOD
+    void IncreaseWaitingRequestCounter();
+    void DecreaseWaitingRequestCounter();
+    bool HasWaitingRequest() const;
+
+    void IncreaseListeningCounter();
+    void DecreaseListeningCounter();
+    bool HasListening() const;
+
+    void IncreaseSubEnvCounter();
+    void DecreaseSubEnvCounter();
+    bool HasSubEnv() const;
+
+    void IncreaseActiveTsfnCounter();
+    void DecreaseActiveTsfnCounter();
+    bool HasActiveTsfn() const;
+
+    void IncreaseSubContextEnvCounter();
+    void DecreaseSubContextEnvCounter();
+    bool HasSubContextEnv() const;
+
+    void IncreaseCallbackbleRefCounter();
+    void DecreaseCallbackbleRefCounter();
+    bool HasCallbackbleRef() const;
+
+    void IncreaseNonCallbackRefCounter();
+    void DecreaseNonCallbackRefCounter();
+    bool HasNonCallbackRef() const;
+
+    void IncreaseRuntimeOwnedRefCounter();
+    void DecreaseRuntimeOwnedRefCounter();
+    bool HasRuntimeOwnedRef() const;
 
     void IncreaseCriticalScopeCounter();
     void DecreaseCriticalScopeCounter();
@@ -746,9 +780,14 @@ private:
     std::unordered_map<void*, std::pair<CleanupFinalizerCallBack, uint64_t>> instanceFinalizer_;
     uint64_t instanceFinalizerCounter_ = 0;
 
-#define DCL_STORAGE_COUNTER(type, _name, storage, _LOAD) type (storage) { 0 };
-    NAPI_COUNTER_METHOD(DCL_STORAGE_COUNTER)
-#undef DCL_STORAGE_COUNTER
+    std::atomic<int> requestWaiting_ { 0 };
+    std::atomic<int> listeningCounter_ { 0 };
+    std::atomic<int> subEnvCounter_ { 0 };
+    int32_t activeTsfnCounter_ { 0 };
+    int32_t subContextEnvCounter_ { 0 };
+    int64_t callbackbleRefCounter_ { 0 };
+    int64_t nonCallbackRefCounter_ { 0 };
+    int64_t runtimeOwnedRefCounter_ { 0 };
     std::shared_ptr<uint64_t> criticalScopeCounter_ {};
 
     std::atomic_bool isStopping_ { false };
