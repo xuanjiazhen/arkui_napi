@@ -71,6 +71,7 @@ NAPI_EXTERN napi_status napi_wrap_hybrid_s(napi_env env, napi_value js_object, v
                                            const napi_type_tag* type_tag, napi_ref* result);
 NAPI_EXTERN napi_status napi_unwrap_hybrid_s(napi_env env, napi_value js_object, const napi_type_tag* type_tag,
                                              void** result);
+NAPI_EXTERN napi_status napi_trigger_fullgc(napi_env env);
 
 // XGC specific internal API
 #ifdef PANDA_JS_ETS_HYBRID_MODE

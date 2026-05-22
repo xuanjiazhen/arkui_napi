@@ -171,6 +171,15 @@ NAPI_EXTERN napi_status napi_unwrap_hybrid_s(napi_env env,
     return napi_unwrap_s(env, js_object, type_tag, result);
 }
 
+NAPI_EXTERN napi_status napi_trigger_fullgc(napi_env env)
+{
+    CHECK_ENV(env);
+
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
+    panda::JSNApi::TriggerGC(vm, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+    return napi_clear_last_error(env);
+}
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_xref_wrap(napi_env env,
