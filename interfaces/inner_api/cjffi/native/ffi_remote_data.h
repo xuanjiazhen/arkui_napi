@@ -32,74 +32,6 @@ constexpr int64_t MAX_INT64 = 0x7fffffffffffffff;
 class RemoteData;
 class FFIData;
 
-class FFI_EXPORT FFIDataManager {
-public:
-    static FFIDataManager* GetInstance();
-
-    DISALLOW_COPY_AND_MOVE(FFIDataManager);
-    FFIDataManager() = default;
-
-    sptr<FFIData> GetFFIData(int64_t id)
-    {
-        std::lock_guard<std::recursive_mutex> lock(mtx);
-        auto itor = ffiDataStore_.find(id);
-        if (itor == ffiDataStore_.end()) {
-            return nullptr;
-        }
-        return itor->second;
-    }
-        
-    sptr<RemoteData> GetRemoteData(int64_t id)
-    {
-        std::lock_guard<std::recursive_mutex> lock(mtx);
-        auto itor = remoteDataStore_.find(id);
-        if (itor == remoteDataStore_.end()) {
-            return nullptr;
-        }
-        return itor->second.promote();
-    }
-    void StoreFFIData(const sptr<FFIData>& data);
-    void StoreRemoteData(const sptr<RemoteData>& data);
-    void RemoveFFIData(int64_t id)
-    {
-        [[maybe_unused]] sptr<FFIData> keepAlive = nullptr;
-        {
-            std::lock_guard<std::recursive_mutex> lock(mtx);
-            keepAlive = ffiDataStore_[id];
-            ffiDataStore_.erase(id);
-        }
-    }
-    void RemoveRemoteData(int64_t id)
-    {
-        [[maybe_unused]] sptr<FFIData> keepAlive = nullptr;
-        {
-            std::lock_guard<std::recursive_mutex> lock(mtx);
-            keepAlive = remoteDataStore_[id];
-            remoteDataStore_.erase(id);
-        }
-    }
-
-    int64_t NewFFIDataId();
-
-private:
-    friend class FFIData;
-    uint64_t curFFIDataId_ = 0;
-    const int64_t maxId = MAX_INT64;
-    // maxCapacity can be set to a larger number if needed, make sure maxCapacity is not larger than maxId
-    const int64_t maxCapacity = MAX_INT64;
-    std::recursive_mutex mtx;
-
-    std::unordered_map<int64_t, sptr<FFIData>> ffiDataStore_;
-    std::unordered_map<int64_t, wptr<RemoteData>> remoteDataStore_;
-
-    bool FFIDataExist(int64_t id) const
-    {
-        return ffiDataStore_.find(id) != ffiDataStore_.end();
-    }
-
-    int FFIDataIdSafeIncrease();
-};
-
 #define CJ_REMOTE_CLASS(className)                               \
     DECL_TYPE(className, RemoteData)                           \
 public:                                                        \
@@ -132,18 +64,11 @@ public:
     template<class T>
     static sptr<T> Create(int64_t id)
     {
-        auto manager = FFIDataManager::GetInstance();
-        auto existed = manager->GetRemoteData(id);
-        if (existed != nullptr) {
-            return sptr<T>(existed.GetRefPtr()->template DynamicCast<T>());
-        }
         auto rawRef = new (std::nothrow) T(id);
         if (!rawRef) {
             return nullptr;
         }
         sptr<T> ref(rawRef);
-        manager->StoreRemoteData(ref);
-
         return ref;
     }
 
@@ -190,7 +115,7 @@ class FFI_EXPORT FFIData : public TypeBase, public RefBase {
     DECL_TYPE(FFIData, TypeBase)
 public:
     DISALLOW_COPY_AND_MOVE(FFIData);
-    FFIData() : id_(FFIDataManager::GetInstance()->NewFFIDataId()) {}
+    FFIData() : id_(-1) {}
     ~FFIData() override;
 
     template<class T, class... Args>
@@ -201,29 +126,23 @@ public:
             return nullptr;
         }
         sptr<T> ref = rawPtr;
-        FFIDataManager::GetInstance()->StoreFFIData(ref);
+        AppendItem(ref);
         return ref;
     }
 
     template<class T>
     static sptr<T> GetData(int64_t id)
     {
-        auto data = FFIDataManager::GetInstance()->GetFFIData(id);
+        auto data = GetItem(id);
         if (data != nullptr) {
             return sptr<T>(data.GetRefPtr()->template DynamicCast<T>());
         }
         return nullptr;
     }
 
-    static void Release(int64_t id)
-    {
-        FFIDataManager::GetInstance()->RemoveFFIData(id);
-    }
-    static bool Exist(int64_t id)
-    {
-        auto& store_ = FFIDataManager::GetInstance()->ffiDataStore_;
-        return store_.find(id) != store_.end();
-    }
+    static bool Release(int64_t id);
+
+    static bool Exist(int64_t id);
 
     int64_t GetID() const
     {
@@ -232,6 +151,8 @@ public:
 
 private:
     int64_t id_;
+    static void AppendItem(const sptr<FFIData>& ref);
+    static sptr<FFIData> GetItem(int64_t id);
 };
 
 } // namespace OHOS::FFI
