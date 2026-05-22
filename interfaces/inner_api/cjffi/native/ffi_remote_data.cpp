@@ -18,6 +18,7 @@
 #include <cinttypes>
 
 #include "hilog/log_cpp.h"
+#include "slab.h"
 
 using namespace OHOS::FFI;
 using namespace OHOS;
@@ -25,69 +26,8 @@ using namespace OHOS::HiviewDFX;
 
 namespace {
 constexpr HiLogLabel LABEL = { LOG_CORE, 0xD003F03, "CJ-FFIBindNative" };
+MultSlabMT<sptr<FFIData>> ffiDataItems_;
 } // namespace
-
-FFIDataManager* FFIDataManager::GetInstance()
-{
-    static FFIDataManager singleton;
-    return &singleton;
-}
-
-void FFIDataManager::StoreFFIData(const sptr<FFIData>& data)
-{
-    std::lock_guard<std::recursive_mutex> lock(mtx);
-    int64_t id = data->GetID();
-    // 0 represents invalid status
-    if (id == 0) {
-        HiLog::Fatal(LABEL, "FFIData store invalid key");
-        return;
-    }
-    HiLog::Debug(LABEL, "FFIData store_ key put in: %{public}" PRId64, id);
-    ffiDataStore_[id] = data;
-}
-
-void FFIDataManager::StoreRemoteData(const sptr<RemoteData>& data)
-{
-    std::lock_guard<std::recursive_mutex> lock(mtx);
-    remoteDataStore_[data->GetID()] = data;
-}
-
-int64_t FFIDataManager::NewFFIDataId()
-{
-    std::lock_guard<std::recursive_mutex> lock(mtx);
-    if (static_cast<int64_t>(ffiDataStore_.size()) >= maxCapacity) {
-        HiLog::Fatal(LABEL, "FFIData store_ over max capacity: %{public}" PRId64, maxCapacity);
-        // 0 represents invalid status in CJ RemoteData, will be handled by CJ Exception
-        return 0;
-    }
-    // When ffiDataId over uint64 max value, resetTime will be increased with 1.
-    auto resetTimes = FFIDataIdSafeIncrease();
-    auto resetTimeUpperBound = 2;
-    while ((ffiDataStore_.find(curFFIDataId_) != ffiDataStore_.end()) && resetTimes < resetTimeUpperBound) {
-        resetTimes += FFIDataIdSafeIncrease();
-    }
-    // It means there is no one available id, When resetTimes come to UpperBound 2.
-    if (resetTimes >= resetTimeUpperBound) {
-        HiLog::Fatal(LABEL, "FFIData id run out");
-        // 0 represents invalid status in CJ RemoteData, will be handled by CJ Exception
-        return 0;
-    }
-    HiLog::Debug(LABEL, "FFIDataManager new ID : %{public}" PRId64 ", cache size: %{public}zu", curFFIDataId_,
-        ffiDataStore_.size());
-    return curFFIDataId_;
-}
-
-int FFIDataManager::FFIDataIdSafeIncrease()
-{
-    curFFIDataId_++;
-    if (curFFIDataId_ >= static_cast<uint64_t>(maxId)) {
-        HiLog::Warn(LABEL, "FFIData id: %{public}" PRId64 " over max %{public}" PRId64 ", reset to 0", curFFIDataId_,
-            maxCapacity);
-        curFFIDataId_ = 1;
-        return 1;
-    }
-    return 0;
-}
 
 RemoteData::RemoteData(int64_t id) : id_(id), isValid_(id != 0)
 {
@@ -108,8 +48,6 @@ RemoteData::~RemoteData()
 
 CJLambdaRemoteData::~CJLambdaRemoteData()
 {
-    auto manager = FFIDataManager::GetInstance();
-    manager->RemoveRemoteData(GetID());
 }
 
 int64_t RemoteData::GetID() const
@@ -121,3 +59,27 @@ int64_t RemoteData::GetID() const
 }
 
 FFIData::~FFIData() {}
+
+bool FFIData::Exist(int64_t id)
+{
+    return ffiDataItems_.Contains(id);
+}
+
+sptr<FFIData> FFIData::GetItem(int64_t id)
+{
+    auto result = ffiDataItems_.Get(id);
+    if (result.has_value()) {
+        return result.value();
+    }
+    return nullptr;
+}
+
+bool FFIData::Release(int64_t id)
+{
+    return ffiDataItems_.Remove(id).has_value();
+}
+
+void FFIData::AppendItem(const sptr<FFIData>& ref)
+{
+    ref->id_ = ffiDataItems_.Append(ref);
+}
