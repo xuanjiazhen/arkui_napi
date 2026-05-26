@@ -125,7 +125,7 @@ ohos_shared_library("ark_interop") {
       "NO_CONTAINER",
     ]
   } else {
-    if (!ark_standalone_build) {
+    if (!ark_standalone_build && !is_host_product) {
       external_deps += [
         "eventhandler:libeventhandler",
         "hitrace:hitrace_meter",

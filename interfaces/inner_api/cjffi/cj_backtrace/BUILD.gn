@@ -24,10 +24,14 @@ ohos_shared_library("cj_backtrace") {
     "cj_backtrace.cpp"
   ]
   external_deps = [
-    "faultloggerd:libbacktrace_local",
     "bounds_checking_function:libsec_shared",
-    "faultloggerd:libunwinder",
   ]
+  if (!is_host_product) {
+    external_deps += [
+      "faultloggerd:libbacktrace_local",
+      "faultloggerd:libunwinder",
+    ]
+  }
   public_configs = [ ":cj_backtrace_public_config" ]
   innerapi_tags = [ "platformsdk" ]
   part_name = "napi"
