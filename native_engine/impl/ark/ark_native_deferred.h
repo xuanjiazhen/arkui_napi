@@ -38,7 +38,7 @@ private:
     panda::Global<PromiseCapabilityRef> deferred_;
 #ifdef ENABLE_CONTAINER_SCOPE
     int32_t scopeId_ = -1;
-#endif
+#endif 
 };
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_ARK_NATIVE_DEFERRED_H */
