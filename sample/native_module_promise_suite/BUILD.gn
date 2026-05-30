@@ -18,10 +18,6 @@ ohos_shared_library("promise_suite") {
 
   deps = [ "../..:ace_napi" ]
 
-  external_deps = [
-    "bounds_checking_function:libsec_shared",
-  ]
-
   relative_install_dir = "module"
 
   subsystem_name = "arkui"
