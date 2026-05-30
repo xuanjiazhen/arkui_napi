@@ -958,6 +958,7 @@ Local<JSValueRef> ArkNativeEngine::RequireNapi(JsiRuntimeCallInfo *info)
         return scope.Escape(arkNativeEngine->LoadNativeModule(moduleManager, moduleName, module, exports, errInfo));
     } else {
         HILOG_DEBUG("%{public}s", errInfo.c_str());
+        DFXJSNApi::InsertSoLoadFailure(ecmaVm, moduleName, errInfo);
         return scope.Escape(panda::ObjectRef::CreateNativeModuleFailureInfo(ecmaVm, errInfo));
     }
 }
