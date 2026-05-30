@@ -20,7 +20,6 @@
 
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
-#include "securec.h"
 
 namespace {
 
@@ -830,7 +829,8 @@ static napi_value TestWrapUnwrap(napi_env env, napi_callback_info info)
 
     auto* wrapData = new WrappedData();
     wrapData->value = WRAP_TEST_VALUE;
-    (void)strcpy_s(wrapData->tag, PROMISE_NAME_SIZE, "wrapTest");
+    (void)std::strncpy(wrapData->tag, "wrapTest", PROMISE_NAME_SIZE - 1);
+    wrapData->tag[PROMISE_NAME_SIZE - 1] = '\0';
 
     napi_status wrapStatus = napi_wrap(env, obj, wrapData, WrappedDataFinalize, nullptr, nullptr);
     SetNamedBool(env, result, "wrapOk", wrapStatus == napi_ok);
