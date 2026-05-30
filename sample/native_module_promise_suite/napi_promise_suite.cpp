@@ -829,8 +829,12 @@ static napi_value TestWrapUnwrap(napi_env env, napi_callback_info info)
 
     auto* wrapData = new WrappedData();
     wrapData->value = WRAP_TEST_VALUE;
-    (void)std::strncpy(wrapData->tag, "wrapTest", PROMISE_NAME_SIZE - 1);
-    wrapData->tag[PROMISE_NAME_SIZE - 1] = '\0';
+    const char* tagSource = "wrapTest";
+    size_t tagIdx = 0;
+    for (; tagIdx < PROMISE_NAME_SIZE - 1 && tagSource[tagIdx] != '\0'; ++tagIdx) {
+        wrapData->tag[tagIdx] = tagSource[tagIdx];
+    }
+    wrapData->tag[tagIdx] = '\0';
 
     napi_status wrapStatus = napi_wrap(env, obj, wrapData, WrappedDataFinalize, nullptr, nullptr);
     SetNamedBool(env, result, "wrapOk", wrapStatus == napi_ok);
