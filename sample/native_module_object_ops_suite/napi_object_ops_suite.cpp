@@ -17,13 +17,13 @@
 
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
+#include "securec.h"
 
 namespace {
 
 // ============================================================================
-// Named Constants — no magic numbers allowed
+// Test constants for verifying object operations
 // ============================================================================
-
 static constexpr int32_t TEST_INT_A = 42;
 static constexpr int32_t TEST_INT_B = 100;
 static constexpr int32_t TEST_INT_C = 200;
@@ -68,7 +68,6 @@ static constexpr uint32_t NO_MODULE_FLAGS = 0;
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
 static void SetNamedBool(napi_env env, napi_value obj, const char* name, bool value)
 {
     napi_value napiValue = nullptr;
@@ -100,11 +99,12 @@ static uint32_t GetPropertyCount(napi_env env, napi_value names)
 // ============================================================================
 // Test 1: napi_get_all_property_names — napi_key_own_only
 // ============================================================================
-
-static napi_value TestGetOwnPropertyNames(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetOwnPropertyNames(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -125,11 +125,12 @@ static napi_value TestGetOwnPropertyNames(napi_env env, napi_callback_info /* in
 // ============================================================================
 // Test 2: napi_get_all_property_names — napi_key_include_prototypes
 // ============================================================================
-
-static napi_value TestGetIncludePrototypeNames(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetIncludePrototypeNames(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -148,11 +149,12 @@ static napi_value TestGetIncludePrototypeNames(napi_env env, napi_callback_info 
 // ============================================================================
 // Test 3: napi_get_all_property_names — napi_key_writable filter
 // ============================================================================
-
-static napi_value TestGetWritableNames(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetWritableNames(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -171,11 +173,12 @@ static napi_value TestGetWritableNames(napi_env env, napi_callback_info /* info 
 // ============================================================================
 // Test 4: napi_get_all_property_names — napi_key_enumerable filter
 // ============================================================================
-
-static napi_value TestGetEnumerableNames(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetEnumerableNames(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -194,11 +197,12 @@ static napi_value TestGetEnumerableNames(napi_env env, napi_callback_info /* inf
 // ============================================================================
 // Test 5: napi_get_all_property_names — napi_key_configurable filter
 // ============================================================================
-
-static napi_value TestGetConfigurableNames(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetConfigurableNames(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -217,11 +221,12 @@ static napi_value TestGetConfigurableNames(napi_env env, napi_callback_info /* i
 // ============================================================================
 // Test 6: napi_get_all_property_names — napi_key_skip_strings filter
 // ============================================================================
-
-static napi_value TestGetSkipStringsNames(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetSkipStringsNames(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -240,11 +245,12 @@ static napi_value TestGetSkipStringsNames(napi_env env, napi_callback_info /* in
 // ============================================================================
 // Test 7: napi_get_all_property_names — napi_key_skip_symbols filter
 // ============================================================================
-
-static napi_value TestGetSkipSymbolsNames(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetSkipSymbolsNames(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -268,11 +274,12 @@ static napi_value TestGetSkipSymbolsNames(napi_env env, napi_callback_info /* in
 // ============================================================================
 // Test 8: napi_get_all_property_names — napi_key_numbers_to_strings
 // ============================================================================
-
-static napi_value TestKeyNumbersToStrings(napi_env env, napi_callback_info /* info */)
+static napi_value TestKeyNumbersToStrings(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -301,11 +308,12 @@ static napi_value TestKeyNumbersToStrings(napi_env env, napi_callback_info /* in
 // ============================================================================
 // Test 9: napi_get_all_property_names — napi_key_keep_numbers
 // ============================================================================
-
-static napi_value TestKeyKeepNumbers(napi_env env, napi_callback_info /* info */)
+static napi_value TestKeyKeepNumbers(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -324,11 +332,12 @@ static napi_value TestKeyKeepNumbers(napi_env env, napi_callback_info /* info */
 // ============================================================================
 // Test 10: napi_object_freeze — verify mutation fails silently
 // ============================================================================
-
-static napi_value TestObjectFreeze(napi_env env, napi_callback_info /* info */)
+static napi_value TestObjectFreeze(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -352,11 +361,12 @@ static napi_value TestObjectFreeze(napi_env env, napi_callback_info /* info */)
 // ============================================================================
 // Test 11: napi_object_seal — existing props can be modified, new ones cannot
 // ============================================================================
-
-static napi_value TestObjectSeal(napi_env env, napi_callback_info /* info */)
+static napi_value TestObjectSeal(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -386,18 +396,19 @@ static napi_value TestObjectSeal(napi_env env, napi_callback_info /* info */)
 // ============================================================================
 // Test 12: napi_define_properties — getter-only accessor
 // ============================================================================
-
-static napi_value GetterCallback(napi_env env, napi_callback_info /* info */)
+static napi_value GetterCallback(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value val = nullptr;
     NAPI_CALL(env, napi_create_int32(env, GETTER_RETURN_VALUE, &val));
     return val;
 }
 
-static napi_value TestDefineGetterOnly(napi_env env, napi_callback_info /* info */)
+static napi_value TestDefineGetterOnly(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -418,7 +429,6 @@ static napi_value TestDefineGetterOnly(napi_env env, napi_callback_info /* info 
 // ============================================================================
 // Test 13: napi_define_properties — setter-only accessor
 // ============================================================================
-
 static int32_t g_setterStoredValue = 0;
 
 static napi_value SetterCallback(napi_env env, napi_callback_info info)
@@ -430,10 +440,12 @@ static napi_value SetterCallback(napi_env env, napi_callback_info info)
     return nullptr;
 }
 
-static napi_value TestDefineSetterOnly(napi_env env, napi_callback_info /* info */)
+static napi_value TestDefineSetterOnly(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     g_setterStoredValue = 0;
     napi_value obj = nullptr;
@@ -454,10 +466,9 @@ static napi_value TestDefineSetterOnly(napi_env env, napi_callback_info /* info 
 // ============================================================================
 // Test 14: napi_define_properties — getter + setter combination
 // ============================================================================
-
 static int32_t g_accessorValue = 0;
 
-static napi_value AccessorGetter(napi_env env, napi_callback_info /* info */)
+static napi_value AccessorGetter(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value val = nullptr;
     NAPI_CALL(env, napi_create_int32(env, g_accessorValue, &val));
@@ -473,10 +484,12 @@ static napi_value AccessorSetter(napi_env env, napi_callback_info info)
     return nullptr;
 }
 
-static napi_value TestDefineGetterSetter(napi_env env, napi_callback_info /* info */)
+static napi_value TestDefineGetterSetter(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     g_accessorValue = 0;
     napi_value obj = nullptr;
@@ -501,11 +514,12 @@ static napi_value TestDefineGetterSetter(napi_env env, napi_callback_info /* inf
 // ============================================================================
 // Test 15: napi_define_properties — napi_static attribute on standalone object
 // ============================================================================
-
-static napi_value TestDefineStaticAttribute(napi_env env, napi_callback_info /* info */)
+static napi_value TestDefineStaticAttribute(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -526,11 +540,12 @@ static napi_value TestDefineStaticAttribute(napi_env env, napi_callback_info /* 
 // ============================================================================
 // Test 16: napi_has_own_property vs napi_has_property for inherited
 // ============================================================================
-
-static napi_value TestHasOwnVsHasProperty(napi_env env, napi_callback_info /* info */)
+static napi_value TestHasOwnVsHasProperty(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -560,11 +575,12 @@ static napi_value TestHasOwnVsHasProperty(napi_env env, napi_callback_info /* in
 // ============================================================================
 // Test 17: napi_get_property_names vs napi_get_all_property_names comparison
 // ============================================================================
-
-static napi_value TestGetNamesComparison(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetNamesComparison(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -591,11 +607,12 @@ static napi_value TestGetNamesComparison(napi_env env, napi_callback_info /* inf
 // ============================================================================
 // Test 18: napi_set_property / napi_get_property with symbol keys
 // ============================================================================
-
-static napi_value TestSymbolKeySetGet(napi_env env, napi_callback_info /* info */)
+static napi_value TestSymbolKeySetGet(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -620,11 +637,12 @@ static napi_value TestSymbolKeySetGet(napi_env env, napi_callback_info /* info *
 // ============================================================================
 // Test 19: napi_delete_property and verify deletion
 // ============================================================================
-
-static napi_value TestDeleteProperty(napi_env env, napi_callback_info /* info */)
+static napi_value TestDeleteProperty(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -649,11 +667,12 @@ static napi_value TestDeleteProperty(napi_env env, napi_callback_info /* info */
 // ============================================================================
 // Test 20: napi_set_element / napi_get_element
 // ============================================================================
-
-static napi_value TestSetGetElement(napi_env env, napi_callback_info /* info */)
+static napi_value TestSetGetElement(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -674,11 +693,12 @@ static napi_value TestSetGetElement(napi_env env, napi_callback_info /* info */)
 // ============================================================================
 // Test 21: napi_has_element
 // ============================================================================
-
-static napi_value TestHasElement(napi_env env, napi_callback_info /* info */)
+static napi_value TestHasElement(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -698,11 +718,12 @@ static napi_value TestHasElement(napi_env env, napi_callback_info /* info */)
 // ============================================================================
 // Test 22: napi_delete_element
 // ============================================================================
-
-static napi_value TestDeleteElement(napi_env env, napi_callback_info /* info */)
+static napi_value TestDeleteElement(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -725,11 +746,12 @@ static napi_value TestDeleteElement(napi_env env, napi_callback_info /* info */)
 // ============================================================================
 // Test 23: Property with napi_writable attribute
 // ============================================================================
-
-static napi_value TestPropertyAttrWritable(napi_env env, napi_callback_info /* info */)
+static napi_value TestPropertyAttrWritable(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -752,11 +774,12 @@ static napi_value TestPropertyAttrWritable(napi_env env, napi_callback_info /* i
 // ============================================================================
 // Test 24: Property with napi_enumerable attribute
 // ============================================================================
-
-static napi_value TestPropertyAttrEnumerable(napi_env env, napi_callback_info /* info */)
+static napi_value TestPropertyAttrEnumerable(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -779,11 +802,12 @@ static napi_value TestPropertyAttrEnumerable(napi_env env, napi_callback_info /*
 // ============================================================================
 // Test 25: Property with napi_configurable attribute
 // ============================================================================
-
-static napi_value TestPropertyAttrConfigurable(napi_env env, napi_callback_info /* info */)
+static napi_value TestPropertyAttrConfigurable(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -804,11 +828,12 @@ static napi_value TestPropertyAttrConfigurable(napi_env env, napi_callback_info 
 // ============================================================================
 // Test 26: Property with all attributes combined
 // ============================================================================
-
-static napi_value TestPropertyAllAttributes(napi_env env, napi_callback_info /* info */)
+static napi_value TestPropertyAllAttributes(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -842,18 +867,21 @@ static napi_value TestPropertyAllAttributes(napi_env env, napi_callback_info /* 
 // ============================================================================
 // Test 27: Object with many properties — stress test
 // ============================================================================
-
-static napi_value TestManyProperties(napi_env env, napi_callback_info /* info */)
+static napi_value TestManyProperties(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
     for (int32_t i = 0; i < STRESS_PROP_COUNT; i++) {
         char keyBuf[32] = {0};
         int ret = snprintf_s(keyBuf, sizeof(keyBuf), sizeof(keyBuf) - 1, "prop_%d", i);
-        if (ret < 0) { continue; }
+        if (ret < 0) {
+            continue;
+        }
         SetNamedInt32(env, obj, keyBuf, i);
     }
     napi_value names = nullptr;
@@ -870,11 +898,12 @@ static napi_value TestManyProperties(napi_env env, napi_callback_info /* info */
 // ============================================================================
 // Test 28: napi_get_prototype chain inspection
 // ============================================================================
-
-static napi_value TestGetPrototype(napi_env env, napi_callback_info /* info */)
+static napi_value TestGetPrototype(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -893,11 +922,12 @@ static napi_value TestGetPrototype(napi_env env, napi_callback_info /* info */)
 // ============================================================================
 // Test 29: napi_create_object_with_properties
 // ============================================================================
-
-static napi_value TestCreateObjectWithProperties(napi_env env, napi_callback_info /* info */)
+static napi_value TestCreateObjectWithProperties(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value valA = nullptr;
     NAPI_CALL(env, napi_create_int32(env, TEST_INT_A, &valA));
@@ -928,11 +958,12 @@ static napi_value TestCreateObjectWithProperties(napi_env env, napi_callback_inf
 // ============================================================================
 // Test 30: napi_create_object_with_named_properties
 // ============================================================================
-
-static napi_value TestCreateObjectWithNamedProperties(napi_env env, napi_callback_info /* info */)
+static napi_value TestCreateObjectWithNamedProperties(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value valA = nullptr;
     NAPI_CALL(env, napi_create_int32(env, NAMED_PROP_VALUE_A, &valA));
@@ -963,11 +994,12 @@ static napi_value TestCreateObjectWithNamedProperties(napi_env env, napi_callbac
 // ============================================================================
 // Test 31: freeze then verify no new properties can be added
 // ============================================================================
-
-static napi_value TestFreezeNoNewProps(napi_env env, napi_callback_info /* info */)
+static napi_value TestFreezeNoNewProps(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -987,11 +1019,12 @@ static napi_value TestFreezeNoNewProps(napi_env env, napi_callback_info /* info 
 // ============================================================================
 // Test 32: seal then verify configurable is locked
 // ============================================================================
-
-static napi_value TestSealConfigurableLocked(napi_env env, napi_callback_info /* info */)
+static napi_value TestSealConfigurableLocked(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -1013,11 +1046,12 @@ static napi_value TestSealConfigurableLocked(napi_env env, napi_callback_info /*
 // ============================================================================
 // Test 33: napi_define_properties with multiple descriptors at once
 // ============================================================================
-
-static napi_value TestDefineMultipleDescriptors(napi_env env, napi_callback_info /* info */)
+static napi_value TestDefineMultipleDescriptors(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -1049,11 +1083,12 @@ static napi_value TestDefineMultipleDescriptors(napi_env env, napi_callback_info
 // ============================================================================
 // Test 34: symbol key property deletion
 // ============================================================================
-
-static napi_value TestDeleteSymbolProperty(napi_env env, napi_callback_info /* info */)
+static napi_value TestDeleteSymbolProperty(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -1078,11 +1113,12 @@ static napi_value TestDeleteSymbolProperty(napi_env env, napi_callback_info /* i
 // ============================================================================
 // Test 35: napi_get_all_property_names with combined key filters
 // ============================================================================
-
-static napi_value TestCombinedKeyFilters(napi_env env, napi_callback_info /* info */)
+static napi_value TestCombinedKeyFilters(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
     napi_value result = CreateResult(env);
-    if (result == nullptr) { return nullptr; }
+    if (result == nullptr) {
+        return nullptr;
+    }
 
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -1107,7 +1143,6 @@ static napi_value TestCombinedKeyFilters(napi_env env, napi_callback_info /* inf
 // ============================================================================
 // OBJECT_OPS_TESTS[] descriptor table
 // ============================================================================
-
 static const napi_property_descriptor OBJECT_OPS_TESTS[] = {
     { "testGetOwnPropertyNames", nullptr, TestGetOwnPropertyNames,
       nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -1189,7 +1224,6 @@ static constexpr size_t OBJECT_OPS_TEST_COUNT =
 // ============================================================================
 // Module Initialization and Registration
 // ============================================================================
-
 static napi_value InitObjectOpsSuite(napi_env env, napi_value exports)
 {
     NAPI_CALL(env, napi_define_properties(env, exports, OBJECT_OPS_TEST_COUNT, OBJECT_OPS_TESTS));

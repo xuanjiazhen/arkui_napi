@@ -25,7 +25,7 @@
 namespace {
 
 // ---------------------------------------------------------------------------
-// Named constants – no magic numbers
+// Constants used for verifying N-API type-checking APIs
 // ---------------------------------------------------------------------------
 static constexpr uint32_t MODULE_VERSION = 1;
 static constexpr uint32_t NO_MODULE_FLAGS = 0;
@@ -287,6 +287,14 @@ static napi_value TestIsArraybufferPositive(napi_env env, napi_callback_info inf
     bool isAB = false;
     NAPI_CALL(env, napi_is_arraybuffer(env, ab, &isAB));
     SetNamedBool(env, result, "isArrayBuffer", isAB);
+
+    void* zeroData = nullptr;
+    napi_value zeroAb = nullptr;
+    NAPI_CALL(env, napi_create_arraybuffer(env, 0, &zeroData, &zeroAb));
+    bool isZeroAB = false;
+    NAPI_CALL(env, napi_is_arraybuffer(env, zeroAb, &isZeroAB));
+    SetNamedBool(env, result, "isZeroArrayBuffer", isZeroAB);
+
     return result;
 }
 
@@ -327,6 +335,7 @@ static napi_value TestIsBufferNegative(napi_env env, napi_callback_info info)
     napi_value result = CreateResultObject(env);
     napi_value str = nullptr;
     NAPI_CALL(env, napi_create_string_utf8(env, "notbuf", NAPI_AUTO_LENGTH, &str));
+    SetNamedBool(env, result, "isString", CheckTypeOf(env, str, napi_string));
     bool isBuf = true;
     NAPI_CALL(env, napi_is_buffer(env, str, &isBuf));
     SetNamedBool(env, result, "isNotBuffer", !isBuf);
@@ -784,6 +793,10 @@ static napi_value TestTypeofMatrix(napi_env env, napi_callback_info info)
     napi_value fnVal = nullptr;
     NAPI_CALL(env, napi_create_function(env, "fn", NAPI_AUTO_LENGTH, DummyCallback, nullptr, &fnVal));
     SetNamedBool(env, result, "functionOk", CheckTypeOf(env, fnVal, napi_function));
+
+    napi_value dateVal = nullptr;
+    NAPI_CALL(env, napi_create_date(env, DATE_TIMESTAMP_MS, &dateVal));
+    SetNamedBool(env, result, "dateOk", CheckTypeOf(env, dateVal, napi_object));
 
     return result;
 }
