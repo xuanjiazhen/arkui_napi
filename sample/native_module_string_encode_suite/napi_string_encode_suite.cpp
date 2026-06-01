@@ -25,9 +25,8 @@
 
 namespace {
 
-// ============================================================
-// Named constants — no magic numbers
-// ============================================================
+static constexpr size_t UTF8_EXACT_BUF_EXPECTED = 4;
+static constexpr size_t UTF16_EXACT_BUF_EXPECTED = 4;
 
 // Buffer and length constants
 static constexpr size_t BUFFER_SIZE_SMALL = 4;
@@ -220,7 +219,7 @@ static napi_value TestUtf8AccentedChars(napi_env env, napi_callback_info info)
 // ============================================================
 // Test 04: UTF-8 CJK characters (你好世界)
 // ============================================================
-static napi_value TestUtf8CjkChars(napi_env env, napi_callback_info info)
+static napi_value TestUtf8CJKChars(napi_env env, napi_callback_info info)
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_object(env, &result));
@@ -338,8 +337,7 @@ static napi_value TestUtf8ExactBufferSize(napi_env env, napi_callback_info info)
     size_t copied = EMPTY_STRING_LENGTH;
     NAPI_CALL(env, napi_get_value_string_utf8(env, str, buf, UTF8_HELLO_LENGTH, &copied));
 
-    constexpr size_t exactBufExpected = 4;
-    SetNamedBool(env, result, "copiedLessThanFull", copied == exactBufExpected);
+    SetNamedBool(env, result, "copiedLessThanFull", copied == UTF8_EXACT_BUF_EXPECTED);
     return result;
 }
 
@@ -407,7 +405,7 @@ static napi_value TestUtf16AccentedChars(napi_env env, napi_callback_info info)
 // ============================================================
 // Test 13: UTF-16 CJK characters (你好世界)
 // ============================================================
-static napi_value TestUtf16CjkChars(napi_env env, napi_callback_info info)
+static napi_value TestUtf16CJKChars(napi_env env, napi_callback_info info)
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_object(env, &result));
@@ -428,7 +426,7 @@ static napi_value TestUtf16CjkChars(napi_env env, napi_callback_info info)
 // ============================================================
 // Test 14: UTF-16 BMP emoji-like char (snowman ☃)
 // ============================================================
-static napi_value TestUtf16BmpEmoji(napi_env env, napi_callback_info info)
+static napi_value TestUtf16BMPEmoji(napi_env env, napi_callback_info info)
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_object(env, &result));
@@ -879,6 +877,7 @@ static napi_value TestMultipleSequentialOps(napi_env env, napi_callback_info inf
 
     // Step 2: Create UTF-16 string
     constexpr char16_t step2Data[] = u"Step2";
+    // length of u"Step2" (excluding null terminator)
     constexpr size_t step2Length = 5;
     napi_value str2 = nullptr;
     NAPI_CALL(env, napi_create_string_utf16(env, step2Data, step2Length, &str2));
@@ -979,8 +978,7 @@ static napi_value TestUtf16ExactBufferSize(napi_env env, napi_callback_info info
     size_t copied = EMPTY_STRING_LENGTH;
     NAPI_CALL(env, napi_get_value_string_utf16(env, str, buf, UTF16_HELLO_LENGTH, &copied));
 
-    constexpr size_t utf16ExactBufExpected = 4;
-    SetNamedBool(env, result, "copiedLessThanFull", copied == utf16ExactBufExpected);
+    SetNamedBool(env, result, "copiedLessThanFull", copied == UTF16_EXACT_BUF_EXPECTED);
     SetNamedBool(env, result, "firstCharOk", buf[0] == u'H');
     return result;
 }
@@ -1095,7 +1093,7 @@ static napi_property_descriptor STRING_ENCODE_TESTS[] = {
     DECLARE_NAPI_FUNCTION("testUtf8BasicRoundTrip", TestUtf8BasicRoundTrip),
     DECLARE_NAPI_FUNCTION("testUtf8EmptyString", TestUtf8EmptyString),
     DECLARE_NAPI_FUNCTION("testUtf8AccentedChars", TestUtf8AccentedChars),
-    DECLARE_NAPI_FUNCTION("testUtf8CjkChars", TestUtf8CjkChars),
+    DECLARE_NAPI_FUNCTION("testUtf8CJKChars", TestUtf8CJKChars),
     DECLARE_NAPI_FUNCTION("testUtf8LongString", TestUtf8LongString),
     DECLARE_NAPI_FUNCTION("testUtf8LengthQuery", TestUtf8LengthQuery),
     DECLARE_NAPI_FUNCTION("testUtf8BufferTooSmall", TestUtf8BufferTooSmall),
@@ -1104,8 +1102,8 @@ static napi_property_descriptor STRING_ENCODE_TESTS[] = {
     DECLARE_NAPI_FUNCTION("testUtf16BasicRoundTrip", TestUtf16BasicRoundTrip),
     DECLARE_NAPI_FUNCTION("testUtf16EmptyString", TestUtf16EmptyString),
     DECLARE_NAPI_FUNCTION("testUtf16AccentedChars", TestUtf16AccentedChars),
-    DECLARE_NAPI_FUNCTION("testUtf16CjkChars", TestUtf16CjkChars),
-    DECLARE_NAPI_FUNCTION("testUtf16BmpEmoji", TestUtf16BmpEmoji),
+    DECLARE_NAPI_FUNCTION("testUtf16CJKChars", TestUtf16CJKChars),
+    DECLARE_NAPI_FUNCTION("testUtf16BMPEmoji", TestUtf16BMPEmoji),
     DECLARE_NAPI_FUNCTION("testUtf16SurrogatePair", TestUtf16SurrogatePair),
     DECLARE_NAPI_FUNCTION("testUtf16LongString", TestUtf16LongString),
     DECLARE_NAPI_FUNCTION("testUtf16LengthQuery", TestUtf16LengthQuery),
@@ -1133,7 +1131,6 @@ static napi_property_descriptor STRING_ENCODE_TESTS[] = {
     DECLARE_NAPI_FUNCTION("testUtf16ReadAsUtf8", TestUtf16ReadAsUtf8),
     DECLARE_NAPI_FUNCTION("testUtf8AutoLengthEmpty", TestUtf8AutoLengthEmpty),
 };
-
 }  // namespace
 
 static napi_value InitStringEncodeSuite(napi_env env, napi_value exports)
