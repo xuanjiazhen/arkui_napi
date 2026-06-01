@@ -338,8 +338,8 @@ static napi_value TestUtf8ExactBufferSize(napi_env env, napi_callback_info info)
     size_t copied = EMPTY_STRING_LENGTH;
     NAPI_CALL(env, napi_get_value_string_utf8(env, str, buf, UTF8_HELLO_LENGTH, &copied));
 
-    constexpr size_t EXACT_BUF_EXPECTED = 4;
-    SetNamedBool(env, result, "copiedLessThanFull", copied == EXACT_BUF_EXPECTED);
+    constexpr size_t exactBufExpected = 4;
+    SetNamedBool(env, result, "copiedLessThanFull", copied == exactBufExpected);
     return result;
 }
 
@@ -878,10 +878,10 @@ static napi_value TestMultipleSequentialOps(napi_env env, napi_callback_info inf
     NAPI_CALL(env, napi_typeof(env, str1, &type1));
 
     // Step 2: Create UTF-16 string
-    constexpr char16_t STEP2_DATA[] = u"Step2";
-    constexpr size_t STEP2_LENGTH = 5;
+    constexpr char16_t step2Data[] = u"Step2";
+    constexpr size_t step2Length = 5;
     napi_value str2 = nullptr;
-    NAPI_CALL(env, napi_create_string_utf16(env, STEP2_DATA, STEP2_LENGTH, &str2));
+    NAPI_CALL(env, napi_create_string_utf16(env, step2Data, step2Length, &str2));
     napi_valuetype type2 = napi_undefined;
     NAPI_CALL(env, napi_typeof(env, str2, &type2));
 
@@ -979,8 +979,8 @@ static napi_value TestUtf16ExactBufferSize(napi_env env, napi_callback_info info
     size_t copied = EMPTY_STRING_LENGTH;
     NAPI_CALL(env, napi_get_value_string_utf16(env, str, buf, UTF16_HELLO_LENGTH, &copied));
 
-    constexpr size_t UTF16_EXACT_BUF_EXPECTED = 4;
-    SetNamedBool(env, result, "copiedLessThanFull", copied == UTF16_EXACT_BUF_EXPECTED);
+    constexpr size_t utf16ExactBufExpected = 4;
+    SetNamedBool(env, result, "copiedLessThanFull", copied == utf16ExactBufExpected);
     SetNamedBool(env, result, "firstCharOk", buf[0] == u'H');
     return result;
 }
@@ -1018,15 +1018,15 @@ static napi_value TestUtf8SingleChar(napi_env env, napi_callback_info info)
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_object(env, &result));
 
-    constexpr size_t SINGLE_CHAR_LENGTH = 1;
+    constexpr size_t singleCharLength = 1;
     napi_value str = nullptr;
-    NAPI_CALL(env, napi_create_string_utf8(env, "X", SINGLE_CHAR_LENGTH, &str));
+    NAPI_CALL(env, napi_create_string_utf8(env, "X", singleCharLength, &str));
 
     char buf[BUFFER_SIZE_SMALL] = {0};
     size_t len = EMPTY_STRING_LENGTH;
     NAPI_CALL(env, napi_get_value_string_utf8(env, str, buf, sizeof(buf), &len));
 
-    SetNamedBool(env, result, "lengthIsOne", len == SINGLE_CHAR_LENGTH);
+    SetNamedBool(env, result, "lengthIsOne", len == singleCharLength);
     SetNamedBool(env, result, "charMatch", buf[0] == 'X');
     return result;
 }
