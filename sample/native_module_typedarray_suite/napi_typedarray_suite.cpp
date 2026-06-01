@@ -1126,7 +1126,6 @@ static const TestEntry TYPEDARRAY_TESTS[] = {
 };
 
 static constexpr size_t TYPEDARRAY_TEST_COUNT = sizeof(TYPEDARRAY_TESTS) / sizeof(TYPEDARRAY_TESTS[0]);
-
 }  // namespace
 
 // ---------------------------------------------------------------------------

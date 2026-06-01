@@ -21,10 +21,9 @@
 
 namespace {
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Named Constants — no magic numbers allowed
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static constexpr int32_t TEST_INT_A = 42;
 static constexpr int32_t TEST_INT_B = 100;
 static constexpr int32_t TEST_INT_C = 200;
@@ -61,11 +60,9 @@ static constexpr int32_t ALL_ATTR_FLAGS = 7;
 static constexpr uint32_t MODULE_VERSION = 1;
 static constexpr uint32_t NO_MODULE_FLAGS = 0;
 
-
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Helper Functions
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static void SetNamedBool(napi_env env, napi_value obj, const char* name, bool value)
 {
     napi_value napiValue = nullptr;
@@ -101,10 +98,57 @@ static napi_value CreateResult(napi_env env)
     return result;
 }
 
-// ============================================================================
-// Test 1: napi_open_handle_scope / napi_close_handle_scope
-// ============================================================================
+static napi_value CreateNestedScopeValue(napi_env env, int32_t depth, int32_t value)
+{
+    if (depth <= 0) {
+        napi_value numVal = nullptr;
+        NAPI_CALL(env, napi_create_int32(env, value, &numVal));
+        return numVal;
+    }
+    napi_handle_scope scope = nullptr;
+    NAPI_CALL(env, napi_open_handle_scope(env, &scope));
+    napi_value inner = CreateNestedScopeValue(env, depth - 1, value);
+    NAPI_CALL(env, napi_close_handle_scope(env, scope));
+    return inner;
+}
 
+static bool ManageSingleRef(napi_env env, napi_value obj, uint32_t* outFinalCount)
+{
+    napi_ref ref = nullptr;
+    if (napi_create_reference(env, obj, INITIAL_REF_COUNT, &ref) != napi_ok) {
+        return false;
+    }
+    uint32_t countAfterRef = 0;
+    if (napi_reference_ref(env, ref, &countAfterRef) != napi_ok) {
+        napi_delete_reference(env, ref);
+        return false;
+    }
+    uint32_t countAfterUnref = 0;
+    if (napi_reference_unref(env, ref, &countAfterUnref) != napi_ok) {
+        napi_delete_reference(env, ref);
+        return false;
+    }
+    *outFinalCount = countAfterUnref;
+    napi_delete_reference(env, ref);
+    return true;
+}
+
+static void FillPropertyDescriptor(
+    napi_property_descriptor* desc, const char* name, napi_value value)
+{
+    desc->utf8name = name;
+    desc->name = nullptr;
+    desc->method = nullptr;
+    desc->getter = nullptr;
+    desc->setter = nullptr;
+    desc->value = value;
+    desc->attributes = napi_default;
+    desc->data = nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// Test 1: napi_open_handle_scope / napi_close_handle_scope
+// ---------------------------------------------------------------------------
 static napi_value TestOpenCloseHandleScope(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -123,10 +167,9 @@ static napi_value TestOpenCloseHandleScope(napi_env env, napi_callback_info /* i
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 2: creating objects inside a handle scope
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestHandleScopeObjects(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -146,28 +189,9 @@ static napi_value TestHandleScopeObjects(napi_env env, napi_callback_info /* inf
     return result;
 }
 
-// ============================================================================
-// Helper: recursively create value in nested scopes
-// ============================================================================
-
-static napi_value CreateNestedScopeValue(napi_env env, int32_t depth, int32_t value)
-{
-    if (depth <= 0) {
-        napi_value numVal = nullptr;
-        NAPI_CALL(env, napi_create_int32(env, value, &numVal));
-        return numVal;
-    }
-    napi_handle_scope scope = nullptr;
-    NAPI_CALL(env, napi_open_handle_scope(env, &scope));
-    napi_value inner = CreateNestedScopeValue(env, depth - 1, value);
-    NAPI_CALL(env, napi_close_handle_scope(env, scope));
-    return inner;
-}
-
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 3: nested handle scopes
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestNestedHandleScopes(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -183,10 +207,9 @@ static napi_value TestNestedHandleScopes(napi_env env, napi_callback_info /* inf
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 4: deeply nested handle scopes
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestDeepNestedHandleScopes(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -202,10 +225,9 @@ static napi_value TestDeepNestedHandleScopes(napi_env env, napi_callback_info /*
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 5: napi_open_escapable_handle_scope / napi_close_escapable_handle_scope
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestOpenCloseEscapableScope(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -226,10 +248,9 @@ static napi_value TestOpenCloseEscapableScope(napi_env env, napi_callback_info /
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 6: napi_escape_handle with integer value
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestEscapeHandleInt(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -251,10 +272,9 @@ static napi_value TestEscapeHandleInt(napi_env env, napi_callback_info /* info *
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 7: escapable scope with nested regular scope
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestEscapableWithNestedScope(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -278,10 +298,9 @@ static napi_value TestEscapableWithNestedScope(napi_env env, napi_callback_info 
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 8: napi_create_reference / napi_delete_reference
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestCreateDeleteReference(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -302,10 +321,9 @@ static napi_value TestCreateDeleteReference(napi_env env, napi_callback_info /* 
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 9: napi_reference_ref (increment refcount)
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestReferenceRef(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -326,10 +344,9 @@ static napi_value TestReferenceRef(napi_env env, napi_callback_info /* info */)
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 10: napi_reference_unref (decrement refcount)
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestReferenceUnref(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -350,10 +367,9 @@ static napi_value TestReferenceUnref(napi_env env, napi_callback_info /* info */
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 11: napi_get_reference_value with marker property
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestGetReferenceValue(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -377,35 +393,9 @@ static napi_value TestGetReferenceValue(napi_env env, napi_callback_info /* info
     return result;
 }
 
-// ============================================================================
-// Helper: manage a single reference lifecycle
-// ============================================================================
-
-static bool ManageSingleRef(napi_env env, napi_value obj, uint32_t* outFinalCount)
-{
-    napi_ref ref = nullptr;
-    if (napi_create_reference(env, obj, INITIAL_REF_COUNT, &ref) != napi_ok) {
-        return false;
-    }
-    uint32_t countAfterRef = 0;
-    if (napi_reference_ref(env, ref, &countAfterRef) != napi_ok) {
-        napi_delete_reference(env, ref);
-        return false;
-    }
-    uint32_t countAfterUnref = 0;
-    if (napi_reference_unref(env, ref, &countAfterUnref) != napi_ok) {
-        napi_delete_reference(env, ref);
-        return false;
-    }
-    *outFinalCount = countAfterUnref;
-    napi_delete_reference(env, ref);
-    return true;
-}
-
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 12: multiple reference lifecycle management
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestMultipleReferenceLifecycle(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -426,10 +416,9 @@ static napi_value TestMultipleReferenceLifecycle(napi_env env, napi_callback_inf
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 13: weak reference (refcount = 0)
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestWeakReference(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -448,10 +437,9 @@ static napi_value TestWeakReference(napi_env env, napi_callback_info /* info */)
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 14: ref/unref round-trip preserving refcount
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestRefUnrefRoundTrip(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -473,10 +461,9 @@ static napi_value TestRefUnrefRoundTrip(napi_env env, napi_callback_info /* info
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 15: napi_get_version
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestGetVersion(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -491,10 +478,9 @@ static napi_value TestGetVersion(napi_env env, napi_callback_info /* info */)
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 16: property descriptor with napi_writable
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestPropertyWritable(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -518,10 +504,9 @@ static napi_value TestPropertyWritable(napi_env env, napi_callback_info /* info 
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 17: property descriptor with napi_enumerable
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestPropertyEnumerable(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -546,10 +531,9 @@ static napi_value TestPropertyEnumerable(napi_env env, napi_callback_info /* inf
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 18: property descriptor with napi_configurable
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestPropertyConfigurable(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -571,10 +555,9 @@ static napi_value TestPropertyConfigurable(napi_env env, napi_callback_info /* i
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 19: property with all attributes combined
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestPropertyAllAttributes(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -600,27 +583,9 @@ static napi_value TestPropertyAllAttributes(napi_env env, napi_callback_info /* 
     return result;
 }
 
-// ============================================================================
-// Helper: fill a property descriptor struct
-// ============================================================================
-
-static void FillPropertyDescriptor(
-    napi_property_descriptor* desc, const char* name, napi_value value)
-{
-    desc->utf8name = name;
-    desc->name = nullptr;
-    desc->method = nullptr;
-    desc->getter = nullptr;
-    desc->setter = nullptr;
-    desc->value = value;
-    desc->attributes = napi_default;
-    desc->data = nullptr;
-}
-
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 20: napi_define_properties with multiple descriptors
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestDefineMultipleProperties(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -649,10 +614,9 @@ static napi_value TestDefineMultipleProperties(napi_env env, napi_callback_info 
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 21: napi_object_freeze
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestObjectFreeze(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -674,10 +638,9 @@ static napi_value TestObjectFreeze(napi_env env, napi_callback_info /* info */)
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 22: napi_object_seal
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestObjectSeal(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -700,10 +663,9 @@ static napi_value TestObjectSeal(napi_env env, napi_callback_info /* info */)
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 23: napi_get_all_property_names
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestGetAllPropertyNames(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -727,10 +689,9 @@ static napi_value TestGetAllPropertyNames(napi_env env, napi_callback_info /* in
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 24: napi_get_property_names
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestGetPropertyNames(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -751,10 +712,9 @@ static napi_value TestGetPropertyNames(napi_env env, napi_callback_info /* info 
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 25: napi_set_property / napi_get_property
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestSetGetProperty(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -778,10 +738,9 @@ static napi_value TestSetGetProperty(napi_env env, napi_callback_info /* info */
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 26: napi_has_property
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestHasProperty(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -806,10 +765,9 @@ static napi_value TestHasProperty(napi_env env, napi_callback_info /* info */)
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 27: napi_delete_property
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestDeleteProperty(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -832,10 +790,9 @@ static napi_value TestDeleteProperty(napi_env env, napi_callback_info /* info */
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 28: property operations with numeric key
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestPropertyWithNumericKey(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -860,10 +817,9 @@ static napi_value TestPropertyWithNumericKey(napi_env env, napi_callback_info /*
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 29: napi_has_own_property
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestHasOwnProperty(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -886,10 +842,9 @@ static napi_value TestHasOwnProperty(napi_env env, napi_callback_info /* info */
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 30: napi_get_prototype
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestGetPrototype(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -908,10 +863,9 @@ static napi_value TestGetPrototype(napi_env env, napi_callback_info /* info */)
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 31: napi_set_element / napi_get_element
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestSetGetElement(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -933,10 +887,9 @@ static napi_value TestSetGetElement(napi_env env, napi_callback_info /* info */)
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 32: napi_has_element / napi_delete_element
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestHasDeleteElement(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -963,10 +916,9 @@ static napi_value TestHasDeleteElement(napi_env env, napi_callback_info /* info 
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 33: element operations at boundary conditions
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestElementBoundaryConditions(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -995,10 +947,9 @@ static napi_value TestElementBoundaryConditions(napi_env env, napi_callback_info
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 34: escape handle with object containing properties
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestEscapeHandleWithProps(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -1023,10 +974,9 @@ static napi_value TestEscapeHandleWithProps(napi_env env, napi_callback_info /* 
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 35: reference to array object
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestReferenceToArray(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -1054,10 +1004,9 @@ static napi_value TestReferenceToArray(napi_env env, napi_callback_info /* info 
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 36: handle scope with double value
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestHandleScopeDouble(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -1077,10 +1026,9 @@ static napi_value TestHandleScopeDouble(napi_env env, napi_callback_info /* info
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 37: set/get property with double value
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestSetGetPropertyDouble(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -1104,10 +1052,9 @@ static napi_value TestSetGetPropertyDouble(napi_env env, napi_callback_info /* i
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Test 38: freeze then verify property names still accessible
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value TestFreezePropertyNames(napi_env env, napi_callback_info /* info */)
 {
     napi_value result = CreateResult(env);
@@ -1130,10 +1077,9 @@ static napi_value TestFreezePropertyNames(napi_env env, napi_callback_info /* in
     return result;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Registration Table
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static const napi_property_descriptor SCOPE_TESTS[] = {
     { "testOpenCloseHandleScope", nullptr, TestOpenCloseHandleScope,
       nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -1218,10 +1164,9 @@ static constexpr size_t SCOPE_TEST_DESCRIPTOR_COUNT =
 
 }  // namespace
 
-// ============================================================================
+// ---------------------------------------------------------------------------
 // Module Initialization and Registration
-// ============================================================================
-
+// ---------------------------------------------------------------------------
 static napi_value InitScopeSuite(napi_env env, napi_value exports)
 {
     NAPI_CALL(env, napi_define_properties(env, exports, SCOPE_TEST_DESCRIPTOR_COUNT, SCOPE_TESTS));
