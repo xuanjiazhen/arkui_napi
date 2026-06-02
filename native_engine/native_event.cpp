@@ -15,9 +15,6 @@
 #include "native_event.h"
 #include <string>
 
-#ifdef ENABLE_CONTAINER_SCOPE_SEND_EVENT
-#include "core/common/container_scope.h"
-#endif
 #include "native_api_internal.h"
 #if defined(ENABLE_EVENT_HANDLER)
 #include "event_handler.h"
@@ -31,7 +28,6 @@
 using namespace OHOS::AppExecFwk;
 #endif
 #ifdef ENABLE_CONTAINER_SCOPE_SEND_EVENT
-using OHOS::Ace::ContainerScope;
 #endif
 
 static constexpr uint64_t INVALID_EVENT_ID = std::numeric_limits<uint64_t>::max();
@@ -281,7 +277,7 @@ napi_status NativeEvent::SendCancelableEvent(const std::function<void(void*)> &c
     int32_t containerScopeId = engine_->GetInstanceId();
     if (__builtin_expect(containerScopeId != -1, 0)) {
         std::function<void()> task = [eng = engine_, callback, data, eventId, containerScopeId]() {
-            ContainerScope containerScope(containerScopeId);
+            NapiContainerScope containerScope(eng, containerScopeId, true);
             auto tcin = TraceLogClass("Cancelable Event callback:handleId:" + std::to_string(eventId));
             auto vm = eng->GetEcmaVm();
             panda::LocalScope scope(vm);

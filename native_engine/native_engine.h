@@ -172,6 +172,17 @@ struct HeapMemoryThreshold {
     double processHeapThreshold;
 };
 
+class NapiContainerScope {
+public:
+    NapiContainerScope(NativeEngine* engine, int32_t scopeId, bool enable);
+    ~NapiContainerScope();
+private:
+    NativeEngine* engine_ {nullptr};
+    int32_t restoreId_ {-1};
+    bool enable_ {false};
+    bool initialized_ {false};
+};
+
 class NAPI_EXPORT NativeEngine {
 public:
     explicit NativeEngine(void* jsEngine);
