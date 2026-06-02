@@ -421,6 +421,17 @@ public:
     virtual bool InitContainerScopeFunc(int32_t id);
     virtual bool FinishContainerScopeFunc(int32_t id);
 
+class NapiContainerScope {
+public:
+    NapiContainerScope(NativeEngine* engine, int32_t scopeId, bool enable);
+    ~NapiContainerScope();
+private:
+    NativeEngine* engine_ {nullptr};
+    int32_t restoreId_ {-1};
+    bool enable_ {false};
+    bool initialized_ {false};
+};
+
 #if !defined(PREVIEW)
     virtual void SetDebuggerPostTaskFunc(DebuggerPostTask func);
     virtual void CallDebuggerPostTaskFunc(std::function<void()>&& task);

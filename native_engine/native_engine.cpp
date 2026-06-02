@@ -650,16 +650,44 @@ bool NativeEngine::CallOffWorkerFunc(NativeEngine* engine)
 // adapt worker to ace container
 void NativeEngine::SetGetContainerScopeIdFunc(GetContainerScopeIdCallback func)
 {
+    if (g_getContainerScopeIdFunc != nullptr) {
+        return;
+    }
     g_getContainerScopeIdFunc = func;
+    HILOG_INFO("SetGetContainerScopeIdFunc success");
 }
 void NativeEngine::SetInitContainerScopeFunc(ContainerScopeCallback func)
 {
+    if (g_initContainerScopeFunc != nullptr) {
+        return;
+    }
     g_initContainerScopeFunc = func;
+    HILOG_INFO("SetInitContainerScopeFunc success");
 }
 void NativeEngine::SetFinishContainerScopeFunc(ContainerScopeCallback func)
 {
+    if (g_finishContainerScopeFunc != nullptr) {
+        return;
+    }
     g_finishContainerScopeFunc = func;
+    HILOG_INFO("SetFinishContainerScopeFunc success");
 }
+
+NapiContainerScope::NapiContainerScope(NativeEngine* engine, int32_t scopeId, bool enable)
+    : engine_(engine), enable_(enable), initialized_(false)
+{
+    if (engine_ != nullptr && enable_) {
+        restoreId_ = engine_->GetContainerScopeIdFunc();
+        initialized_ = engine_->InitContainerScopeFunc(scopeId);
+    }
+}
+NapiContainerScope::~NapiContainerScope()
+{
+    if (engine_ != nullptr && initialized_) {
+        engine_->InitContainerScopeFunc(restoreId_);
+    }
+}
+
 int32_t NativeEngine::GetContainerScopeIdFunc()
 {
     int32_t scopeId = -1;
