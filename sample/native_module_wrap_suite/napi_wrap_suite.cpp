@@ -131,35 +131,26 @@ struct LifecycleData {
 static int32_t g_finalizerCallCount = INITIAL_VALUE;
 static int32_t g_multiFinalizerCount = INITIAL_VALUE;
 
-static void WrapFinalizer(napi_env env, void* data, void* hint)
+static void WrapFinalizer([[maybe_unused]] napi_env env, void* data, [[maybe_unused]] void* hint)
 {
-    (void)env;
-    (void)hint;
     auto* wrap = static_cast<NativeWrapData*>(data);
     delete wrap;
     g_finalizerCallCount++;
 }
 
-static void GenericFinalizer(napi_env env, void* data, void* hint)
+static void GenericFinalizer([[maybe_unused]] napi_env env, [[maybe_unused]] void* data, [[maybe_unused]] void* hint)
 {
-    (void)env;
-    (void)hint;
-    (void)data;
     g_multiFinalizerCount++;
 }
 
-static void LifecycleFinalizer(napi_env env, void* data, void* hint)
+static void LifecycleFinalizer([[maybe_unused]] napi_env env, void* data, [[maybe_unused]] void* hint)
 {
-    (void)env;
-    (void)hint;
     auto* lc = static_cast<LifecycleData*>(data);
     lc->finalized = true;
 }
 
-static void PointFinalizer(napi_env env, void* data, void* hint)
+static void PointFinalizer([[maybe_unused]] napi_env env, void* data, [[maybe_unused]] void* hint)
 {
-    (void)env;
-    (void)hint;
     auto* pt = static_cast<PointData*>(data);
     delete pt;
 }
@@ -187,6 +178,7 @@ static napi_value ArgClassConstructor(napi_env env, napi_callback_info info)
         napi_get_value_int32(env, argv[0], &initVal);
     }
     auto* data = new NativeWrapData{initVal};
+    // NativeWrapData is released by WrapFinalizer when the JS object is garbage-collected.
     NAPI_CALL(env, napi_wrap(env, thisArg, data, WrapFinalizer, nullptr, nullptr));
     return thisArg;
 }
@@ -275,9 +267,8 @@ static napi_value PropInitConstructor(napi_env env, napi_callback_info info)
 // Test Functions
 // ---------------------------------------------------------------------------
 // Test 1: Basic napi_wrap and napi_unwrap
-static napi_value TestBasicWrap(napi_env env, napi_callback_info info)
+static napi_value TestBasicWrap(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value jsObj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &jsObj));
@@ -292,9 +283,8 @@ static napi_value TestBasicWrap(napi_env env, napi_callback_info info)
 }
 
 // Test 2: napi_unwrap returns correct data pointer
-static napi_value TestUnwrapData(napi_env env, napi_callback_info info)
+static napi_value TestUnwrapData(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value jsObj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &jsObj));
@@ -311,9 +301,8 @@ static napi_value TestUnwrapData(napi_env env, napi_callback_info info)
 }
 
 // Test 3: napi_remove_wrap detaches native data
-static napi_value TestRemoveWrap(napi_env env, napi_callback_info info)
+static napi_value TestRemoveWrap(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value jsObj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &jsObj));
@@ -330,9 +319,8 @@ static napi_value TestRemoveWrap(napi_env env, napi_callback_info info)
 }
 
 // Test 4: napi_wrap with finalizer callback
-static napi_value TestWrapWithFinalizer(napi_env env, napi_callback_info info)
+static napi_value TestWrapWithFinalizer(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     g_finalizerCallCount = INITIAL_VALUE;
     napi_value jsObj = nullptr;
@@ -348,9 +336,8 @@ static napi_value TestWrapWithFinalizer(napi_env env, napi_callback_info info)
 }
 
 // Test 5: Multiple wrap/unwrap/remove cycles
-static napi_value TestMultipleWrapCycles(napi_env env, napi_callback_info info)
+static napi_value TestMultipleWrapCycles(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value jsObj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &jsObj));
@@ -372,9 +359,8 @@ static napi_value TestMultipleWrapCycles(napi_env env, napi_callback_info info)
 }
 
 // Test 6: napi_define_class basic
-static napi_value TestDefineClassBasic(napi_env env, napi_callback_info info)
+static napi_value TestDefineClassBasic(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value constructor = nullptr;
     NAPI_CALL(env, napi_define_class(env, "BasicClass", NAPI_AUTO_LENGTH,
@@ -387,9 +373,8 @@ static napi_value TestDefineClassBasic(napi_env env, napi_callback_info info)
 }
 
 // Test 7: napi_define_class with instance method
-static napi_value TestDefineClassWithMethod(napi_env env, napi_callback_info info)
+static napi_value TestDefineClassWithMethod(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_property_descriptor methods[] = {
         {"getValue", nullptr, ClassGetValue, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -408,9 +393,8 @@ static napi_value TestDefineClassWithMethod(napi_env env, napi_callback_info inf
 }
 
 // Test 8: napi_define_class with getter/setter property
-static napi_value TestDefineClassGetterSetter(napi_env env, napi_callback_info info)
+static napi_value TestDefineClassGetterSetter(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_property_descriptor props[] = {
         {"val", nullptr, nullptr, PropertyGetter, PropertySetter, nullptr, napi_default, nullptr},
@@ -426,9 +410,8 @@ static napi_value TestDefineClassGetterSetter(napi_env env, napi_callback_info i
 }
 
 // Test 9: Constructor with arguments
-static napi_value TestConstructorWithArgs(napi_env env, napi_callback_info info)
+static napi_value TestConstructorWithArgs(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value ctor = nullptr;
     NAPI_CALL(env, napi_define_class(env, "ArgClass", NAPI_AUTO_LENGTH,
@@ -446,9 +429,8 @@ static napi_value TestConstructorWithArgs(napi_env env, napi_callback_info info)
 }
 
 // Test 10: napi_new_instance basic
-static napi_value TestNewInstance(napi_env env, napi_callback_info info)
+static napi_value TestNewInstance(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value ctor = nullptr;
     NAPI_CALL(env, napi_define_class(env, "NewInstClass", NAPI_AUTO_LENGTH,
@@ -463,9 +445,8 @@ static napi_value TestNewInstance(napi_env env, napi_callback_info info)
 }
 
 // Test 11: napi_new_instance with multiple arguments
-static napi_value TestNewInstanceWithArgs(napi_env env, napi_callback_info info)
+static napi_value TestNewInstanceWithArgs(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value ctor = nullptr;
     NAPI_CALL(env, napi_define_class(env, "MultiArgClass", NAPI_AUTO_LENGTH,
@@ -482,9 +463,8 @@ static napi_value TestNewInstanceWithArgs(napi_env env, napi_callback_info info)
 }
 
 // Test 12: napi_instanceof
-static napi_value TestInstanceOf(napi_env env, napi_callback_info info)
+static napi_value TestInstanceOf(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value ctor = nullptr;
     NAPI_CALL(env, napi_define_class(env, "InstOfClass", NAPI_AUTO_LENGTH,
@@ -504,9 +484,8 @@ static napi_value TestInstanceOf(napi_env env, napi_callback_info info)
 }
 
 // Test 13: napi_create_object_with_properties
-static napi_value TestCreateObjectWithProperties(napi_env env, napi_callback_info info)
+static napi_value TestCreateObjectWithProperties(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value intVal = nullptr;
     NAPI_CALL(env, napi_create_int32(env, TEST_VALUE_ONE, &intVal));
@@ -529,9 +508,8 @@ static napi_value TestCreateObjectWithProperties(napi_env env, napi_callback_inf
 }
 
 // Test 14: napi_create_object_with_named_properties
-static napi_value TestCreateObjectWithNamedProps(napi_env env, napi_callback_info info)
+static napi_value TestCreateObjectWithNamedProps(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value val1 = nullptr;
     napi_value val2 = nullptr;
@@ -557,9 +535,8 @@ static napi_value TestCreateObjectWithNamedProps(napi_env env, napi_callback_inf
 }
 
 // Test 15: napi_type_tag_object
-static napi_value TestTypeTagObject(napi_env env, napi_callback_info info)
+static napi_value TestTypeTagObject(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -571,9 +548,8 @@ static napi_value TestTypeTagObject(napi_env env, napi_callback_info info)
 }
 
 // Test 16: napi_check_object_type_tag match
-static napi_value TestCheckTypeTagMatch(napi_env env, napi_callback_info info)
+static napi_value TestCheckTypeTagMatch(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -587,9 +563,8 @@ static napi_value TestCheckTypeTagMatch(napi_env env, napi_callback_info info)
 }
 
 // Test 17: napi_check_object_type_tag mismatch
-static napi_value TestCheckTypeTagMismatch(napi_env env, napi_callback_info info)
+static napi_value TestCheckTypeTagMismatch(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -604,9 +579,8 @@ static napi_value TestCheckTypeTagMismatch(napi_env env, napi_callback_info info
 }
 
 // Test 18: napi_add_finalizer
-static napi_value TestAddFinalizer(napi_env env, napi_callback_info info)
+static napi_value TestAddFinalizer(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     g_multiFinalizerCount = INITIAL_VALUE;
     napi_value obj = nullptr;
@@ -619,9 +593,8 @@ static napi_value TestAddFinalizer(napi_env env, napi_callback_info info)
 }
 
 // Test 19: Multiple finalizers on same object
-static napi_value TestMultipleFinalizers(napi_env env, napi_callback_info info)
+static napi_value TestMultipleFinalizers(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     g_multiFinalizerCount = INITIAL_VALUE;
     napi_value obj = nullptr;
@@ -636,9 +609,8 @@ static napi_value TestMultipleFinalizers(napi_env env, napi_callback_info info)
 }
 
 // Test 20: napi_create_function basic
-static napi_value TestCreateFunction(napi_env env, napi_callback_info info)
+static napi_value TestCreateFunction(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value func = nullptr;
     NAPI_CALL(env, napi_create_function(env, "myFunc", NAPI_AUTO_LENGTH,
@@ -651,9 +623,8 @@ static napi_value TestCreateFunction(napi_env env, napi_callback_info info)
 }
 
 // Test 21: napi_create_function with bound data
-static napi_value TestCreateFunctionWithData(napi_env env, napi_callback_info info)
+static napi_value TestCreateFunctionWithData(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     static NativeWrapData boundData = {TEST_VALUE_THREE};
     napi_value func = nullptr;
@@ -687,9 +658,8 @@ static napi_value TestGetCbInfoThisArg(napi_env env, napi_callback_info info)
 }
 
 // Test 23: Property with readonly attribute
-static napi_value TestPropertyReadonly(napi_env env, napi_callback_info info)
+static napi_value TestPropertyReadonly(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -709,9 +679,8 @@ static napi_value TestPropertyReadonly(napi_env env, napi_callback_info info)
 }
 
 // Test 24: Property with writable attribute
-static napi_value TestPropertyWritable(napi_env env, napi_callback_info info)
+static napi_value TestPropertyWritable(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -735,9 +704,8 @@ static napi_value TestPropertyWritable(napi_env env, napi_callback_info info)
 }
 
 // Test 25: Property with enumerable attribute
-static napi_value TestPropertyEnumerable(napi_env env, napi_callback_info info)
+static napi_value TestPropertyEnumerable(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -760,9 +728,8 @@ static napi_value TestPropertyEnumerable(napi_env env, napi_callback_info info)
 }
 
 // Test 26: Property with configurable attribute
-static napi_value TestPropertyConfigurable(napi_env env, napi_callback_info info)
+static napi_value TestPropertyConfigurable(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -780,9 +747,8 @@ static napi_value TestPropertyConfigurable(napi_env env, napi_callback_info info
 }
 
 // Test 27: napi_define_properties with multiple descriptors
-static napi_value TestDefinePropertiesMultiple(napi_env env, napi_callback_info info)
+static napi_value TestDefinePropertiesMultiple(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -818,9 +784,8 @@ static napi_value TestDefinePropertiesMultiple(napi_env env, napi_callback_info 
 }
 
 // Test 28: napi_define_properties with getter/setter
-static napi_value TestDefinePropsGetterSetter(napi_env env, napi_callback_info info)
+static napi_value TestDefinePropsGetterSetter(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value ctor = nullptr;
     napi_property_descriptor classMethods[] = {
@@ -846,9 +811,8 @@ static napi_value TestDefinePropsGetterSetter(napi_env env, napi_callback_info i
 }
 
 // Test 29: Class inheritance via prototype chain
-static napi_value TestClassInheritance(napi_env env, napi_callback_info info)
+static napi_value TestClassInheritance(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     // Define base class
     napi_property_descriptor baseMethods[] = {
@@ -880,9 +844,8 @@ static napi_value TestClassInheritance(napi_env env, napi_callback_info info)
 }
 
 // Test 30: Native data lifecycle management
-static napi_value TestNativeDataLifecycle(napi_env env, napi_callback_info info)
+static napi_value TestNativeDataLifecycle(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     static LifecycleData lcData = {TEST_VALUE_ONE, false};
     lcData.finalized = false;
@@ -897,9 +860,8 @@ static napi_value TestNativeDataLifecycle(napi_env env, napi_callback_info info)
 }
 
 // Test 31: Constructor with property initialization
-static napi_value TestConstructorPropertyInit(napi_env env, napi_callback_info info)
+static napi_value TestConstructorPropertyInit(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value ctor = nullptr;
     NAPI_CALL(env, napi_define_class(env, "PropInitClass", NAPI_AUTO_LENGTH,
@@ -920,9 +882,8 @@ static napi_value TestConstructorPropertyInit(napi_env env, napi_callback_info i
 }
 
 // Test 32: Wrap with PointData and verify coordinates
-static napi_value TestWrapPointData(napi_env env, napi_callback_info info)
+static napi_value TestWrapPointData(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -939,9 +900,8 @@ static napi_value TestWrapPointData(napi_env env, napi_callback_info info)
 }
 
 // Test 33: Wrap with ref output and verify ref
-static napi_value TestWrapWithRef(napi_env env, napi_callback_info info)
+static napi_value TestWrapWithRef(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -957,17 +917,15 @@ static napi_value TestWrapWithRef(napi_env env, napi_callback_info info)
 }
 
 // Test 34: Define class with static and instance methods mixed
-static napi_value StaticMethodCallback(napi_env env, napi_callback_info info)
+static napi_value StaticMethodCallback(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_int32(env, TEST_VALUE_FOUR, &result));
     return result;
 }
 
-static napi_value TestDefineClassMixed(napi_env env, napi_callback_info info)
+static napi_value TestDefineClassMixed(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_property_descriptor props[] = {
         {"getValue", nullptr, ClassGetValue, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -986,9 +944,8 @@ static napi_value TestDefineClassMixed(napi_env env, napi_callback_info info)
 }
 
 // Test 35: Type tag with wrap combination
-static napi_value TestTypeTagWithWrap(napi_env env, napi_callback_info info)
+static napi_value TestTypeTagWithWrap(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
@@ -1010,9 +967,8 @@ static napi_value TestTypeTagWithWrap(napi_env env, napi_callback_info info)
 }
 
 // Test 36: Create object with all property attribute combinations
-static napi_value TestAllPropertyAttributes(napi_env env, napi_callback_info info)
+static napi_value TestAllPropertyAttributes(napi_env env, [[maybe_unused]] napi_callback_info info)
 {
-    (void)info;
     napi_value result = CreateResult(env);
     napi_value obj = nullptr;
     NAPI_CALL(env, napi_create_object(env, &obj));
