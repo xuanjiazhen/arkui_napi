@@ -227,7 +227,11 @@ void ArkIdleMonitor::IntervalMonitor()
             intervalDuration < static_cast<int64_t>(gDelayOverTime)) {
         triggerTaskStartTimestamp_ = nowTimestamp;
         if (IsInBackground()) {
-            TryTriggerCompressGCOfProcess();
+            if (enableIdleProcessGCBackground_) {
+                TryTriggerCompressGCOfProcess();
+            } else {
+                HILOG_INFO("ArkIdleMonitor: not enable background gc.");
+            }
         } else {
             NotifyMainThreadTryCompressGC();
         }
@@ -421,6 +425,9 @@ uint64_t ArkIdleMonitor::GetIdleMonitoringInterval()
 
 void ArkIdleMonitor::NotifyChangeBackgroundState(bool inBackground)
 {
+    if (enableIdleProcessGCBackground_) {
+        enableIdleProcessGCBackground_ = false;
+    }
     ClearIdleStats();
 #if defined(ENABLE_FFRT)
     if (started_ && inBackground) {
