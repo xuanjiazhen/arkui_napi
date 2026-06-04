@@ -434,6 +434,9 @@ void ArkIdleMonitor::NotifyChangeBackgroundState(bool inBackground)
     if (!started_ && inBackground) {
         HILOG_DEBUG("ArkIdleMonitor change to background but not started idle check");
     }
+    if (!enableIdleProcessGCBackground_) {
+        enableIdleProcessGCBackground_ = true;
+    }
 }
 
 double ArkIdleMonitor::GetCpuUsage() const
@@ -700,6 +703,9 @@ bool ArkIdleMonitor::CheckIfInBackgroundInCompressGC()
 
 void ArkIdleMonitor::TryTriggerCompressGCOfProcess()
 {
+    if (!enableIdleProcessGCBackground_) {
+        return;
+    }
     NotifyNeedFreeze(false);
 #ifndef ENABLE_EVENT_HANDLER
     HILOG_WARN("ArkIdleMonitor: not enable ENABLE_EVENT_HANDLER");
