@@ -295,6 +295,7 @@ private:
     void PostSwitchBackgroundGCTask();
     void ReportDataToRSS(bool needFreeze);
     void TryTriggerCompressGCOfProcess();
+    void TryTriggerWorkerLocalGC();
     static uint64_t GetIdleMonitoringInterval();
 
     EcmaVM* mainVM_;
@@ -319,6 +320,8 @@ private:
     static constexpr uint32_t IDLE_WORKER_TRIGGER_COUNT = 1; // it needs over IDLE_INBACKGROUND_CHECK_LENGTH
     static constexpr uint32_t IDLE_WORKER_CHECK_TASK_COUNT = 4;
     static constexpr uint32_t IDLE_WORKER_CHECK_TASK_COUNT_BACKGROUND = 1;
+    static constexpr uint32_t IDLE_WORKER_GC_CHECK_COUNT = 3; // worker local gc only fires when checkCount % N == 0
+    static constexpr int64_t IDLE_WORKER_GC_COOLDOWN_MS = 30000; // 30s cooldown between worker local gc triggers
     // It needs to be synchronized with ResType in the res_type.h file.
     static constexpr uint32_t RES_TYPE_GC_EVENT = 185;
     static constexpr size_t IDLE_MIN_EXPECT_RECLAIM_SIZE = 1_MB;
@@ -336,6 +339,7 @@ private:
     int64_t startRecordTimestamp_ {0};
     int64_t intervalTimestamp_ {0};
     int64_t triggerTaskStartTimestamp_ {0};
+    int64_t lastWorkerLocalGCTimestamp_ {0};
     bool started_ {false};
     bool triggeredGC_ {false};
     bool needCheckIntervalIdle_ = {true};
