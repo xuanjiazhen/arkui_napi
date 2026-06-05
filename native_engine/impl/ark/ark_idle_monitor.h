@@ -295,6 +295,7 @@ private:
     void PostSwitchBackgroundGCTask();
     void ReportDataToRSS(bool needFreeze);
     void TryTriggerCompressGCOfProcess();
+    void TryTriggerWorkerLocalGC();
     static uint64_t GetIdleMonitoringInterval();
 
     EcmaVM* mainVM_;
