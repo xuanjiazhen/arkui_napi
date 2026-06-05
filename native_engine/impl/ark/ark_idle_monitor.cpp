@@ -469,6 +469,9 @@ bool ArkIdleMonitor::CheckIntervalIdle(int64_t timestamp, int64_t idleDuration)
     if (idlePercentage > SHORT_IDLE_RATIO && mainVM_!= nullptr) {
         auto task = [this]() {
             triggeredGC_ = JSNApi::NotifyLooperIdleStart(mainVM_, 0, 0);
+            if (!IsInBackground()) {
+                TryTriggerWorkerLocalGC();
+            }
             needCheckIntervalIdle_ = false;
             handlerWaitToStopCount_++;
             // If GC is triggered, reset the statistics to avoid triggering monitoring tasks continuously.
@@ -696,6 +699,82 @@ bool ArkIdleMonitor::CheckIfInBackgroundInCompressGC()
         return false;
     }
     return true;
+}
+
+void ArkIdleMonitor::TryTriggerWorkerLocalGC()
+{
+    HILOG_DEBUG("ArkIdleMonitor: try trigger worker local gc");
+    int64_t nowTimestamp = std::chrono::time_point_cast<std::chrono::milliseconds>(
+        std::chrono::high_resolution_clock::now()).time_since_epoch().count();
+    if (nowTimestamp - lastWorkerLocalGCTimestamp_ < IDLE_WORKER_GC_COOLDOWN_MS) {
+        HILOG_DEBUG("ArkIdleMonitor: worker local gc in cooldown, last triggered %{public}s ms ago",
+                    std::to_string(nowTimestamp - lastWorkerLocalGCTimestamp_).c_str());
+        return;
+    }
+    size_t triggeredCount = 0;
+    size_t skippedCount = 0;
+    std::lock_guard<std::mutex> vectorLock(envVectorMutex_);
+    for (size_t index = 0; index < workerEnvVector_.size();) {
+        WorkerLocalGCResult result = ProcessWorkerEnvLocalGC(workerEnvVector_.at(index));
+        if (result == WorkerLocalGCResult::TRIGGERED) {
+            triggeredCount++;
+        } else {
+            skippedCount++;
+        }
+        if (result == WorkerLocalGCResult::ERASED) {
+            workerEnvVector_.erase(workerEnvVector_.begin() + index);
+        } else {
+            index++;
+        }
+    }
+    if (triggeredCount > 0) {
+        lastWorkerLocalGCTimestamp_ = nowTimestamp;
+        HILOG_INFO("ArkIdleMonitor: worker local gc triggered:%{public}zu, skipped:%{public}zu", triggeredCount,
+                   skippedCount);
+    } else {
+        HILOG_DEBUG("ArkIdleMonitor: worker local gc skipped all:%{public}zu", skippedCount);
+    }
+}
+
+ArkIdleMonitor::WorkerLocalGCResult ArkIdleMonitor::ProcessWorkerEnvLocalGC(napi_env workerEnv)
+{
+    auto arkNativeEngine = reinterpret_cast<ArkNativeEngine*>(workerEnv);
+#if (defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM))
+    if (kill(arkNativeEngine->GetSysTid(), 0) != 0) {
+        HILOG_ERROR("ArkIdleMonitor: tid: %{public}u is dead!", arkNativeEngine->GetSysTid());
+        return WorkerLocalGCResult::ERASED;
+    }
+#endif
+    if (IsSentTask(workerEnv)) {
+        HILOG_DEBUG("ArkIdleMonitor: tid: %{public}u is not respond!", arkNativeEngine->GetSysTid());
+        return WorkerLocalGCResult::SKIPPED;
+    }
+    uint32_t checkCount = arkNativeEngine->GetWorkerThreadState()->GetCheckCount();
+    if (checkCount == 0 || checkCount % IDLE_WORKER_GC_CHECK_COUNT != 0) {
+        HILOG_DEBUG("ArkIdleMonitor: tid: %{public}u checkCount:%{public}u skip",
+                    arkNativeEngine->GetSysTid(), checkCount);
+        return WorkerLocalGCResult::SKIPPED;
+    }
+    if (arkNativeEngine->IsNativeThread()) {
+        HILOG_DEBUG("ArkIdleMonitor: tid: %{public}u is native thread.", arkNativeEngine->GetSysTid());
+        return WorkerLocalGCResult::SKIPPED;
+    }
+    size_t expectedSize = JSNApi::GetEcmaVMExpectedMemoryReclamationSize(arkNativeEngine->GetEcmaVm());
+    if (expectedSize <= IDLE_MIN_EXPECT_RECLAIM_SIZE) {
+        HILOG_DEBUG("ArkIdleMonitor: tid: %{public}u expectedSize:%{public}zu too small",
+                    arkNativeEngine->GetSysTid(), expectedSize);
+        return WorkerLocalGCResult::SKIPPED;
+    }
+    std::pair<void*, uint8_t> data(reinterpret_cast<void*>(const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm())),
+                                   static_cast<uint8_t>(TRIGGER_IDLE_GC_TYPE::FULL_GC));
+    auto callbackTask = [this, workerEnv]() {
+        HILOG_DEBUG("ArkIdleMonitor: try trigger thread full gc end");
+        UnRegisterSentTaskWorkerEnv(workerEnv);
+    };
+    HILOG_DEBUG("ArkIdleMonitor: try trigger thread full gc start,tid: %{public}u", arkNativeEngine->GetSysTid());
+    RegisterSentTaskWorkerEnv(workerEnv);
+    arkNativeEngine->PostTriggerGCTask(data, callbackTask);
+    return WorkerLocalGCResult::TRIGGERED;
 }
 
 void ArkIdleMonitor::TryTriggerCompressGCOfProcess()
