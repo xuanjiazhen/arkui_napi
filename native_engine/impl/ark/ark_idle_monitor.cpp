@@ -282,9 +282,7 @@ void ArkIdleMonitor::NotifyMainThreadTryCompressGC()
     }
     auto task = [this]() {
         JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::FULL_GC);
-        if (CheckWorkerEnvQueueAllInIdle(IDLE_WORKER_TRIGGER_COUNT)) {
-            JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
-        }
+        TriggerWorkerThreadIdleGC();
     };
     mainThreadHandler_->PostTask(task, "ARKTS_IDLE_COMPRESS", 0, OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
 #endif
@@ -696,6 +694,53 @@ bool ArkIdleMonitor::CheckIfInBackgroundInCompressGC()
         return false;
     }
     return true;
+}
+
+void ArkIdleMonitor::TriggerWorkerThreadIdleGC()
+{
+    std::lock_guard<std::mutex> vectorLock(envVectorMutex_);
+    for (size_t index = 0; index < workerEnvVector_.size(); /* managed in loop */) {
+        auto it = workerEnvVector_.at(index);
+        auto arkNativeEngine = reinterpret_cast<ArkNativeEngine*>(it);
+#if (defined(LINUX_PLATFORM) || defined(OHOS_PLATFORM))
+        if (kill(arkNativeEngine->GetSysTid(), 0) != 0) {
+            HILOG_ERROR("ArkIdleMonitor: tid: %{public}u is dead!", arkNativeEngine->GetSysTid());
+            workerEnvVector_.erase(workerEnvVector_.begin() + index);
+            continue;
+        }
+#endif
+        if (IsSentTask(it)) {
+            HILOG_DEBUG("ArkIdleMonitor: tid: %{public}u is not respond!", arkNativeEngine->GetSysTid());
+            index++;
+            continue;
+        }
+        if (arkNativeEngine->GetWorkerThreadState()->GetCheckCount() == 0) {
+            index++;
+            continue;
+        }
+        if (arkNativeEngine->IsNativeThread()) {
+            HILOG_DEBUG("ArkIdleMonitor: tid: %{public}u is native thread.", arkNativeEngine->GetSysTid());
+            index++;
+            continue;
+        }
+        size_t expectedSize = JSNApi::GetEcmaVMExpectedMemoryReclamationSize(arkNativeEngine->GetEcmaVm());
+        if (expectedSize <= IDLE_MIN_EXPECT_RECLAIM_SIZE) {
+            index++;
+            continue;
+        }
+        std::pair<void*, uint8_t> data(reinterpret_cast<void*>(
+            const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm())),
+            static_cast<uint8_t>(TRIGGER_IDLE_GC_TYPE::FULL_GC));
+        auto callbackTask = [this, it]() {
+            HILOG_DEBUG("ArkIdleMonitor: try trigger thread full gc end");
+            UnRegisterSentTaskWorkerEnv(it);
+        };
+        HILOG_DEBUG("ArkIdleMonitor: try trigger thread full gc start,tid: %{public}u",
+            arkNativeEngine->GetSysTid());
+        RegisterSentTaskWorkerEnv(it);
+        arkNativeEngine->PostTriggerGCTask(data, callbackTask);
+        index++;
+    }
 }
 
 void ArkIdleMonitor::TryTriggerCompressGCOfProcess()
