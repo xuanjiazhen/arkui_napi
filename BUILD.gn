@@ -380,8 +380,10 @@ if (!ark_standalone_build) {
 
     include_dirs = [ "interfaces/inner_api/cjffi" ]
 
-    external_deps = [ "hilog:libhilog" ]
-    public_external_deps = [ "c_utils:utils" ]
+    external_deps = [
+      "hilog:libhilog",
+      "c_utils:utils",
+    ]
 
     innerapi_tags = [ "platformsdk" ]
     subsystem_name = "arkui"
