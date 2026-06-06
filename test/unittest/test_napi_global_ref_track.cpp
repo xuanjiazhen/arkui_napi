@@ -128,3 +128,44 @@ HWTEST_F(NapiGlobalRefTrackTest, TestDisableClearsAllMappings, testing::ext::Tes
 
     napi_delete_reference(env, ref);
 }
+
+// Bug: ~NativeEngine() calls cleanEnv_() before FinalizerInstanceData().
+//   1. cleanEnv_()            -> DestroyJSVM(vm) -> VM destroyed
+//   2. FinalizerInstanceData() -> user callback runs with half-destroyed engine
+//
+// The finalize callback calls MockDeleteReference (replicating the unfixed
+// napi_delete_reference logic). GetEcmaVm() is a virtual function on the
+// half-destroyed engine (ArkNativeEngine dtor done, vtable = NativeEngine base),
+// triggering "Pure virtual function called!" crash.
+HWTEST_F(NapiGlobalRefTrackTest, TestDeleteRefInInstanceDataFinalize, testing::ext::TestSize.Level1)
+{
+    BasicDeathTest deathTest([]() {
+        NativeEngineProxy proxy;
+
+        napi_set_store_global_ref(proxy, true);
+
+        napi_value obj = nullptr;
+        napi_create_object(proxy, &obj);
+
+        napi_ref ref = nullptr;
+        napi_create_reference(proxy, obj, 1, &ref);
+
+        struct CallbackData {
+            napi_ref ref;
+        };
+        auto* cbData = new CallbackData{ref};
+
+        napi_set_instance_data(
+            proxy, cbData,
+            [](napi_env env, void* data, void* /*hint*/) {
+                auto* d = static_cast<CallbackData*>(data);
+                write(STDERR_FILENO, "VM_UAF_CRASH\n", 13);
+                // Call mock of unfixed napi_delete_reference
+                napi_delete_reference(env, d->ref);
+                delete d;
+            },
+            nullptr);
+    });
+    deathTest.AssertError("VM_UAF_CRASH").AssertError("Pure virtual function called!");
+    ASSERT_TRUE(deathTest.GetResult());
+}
