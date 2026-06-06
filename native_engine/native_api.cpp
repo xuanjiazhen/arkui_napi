@@ -2489,9 +2489,14 @@ NAPI_EXTERN napi_status napi_create_reference(napi_env env,
     // Register global ref mapping for heap snapshot tracking
     EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
     if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled(vm)) {
-        uintptr_t slotAddress = ref->GetGlobalRefSlotAddress();
-        if (slotAddress != 0) {
-            panda::JSNApi::StoreGlobalRefMapping(vm, slotAddress, reinterpret_cast<void*>(ref));
+        auto reference = reinterpret_cast<ArkNativeReference*>(ref);
+        if (!reference->IsEmpty()) {
+            auto refValue = reference->Get();
+            if (refValue != nullptr) {
+                auto taggedValue = *reinterpret_cast<panda::JSTaggedType*>(
+                    *LocalValueFromJsValue(refValue));
+                panda::JSNApi::StoreGlobalRefMapping(vm, reinterpret_cast<void*>(ref), taggedValue);
+            }
         }
     }
 
@@ -2512,10 +2517,7 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
     auto engine = reinterpret_cast<ArkNativeEngine*>(env);
     EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
     if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled(vm)) {
-        uintptr_t slotAddress = reference->GetGlobalRefSlotAddress();
-        if (slotAddress != 0) {
-            panda::JSNApi::EraseGlobalRefMapping(vm, slotAddress);
-        }
+        panda::JSNApi::EraseGlobalRefMapping(vm, reinterpret_cast<void*>(ref));
     }
 
     uint32_t refCount = reference->GetRefCount();
