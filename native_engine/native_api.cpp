@@ -2488,10 +2488,10 @@ NAPI_EXTERN napi_status napi_create_reference(napi_env env,
 
     // Register global ref mapping for heap snapshot tracking
     if (!engine->IsInDestructor()) {
-        EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-        if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled(vm)) {
+        if (panda::JSNApi::IsTrackGlobalRefEnabled()) {
             uintptr_t slotAddress = ref->GetGlobalRefSlotAddress();
             if (slotAddress != 0) {
+                EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
                 panda::JSNApi::StoreGlobalRefMapping(vm, slotAddress, reinterpret_cast<void*>(ref));
             }
         }
@@ -2513,10 +2513,10 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
     // Unregister global ref mapping before deletion
     auto engine = reinterpret_cast<ArkNativeEngine*>(env);
     if (!engine->IsInDestructor()) {
-        EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-        if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled(vm)) {
+        if (panda::JSNApi::IsTrackGlobalRefEnabled()) {
             uintptr_t slotAddress = reference->GetGlobalRefSlotAddress();
             if (slotAddress != 0) {
+                EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
                 panda::JSNApi::EraseGlobalRefMapping(vm, slotAddress);
             }
         }
@@ -2590,8 +2590,7 @@ NAPI_EXTERN napi_status napi_get_reference_value(napi_env env, napi_ref ref, nap
 NAPI_EXTERN napi_status napi_set_store_global_ref(napi_env env, bool enable)
 {
     NAPI_PREAMBLE(env);
-    auto engine = reinterpret_cast<NativeEngine*>(env);
-    panda::JSNApi::SetTrackGlobalRef(const_cast<EcmaVM*>(engine->GetEcmaVm()), enable);
+    panda::JSNApi::SetTrackGlobalRef(enable);
     return GET_RETURN_STATUS(env);
 }
 
