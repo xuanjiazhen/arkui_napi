@@ -2488,7 +2488,7 @@ NAPI_EXTERN napi_status napi_create_reference(napi_env env,
 
     // Register global ref mapping for heap snapshot tracking
     EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-    if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled(vm)) {
+    if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled()) {
         uintptr_t slotAddress = ref->GetGlobalRefSlotAddress();
         if (slotAddress != 0) {
             panda::JSNApi::StoreGlobalRefMapping(vm, slotAddress, reinterpret_cast<void*>(ref));
@@ -2511,7 +2511,7 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
     // Unregister global ref mapping before deletion
     auto engine = reinterpret_cast<ArkNativeEngine*>(env);
     EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-    if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled(vm)) {
+    if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled()) {
         uintptr_t slotAddress = reference->GetGlobalRefSlotAddress();
         if (slotAddress != 0) {
             panda::JSNApi::EraseGlobalRefMapping(vm, slotAddress);
@@ -2587,8 +2587,23 @@ NAPI_EXTERN napi_status napi_set_store_global_ref(napi_env env, bool enable)
 {
     NAPI_PREAMBLE(env);
     auto engine = reinterpret_cast<NativeEngine*>(env);
-    panda::JSNApi::SetTrackGlobalRef(const_cast<EcmaVM*>(engine->GetEcmaVm()), enable);
+    panda::JSNApi::SetTrackGlobalRef(enable);
     return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_ref_get_value(napi_env env, napi_ref ref, uint64_t* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+    auto reference = reinterpret_cast<NativeReference*>(ref);
+    auto value = reference->Get();
+    if (value == nullptr) {
+        *result = 0;
+        return napi_clear_last_error(env);
+    }
+    *result = LocalValueFromJsValue(value)->GetValue();
+    return napi_clear_last_error(env);
 }
 
 NAPI_EXTERN napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result)
