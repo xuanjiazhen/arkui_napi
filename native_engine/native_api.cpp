@@ -2489,9 +2489,10 @@ NAPI_EXTERN napi_status napi_create_reference(napi_env env,
     // Register global ref mapping for heap snapshot tracking
     EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
     if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled(vm)) {
-        uintptr_t slotAddress = ref->GetGlobalRefSlotAddress();
-        if (slotAddress != 0) {
-            panda::JSNApi::StoreGlobalRefMapping(vm, slotAddress, reinterpret_cast<void*>(ref));
+        uint64_t taggedValue = 0;
+        napi_ref_get_value(env, reinterpret_cast<napi_ref>(ref), &taggedValue);
+        if (taggedValue != 0) {
+            panda::JSNApi::StoreGlobalRefMapping(vm, reinterpret_cast<void*>(ref), taggedValue);
         }
     }
 
@@ -2512,10 +2513,7 @@ NAPI_EXTERN napi_status napi_delete_reference(napi_env env, napi_ref ref)
     auto engine = reinterpret_cast<ArkNativeEngine*>(env);
     EcmaVM* vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
     if (vm != nullptr && panda::JSNApi::IsTrackGlobalRefEnabled(vm)) {
-        uintptr_t slotAddress = reference->GetGlobalRefSlotAddress();
-        if (slotAddress != 0) {
-            panda::JSNApi::EraseGlobalRefMapping(vm, slotAddress);
-        }
+        panda::JSNApi::EraseGlobalRefMapping(vm, reinterpret_cast<void*>(ref));
     }
 
     uint32_t refCount = reference->GetRefCount();
@@ -2589,6 +2587,25 @@ NAPI_EXTERN napi_status napi_set_store_global_ref(napi_env env, bool enable)
     auto engine = reinterpret_cast<NativeEngine*>(env);
     panda::JSNApi::SetTrackGlobalRef(const_cast<EcmaVM*>(engine->GetEcmaVm()), enable);
     return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_ref_get_value(napi_env env, napi_ref ref, uint64_t* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+    auto reference = reinterpret_cast<NativeReference*>(ref);
+    if (reference->IsEmpty()) {
+        *result = 0;
+        return napi_clear_last_error(env);
+    }
+    auto value = reference->Get();
+    if (value == nullptr) {
+        *result = 0;
+        return napi_clear_last_error(env);
+    }
+    *result = *reinterpret_cast<uint64_t*>(*LocalValueFromJsValue(value));
+    return napi_clear_last_error(env);
 }
 
 NAPI_EXTERN napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result)
