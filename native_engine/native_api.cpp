@@ -2591,6 +2591,21 @@ NAPI_EXTERN napi_status napi_set_store_global_ref(napi_env env, bool enable)
     return GET_RETURN_STATUS(env);
 }
 
+NAPI_EXTERN napi_status napi_ref_get_value(napi_env env, napi_ref ref, uint64_t* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, ref);
+    CHECK_ARG(env, result);
+    auto reference = reinterpret_cast<NativeReference*>(ref);
+    auto value = reference->Get();
+    if (value == nullptr) {
+        *result = 0;
+        return napi_clear_last_error(env);
+    }
+    *result = LocalValueFromJsValue(value)->GetValue();
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result)
 {
     CHECK_ENV(env);
