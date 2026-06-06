@@ -18311,3 +18311,63 @@ HWTEST_F(NapiBasicTest, NapiPropertyWithCallsiteInfoValueTypesTest001, testing::
     ASSERT_CHECK_CALL(napi_get_property_with_callsite_info(env, obj, undefKey, getInfo, &undefResult, nullptr));
     ASSERT_CHECK_VALUE_TYPE(env, undefResult, napi_undefined);
 }
+
+struct InstanceDataWithRef {
+    napi_ref ref;
+    bool finalizeCalled;
+};
+
+static void FinalizeDeleteRefInInstanceData(napi_env env, void* rawData, void* hint)
+{
+    InstanceDataWithRef* data = reinterpret_cast<InstanceDataWithRef*>(rawData);
+    data->finalizeCalled = true;
+    if (data->ref != nullptr) {
+        napi_delete_reference(env, data->ref);
+        data->ref = nullptr;
+    }
+    delete data;
+}
+
+/**
+ * @tc.name: DeleteReferenceInInstanceDataFinalizeTest001
+ * @tc.desc: Test that napi_delete_reference can be safely called from a
+ *           napi_set_instance_data finalize callback during engine destruction.
+ *           The sequence is: napi_create_reference -> napi_set_instance_data(callback
+ *           that calls napi_delete_reference) -> destroy engine. During destruction,
+ *           cleanEnv_() destroys the EcmaVM before FinalizerInstanceData() runs, so
+ *           napi_delete_reference must not dereference a destroyed VM pointer via
+ *           const_cast<EcmaVM*>(engine->GetEcmaVm()).
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, DeleteReferenceInInstanceDataFinalizeTest001, testing::ext::TestSize.Level1)
+{
+    // Use NativeEngineProxy so the engine is destroyed at end of scope,
+    // triggering the finalize callback via ~NativeEngine -> FinalizerInstanceData.
+    NativeEngineProxy engine;
+    ASSERT_NE(*engine, nullptr);
+    napi_env env = static_cast<napi_env>(engine);
+
+    // Create an object and a strong reference to it.
+    napi_value obj = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+    napi_ref ref = nullptr;
+    ASSERT_CHECK_CALL(napi_create_reference(env, obj, 1, &ref));
+
+    // Store the ref in instance data with a finalize callback that deletes it.
+    InstanceDataWithRef* data = new InstanceDataWithRef();
+    data->ref = ref;
+    data->finalizeCalled = false;
+    ASSERT_CHECK_CALL(napi_set_instance_data(env, data, FinalizeDeleteRefInInstanceData, nullptr));
+
+    // Verify instance data is retrievable while engine is alive.
+    InstanceDataWithRef* getData = nullptr;
+    ASSERT_CHECK_CALL(napi_get_instance_data(env, reinterpret_cast<void**>(&getData)));
+    ASSERT_EQ(getData, data);
+    ASSERT_EQ(getData->ref, ref);
+
+    // When `engine` goes out of scope, ~NativeEngine() runs:
+    //   1. cleanEnv_() destroys the EcmaVM
+    //   2. FinalizerInstanceData() invokes FinalizeDeleteRefInInstanceData
+    //   3. FinalizeDeleteRefInInstanceData calls napi_delete_reference -> accesses GetEcmaVm()
+    // This must not crash or cause use-after-free.
+}
