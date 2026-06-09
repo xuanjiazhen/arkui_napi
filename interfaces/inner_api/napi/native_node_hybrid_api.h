@@ -74,6 +74,21 @@ NAPI_EXTERN napi_status napi_unwrap_hybrid_s(napi_env env, napi_value js_object,
                                              void** result);
 NAPI_EXTERN napi_status napi_ref_get_vm(napi_ref ref, uintptr_t &result);
 NAPI_EXTERN napi_status napi_ref_get_value(napi_ref ref, uintptr_t &result);
+NAPI_EXTERN napi_status napi_trigger_fullgc(napi_env env);
+/**
+ * @brief Get primitive string value from string or String wrapper object
+ *
+ * This function checks if the value is a primitive string or a String wrapper object.
+ * If it's a String wrapper object, it calls valueOf() to extract the primitive string.
+ * For other types, it returns napi_string_expected error.
+ *
+ * @param env The native engine environment
+ * @param value The value to check and convert
+ * @param result The result primitive string value
+ *
+ * @return napi_status Return napi_ok if successful, napi_string_expected if not a string type
+ */
+ NAPI_EXTERN napi_status napi_get_primitive_string_value(napi_env env, napi_value value, napi_value* result);
 
 // XGC specific internal API
 #ifdef PANDA_JS_ETS_HYBRID_MODE

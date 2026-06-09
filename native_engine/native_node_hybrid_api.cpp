@@ -16,6 +16,7 @@
 #define NAPI_EXPERIMENTAL
 #include <string>
 #include <variant>
+
 #include "napi/native_node_api.h"
 #endif
 
@@ -49,8 +50,10 @@ NAPI_EXTERN napi_status napi_load_module_with_info_hybrid(napi_env env,
     return GET_RETURN_STATUS(env);
 }
 
-NAPI_EXTERN napi_status napi_load_module_with_module_request(napi_env env, const char* request_name,
-                                                             napi_value* result, const char* abcFilePath)
+NAPI_EXTERN napi_status napi_load_module_with_module_request(napi_env env,
+                                                             const char* request_name,
+                                                             napi_value* result,
+                                                             const char* abcFilePath)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, request_name);
@@ -98,7 +101,7 @@ NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env, napi_val
     panda::JsiFastNativeScope fastNativeScope(vm);
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
     Local<panda::StringRef> stringVal(nativeValue);
-    auto &strRef = *reinterpret_cast<std::variant<std::string, std::u16string>*>(string_object);
+    auto& strRef = *reinterpret_cast<std::variant<std::string, std::u16string>*>(string_object);
 
     // Get string length and calculate initial buffer size
     // Compressed strings need less space, uncompressed strings may need up to 4 bytes per UTF-16 char
@@ -109,11 +112,11 @@ NAPI_EXTERN napi_status napi_get_value_string_utf8_hybrid(napi_env env, napi_val
     auto isCompressed = stringVal->IsCompressed(vm);
     uint32_t copied = 0;
     if (isCompressed) {
-        auto &strU8 = strRef.emplace<std::string>();
+        auto& strU8 = strRef.emplace<std::string>();
         strU8.resize(stringLen);
         copied = stringVal->WriteUtf8(vm, strU8.data(), stringLen, true);
     } else {
-        auto &strU16 = strRef.emplace<std::u16string>();
+        auto& strU16 = strRef.emplace<std::u16string>();
         strU16.resize(stringLen);
         copied = stringVal->WriteUtf16(vm, strU16.data(), stringLen);
     }
@@ -191,6 +194,75 @@ NAPI_EXTERN napi_status napi_ref_get_value(napi_ref ref, uintptr_t &result)
     }
     result = *reinterpret_cast<panda::JSTaggedType *>(*LocalValueFromJsValue(value));
     return napi_ok;
+}
+
+NAPI_EXTERN napi_status napi_get_primitive_string_value(napi_env env, napi_value value, napi_value* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<ArkNativeEngine*>(env)->GetEcmaVm();
+    panda::JsiFastNativeScope fastNativeScope(vm);
+
+    // Check if it's a primitive string
+    if (nativeValue->IsString(vm)) {
+        *result = value;
+        return napi_clear_last_error(env);
+    }
+
+    // Check if it's a String wrapper object
+    if (nativeValue->IsObject(vm)) {
+        Local<panda::ObjectRef> objRef(nativeValue);
+        
+        // Get global object (use implementation from napi_get_global)
+        Local<panda::ObjectRef> global = panda::JSNApi::GetGlobalObject(vm);
+        
+        // Get String constructor (use implementation from napi_get_named_property)
+        Local<panda::JSValueRef> stringConstructorValue =
+            panda::JSNApi::NapiGetNamedProperty(vm, reinterpret_cast<uintptr_t>(*global), "String");
+        if (!NapiStatusValidationCheck(stringConstructorValue)) {
+            return napi_set_last_error(env, napi_generic_failure);
+        }
+        if (!stringConstructorValue->IsFunction(vm)) {
+            return napi_set_last_error(env, napi_generic_failure);
+        }
+        Local<panda::FunctionRef> stringConstructor(stringConstructorValue);
+        
+        // Check if value is instanceof String (use implementation from napi_instanceof)
+        bool isStringInstance = objRef->InstanceOf(vm, stringConstructor);
+        if (!isStringInstance) {
+            return napi_set_last_error(env, napi_string_expected);
+        }
+        
+        // Get valueOf method (use implementation from napi_get_named_property)
+        Local<panda::JSValueRef> valueOfMethodValue =
+            panda::JSNApi::NapiGetNamedProperty(vm, reinterpret_cast<uintptr_t>(*objRef), "valueOf");
+        if (!NapiStatusValidationCheck(valueOfMethodValue)) {
+            return napi_set_last_error(env, napi_generic_failure);
+        }
+        if (!valueOfMethodValue->IsFunction(vm)) {
+            return napi_set_last_error(env, napi_generic_failure);
+        }
+        Local<panda::FunctionRef> valueOfMethod(valueOfMethodValue);
+        
+        panda::JSValueRef* primitiveValue =
+            valueOfMethod->CallForNapi(vm, *objRef, nullptr, 0);
+        if (!NapiStatusValidationCheck(primitiveValue)) {
+            return napi_set_last_error(env, napi_generic_failure);
+        }
+        
+        if (!primitiveValue->IsString(vm)) {
+            return napi_set_last_error(env, napi_string_expected);
+        }
+        
+        *result = reinterpret_cast<napi_value>(primitiveValue);
+        return napi_clear_last_error(env);
+    }
+
+    // Other types are not acceptable
+    return napi_set_last_error(env, napi_string_expected);
 }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
