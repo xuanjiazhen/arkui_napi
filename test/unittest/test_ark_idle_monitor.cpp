@@ -649,3 +649,37 @@ HWTEST_F(NapiArkIdleMonitorTest, IdleMonitorLoadReportDataFuncTest002, testing::
     func(0, 100, payload);
 }
 #endif
+
+/**
+ * @tc.name: SetTaskpoolShrinkCallbackTest001
+ * @tc.desc: Test SetTaskpoolShrinkCallback with a valid callback
+ * @tc.type: FUNC
+ * @tc.level: Level0
+ */
+HWTEST_F(NapiArkIdleMonitorTest, SetTaskpoolShrinkCallbackTest001, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+
+    bool callbackInvoked = false;
+    bool receivedInBackground = false;
+    auto callback = [&callbackInvoked, &receivedInBackground](bool inBackground) {
+        callbackInvoked = true;
+        receivedInBackground = inBackground;
+    };
+
+    engine_->SetTaskpoolShrinkCallback(callback);
+}
+
+/**
+ * @tc.name: SetTaskpoolShrinkCallbackTest002
+ * @tc.desc: Test SetTaskpoolShrinkCallback with nullptr callback
+ * @tc.type: FUNC
+ * @tc.level: Level0
+ */
+HWTEST_F(NapiArkIdleMonitorTest, SetTaskpoolShrinkCallbackTest002, testing::ext::TestSize.Level0)
+{
+    ASSERT_NE(engine_, nullptr);
+
+    TaskPoolShrinkCallback nullCallback = nullptr;
+    engine_->SetTaskpoolShrinkCallback(nullCallback);
+}
