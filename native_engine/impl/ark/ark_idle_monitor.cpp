@@ -20,6 +20,7 @@
 #include <signal.h>
 #endif
 #include "utils/log.h"
+#include <cinttypes>
 #if defined(ENABLE_FFRT)
 #include "ffrt.h"
 #include "c/executor_task.h"
@@ -422,6 +423,7 @@ uint64_t ArkIdleMonitor::GetIdleMonitoringInterval()
 void ArkIdleMonitor::NotifyChangeBackgroundState(bool inBackground)
 {
     ClearIdleStats();
+    backgroundGCCheckCount_.store(0U, std::memory_order_relaxed);
 #if defined(ENABLE_FFRT)
     if (started_ && inBackground) {
         HILOG_DEBUG("ArkIdleMonitor post check switch background gc task");
@@ -521,26 +523,42 @@ void ArkIdleMonitor::SwitchBackgroundCheckGCTask(int64_t timestamp, int64_t idle
     int64_t sumIdleDuration = (GetTotalIdleDuration() - idleDuration) + (nowTimestamp - GetNotifyTimestamp());
     double idlePercentage = static_cast<double>(sumIdleDuration) / static_cast<double>(sumDuration);
     double cpuUsage = GetCpuUsage();
-    if (idlePercentage > BACKGROUND_IDLE_RATIO && sumDuration < static_cast<int64_t>(gDelayOverTime)) {
+    if (idlePercentage > BACKGROUND_IDLE_RATIO && sumDuration < static_cast<int64_t>(BACKGROUND_GC_DELAY_OVER_TIME)) {
+        backgroundGCCheckCount_.store(0U, std::memory_order_relaxed);
         triggerTaskStartTimestamp_ = nowTimestamp;
         CheckWorkerEnvQueue();
         SetSwitchToBackgroundTask(true);
         TryTriggerCompressGCOfProcess();
+        SetDuringBackgroundTask(false);
+        StopIdleMonitorTimerTaskAndPostSleepTask();
+        ClearIdleStats();
     } else {
-        HILOG_INFO("ArkIdleMonitor cancel BGGCTask,idlePer:%{public}.2f;cpuUsage:%{public}.2f;duration:%{public}s",
-            idlePercentage, cpuUsage, std::to_string(sumDuration).c_str());
+        auto count = backgroundGCCheckCount_.fetch_add(1, std::memory_order_relaxed);
+        if (count < BACKGROUND_GC_CHECK_COUNT - 1) {
+            HILOG_INFO("ArkIdleMonitor retry BGGCTask, count:%{public}u, idlePer:%{public}.2f;cpuUsage:%{public}.2f"
+                       ";sumDuration:%{public}" PRId64,
+                       count + 1, idlePercentage, cpuUsage, sumDuration);
+            PostSwitchBackgroundGCTask(true);
+        } else {
+            backgroundGCCheckCount_.store(0U, std::memory_order_relaxed);
+            HILOG_INFO(
+                "ArkIdleMonitor cancel BGGCTask after %{public}u checks, idlePer:%{public}.2f;cpuUsage:%{public}.2f"
+                ";sumDuration:%{public}" PRId64,
+                BACKGROUND_GC_CHECK_COUNT, idlePercentage, cpuUsage, sumDuration);
+            SetDuringBackgroundTask(false);
+            StopIdleMonitorTimerTaskAndPostSleepTask();
+            ClearIdleStats();
+        }
     }
-    StopIdleMonitorTimerTaskAndPostSleepTask();
-    ClearIdleStats();
 }
 
-void ArkIdleMonitor::PostSwitchBackgroundGCTask()
+void ArkIdleMonitor::PostSwitchBackgroundGCTask(bool forcePost)
 {
 #if defined(ENABLE_FFRT)
-    if (IsDuringBackgroundTask()) {
+    if (!forcePost && IsDuringBackgroundTask()) {
         return;
     }
-    if (switchBackgroundTimerHandler_ != -1) {
+    if (!forcePost && switchBackgroundTimerHandler_ != -1) {
         ffrt_timer_stop(ffrt_qos_user_initiated, switchBackgroundTimerHandler_);
     }
     auto nowTimestamp = std::chrono::time_point_cast<std::chrono::milliseconds>(
@@ -554,11 +572,10 @@ void ArkIdleMonitor::PostSwitchBackgroundGCTask()
             return;
         }
         std::get<0>(*tuple)->SwitchBackgroundCheckGCTask(std::get<1>(*tuple), std::get<2>(*tuple));
-        std::get<0>(*tuple)->SetDuringBackgroundTask(false);
         delete tuple;
     };
-    switchBackgroundTimerHandler_ = ffrt_timer_start(ffrt_qos_user_initiated, gIdleMonitoringInterval,
-        reinterpret_cast<void*>(data), task, false);
+    switchBackgroundTimerHandler_ = ffrt_timer_start(ffrt_qos_user_initiated, BACKGROUND_GC_CHECK_INTERVAL,
+                                                     reinterpret_cast<void*>(data), task, false);
     SetDuringBackgroundTask(true);
 #endif
 }
@@ -835,4 +852,4 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcess()
     }
 #endif
 }
-}
+} // namespace panda::ecmascript
