@@ -310,6 +310,9 @@ private:
     static constexpr double IDLE_RATIO = 0.985f;
     static constexpr double SHORT_IDLE_RATIO = 0.96f;
     static constexpr double BACKGROUND_IDLE_RATIO = 0.6f;
+    static constexpr uint64_t BACKGROUND_GC_CHECK_INTERVAL = 500; // ms
+    static constexpr uint32_t BACKGROUND_GC_CHECK_COUNT = 3;
+    static constexpr uint64_t BACKGROUND_GC_DELAY_OVER_TIME = 600; // ms
     static constexpr uint64_t SHORT_IDLE_DELAY_INTERVAL = 50; // ms;
     static constexpr uint64_t WAIT_GC_FINISH_INTERVAL = 500; //ms;
     static constexpr int64_t WAIT_LOCAL_GC_INTERVAL = 2000; //ms;
@@ -344,6 +347,7 @@ private:
     int switchBackgroundTimerHandler_ {-1};
     uint32_t numberOfLowIdleNotifyCycles_ {0U};
     uint32_t numberOfHighIdleTimeRatio_ {0U};
+    uint32_t backgroundGCCheckCount_ {0U};
     std::queue<int> timerHandlerQueue_;
     uint32_t handlerWaitToStopCount_ {0};
     RingBuffer<int64_t, IDLE_CHECK_INTERVAL_LENGTH> recordedIdleNotifyInterval_;
