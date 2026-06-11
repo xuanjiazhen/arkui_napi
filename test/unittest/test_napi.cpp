@@ -18311,3 +18311,167 @@ HWTEST_F(NapiBasicTest, NapiPropertyWithCallsiteInfoValueTypesTest001, testing::
     ASSERT_CHECK_CALL(napi_get_property_with_callsite_info(env, obj, undefKey, getInfo, &undefResult, nullptr));
     ASSERT_CHECK_VALUE_TYPE(env, undefResult, napi_undefined);
 }
+
+/**
+ * @tc.name: GlobalHandleCountTest001
+ * @tc.desc: Test napi_get_global_handle_count with null env returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, GlobalHandleCountTest001, testing::ext::TestSize.Level1)
+{
+    size_t count = 0;
+    auto status = napi_get_global_handle_count(nullptr, &count);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: GlobalHandleCountTest002
+ * @tc.desc: Test napi_get_global_handle_count with null count returns napi_invalid_arg.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, GlobalHandleCountTest002, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    auto status = napi_get_global_handle_count(env, nullptr);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+/**
+ * @tc.name: GlobalHandleCountTest003
+ * @tc.desc: Test napi_get_global_handle_count with pending exception returns napi_pending_exception.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, GlobalHandleCountTest003, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    napi_throw_error(env, nullptr, "test exception");
+    size_t count = 0;
+    auto status = napi_get_global_handle_count(env, &count);
+    ASSERT_EQ(status, napi_pending_exception);
+
+    napi_value exception = nullptr;
+    napi_get_and_clear_last_exception(env, &exception);
+}
+
+/**
+ * @tc.name: GlobalHandleCountTest004
+ * @tc.desc: Test initial global handle count is greater than 0 after engine initialization.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, GlobalHandleCountTest004, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(),
+        panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+
+    size_t count = 0;
+    auto status = napi_get_global_handle_count(env, &count);
+    ASSERT_EQ(status, napi_ok);
+    ASSERT_GT(count, 0);
+}
+
+/**
+ * @tc.name: GlobalHandleCountTest005
+ * @tc.desc: Test consecutive calls with no reference changes return the same count.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, GlobalHandleCountTest005, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(),
+        panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+
+    size_t count1 = 0;
+    size_t count2 = 0;
+    ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &count1));
+    ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &count2));
+    ASSERT_EQ(count1, count2);
+}
+
+/**
+ * @tc.name: GlobalHandleCountTest006
+ * @tc.desc: Test global handle count increases after creating references and decreases after deleting.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, GlobalHandleCountTest006, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(),
+        panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+
+    size_t countBefore = 0;
+    ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countBefore));
+
+    napi_value obj = nullptr;
+    napi_ref ref = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
+    ASSERT_CHECK_CALL(napi_create_reference(env, obj, 1, &ref));
+
+    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(),
+        panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+
+    size_t countAfterCreate = 0;
+    ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countAfterCreate));
+    ASSERT_GE(countAfterCreate, countBefore + 1);
+
+    ASSERT_CHECK_CALL(napi_delete_reference(env, ref));
+
+    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(),
+        panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+
+    size_t countAfterDelete = 0;
+    ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countAfterDelete));
+    ASSERT_LT(countAfterDelete, countAfterCreate);
+}
+
+/**
+ * @tc.name: GlobalHandleCountTest007
+ * @tc.desc: Test strong reference (refcount=1) keeps object alive and count persists after GC,
+ *           while weak reference (refcount=0) allows GC to reclaim object so count does not
+ *           increase like strong reference.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, GlobalHandleCountTest007, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(),
+        panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+    size_t baseline = 0;
+    ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &baseline));
+
+    napi_value objStrong = nullptr;
+    napi_ref refStrong = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &objStrong));
+    ASSERT_CHECK_CALL(napi_create_reference(env, objStrong, 1, &refStrong));
+
+    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(),
+        panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+    size_t countWithStrong = 0;
+    ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countWithStrong));
+    ASSERT_GE(countWithStrong, baseline + 1);
+
+    napi_value objWeak = nullptr;
+    napi_ref refWeak = nullptr;
+    ASSERT_CHECK_CALL(napi_create_object(env, &objWeak));
+    ASSERT_CHECK_CALL(napi_create_reference(env, objWeak, 0, &refWeak));
+
+    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(),
+        panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
+    size_t countWithWeak = 0;
+    ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countWithWeak));
+    ASSERT_GE(countWithWeak, countWithStrong);
+
+    ASSERT_CHECK_CALL(napi_delete_reference(env, refStrong));
+    ASSERT_CHECK_CALL(napi_delete_reference(env, refWeak));
+}
