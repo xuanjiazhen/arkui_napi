@@ -90,7 +90,8 @@ public:
                        const bool& isSystemApp = false);
     bool GetLdNamespaceName(const std::string &moduleName, std::string &nsName);
     NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
-        std::string& errInfo, bool internal = false, const char* relativePath = "");
+        std::string& errInfo, bool internal = false, const char* relativePath = "",
+        std::string* loadErrInfo = nullptr);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     bool UnloadNativeModule(const std::string& moduleKey);
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);
@@ -144,8 +145,8 @@ private:
     bool GetNativeModulePath(const char* moduleName, const char* path, const char* relativePath,
         bool isAppModule, char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength);
     NativeModule* FindNativeModuleByDisk(const char* moduleName, const char* path, const char* relativePath,
-        bool internal, const bool isAppModule, std::string& errInfo, char nativeModulePath[][NAPI_PATH_MAX],
-        NativeModule* cacheNativeModule);
+        bool internal, const bool isAppModule, std::string& errInfo, std::string* loadErrInfo,
+        char nativeModulePath[][NAPI_PATH_MAX], NativeModule* cacheNativeModule);
     NativeModule* FindNativeModuleByCache(const char* moduleName,
                                           char nativeModulePath[][NAPI_PATH_MAX],
                                           NativeModule*& cacheNativeModule,
