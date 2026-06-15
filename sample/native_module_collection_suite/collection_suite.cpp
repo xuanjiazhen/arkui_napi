@@ -37,6 +37,10 @@ constexpr int32_t K_BONUS_AMOUNT = 15;
 constexpr int32_t K_PENALTY_RATE = 2;
 constexpr int32_t K_MAX_ITEM_COUNT = 10;
 constexpr size_t K_OPERATION_COUNT = 7;
+constexpr int32_t K_REMOVE_ITEM_COUNT = 3;
+constexpr int32_t K_GET_SIZE_EXPECTED = 3;
+constexpr int32_t K_BETA_VALUE = 2;
+constexpr int32_t K_GAMMA_VALUE = 3;
 
 constexpr std::array<const char*, K_OPERATION_COUNT> K_OPERATION_LABELS = {
     "addItem",
@@ -331,7 +335,7 @@ OperationResult ExecuteRemoveItem(napi_env env, int32_t baseScore,
     if (collection == nullptr) {
         return {false, K_INVALID_VALUE};
     }
-    if (!SetCollectionInt32(env, collection, "itemCount", 3)) {
+    if (!SetCollectionInt32(env, collection, "itemCount", K_REMOVE_ITEM_COUNT)) {
         return {false, K_INVALID_VALUE};
     }
     if (!SetNamedBool(env, collection, "removed", true)) {
@@ -381,10 +385,10 @@ OperationResult ExecuteGetSize(napi_env env, int32_t baseScore, int32_t weight)
     if (!SetCollectionInt32(env, collection, "alpha", 1)) {
         return {false, K_INVALID_VALUE};
     }
-    if (!SetCollectionInt32(env, collection, "beta", 2)) {
+    if (!SetCollectionInt32(env, collection, "beta", K_BETA_VALUE)) {
         return {false, K_INVALID_VALUE};
     }
-    if (!SetCollectionInt32(env, collection, "gamma", 3)) {
+    if (!SetCollectionInt32(env, collection, "gamma", K_GAMMA_VALUE)) {
         return {false, K_INVALID_VALUE};
     }
     napi_value names = nullptr;
@@ -395,7 +399,7 @@ OperationResult ExecuteGetSize(napi_env env, int32_t baseScore, int32_t weight)
     if (napi_get_array_length(env, names, &count) != napi_ok) {
         return {false, K_INVALID_VALUE};
     }
-    int32_t expected = 3;
+    int32_t expected = K_GET_SIZE_EXPECTED;
     bool passed = (static_cast<int32_t>(count) == expected);
     return {passed, static_cast<int32_t>(count)};
 }
@@ -477,63 +481,61 @@ OperationResult ExecuteOperation(napi_env env, const CollectionCaseSpec& spec)
 {
     switch (spec.operation) {
         case CollectionOp::ADD_ITEM: {
-            OperationResult result = ExecuteAddItem(env, spec.baseScore,
+            OperationResult r = ExecuteAddItem(env, spec.baseScore,
                 spec.weight);
-            if (result.passed) {
-                int32_t expected = CalculateScore(spec.baseScore, spec.weight,
-                    1);
-                result.passed = (result.value == expected);
+            if (r.passed) {
+                r.passed = (r.value == CalculateScore(spec.baseScore,
+                    spec.weight, 1));
             }
-            return result;
+            return r;
         }
         case CollectionOp::REMOVE_ITEM: {
-            OperationResult result = ExecuteRemoveItem(env, spec.baseScore,
+            OperationResult r = ExecuteRemoveItem(env, spec.baseScore,
                 spec.weight);
-            if (result.passed) {
-                result.passed = (result.value >= 0);
+            if (r.passed) {
+                r.passed = (r.value >= 0);
             }
-            return result;
+            return r;
         }
         case CollectionOp::CONTAINS_KEY: {
-            OperationResult result = ExecuteContainsKey(env, spec.baseScore,
+            OperationResult r = ExecuteContainsKey(env, spec.baseScore,
                 spec.weight);
-            if (result.passed) {
-                result.passed = (result.value == spec.baseScore);
+            if (r.passed) {
+                r.passed = (r.value == spec.baseScore);
             }
-            return result;
+            return r;
         }
         case CollectionOp::GET_SIZE: {
-            OperationResult result = ExecuteGetSize(env, spec.baseScore,
+            OperationResult r = ExecuteGetSize(env, spec.baseScore,
                 spec.weight);
-            if (result.passed) {
-                result.passed = (result.value == 3);
+            if (r.passed) {
+                r.passed = (r.value == K_GET_SIZE_EXPECTED);
             }
-            return result;
+            return r;
         }
         case CollectionOp::CLEAR_ALL: {
-            OperationResult result = ExecuteClearAll(env, spec.baseScore,
+            OperationResult r = ExecuteClearAll(env, spec.baseScore,
                 spec.weight);
-            if (result.passed) {
-                result.passed = (result.value == 0);
+            if (r.passed) {
+                r.passed = (r.value == 0);
             }
-            return result;
+            return r;
         }
         case CollectionOp::TO_ARRAY: {
-            OperationResult result = ExecuteToArray(env, spec.baseScore,
+            OperationResult r = ExecuteToArray(env, spec.baseScore,
                 spec.weight);
-            if (result.passed) {
-                result.passed = (result.value == 0);
+            if (r.passed) {
+                r.passed = (r.value == 0);
             }
-            return result;
+            return r;
         }
         case CollectionOp::MERGE: {
-            OperationResult result = ExecuteMerge(env, spec.baseScore,
+            OperationResult r = ExecuteMerge(env, spec.baseScore,
                 spec.weight);
-            if (result.passed) {
-                int32_t expected = spec.baseScore + spec.weight;
-                result.passed = (result.value == expected);
+            if (r.passed) {
+                r.passed = (r.value == spec.baseScore + spec.weight);
             }
-            return result;
+            return r;
         }
         default:
             return {false, K_INVALID_VALUE};
