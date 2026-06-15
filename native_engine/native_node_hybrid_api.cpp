@@ -173,7 +173,9 @@ NAPI_EXTERN napi_status napi_unwrap_hybrid_s(napi_env env,
 
 NAPI_EXTERN napi_status napi_ref_get_vm(napi_ref ref, uintptr_t &result)
 {
-    CHECK_ARG(nullptr, ref);
+    if (ref == nullptr) {
+        return napi_invalid_arg;
+    }
 
     auto reference = reinterpret_cast<ArkNativeReference *>(ref);
     result = reinterpret_cast<uintptr_t>(reference->GetEngine()->GetEcmaVmCritical());
@@ -182,7 +184,9 @@ NAPI_EXTERN napi_status napi_ref_get_vm(napi_ref ref, uintptr_t &result)
 
 NAPI_EXTERN napi_status napi_ref_get_value(napi_ref ref, uintptr_t &result)
 {
-    CHECK_ARG(nullptr, ref);
+    if (ref == nullptr) {
+        return napi_invalid_arg;
+    }
 
     auto reference = reinterpret_cast<ArkNativeReference *>(ref);
     napi_value value = reference->Get();
