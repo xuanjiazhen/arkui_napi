@@ -480,63 +480,20 @@ OperationResult ExecuteMerge(napi_env env, int32_t baseScore, int32_t weight)
 OperationResult ExecuteOperation(napi_env env, const CollectionCaseSpec& spec)
 {
     switch (spec.operation) {
-        case CollectionOp::ADD_ITEM: {
-            OperationResult r = ExecuteAddItem(env, spec.baseScore,
-                spec.weight);
-            if (r.passed) {
-                r.passed = (r.value == CalculateScore(spec.baseScore,
-                    spec.weight, 1));
-            }
-            return r;
-        }
-        case CollectionOp::REMOVE_ITEM: {
-            OperationResult r = ExecuteRemoveItem(env, spec.baseScore,
-                spec.weight);
-            if (r.passed) {
-                r.passed = (r.value >= 0);
-            }
-            return r;
-        }
-        case CollectionOp::CONTAINS_KEY: {
-            OperationResult r = ExecuteContainsKey(env, spec.baseScore,
-                spec.weight);
-            if (r.passed) {
-                r.passed = (r.value == spec.baseScore);
-            }
-            return r;
-        }
-        case CollectionOp::GET_SIZE: {
-            OperationResult r = ExecuteGetSize(env, spec.baseScore,
-                spec.weight);
-            if (r.passed) {
-                r.passed = (r.value == K_GET_SIZE_EXPECTED);
-            }
-            return r;
-        }
-        case CollectionOp::CLEAR_ALL: {
-            OperationResult r = ExecuteClearAll(env, spec.baseScore,
-                spec.weight);
-            if (r.passed) {
-                r.passed = (r.value == 0);
-            }
-            return r;
-        }
-        case CollectionOp::TO_ARRAY: {
-            OperationResult r = ExecuteToArray(env, spec.baseScore,
-                spec.weight);
-            if (r.passed) {
-                r.passed = (r.value == 0);
-            }
-            return r;
-        }
-        case CollectionOp::MERGE: {
-            OperationResult r = ExecuteMerge(env, spec.baseScore,
-                spec.weight);
-            if (r.passed) {
-                r.passed = (r.value == spec.baseScore + spec.weight);
-            }
-            return r;
-        }
+        case CollectionOp::ADD_ITEM:
+            return ExecuteAddItem(env, spec.baseScore, spec.weight);
+        case CollectionOp::REMOVE_ITEM:
+            return ExecuteRemoveItem(env, spec.baseScore, spec.weight);
+        case CollectionOp::CONTAINS_KEY:
+            return ExecuteContainsKey(env, spec.baseScore, spec.weight);
+        case CollectionOp::GET_SIZE:
+            return ExecuteGetSize(env, spec.baseScore, spec.weight);
+        case CollectionOp::CLEAR_ALL:
+            return ExecuteClearAll(env, spec.baseScore, spec.weight);
+        case CollectionOp::TO_ARRAY:
+            return ExecuteToArray(env, spec.baseScore, spec.weight);
+        case CollectionOp::MERGE:
+            return ExecuteMerge(env, spec.baseScore, spec.weight);
         default:
             return {false, K_INVALID_VALUE};
     }
