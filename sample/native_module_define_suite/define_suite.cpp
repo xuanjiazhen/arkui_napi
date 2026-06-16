@@ -160,7 +160,7 @@ bool DefinePropertiesOnObject(
             nullptr,
             nullptr,
             propValue,
-            BuildPropertyAttribute(meta),
+            static_cast<napi_property_attributes>(BuildPropertyAttribute(meta)),
             nullptr,
         };
     }
@@ -254,6 +254,7 @@ static napi_module g_defineSuiteModule = {
     .nm_register_func = InitDefineSuite,
     .nm_modname = "define_suite",
     .nm_priv = nullptr,
+    .reserved = {nullptr},
 };
 
 extern "C" __attribute__((constructor)) void RegisterDefineSuiteModule(void)

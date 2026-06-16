@@ -222,6 +222,7 @@ static napi_module g_clampSuiteModule = {
     .nm_register_func = InitClampSuite,
     .nm_modname = "clamp_suite",
     .nm_priv = nullptr,
+    .reserved = {nullptr},
 };
 
 extern "C" __attribute__((constructor)) void RegisterClampSuiteModule(void)
