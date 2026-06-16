@@ -14,7 +14,7 @@
 import("//build/ohos.gni")
 
 ohos_shared_library("clamp_suite") {
-  sources = [ "clamp_tests.cpp" ]
+  sources = [ "clamp_suite.cpp" ]
 
   deps = [ "../..:ace_napi" ]
 

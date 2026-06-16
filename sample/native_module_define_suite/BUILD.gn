@@ -14,7 +14,7 @@
 import("//build/ohos.gni")
 
 ohos_shared_library("define_suite") {
-  sources = [ "define_tests.cpp" ]
+  sources = [ "define_suite.cpp" ]
 
   deps = [ "../..:ace_napi" ]
 
