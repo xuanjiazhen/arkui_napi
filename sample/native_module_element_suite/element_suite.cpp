@@ -172,7 +172,6 @@ static napi_value RunElementCase(napi_env env, napi_callback_info info)
     size_t argc = K_ELEMENT_ARG_COUNT;
     napi_value args[K_ELEMENT_ARG_COUNT] = {nullptr};
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, &data));
-
     const size_t caseIndex = GetCaseIndex(data);
     if (caseIndex >= K_ELEMENT_CASE_COUNT) {
         napi_throw_error(env, nullptr, "invalid element case");
@@ -182,19 +181,16 @@ static napi_value RunElementCase(napi_env env, napi_callback_info info)
         napi_throw_type_error(env, nullptr, "array is required");
         return nullptr;
     }
-
     std::vector<int32_t> original;
     if (!ReadArrayElements(env, args[0], &original)) {
         return nullptr;
     }
-
     const auto spec = GetElementCaseSpec(caseIndex);
     std::vector<int32_t> transformed;
     transformed.reserve(original.size());
     for (size_t index = 0; index < original.size(); index++) {
         transformed.push_back(original[index] * spec.multiplier + spec.delta);
     }
-
     napi_value outputArray = nullptr;
     NAPI_CALL(env, napi_create_array(env, &outputArray));
     if (WriteArrayElements(env, outputArray, transformed)) {
@@ -234,6 +230,7 @@ static napi_module g_elementSuiteModule = {
     .nm_register_func = InitElementSuite,
     .nm_modname = "element_suite",
     .nm_priv = nullptr,
+    .reserved = {nullptr},
 };
 
 extern "C" __attribute__((constructor)) void RegisterElementSuiteModule(void)

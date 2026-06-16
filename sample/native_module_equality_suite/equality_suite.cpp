@@ -174,7 +174,7 @@ napi_value CreateEqualityResultObject(napi_env env, const EqualityCaseSpec& spec
 {
     napi_value result = nullptr;
     NAPI_CALL(env, napi_create_object(env, &result));
-    SetNamedString(env, result, "name", spec.name);
+    SetNamedString(env, result, "name", spec.name.c_str());
     SetNamedInt32(env, result, "firstValue", eqCtx.firstValue);
     SetNamedInt32(env, result, "secondValue", eqCtx.secondValue);
     SetNamedInt32(env, result, "computedValue", eqCtx.computedValue);
@@ -194,7 +194,6 @@ static napi_value RunEqualityCase(napi_env env, napi_callback_info info)
     size_t argc = K_EQUALITY_ARG_COUNT;
     napi_value args[K_EQUALITY_ARG_COUNT] = {nullptr};
     NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, &data));
-
     const size_t caseIndex = GetCaseIndex(data);
     if (caseIndex >= K_EQUALITY_CASE_COUNT) {
         napi_throw_error(env, nullptr, "invalid equality case");
@@ -204,16 +203,13 @@ static napi_value RunEqualityCase(napi_env env, napi_callback_info info)
         napi_throw_type_error(env, nullptr, "two arguments are required");
         return nullptr;
     }
-
     EqualityContext eqCtx = {};
     if (!ReadTwoInt32(env, args[K_FIRST_ARG_INDEX], args[K_SECOND_ARG_INDEX], &eqCtx)) {
         return nullptr;
     }
-
     const auto spec = GetEqualityCaseSpec(caseIndex);
     CheckStrictEquality(env, args[K_FIRST_ARG_INDEX], args[K_SECOND_ARG_INDEX],
         &eqCtx.valuesEqual);
-
     eqCtx.computedValue = eqCtx.firstValue * spec.multiplier + spec.delta;
     napi_value computedNapi = nullptr;
     NAPI_CALL(env, napi_create_int32(env, eqCtx.computedValue, &computedNapi));
@@ -221,7 +217,6 @@ static napi_value RunEqualityCase(napi_env env, napi_callback_info info)
         &eqCtx.computedMatchesFirst);
     CheckStrictEquality(env, args[K_SECOND_ARG_INDEX], computedNapi,
         &eqCtx.computedMatchesSecond);
-
     return CreateEqualityResultObject(env, spec, eqCtx);
 }
 
@@ -256,6 +251,7 @@ static napi_module g_equalitySuiteModule = {
     .nm_register_func = InitEqualitySuite,
     .nm_modname = "equality_suite",
     .nm_priv = nullptr,
+    .reserved = {nullptr},
 };
 
 extern "C" __attribute__((constructor)) void RegisterEqualitySuiteModule(void)
