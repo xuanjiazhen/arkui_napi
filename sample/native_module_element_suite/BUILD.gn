@@ -14,7 +14,7 @@
 import("//build/ohos.gni")
 
 ohos_shared_library("element_suite") {
-  sources = [ "element_tests.cpp" ]
+  sources = [ "element_suite.cpp" ]
 
   deps = [ "../..:ace_napi" ]
 

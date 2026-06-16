@@ -14,7 +14,7 @@
 import("//build/ohos.gni")
 
 ohos_shared_library("equality_suite") {
-  sources = [ "equality_tests.cpp" ]
+  sources = [ "equality_suite.cpp" ]
 
   deps = [ "../..:ace_napi" ]
 
