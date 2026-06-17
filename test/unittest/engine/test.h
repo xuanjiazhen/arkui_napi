@@ -162,7 +162,7 @@ public:
     {
         // Setup
         panda::RuntimeOption option;
-        option.setArkProperties(prop);
+        option.SetArkProperties(prop);
         option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
         const int64_t poolSize = 0x1000000; // 16M
         option.SetGcPoolSize(poolSize);
