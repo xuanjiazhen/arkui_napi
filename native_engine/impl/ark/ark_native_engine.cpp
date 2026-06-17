@@ -2904,6 +2904,15 @@ size_t ArkNativeEngine::GetFullGCLongTimeCount()
 
 void ArkNativeEngine::NotifyApplicationState(bool inBackground)
 {
+    // Avoid duplicate notifications when multiple callers invoke NotifyApplicationState
+    // Only forward the notification when the application state actually changes.
+    int8_t newState = inBackground ? 1 : 0;
+    int8_t oldState = appBackgroundState_.exchange(newState);
+    if (oldState == newState) {
+        // no state change, ignore duplicate
+        return;
+    }
+
     DFXJSNApi::NotifyApplicationState(vm_, inBackground);
     ArkIdleMonitor::GetInstance()->NotifyChangeBackgroundState(inBackground);
     interopAppState_.Notify(inBackground ? NAPI_APP_STATE_BACKGROUND : NAPI_APP_STATE_FOREGROUND);
