@@ -1124,7 +1124,7 @@ NAPI_EXTERN napi_status napi_set_property_with_callsite_info(napi_env env, napi_
     return GET_RETURN_STATUS(env);
 }
 
-NAPI_EXTERN napi_status napi_get_global_handle_count(napi_env env, size_t* count) 
+NAPI_EXTERN napi_status napi_get_global_handle_count(napi_env env, size_t* count)
 {
     NAPI_PREAMBLE(env);
     CHECK_ARG(env, count);
