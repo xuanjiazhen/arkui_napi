@@ -18366,7 +18366,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest004, testing::ext::TestSize.Level1)
 {
     ASSERT_NE(engine_, nullptr);
     napi_env env = reinterpret_cast<napi_env>(engine_);
-    panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
 
     size_t count = 0;
     auto status = napi_get_global_handle_count(env, &count);
@@ -18393,7 +18392,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest005, testing::ext::TestSize.Level1)
         ASSERT_EQ(count1, count2);
         ASSERT_CHECK_CALL(napi_close_fast_native_scope(env, scope));
     }
-
 }
 
 /**
@@ -18410,7 +18408,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest006, testing::ext::TestSize.Level1)
     {   
         ASSERT_CHECK_CALL(napi_open_fast_native_scope(env, &scope));
         ASSERT_CHECK_CALL(napi_open_handle_scope(env, &handle_scope));
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
         size_t baseline = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &baseline));
 
@@ -18419,7 +18416,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest006, testing::ext::TestSize.Level1)
         ASSERT_CHECK_CALL(napi_create_object(env, &objStrong));
         ASSERT_CHECK_CALL(napi_create_reference(env, objStrong, 1, &refStrong));
 
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
         size_t countWithStrong = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countWithStrong));
         ASSERT_GE(countWithStrong, baseline + 1);
@@ -18430,7 +18426,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest006, testing::ext::TestSize.Level1)
 
         ASSERT_CHECK_CALL(napi_close_handle_scope(env, handle_scope));
         ASSERT_CHECK_CALL(napi_delete_reference(env, refStrong));
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
         size_t countAfterDelete = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countAfterDelete));
         ASSERT_LE(countAfterDelete, baseline);
@@ -18452,7 +18447,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest007, testing::ext::TestSize.Level1)
     {   
         ASSERT_CHECK_CALL(napi_open_fast_native_scope(env, &scope));
         ASSERT_CHECK_CALL(napi_open_handle_scope(env, &handle_scope));
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
         size_t baseline = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &baseline));
 
@@ -18461,7 +18455,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest007, testing::ext::TestSize.Level1)
         ASSERT_CHECK_CALL(napi_create_object(env, &obj));
         ASSERT_CHECK_CALL(napi_create_reference(env, obj, 0, &weakRef));
 
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
         size_t countAfterGC = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countAfterGC));
         ASSERT_GE(countAfterGC, baseline);
@@ -18472,7 +18465,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest007, testing::ext::TestSize.Level1)
         
         ASSERT_CHECK_CALL(napi_close_handle_scope(env, handle_scope));
         ASSERT_CHECK_CALL(napi_delete_reference(env, weakRef));
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
         size_t countAfterDelete = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countAfterDelete));
         ASSERT_LE(countAfterDelete, baseline);
@@ -18494,7 +18486,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest008, testing::ext::TestSize.Level1)
     {
         ASSERT_CHECK_CALL(napi_open_fast_native_scope(env, &scope));
         ASSERT_CHECK_CALL(napi_open_handle_scope(env, &handle_scope));
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
         size_t baseline = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &baseline));
 
@@ -18504,8 +18495,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest008, testing::ext::TestSize.Level1)
         ASSERT_CHECK_CALL(napi_create_object(env, &obj));
         ASSERT_CHECK_CALL(napi_create_reference(env, obj, 1, &strongRef));
         ASSERT_CHECK_CALL(napi_create_reference(env, obj, 0, &weakRef));
-
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
 
         size_t countAfterGC = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countAfterGC));
@@ -18518,7 +18507,6 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest008, testing::ext::TestSize.Level1)
 
         ASSERT_CHECK_CALL(napi_delete_reference(env, strongRef));
         ASSERT_CHECK_CALL(napi_delete_reference(env, weakRef));
-        panda::JSNApi::TriggerGC(engine_->GetEcmaVm(), panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::FULL_GC);
         size_t countAfterDelete = 0;
         ASSERT_CHECK_CALL(napi_get_global_handle_count(env, &countAfterDelete));
         ASSERT_LE(countAfterDelete, baseline);
