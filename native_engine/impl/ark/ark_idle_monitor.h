@@ -174,6 +174,11 @@ public:
         mainVM_ = vm;
     }
 
+    EcmaVM* GetMainThreadEcmaVM()
+    {
+        return mainVM_;
+    }
+
     void RegisterSentTaskWorkerEnv(napi_env workerEnv)
     {
         std::lock_guard<std::mutex> lock(sentTaskMutex_);
@@ -368,6 +373,24 @@ private:
     std::mutex waitGCFinishjedMutex_;
     std::condition_variable gcFinishCV_;
     std::atomic<bool> duringBackgroundTask_ {false};
+
+#if defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
+    void PostCrossPlatformLooperTriggerIdleGCTask(NativeEngine* engine);
+    static void OnUVLoopPrepare(uv_prepare_t* handle);
+    static void OnUVLoopCheck(uv_check_t* handle);
+    static void PostCrossPlatformSwitchBackgroundGCTask(uv_async_t* handle);
+    static void OnCrossPlatformSwitchBackgroundGCTimer(uv_timer_t* handle);
+    static void PostCrossPlatformSwitchBackgroundCheckGCTask(ArkIdleMonitor* monitor,
+        int64_t scheduleTs, int64_t idleDurationSnap, int64_t notifyTsSnap);
+    static void OnMainThreadGCTask(uv_async_t* handle);
+    void TryTriggerCompressGCOfProcessCrossPlatformFullGC();
+    void TryTriggerCompressGCOfProcessCrossPlatformSharedGC();
+    uv_prepare_t* uvLoopPrepare_ {nullptr};
+    uv_check_t* uvLoopCheck_ {nullptr};
+    uv_async_t* bgGCAsync_ {nullptr};
+    uv_timer_t* bgGCTimer_ {nullptr};
+    uv_loop_t* mainLoop_ {nullptr};
+#endif
 };
 
 }
