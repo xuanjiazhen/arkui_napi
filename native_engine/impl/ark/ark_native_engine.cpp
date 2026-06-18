@@ -2904,6 +2904,13 @@ size_t ArkNativeEngine::GetFullGCLongTimeCount()
 
 void ArkNativeEngine::NotifyApplicationState(bool inBackground)
 {
+#if defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
+    int8_t newState = inBackground ? 1 : 0;
+    int8_t oldState = appBackgroundState_.exchange(newState);
+    if (oldState == newState) {
+        return;
+    }
+#endif
     DFXJSNApi::NotifyApplicationState(vm_, inBackground);
     ArkIdleMonitor::GetInstance()->NotifyChangeBackgroundState(inBackground);
     interopAppState_.Notify(inBackground ? NAPI_APP_STATE_BACKGROUND : NAPI_APP_STATE_FOREGROUND);

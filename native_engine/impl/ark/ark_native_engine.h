@@ -27,6 +27,9 @@
 #include <regex>
 #include <thread>
 #include <unistd.h>
+#if defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
+#include <atomic>
+#endif
 
 #include "ark_idle_monitor.h"
 #include "ark_native_options.h"
@@ -571,5 +574,9 @@ private:
     ArkNativeEngineState engineState_ { ArkNativeEngineState::RUNNING };
     AppStateNotifier interopAppState_ {};
     NativeReference *globalCheckCallbackRef_ { nullptr };
+#if defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
+    // -1: unknown (initial), 0: foreground, 1: background
+    std::atomic<int8_t> appBackgroundState_ {-1};
+#endif
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */
