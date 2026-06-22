@@ -42,6 +42,16 @@ static constexpr char STR_HELLO[] = "hello";
 static constexpr char STR_NAPI[] = "napi";
 static constexpr char STR_WORLD[] = "world";
 
+// Result flag property names set on the result object
+static constexpr char KEY_INT32_MATCH[] = "int32Match";
+static constexpr char KEY_STRING_MATCH[] = "stringMatch";
+static constexpr char KEY_BOOLEAN_MATCH[] = "booleanMatch";
+static constexpr char KEY_DOUBLE_MATCH[] = "doubleMatch";
+static constexpr char KEY_BOOL_IS_FALSE[] = "boolIsFalse";
+static constexpr char KEY_BOOL_IS_TRUE[] = "boolIsTrue";
+static constexpr char KEY_IS_OBJECT[] = "isObject";
+static constexpr char KEY_NO_UNEXPECTED_PROP[] = "noUnexpectedProp";
+
 static constexpr size_t STRING_BUF_SIZE = 256;
 static constexpr size_t PROP_COUNT_ZERO = 0;
 static constexpr size_t PROP_COUNT_ONE = 1;
@@ -50,6 +60,17 @@ static constexpr size_t PROP_COUNT_THREE = 3;
 // Module registration
 static constexpr uint32_t MODULE_VERSION = 1;
 static constexpr uint32_t MODULE_FLAGS_NONE = 0;
+static constexpr char MODULE_NAME[] = "obj_props_suite";
+
+// Exported test function names
+static constexpr char FN_TEST_OBJ_WITH_PROPS_INT32[] = "testObjWithPropsInt32";
+static constexpr char FN_TEST_OBJ_WITH_PROPS_STRING[] = "testObjWithPropsString";
+static constexpr char FN_TEST_OBJ_WITH_PROPS_BOOLEAN[] = "testObjWithPropsBoolean";
+static constexpr char FN_TEST_OBJ_WITH_PROPS_DOUBLE[] = "testObjWithPropsDouble";
+static constexpr char FN_TEST_OBJ_WITH_PROPS_MULTIPLE[] = "testObjWithPropsMultiple";
+static constexpr char FN_TEST_OBJ_WITH_PROPS_EMPTY[] = "testObjWithPropsEmpty";
+static constexpr char FN_TEST_OBJ_WITH_NAMED_PROPS_MULTIPLE[] = "testObjWithNamedPropsMultiple";
+static constexpr char FN_TEST_OBJ_WITH_NAMED_PROPS_EMPTY[] = "testObjWithNamedPropsEmpty";
 
 // ============================================================
 // Helper functions
@@ -85,7 +106,7 @@ static napi_value TestObjWithPropsInt32(napi_env env, napi_callback_info info)
     NAPI_CALL(env, napi_get_named_property(env, obj, KEY_INT, &got));
     int32_t outVal = INT32_ZERO;
     NAPI_CALL(env, napi_get_value_int32(env, got, &outVal));
-    if (!SetNamedBool(env, result, "int32Match", outVal == INT32_PROP_VAL)) {
+    if (!SetNamedBool(env, result, KEY_INT32_MATCH, outVal == INT32_PROP_VAL)) {
         return nullptr;
     }
     return result;
@@ -113,7 +134,7 @@ static napi_value TestObjWithPropsString(napi_env env, napi_callback_info info)
     char buf[STRING_BUF_SIZE] = {0};
     size_t len = PROP_COUNT_ZERO;
     NAPI_CALL(env, napi_get_value_string_utf8(env, got, buf, sizeof(buf), &len));
-    if (!SetNamedBool(env, result, "stringMatch", strcmp(buf, STR_HELLO) == INT32_ZERO)) {
+    if (!SetNamedBool(env, result, KEY_STRING_MATCH, strcmp(buf, STR_HELLO) == INT32_ZERO)) {
         return nullptr;
     }
     return result;
@@ -140,7 +161,7 @@ static napi_value TestObjWithPropsBoolean(napi_env env, napi_callback_info info)
     NAPI_CALL(env, napi_get_named_property(env, obj, KEY_BOOL, &got));
     bool outVal = false;
     NAPI_CALL(env, napi_get_value_bool(env, got, &outVal));
-    if (!SetNamedBool(env, result, "booleanMatch", outVal)) {
+    if (!SetNamedBool(env, result, KEY_BOOLEAN_MATCH, outVal)) {
         return nullptr;
     }
     return result;
@@ -167,7 +188,7 @@ static napi_value TestObjWithPropsDouble(napi_env env, napi_callback_info info)
     NAPI_CALL(env, napi_get_named_property(env, obj, KEY_DOUBLE, &got));
     double outVal = DOUBLE_ZERO;
     NAPI_CALL(env, napi_get_value_double(env, got, &outVal));
-    if (!SetNamedBool(env, result, "doubleMatch", outVal == DOUBLE_PROP_VAL)) {
+    if (!SetNamedBool(env, result, KEY_DOUBLE_MATCH, outVal == DOUBLE_PROP_VAL)) {
         return nullptr;
     }
     return result;
@@ -200,7 +221,7 @@ static napi_value TestObjWithPropsMultiple(napi_env env, napi_callback_info info
     NAPI_CALL(env, napi_get_named_property(env, obj, KEY_INT, &gotInt));
     int32_t outInt = INT32_ZERO;
     NAPI_CALL(env, napi_get_value_int32(env, gotInt, &outInt));
-    if (!SetNamedBool(env, result, "int32Match", outInt == INT32_PROP_VAL)) {
+    if (!SetNamedBool(env, result, KEY_INT32_MATCH, outInt == INT32_PROP_VAL)) {
         return nullptr;
     }
 
@@ -209,7 +230,7 @@ static napi_value TestObjWithPropsMultiple(napi_env env, napi_callback_info info
     char buf[STRING_BUF_SIZE] = {0};
     size_t len = PROP_COUNT_ZERO;
     NAPI_CALL(env, napi_get_value_string_utf8(env, gotStr, buf, sizeof(buf), &len));
-    if (!SetNamedBool(env, result, "stringMatch", strcmp(buf, STR_HELLO) == INT32_ZERO)) {
+    if (!SetNamedBool(env, result, KEY_STRING_MATCH, strcmp(buf, STR_HELLO) == INT32_ZERO)) {
         return nullptr;
     }
 
@@ -217,7 +238,7 @@ static napi_value TestObjWithPropsMultiple(napi_env env, napi_callback_info info
     NAPI_CALL(env, napi_get_named_property(env, obj, KEY_BOOL, &gotBool));
     bool outBool = true;
     NAPI_CALL(env, napi_get_value_bool(env, gotBool, &outBool));
-    if (!SetNamedBool(env, result, "boolIsFalse", !outBool)) {
+    if (!SetNamedBool(env, result, KEY_BOOL_IS_FALSE, !outBool)) {
         return nullptr;
     }
     return result;
@@ -236,14 +257,14 @@ static napi_value TestObjWithPropsEmpty(napi_env env, napi_callback_info info)
 
     napi_valuetype objType = napi_undefined;
     NAPI_CALL(env, napi_typeof(env, obj, &objType));
-    if (!SetNamedBool(env, result, "isObject", objType == napi_object)) {
+    if (!SetNamedBool(env, result, KEY_IS_OBJECT, objType == napi_object)) {
         return nullptr;
     }
 
     // Verify the object has no own property named KEY_INT
     bool hasProp = true;
     NAPI_CALL(env, napi_has_named_property(env, obj, KEY_INT, &hasProp));
-    if (!SetNamedBool(env, result, "noUnexpectedProp", !hasProp)) {
+    if (!SetNamedBool(env, result, KEY_NO_UNEXPECTED_PROP, !hasProp)) {
         return nullptr;
     }
     return result;
@@ -275,7 +296,7 @@ static napi_value TestObjWithNamedPropsMultiple(napi_env env, napi_callback_info
     NAPI_CALL(env, napi_get_named_property(env, obj, KEY_INT, &gotInt));
     int32_t outInt = INT32_ZERO;
     NAPI_CALL(env, napi_get_value_int32(env, gotInt, &outInt));
-    if (!SetNamedBool(env, result, "int32Match", outInt == INT32_PROP_VAL)) {
+    if (!SetNamedBool(env, result, KEY_INT32_MATCH, outInt == INT32_PROP_VAL)) {
         return nullptr;
     }
 
@@ -284,7 +305,7 @@ static napi_value TestObjWithNamedPropsMultiple(napi_env env, napi_callback_info
     char buf[STRING_BUF_SIZE] = {0};
     size_t len = PROP_COUNT_ZERO;
     NAPI_CALL(env, napi_get_value_string_utf8(env, gotStr, buf, sizeof(buf), &len));
-    if (!SetNamedBool(env, result, "stringMatch", strcmp(buf, STR_NAPI) == INT32_ZERO)) {
+    if (!SetNamedBool(env, result, KEY_STRING_MATCH, strcmp(buf, STR_NAPI) == INT32_ZERO)) {
         return nullptr;
     }
 
@@ -292,7 +313,7 @@ static napi_value TestObjWithNamedPropsMultiple(napi_env env, napi_callback_info
     NAPI_CALL(env, napi_get_named_property(env, obj, KEY_BOOL, &gotBool));
     bool outBool = false;
     NAPI_CALL(env, napi_get_value_bool(env, gotBool, &outBool));
-    if (!SetNamedBool(env, result, "boolIsTrue", outBool)) {
+    if (!SetNamedBool(env, result, KEY_BOOL_IS_TRUE, outBool)) {
         return nullptr;
     }
     return result;
@@ -312,7 +333,7 @@ static napi_value TestObjWithNamedPropsEmpty(napi_env env, napi_callback_info in
 
     napi_valuetype objType = napi_undefined;
     NAPI_CALL(env, napi_typeof(env, obj, &objType));
-    if (!SetNamedBool(env, result, "isObject", objType == napi_object)) {
+    if (!SetNamedBool(env, result, KEY_IS_OBJECT, objType == napi_object)) {
         return nullptr;
     }
     return result;
@@ -329,14 +350,14 @@ struct ObjPropsTestEntry {
 };
 
 static const ObjPropsTestEntry OBJ_PROPS_TESTS[] = {
-    {"testObjWithPropsInt32", TestObjWithPropsInt32},
-    {"testObjWithPropsString", TestObjWithPropsString},
-    {"testObjWithPropsBoolean", TestObjWithPropsBoolean},
-    {"testObjWithPropsDouble", TestObjWithPropsDouble},
-    {"testObjWithPropsMultiple", TestObjWithPropsMultiple},
-    {"testObjWithPropsEmpty", TestObjWithPropsEmpty},
-    {"testObjWithNamedPropsMultiple", TestObjWithNamedPropsMultiple},
-    {"testObjWithNamedPropsEmpty", TestObjWithNamedPropsEmpty},
+    {FN_TEST_OBJ_WITH_PROPS_INT32, TestObjWithPropsInt32},
+    {FN_TEST_OBJ_WITH_PROPS_STRING, TestObjWithPropsString},
+    {FN_TEST_OBJ_WITH_PROPS_BOOLEAN, TestObjWithPropsBoolean},
+    {FN_TEST_OBJ_WITH_PROPS_DOUBLE, TestObjWithPropsDouble},
+    {FN_TEST_OBJ_WITH_PROPS_MULTIPLE, TestObjWithPropsMultiple},
+    {FN_TEST_OBJ_WITH_PROPS_EMPTY, TestObjWithPropsEmpty},
+    {FN_TEST_OBJ_WITH_NAMED_PROPS_MULTIPLE, TestObjWithNamedPropsMultiple},
+    {FN_TEST_OBJ_WITH_NAMED_PROPS_EMPTY, TestObjWithNamedPropsEmpty},
 };
 }  // namespace
 
@@ -364,7 +385,7 @@ static napi_module g_objPropsSuiteModule = {
     .nm_flags = MODULE_FLAGS_NONE,
     .nm_filename = nullptr,
     .nm_register_func = InitObjPropsSuite,
-    .nm_modname = "obj_props_suite",
+    .nm_modname = MODULE_NAME,
     .nm_priv = nullptr,
 };
 
