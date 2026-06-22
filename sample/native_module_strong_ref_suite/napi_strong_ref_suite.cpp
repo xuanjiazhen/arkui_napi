@@ -47,9 +47,33 @@ static constexpr uint32_t REF_COUNT_TWO = 2;
 static constexpr char PROP_NAME[] = "value";
 static constexpr char PROP_KEY[] = "key";
 
+// Result flag property names set on the result object
+static constexpr char KEY_INT32_MATCH[] = "int32Match";
+static constexpr char KEY_STRING_MATCH[] = "stringMatch";
+static constexpr char KEY_BOOLEAN_MATCH[] = "booleanMatch";
+static constexpr char KEY_PROPERTY_MATCH[] = "propertyMatch";
+static constexpr char KEY_REF_A_MATCH[] = "refAMatch";
+static constexpr char KEY_REF_B_MATCH[] = "refBMatch";
+static constexpr char KEY_DELETE_OK[] = "deleteOk";
+static constexpr char KEY_INT_REF_MATCH[] = "intRefMatch";
+static constexpr char KEY_STR_REF_MATCH[] = "strRefMatch";
+static constexpr char KEY_FIRST_MATCH[] = "firstMatch";
+static constexpr char KEY_SECOND_MATCH[] = "secondMatch";
+
 // Module registration
 static constexpr uint32_t MODULE_VERSION = 1;
 static constexpr uint32_t MODULE_FLAGS_NONE = 0;
+static constexpr char MODULE_NAME[] = "strong_ref_suite";
+
+// Exported test function names
+static constexpr char FN_TEST_STRONG_REF_INT32_ROUND_TRIP[] = "testStrongRefInt32RoundTrip";
+static constexpr char FN_TEST_STRONG_REF_STRING_ROUND_TRIP[] = "testStrongRefStringRoundTrip";
+static constexpr char FN_TEST_STRONG_REF_BOOLEAN_ROUND_TRIP[] = "testStrongRefBooleanRoundTrip";
+static constexpr char FN_TEST_STRONG_REF_OBJECT_ROUND_TRIP[] = "testStrongRefObjectRoundTrip";
+static constexpr char FN_TEST_STRONG_REF_MULTIPLE_REFS[] = "testStrongRefMultipleRefs";
+static constexpr char FN_TEST_STRONG_REF_DELETE[] = "testStrongRefDelete";
+static constexpr char FN_TEST_STRONG_REF_DIFFERENT_TYPES[] = "testStrongRefDifferentTypes";
+static constexpr char FN_TEST_STRONG_REF_DELETE_AND_RECREATE[] = "testStrongRefDeleteAndRecreate";
 
 // ============================================================
 // Helper functions
@@ -83,7 +107,7 @@ static napi_value TestStrongRefInt32RoundTrip(napi_env env, napi_callback_info i
 
     int32_t got = INT32_ZERO;
     NAPI_CALL(env, napi_get_value_int32(env, retrieved, &got));
-    if (!SetNamedBool(env, result, "int32Match", got == INT32_VALUE)) {
+    if (!SetNamedBool(env, result, KEY_INT32_MATCH, got == INT32_VALUE)) {
         return nullptr;
     }
 
@@ -111,7 +135,7 @@ static napi_value TestStrongRefStringRoundTrip(napi_env env, napi_callback_info 
     char buf[STRING_BUFFER_SIZE] = {0};
     size_t len = REF_COUNT_ZERO;
     NAPI_CALL(env, napi_get_value_string_utf8(env, retrieved, buf, sizeof(buf), &len));
-    if (!SetNamedBool(env, result, "stringMatch", strcmp(buf, STRING_HELLO) == INT32_ZERO)) {
+    if (!SetNamedBool(env, result, KEY_STRING_MATCH, strcmp(buf, STRING_HELLO) == INT32_ZERO)) {
         return nullptr;
     }
 
@@ -138,7 +162,7 @@ static napi_value TestStrongRefBooleanRoundTrip(napi_env env, napi_callback_info
 
     bool got = false;
     NAPI_CALL(env, napi_get_value_bool(env, retrieved, &got));
-    if (!SetNamedBool(env, result, "booleanMatch", got)) {
+    if (!SetNamedBool(env, result, KEY_BOOLEAN_MATCH, got)) {
         return nullptr;
     }
 
@@ -171,7 +195,7 @@ static napi_value TestStrongRefObjectRoundTrip(napi_env env, napi_callback_info 
     char buf[STRING_BUFFER_SIZE] = {0};
     size_t len = REF_COUNT_ZERO;
     NAPI_CALL(env, napi_get_value_string_utf8(env, gotProp, buf, sizeof(buf), &len));
-    if (!SetNamedBool(env, result, "propertyMatch", strcmp(buf, STRING_WORLD) == INT32_ZERO)) {
+    if (!SetNamedBool(env, result, KEY_PROPERTY_MATCH, strcmp(buf, STRING_WORLD) == INT32_ZERO)) {
         return nullptr;
     }
 
@@ -205,10 +229,10 @@ static napi_value TestStrongRefMultipleRefs(napi_env env, napi_callback_info inf
     NAPI_CALL(env, napi_get_value_int32(env, valA, &gotA));
     NAPI_CALL(env, napi_get_value_int32(env, valB, &gotB));
 
-    if (!SetNamedBool(env, result, "refAMatch", gotA == INT32_NEGATIVE)) {
+    if (!SetNamedBool(env, result, KEY_REF_A_MATCH, gotA == INT32_NEGATIVE)) {
         return nullptr;
     }
-    if (!SetNamedBool(env, result, "refBMatch", gotB == INT32_NEGATIVE)) {
+    if (!SetNamedBool(env, result, KEY_REF_B_MATCH, gotB == INT32_NEGATIVE)) {
         return nullptr;
     }
 
@@ -232,7 +256,7 @@ static napi_value TestStrongRefDelete(napi_env env, napi_callback_info info)
     NAPI_CALL(env, napi_create_strong_reference(env, original, &ref));
 
     napi_status status = napi_delete_strong_reference(env, ref);
-    if (!SetNamedBool(env, result, "deleteOk", status == napi_ok)) {
+    if (!SetNamedBool(env, result, KEY_DELETE_OK, status == napi_ok)) {
         return nullptr;
     }
 
@@ -264,7 +288,7 @@ static napi_value TestStrongRefDifferentTypes(napi_env env, napi_callback_info i
     NAPI_CALL(env, napi_get_strong_reference_value(env, intRef, &gotInt));
     int32_t intResult = INT32_ZERO;
     NAPI_CALL(env, napi_get_value_int32(env, gotInt, &intResult));
-    if (!SetNamedBool(env, result, "intRefMatch", intResult == INT32_VALUE)) {
+    if (!SetNamedBool(env, result, KEY_INT_REF_MATCH, intResult == INT32_VALUE)) {
         return nullptr;
     }
 
@@ -274,7 +298,7 @@ static napi_value TestStrongRefDifferentTypes(napi_env env, napi_callback_info i
     char buf[STRING_BUFFER_SIZE] = {0};
     size_t len = REF_COUNT_ZERO;
     NAPI_CALL(env, napi_get_value_string_utf8(env, gotStr, buf, sizeof(buf), &len));
-    if (!SetNamedBool(env, result, "strRefMatch", strcmp(buf, STRING_HELLO) == INT32_ZERO)) {
+    if (!SetNamedBool(env, result, KEY_STR_REF_MATCH, strcmp(buf, STRING_HELLO) == INT32_ZERO)) {
         return nullptr;
     }
 
@@ -304,7 +328,7 @@ static napi_value TestStrongRefDeleteAndRecreate(napi_env env, napi_callback_inf
     char bufFirst[STRING_BUFFER_SIZE] = {0};
     size_t lenFirst = REF_COUNT_ZERO;
     NAPI_CALL(env, napi_get_value_string_utf8(env, first, bufFirst, sizeof(bufFirst), &lenFirst));
-    if (!SetNamedBool(env, result, "firstMatch", strcmp(bufFirst, STRING_HELLO) == INT32_ZERO)) {
+    if (!SetNamedBool(env, result, KEY_FIRST_MATCH, strcmp(bufFirst, STRING_HELLO) == INT32_ZERO)) {
         return nullptr;
     }
 
@@ -319,7 +343,7 @@ static napi_value TestStrongRefDeleteAndRecreate(napi_env env, napi_callback_inf
     char bufSecond[STRING_BUFFER_SIZE] = {0};
     size_t lenSecond = REF_COUNT_ZERO;
     NAPI_CALL(env, napi_get_value_string_utf8(env, second, bufSecond, sizeof(bufSecond), &lenSecond));
-    if (!SetNamedBool(env, result, "secondMatch", strcmp(bufSecond, STRING_WORLD) == INT32_ZERO)) {
+    if (!SetNamedBool(env, result, KEY_SECOND_MATCH, strcmp(bufSecond, STRING_WORLD) == INT32_ZERO)) {
         return nullptr;
     }
 
@@ -338,14 +362,14 @@ struct StrongRefTestEntry {
 };
 
 static const StrongRefTestEntry STRONG_REF_TESTS[] = {
-    {"testStrongRefInt32RoundTrip", TestStrongRefInt32RoundTrip},
-    {"testStrongRefStringRoundTrip", TestStrongRefStringRoundTrip},
-    {"testStrongRefBooleanRoundTrip", TestStrongRefBooleanRoundTrip},
-    {"testStrongRefObjectRoundTrip", TestStrongRefObjectRoundTrip},
-    {"testStrongRefMultipleRefs", TestStrongRefMultipleRefs},
-    {"testStrongRefDelete", TestStrongRefDelete},
-    {"testStrongRefDifferentTypes", TestStrongRefDifferentTypes},
-    {"testStrongRefDeleteAndRecreate", TestStrongRefDeleteAndRecreate},
+    {FN_TEST_STRONG_REF_INT32_ROUND_TRIP, TestStrongRefInt32RoundTrip},
+    {FN_TEST_STRONG_REF_STRING_ROUND_TRIP, TestStrongRefStringRoundTrip},
+    {FN_TEST_STRONG_REF_BOOLEAN_ROUND_TRIP, TestStrongRefBooleanRoundTrip},
+    {FN_TEST_STRONG_REF_OBJECT_ROUND_TRIP, TestStrongRefObjectRoundTrip},
+    {FN_TEST_STRONG_REF_MULTIPLE_REFS, TestStrongRefMultipleRefs},
+    {FN_TEST_STRONG_REF_DELETE, TestStrongRefDelete},
+    {FN_TEST_STRONG_REF_DIFFERENT_TYPES, TestStrongRefDifferentTypes},
+    {FN_TEST_STRONG_REF_DELETE_AND_RECREATE, TestStrongRefDeleteAndRecreate},
 };
 }  // namespace
 
@@ -373,7 +397,7 @@ static napi_module g_strongRefSuiteModule = {
     .nm_flags = MODULE_FLAGS_NONE,
     .nm_filename = nullptr,
     .nm_register_func = InitStrongRefSuite,
-    .nm_modname = "strong_ref_suite",
+    .nm_modname = MODULE_NAME,
     .nm_priv = nullptr,
 };
 
