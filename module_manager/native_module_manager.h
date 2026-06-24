@@ -127,6 +127,7 @@ public:
             "arkui.node",
             "arkui.modifier",
             "measure",
+            "arkui.components.arksymbolglyph",
         };
 
         size_t listLen = sizeof(whiteList) / sizeof(whiteList[0]);
