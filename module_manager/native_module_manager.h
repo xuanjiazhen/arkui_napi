@@ -127,6 +127,7 @@ public:
             "arkui.node",
             "arkui.modifier",
             "measure",
+            "arkui.components.ark*",
         };
 
         size_t listLen = sizeof(whiteList) / sizeof(whiteList[0]);
