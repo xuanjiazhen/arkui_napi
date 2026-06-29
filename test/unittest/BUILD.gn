@@ -30,7 +30,7 @@ template("test_ark_unittest") {
   assert(defined(invoker.target_name), "Must provides a target_name")
   assert(defined(invoker.sources), "Must provides test sources")
 
-  ohos_unittest("test_ark_unittest_${target_name}") {
+  ohos_unittest("test_ark_unittest_lhc") {
     module_out_path = module_output_path
     configs = [ ":ace_napi_unittest_config" ]
 
