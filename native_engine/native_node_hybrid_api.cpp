@@ -520,3 +520,15 @@ NAPI_EXTERN napi_status napi_set_is_hybrid_vm(napi_env env, bool isHybrid)
     return GET_RETURN_STATUS(env);
 }
 #endif // PANDA_JS_ETS_HYBRID_MODE
+
+NAPI_EXTERN napi_status napi_is_hybrid_vm(napi_env env, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, result);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = engine->GetEcmaVm();
+    *result = panda::JSNApi::IsHybridVM(vm);
+
+    return napi_clear_last_error(env);
+}

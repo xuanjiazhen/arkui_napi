@@ -118,5 +118,6 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_ref* result);
 #endif // PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback);
+NAPI_EXTERN napi_status napi_is_hybrid_vm(napi_env env, bool* result);
 
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_HYBRID_API_H */
