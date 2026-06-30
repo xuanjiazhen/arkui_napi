@@ -800,6 +800,47 @@ HWTEST_F(NapiSendableTest, WrapSendableWithSizeTest001, testing::ext::TestSize.L
     ASSERT_STREQ(testWrapStr, tempTestStr1);
 }
 
+HWTEST_F(NapiSendableTest, RemoveWrapSendableCancelFinalizeTest001, testing::ext::TestSize.Level1)
+{
+    UVLoopRunner runner(engine_);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const EcmaVM* vm = reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm();
+
+    static bool finalizeCalled = false;
+    finalizeCalled = false;
+    auto finalizeCb = [](napi_env env, void* data, void* hint) {
+        finalizeCalled = true;
+    };
+
+    {
+        napi_handle_scope scope = nullptr;
+        ASSERT_CHECK_CALL(napi_open_handle_scope(env, &scope));
+
+        napi_value valTrue = nullptr;
+        ASSERT_CHECK_CALL(napi_get_boolean(env, true, &valTrue));
+
+        napi_property_descriptor desc[] = {
+            DECLARE_NAPI_DEFAULT_PROPERTY("x", valTrue),
+        };
+
+        napi_value obj = nullptr;
+        ASSERT_CHECK_CALL(napi_create_sendable_object_with_properties(env, 1, desc, &obj));
+        ASSERT_CHECK_CALL(napi_wrap_sendable(env, obj, (void*)TEST_STR, finalizeCb, nullptr));
+
+        char* tmpTestStr = nullptr;
+        ASSERT_CHECK_CALL(napi_remove_wrap_sendable(env, obj, (void**)&tmpTestStr));
+        ASSERT_STREQ(TEST_STR, tmpTestStr);
+        ASSERT_FALSE(finalizeCalled);
+
+        ASSERT_CHECK_CALL(napi_close_handle_scope(env, scope));
+    }
+
+    panda::JSNApi::TriggerGC(vm, panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::SHARED_FULL_GC);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    runner.Run();
+    ASSERT_FALSE(finalizeCalled);
+}
+
 /**
  * @tc.name: SharedArrayBufferTest001
  * @tc.desc: Test is shared array buffer.
@@ -2823,6 +2864,51 @@ HWTEST_F(NapiSendableTest, WrapSendableSTest003, testing::ext::TestSize.Level1)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     runner.Run();
     ASSERT_TRUE(finalizeCalled);
+}
+
+HWTEST_F(NapiSendableTest, RemoveWrapSendableSCancelFinalizeTest001, testing::ext::TestSize.Level1)
+{
+    UVLoopRunner runner(engine_);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    const EcmaVM* vm = reinterpret_cast<ArkNativeEngine*>(engine_)->GetEcmaVm();
+
+    static bool finalizeCalled = false;
+    finalizeCalled = false;
+    auto finalizeCb = [](napi_env env, void* data, void* hint) {
+        finalizeCalled = true;
+    };
+
+    {
+        napi_handle_scope scope = nullptr;
+        ASSERT_CHECK_CALL(napi_open_handle_scope(env, &scope));
+
+        napi_value valTrue = nullptr;
+        ASSERT_CHECK_CALL(napi_get_boolean(env, true, &valTrue));
+
+        napi_property_descriptor desc[] = {
+            DECLARE_NAPI_DEFAULT_PROPERTY("x", valTrue),
+        };
+
+        napi_value obj = nullptr;
+        ASSERT_CHECK_CALL(napi_create_sendable_object_with_properties(env, 1, desc, &obj));
+        ASSERT_CHECK_CALL(napi_wrap_sendable_s(env, obj, (void*)TEST_STR, finalizeCb, nullptr, &wrapTypeTag));
+
+        char* tmpTestStr = nullptr;
+        ASSERT_CHECK_CALL(napi_unwrap_sendable_s(env, obj, &wrapTypeTag, (void**)&tmpTestStr));
+        ASSERT_STREQ(TEST_STR, tmpTestStr);
+
+        char* tmpTestStr1 = nullptr;
+        ASSERT_CHECK_CALL(napi_remove_wrap_sendable(env, obj, (void**)&tmpTestStr1));
+        ASSERT_STREQ(TEST_STR, tmpTestStr1);
+        ASSERT_FALSE(finalizeCalled);
+
+        ASSERT_CHECK_CALL(napi_close_handle_scope(env, scope));
+    }
+
+    panda::JSNApi::TriggerGC(vm, panda::ecmascript::GCReason::OTHER, panda::JSNApi::TRIGGER_GC_TYPE::SHARED_FULL_GC);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    runner.Run();
+    ASSERT_FALSE(finalizeCalled);
 }
 
 HWTEST_F(NapiSendableTest, WrapSendableSTest004, testing::ext::TestSize.Level1)
