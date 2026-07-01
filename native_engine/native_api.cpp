@@ -3526,6 +3526,19 @@ NAPI_EXTERN napi_status napi_is_async_function(napi_env env, napi_value value, b
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_is_async_or_async_generator_function(napi_env env, napi_value value, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+
+    *result = nativeValue->IsJSAsyncOrAsyncGeneratorFunction(vm);
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_is_boolean_object(napi_env env, napi_value value, bool* result)
 {
     CHECK_ENV(env);
@@ -3552,6 +3565,20 @@ NAPI_EXTERN napi_status napi_is_generator_function(napi_env env, napi_value valu
 
     // IsGeneratorFunction will switch state
     *result = nativeValue->IsGeneratorFunction(vm);
+
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_is_generator_or_async_generator_function(napi_env env, napi_value value, bool* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, value);
+    CHECK_ARG(env, result);
+
+    auto nativeValue = LocalValueFromJsValue(value);
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+
+    *result = nativeValue->IsGeneratorOrAsyncGeneratorFunction(vm);
 
     return napi_clear_last_error(env);
 }
