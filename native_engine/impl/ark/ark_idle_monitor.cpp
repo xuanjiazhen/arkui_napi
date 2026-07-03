@@ -603,6 +603,7 @@ void ArkIdleMonitor::PostSwitchBackgroundGCTask()
                 ffrt_usleep(BACKGROUND_GC_CHECK_INTERVAL * 1000); // ms → µs
             }
         }
+        JSNApi::ExecuteTaskpoolShrinkCallback(monitor->inBackGround_);
         monitor->StopIdleMonitorTimerTaskAndPostSleepTask();
         monitor->ClearIdleStats();
         monitor->SetDuringBackgroundTask(false);
