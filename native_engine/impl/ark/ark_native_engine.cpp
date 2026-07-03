@@ -1935,7 +1935,8 @@ napi_value ArkNativeEngine::NapiLoadModule(const char* path)
     return JsValueFromLocalValue(scope.Escape(exportObj));
 }
 
-napi_value ArkNativeEngine::NapiLoadModuleWithInfo(const char* path, const char* module_info)
+napi_value ArkNativeEngine::
+(const char* path, const char* module_info)
 {
     if (path == nullptr) {
         HILOG_ERROR("ArkNativeEngine:The module name is empty");
