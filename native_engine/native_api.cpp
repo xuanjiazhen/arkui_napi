@@ -3822,7 +3822,8 @@ NAPI_EXTERN napi_status napi_serialize_inner(napi_env env, napi_value object, na
 
 NAPI_EXTERN napi_status napi_serialize_inner_with_error(napi_env env, napi_value object, napi_value transfer_list,
                                                         napi_value clone_list, bool defaultTransfer,
-                                                        bool defaultCloneSendable, void** result, std::string& error)
+                                                        bool defaultCloneSendable, void** result, std::string& error,
+                                                        bool needSerializeStack)
 {
     CHECK_ENV(env);
     CHECK_ARG(env, object);
@@ -3834,7 +3835,7 @@ NAPI_EXTERN napi_status napi_serialize_inner_with_error(napi_env env, napi_value
     auto transferList = LocalValueFromJsValue(transfer_list);
     auto cloneList = LocalValueFromJsValue(clone_list);
     *result = panda::JSNApi::SerializeValueWithError(vm, nativeValue, transferList, cloneList, error, defaultTransfer,
-                                                     defaultCloneSendable);
+                                                     defaultCloneSendable, needSerializeStack);
 
     return napi_clear_last_error(env);
 }

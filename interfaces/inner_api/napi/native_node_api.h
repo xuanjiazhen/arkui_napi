@@ -79,7 +79,8 @@ NAPI_EXTERN napi_status napi_serialize_inner_with_error(napi_env env,
                                                         bool defaultTransfer,
                                                         bool defaultCloneSendable,
                                                         void** result,
-                                                        std::string& error);
+                                                        std::string& error,
+                                                        bool needSerializeStack = false);
 NAPI_EXTERN napi_status napi_run_actor(napi_env env,
                                        const char* path,
                                        char* entryPoint,
