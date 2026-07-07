@@ -173,3 +173,25 @@
 - [x] 规范符合性 + 代码质量审查通过（详见 review.md §十三）
 - [x] 范围合规：未替换为 JSON 解析器、未加配置完整性校验、未触碰 JSON 解析逻辑（L483-521）/`sharedLibsSonames_` 拼接（L598-617）/`dlns_inherit` 调用点（L679/687）/原 `IsValidLibName`（L442-456 保留为孤立死代码）
 - [x] 行为变更（含危险字符 lib 名由"接受"改为"拒绝"）已评估为可接受
+
+---
+
+## TASK-8 实现（问题 #8：UnloadNativeModule TOCTOU 竞态）
+
+- [x] RED 阶段：在 `module_manager_test.cpp:2212-2226` 追加 `UnloadNativeModule_WhenModuleNotInLibMapShouldReturnFalseSafely`，空 libMap → EXPECT_FALSE（覆盖 AC-8.1 早退路径）
+- [ ] RED 运行验证：未运行（同 TASK-1 环境问题）
+- [x] GREEN 阶段：
+  - `native_module_manager.h:170-171` 新增 2 个私有声明（`RemoveNativeModuleByCacheLocked` + `RemoveNativeModuleLocked`）
+  - `native_module_manager.cpp:271-295` 重构 `UnloadNativeModule` 为双锁临界区 + 锁外 `dlclose`（按用户建议代码）
+  - `native_module_manager.cpp:261-270` 新增 `RemoveNativeModuleLocked`（调用方持双锁 + libMap 已擦除；内部仅调 `RemoveModuleBuffer` + `RemoveNativeModuleByCacheLocked`）
+  - `native_module_manager.cpp:1649-1711` 新增 `RemoveNativeModuleByCacheLocked`（与 `RemoveNativeModuleByCache` 同体，移除 lock_guard 行）
+- [ ] GREEN 运行验证：未运行
+- [ ] 回归运行验证：未运行
+- [ ] 并发压力验证（AC-8.3）：待 CI
+- [x] REFACTOR：审视完成。双锁临界区最小化（dlclose 在锁外）；2 个 Locked helper 单一职责；既有 4 个 Remove* 函数保留不动
+- [x] 实际修改文件未超出 Task/Plan（3 个文件：`native_module_manager.h` + `native_module_manager.cpp` + `module_manager_test.cpp`，同 TASK-6/7）
+- [x] 规范符合性 + 代码质量审查通过（详见 review.md §十四）
+- [x] **锁顺序静态审查 PASS**：grep 全仓 14 处 lock_guard，唯一双锁嵌套在 L278-279（`lk1(moduleLibMutex_)` → `lk2(nativeModuleListMutex_)`），无反向持有路径 → 无死锁风险（AC-8.6）
+- [x] **AC-8.4/8.5 静态审查 PASS**：`RemoveNativeModuleLocked`（L261-270）函数体无 `moduleLibMutex_`/`nativeModuleListMutex_` lock_guard；`RemoveNativeModuleByCacheLocked`（L1649-1711）首行无 lock_guard（仅注释）
+- [x] 范围合规：未采用引用计数方案、未触碰 `CloseModuleLibrary`/其他锁粒度问题/`dlclose` 失败处理；既有 4 个 Remove* 函数全部保留不动
+- [x] 行为变更（cache 不一致时 handle 泄漏优于 TOCTOU heap corruption）已评估为可接受

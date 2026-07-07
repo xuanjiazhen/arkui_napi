@@ -1017,3 +1017,151 @@ EXPECT_TRUE(NativeModuleManager::IsValidLibNameStrict("a.so"));
 | RED 测试 | 待运行（环境问题，同 TASK-1） | 待运行 |
 | GREEN 测试 | 待运行 | 待运行 |
 | 既有用例回归 | 待运行 | 待运行 |
+
+---
+
+## TASK-8：UnloadNativeModule TOCTOU 竞态修复
+
+### 范围
+
+| 项 | 内容 |
+|----|------|
+| 关联 AC | AC-8.1 / AC-8.2 / AC-8.3 / AC-8.4 / AC-8.5 / AC-8.6 / AC-8.7 |
+| 关联 FR | FR-8.a / FR-8.b / FR-8.c / FR-8.d |
+| 修改文件 | `module_manager/native_module_manager.h` + `module_manager/native_module_manager.cpp` + `module_manager/test/unittest/module_manager_test/module_manager_test.cpp` |
+| 不涉及 | 引用计数方案、CloseModuleLibrary、其他锁粒度、dlclose 失败处理、既有 4 个 Remove* 函数（保留不动） |
+
+### 目标代码（TASK-8）
+
+#### 1. `native_module_manager.h` 私有段新增 2 个声明
+
+紧邻 L168-#169 既有的 `IsSafeRelativePath`/`IsValidLibNameStrict`，追加：
+
+```cpp
+    bool RemoveNativeModuleByCacheLocked(const std::string& moduleKey);
+    bool RemoveNativeModuleLocked(const std::string& moduleKey);
+```
+
+#### 2. `native_module_manager.cpp` 重构 `UnloadNativeModule`（L261-276）
+
+**原代码：**
+```cpp
+bool NativeModuleManager::UnloadNativeModule(const std::string& moduleKey)
+{
+    MODULEMNG_HILOG_DEBUG("module:'%{public}s'", moduleKey.c_str());
+    LIBHANDLE handle = GetNativeModuleHandle(moduleKey);
+    if (handle == nullptr) {
+        MODULEMNG_HILOG_ERROR("failed");
+        return false;
+    }
+    if (RemoveNativeModule(moduleKey) == false) {
+        MODULEMNG_HILOG_ERROR("failed");
+        return false;
+    }
+    return UnloadModuleLibrary(handle);
+}
+```
+
+**目标代码：**
+```cpp
+bool NativeModuleManager::UnloadNativeModule(const std::string& moduleKey)
+{
+    MODULEMNG_HILOG_DEBUG("module:'%{public}s'", moduleKey.c_str());
+    LIBHANDLE handle = nullptr;
+    bool removed = false;
+    {
+        std::lock_guard<std::mutex> lk1(moduleLibMutex_);
+        std::lock_guard<std::mutex> lk2(nativeModuleListMutex_);
+        auto it = moduleLibMap_.find(moduleKey);
+        if (it == moduleLibMap_.end()) {
+            MODULEMNG_HILOG_ERROR("module '%{public}s' not found in lib map", moduleKey.c_str());
+            return false;
+        }
+        handle = it->second;
+        moduleLibMap_.erase(it);
+        removed = RemoveNativeModuleLocked(moduleKey);
+    }
+    if (!removed) {
+        MODULEMNG_HILOG_ERROR("remove native module failed for '%{public}s'", moduleKey.c_str());
+        return false;
+    }
+    return UnloadModuleLibrary(handle);
+}
+```
+
+#### 3. `native_module_manager.cpp` 新增 `RemoveNativeModuleLocked` 实现
+
+紧邻 `RemoveNativeModule`（L250-259）后追加（约 L260 处插入）：
+
+```cpp
+bool NativeModuleManager::RemoveNativeModuleLocked(const std::string& moduleKey)
+{
+    // Caller holds moduleLibMutex_ and nativeModuleListMutex_
+    // moduleLibMap_ entry already erased by caller (UnloadNativeModule)
+    bool bufferRemoved = RemoveModuleBuffer(moduleKey);  // takes moduleBufMutex_ internally
+    bool moduleRemoved = RemoveNativeModuleByCacheLocked(moduleKey);  // caller holds nativeModuleListMutex_
+    MODULEMNG_HILOG_DEBUG("bufferRemoved is %{public}d, moduleRemoved is %{public}d",
+        bufferRemoved, moduleRemoved);
+    return moduleRemoved;
+}
+```
+
+> 说明：lib 已擦除等价 `handleRemoved = true`，原 `RemoveNativeModule` 返回逻辑 `((handleRemoved || handleAbcRemoved) && moduleRemoved)` 简化为 `moduleRemoved`。
+
+#### 4. `native_module_manager.cpp` 新增 `RemoveNativeModuleByCacheLocked` 实现
+
+紧邻 `RemoveNativeModuleByCache`（L1574-1629）后追加。函数体与 `RemoveNativeModuleByCache` **完全相同**，仅**移除首行 `std::lock_guard<std::mutex> lock(nativeModuleListMutex_);`**（调用方持锁）。
+
+### 测试设计（TASK-8）
+
+**测试名：** `UnloadNativeModule_WhenModuleNotInLibMapShouldReturnFalseSafely`
+
+**覆盖 AC：** AC-8.1（空 libMap 早退 false）+ AC-8.7（既有用例回归）
+
+**断言：**
+- `moduleLibMap_` 不含目标 key
+- 调用 `UnloadNativeModule("test_unload_no_exist")` → 返回 false
+- 无崩溃（验证 TOCTOU 加固后的"未找到早退"路径不需要 dlclose）
+
+**测试骨架：**
+```cpp
+HWTEST_F(ModuleManagerTest, UnloadNativeModule_WhenModuleNotInLibMapShouldReturnFalseSafely, TestSize.Level1)
+{
+    /**
+     * @tc.name: UnloadNativeModule_WhenModuleNotInLibMapShouldReturnFalseSafely
+     * @tc.desc: 验证 UnloadNativeModule 在 moduleLibMap_ 不存在 key 时安全早退
+     * @tc.type: FUNC
+     * @tc.require: issue #2157 问题 #8
+     */
+    NativeModuleManager& mgr = NativeModuleManager::GetInstance();
+    // moduleLibMap_ 默认为空（SetUp 不主动填充），调用应早退 false 不崩溃
+    bool result = mgr.UnloadNativeModule("test_unload_no_exist_key");
+    EXPECT_FALSE(result);
+}
+```
+
+**注意事项：**
+- 不主动向 `moduleLibMap_` 插入条目（避免真实 `dlclose` 悬空指针崩溃）
+- 该测试验证的是"早退路径"，覆盖 AC-8.1 的双锁临界区 `find == end()` 分支
+- 并发压力测试（AC-8.3）不在单测范围，留待 CI
+
+### BUILD.gn 变更
+
+> N/A — 同 TASK-1-#7。
+
+### 验证检查清单（TASK-8）
+
+- [ ] AC-8.1/8.2/8.3/8.4/8.5/8.6/8.7 全部有对应验证（单测 + 静态审查）
+- [ ] RED-GREEN-REFACTOR 执行（待环境）
+- [ ] 构建通过（待环境）
+- [ ] 未修改受影响文件清单之外的内容
+- [ ] 完成证据已记录到 review.md
+
+**完成证据（TASK-8）：**
+
+| 证据 | 命令/路径 | 结果 |
+|------|-----------|------|
+| RED 测试 | 待运行（环境问题，同 TASK-1） | 待运行 |
+| GREEN 测试 | 待运行 | 待运行 |
+| 既有用例回归 | 待运行 | 待运行 |
+| 锁顺序静态审查 | grep 全仓 `moduleLibMutex_` + `nativeModuleListMutex_` 双锁嵌套 | 待审查 |

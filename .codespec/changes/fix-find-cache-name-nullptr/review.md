@@ -556,3 +556,79 @@
 - **必须修复项**：无
 - **可接受风险**：本机测试验证跳过（用户决定）；原 `IsValidLibName` 成为孤立死代码（保留不删，最小变更原则）；行为变更（含危险字符 lib 名由"接受"改为"拒绝"）已评估为可接受
 - **范围合规**：严格遵守"每次仅修问题描述本身"规则，未替换为 JSON 解析器、未加配置完整性校验、未触碰 JSON 解析逻辑/`sharedLibsSonames_` 拼接/`dlns_inherit` 调用点/原 `IsValidLibName`
+
+---
+
+## 十四、问题 #8 审查：UnloadNativeModule TOCTOU 竞态修复
+
+### 规范符合性（问题 #8）
+
+| 规则 | 符合？ | 证据 |
+|------|--------|------|
+| FR-8.a UnloadNativeModule 双锁临界区 + 锁外 dlclose | PASS | `native_module_manager.cpp:271-295`：嵌套 `{ lock_guard lk1(moduleLibMutex_) + lk2(nativeModuleListMutex_) }`；`find`→`end()` 早退 false；非 end 则 `handle = it->second` + `erase` + `RemoveNativeModuleLocked`；出 `{}` 后 `if (!removed) return false; return UnloadModuleLibrary(handle)` |
+| FR-8.b RemoveNativeModuleLocked 实现 | PASS | `native_module_manager.cpp:261-270`：调用方持双锁 + `moduleLibMap_` 已擦除；函数体仅调 `RemoveModuleBuffer`（取 `moduleBufMutex_`）+ `RemoveNativeModuleByCacheLocked`（无锁）；返回 `moduleRemoved`（lib 已擦除等价 handleRemoved=true） |
+| FR-8.c RemoveNativeModuleByCacheLocked 实现 | PASS | `native_module_manager.cpp:1649-1711`：函数体与 `RemoveNativeModuleByCache`（L1592-1647）逐字相同，**首行无 `std::lock_guard<std::mutex> lock(nativeModuleListMutex_);`**，改为 `// Caller holds nativeModuleListMutex_` 注释 |
+| FR-8.d 锁顺序契约 | PASS | grep 全仓 `lock_guard.*\(moduleLibMutex_\|nativeModuleListMutex_\)` 14 处：唯一双锁嵌套在 L278-279（`lk1(moduleLibMutex_)` → `lk2(nativeModuleListMutex_)`）；其余 13 处均为单锁函数级 lock_guard，无反向持有 → 无死锁 |
+| 范围合规（不修引用计数方案） | PASS | 用户参考代码采用方案 1（合并临界区），未引入 shared_ptr/refCount |
+| 范围合规（不修 CloseModuleLibrary） | PASS | 未触碰 |
+| 范围合规（不修其他锁粒度问题） | PASS | EmplaceModuleLib/EmplaceModuleBuffer 等未触碰 |
+| 范围合规（不修 dlclose 失败处理） | PASS | `UnloadModuleLibrary` 函数体保留原样 |
+| 范围合规（保留既有 4 个 Remove* 函数） | PASS | `RemoveNativeModule`（L250-260）/`RemoveModuleLib`（L184-196）/`RemoveModuleBuffer`（L225-237）/`RemoveNativeModuleByCache`（L1592-1647）全部保留不动 |
+| 范围合规（不加并发压力测试） | PASS | 单测仅含早退路径用例；并发测试留待 CI |
+| AC-8.1 空 libMap 早退 | PASS | L281-285 `find == end()` → `return false`，单测 `UnloadNativeModule_WhenModuleNotInLibMapShouldReturnFalseSafely` 覆盖 |
+| AC-8.2 双锁临界区 + 锁外 dlclose | PASS | L277-287 临界区，L294 `UnloadModuleLibrary` 在 `}` 外 |
+| AC-8.3 并发不双重释放 | 延后 | CI 并发压力测试 |
+| AC-8.4 RemoveNativeModuleLocked 不重复加双锁 | PASS | L261-270 函数体无 `moduleLibMutex_`/`nativeModuleListMutex_` lock_guard |
+| AC-8.5 RemoveNativeModuleByCacheLocked 不加锁 | PASS | L1649-1711 无 lock_guard |
+| AC-8.6 锁顺序无反向 | PASS | grep 静态审查 |
+| AC-8.7 既有用例回归 | 待运行 | 环境问题，同 #1-#7 |
+
+### 代码质量（问题 #8）
+
+| 项 | PASS？ | 说明 |
+|----|--------|------|
+| 双锁临界区最小化 | PASS | 临界区内仅做 find/erase/RemoveLocked，`dlclose` 在锁外（避免持锁长耗时） |
+| 锁顺序文档化 | PASS | L263-264 注释明确"Caller holds moduleLibMutex_ and nativeModuleListMutex_"；L1651 注释"Caller holds nativeModuleListMutex_" |
+| 死锁风险分析 | PASS | 全仓唯一双锁嵌套，无反向持有路径 |
+| 非 RAII 风险 | PASS | 用 `std::lock_guard`（异常安全） |
+| `moduleLibMap_.erase(it)` 不会使其他迭代器失效 | PASS | `it` 在 erase 后不再使用；其他迭代器无 |
+| helper 命名清晰 | PASS | `*Locked` 后缀遵循 STL 风格（如 `__locked` 系）表示"调用方持锁" |
+| 无过度抽象 | PASS | 仅 2 个新 helper，每个单一职责 |
+| `removed` 失败路径处理 | PASS | L289-292：`!removed` 时返回 false，handle 不 dlclose（潜在泄漏，已评估为可接受） |
+
+### 行为变更可接受性（问题 #8）
+
+| 项 | 评估 |
+|----|------|
+| 原行为（GetHandle + Remove 独立锁） | 存在 TOCTOU 窗口，多线程并发可双重 dlclose 同一 handle |
+| 修复后行为（双锁临界区原子） | 原子完成 find+erase+remove，dlclose 在锁外执行；多线程并发时仅一线程拿到 handle |
+| 边界差异（cache 不一致） | 原行为下 `RemoveNativeModule` 失败时 libMap 条目仍在可重试；新行为下条目已擦除，`!removed` 时 handle 不 dlclose（潜在泄漏） |
+| 可接受性 | cache 不一致在实际中不应发生（libMap 与 cache 在 load 路径协同填充）；handle 泄漏（可观测、可调试）优于 heap corruption（安全漏洞）。**P1 安全修复，可接受** |
+
+### 验证证据（问题 #8）
+
+| 证据类型 | 命令/路径 | 结果 | 说明 |
+|---------|-----------|------|------|
+| helper 声明 | `native_module_manager.h:170-171` | PASS（静态审查） | `bool RemoveNativeModuleByCacheLocked(const std::string& moduleKey);` + `bool RemoveNativeModuleLocked(const std::string& moduleKey);` |
+| UnloadNativeModule 重构 | `native_module_manager.cpp:271-295` | PASS（静态审查） | 与 task.md §TASK-8 目标代码逐字一致 |
+| RemoveNativeModuleLocked 实现 | `native_module_manager.cpp:261-270` | PASS（静态审查） | 调用 RemoveModuleBuffer + RemoveNativeModuleByCacheLocked；无重复双锁 |
+| RemoveNativeModuleByCacheLocked 实现 | `native_module_manager.cpp:1649-1711` | PASS（静态审查） | 与 RemoveNativeModuleByCache 同体，无 lock_guard 行 |
+| 锁顺序静态审查 | grep 全仓 lock_guard | PASS | 唯一双锁嵌套 L278-279，顺序 moduleLib→nativeModuleList，无反向 |
+| 测试代码 | `module_manager_test.cpp:2212-2226`（追加） | PASS（静态审查） | `UnloadNativeModule_WhenModuleNotInLibMapShouldReturnFalseSafely` 覆盖 AC-8.1 早退路径 |
+| 编译验证 | 同问题 #1 | FAIL（环境问题） | `is_host_product` 未定义 |
+| 运行验证 | 未运行 | N/A | 同问题 #1-#7，由 CI 后续补齐 |
+| 并发压力验证 | 未运行 | N/A | 留待 CI（AC-8.3） |
+
+### 审查决策（问题 #8）
+
+| 项 | 内容 |
+|----|------|
+| Decision | **代码层 Approved，验证 Deferred** |
+| 下一阶段 | 同问题 #1-#7，等所有问题修完后统一由 CI 验证 |
+| 修改意见 | 阻塞项：无；建议项：CI 必须运行测试 + 并发压力测试通过后方可合入 |
+
+**审查摘要（问题 #8）：**
+- **结论**：代码层规范符合性 + 代码质量审查全部 PASS。双锁临界区实现正确，锁顺序无死锁，2 个 Locked helper 设计清晰。
+- **必须修复项**：无
+- **可接受风险**：本机测试验证跳过（用户决定）；并发压力测试延后至 CI（AC-8.3）；cache 不一致时 handle 泄漏优于 TOCTOU heap corruption（已评估）
+- **范围合规**：严格遵守"每次仅修问题描述本身"规则，未采用引用计数方案、未触碰 CloseModuleLibrary/其他锁粒度/dlclose 失败处理；既有 4 个 Remove* 函数全部保留不动
