@@ -213,3 +213,21 @@
 - [x] 规范符合性 + 代码质量审查通过（详见 review.md §十五）
 - [x] 范围合规：未采用 `insert_or_assign` 方案、未触碰其他 `emplace` 调用点/`LoadModuleLibrary` 调用方逻辑/dlclose 失败处理/锁外 dlclose 改造
 - [x] 行为变更（重复 key 由"不覆盖+泄漏新句柄"改为"不覆盖+dlclose 新句柄"）已评估为可接受
+
+---
+
+## TASK-10 实现（问题 #10：strdup(loadPath) 返回值校验）
+
+- [x] RED 阶段：**不补单测**（详见 proposal §Q10-3 / task.md §TASK-10 测试设计）。理由：修复点在 `LoadNativeModule` 内部分支（L1488 `tailNativeModule_ && !abcBuffer`），无法独立调用；OOM 路径无 mock 注入点
+- [ ] RED 运行验证：N/A（无单测）
+- [x] GREEN 阶段：`native_module_manager.cpp:1499-1506` 追加 8 行（null check + 5 步错误处理：SetLoadErrInfo + HILOG_ERROR + free/置 nullptr 回滚 + SetLoadingNativeModuleKey + return nullptr）
+- [ ] GREEN 运行验证：未运行
+- [ ] 回归运行验证：未运行
+- [ ] OOM 路径运行验证：待 CI（无 mock 注入点）
+- [x] REFACTOR：审视完成，无进一步重构空间（8 行最小追加）
+- [x] 实际修改文件未超出 Task/Plan（1 个文件：`native_module_manager.cpp`，仅此一个）
+- [x] 规范符合性 + 代码质量审查通过（详见 review.md §十六）
+- [x] **风格对称性 PASS**：新增 nullptr 检查块与 L1489-1495 既有 `strdup(moduleKey)` 失败处理风格完全一致（5 步错误处理模式）
+- [x] **回滚正确性 PASS**：先 `free(moduleName)` 再置 nullptr，避免 use-after-free
+- [x] 范围合规：未采用 `std::string`/`unique_ptr` 方案、未触碰 L1546 另一处 `strdup(loadPath)`/NativeModule 结构体重构/既有 `strdup(moduleKey)` 失败处理
+- [x] 行为变更（OOM 时由"赋 nullptr 继续执行"改为"回滚 + 返回 nullptr"）已评估为可接受

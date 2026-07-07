@@ -699,3 +699,68 @@
 - **必须修复项**：无
 - **可接受风险**：本机测试验证跳过（用户决定）；重复路径运行验证延后至 CI（AC-9.3/9.4）；持锁 dlclose 性能影响短暂可接受
 - **范围合规**：严格遵守"每次仅修问题描述本身"规则，未采用 insert_or_assign 方案、未触碰其他 emplace 调用点/LoadModuleLibrary 调用方逻辑/dlclose 失败处理/锁外 dlclose 改造
+
+---
+
+## 十六、问题 #10 审查：strdup(loadPath) 返回值校验
+
+### 规范符合性（问题 #10）
+
+| 规则 | 符合？ | 证据 |
+|------|--------|------|
+| FR-10 nullptr 检查追加 | PASS | `native_module_manager.cpp:1499-1506`：在 `strdup(loadPath)` 之后、`strcmp` 之前追加 `if (tailNativeModule_->systemFilePath == nullptr)` |
+| 回滚 moduleName（AC-10.2） | PASS | L1502-1503：`free(const_cast<char*>(tailNativeModule_->moduleName)); tailNativeModule_->moduleName = nullptr;` |
+| SetLoadErrInfo（AC-10.1） | PASS | L1500：`SetLoadErrInfo(loadErrInfo, "internal error: out of memory");` |
+| SetLoadingNativeModuleKey 重置（AC-10.3） | PASS | L1504：`SetLoadingNativeModuleKey("");` |
+| return nullptr（AC-10.1） | PASS | L1505：`return nullptr;` |
+| 风格一致性 | PASS | 与 L1489-1495 既有 `strdup(moduleKey)` 失败处理风格**完全一致**（同样的 SetLoadErrInfo + HILOG_ERROR + SetLoadingNativeModuleKey + return nullptr 模式） |
+| 范围合规（不采用方案 2） | PASS | 未引入 `std::string`/`unique_ptr`，未重构 NativeModule POD 结构 |
+| 范围合规（不修 L1546 另一处 strdup） | PASS | L1546（`RegisterByBuffer` 分支 `tailNativeModule_->systemFilePath = strdup(loadPath);`）保留不动 |
+| 范围合规（不修既有 strdup(moduleKey) 失败处理） | PASS | L1489-1495 保留原样 |
+| AC-10.4 既有用例回归 | 待运行 | 环境问题，同 #1-#9 |
+
+### 代码质量（问题 #10）
+
+| 项 | PASS？ | 说明 |
+|----|--------|------|
+| 错误处理风格对称 | PASS | 新增 nullptr 检查块与 L1489-1495 既有 strdup(moduleKey) 失败处理对称（同样的 5 步：SetLoadErrInfo + HILOG_ERROR + 回滚 + SetLoadingNativeModuleKey + return nullptr） |
+| 回滚顺序正确 | PASS | 先 `free(moduleName)` 再置 nullptr（避免 use-after-free）；moduleName 是上一行 strdup 的结果，回滚语义正确 |
+| HILOG 文案区分 | PASS | `"strdup systemFilePath failed"` 与既有 `"strdup faied"`（注意原代码 typo "faied"）区分，便于线上诊断定位 |
+| 无过度抽象 | PASS | 仅 8 行追加（null check + 5 步错误处理），无新增 helper |
+| 异常安全 | PASS | `lock_guard` RAII，错误路径 return 时锁自动释放 |
+| 持锁调用 free 安全性 | PASS | `free` 不取任何 mutex，持锁调用安全 |
+
+### 行为变更可接受性（问题 #10）
+
+| 项 | 评估 |
+|----|------|
+| 原行为（OOM 时 strdup 失败） | systemFilePath 被赋 nullptr，后续路径违反"应有有效路径"契约；FindNativeModuleByCache 已被 #2 修复加判空保护，但 systemFilePath == nullptr 仍是错误状态 |
+| 修复后行为（OOM 时 strdup 失败） | 检测到失败，回滚 moduleName（free + 置 nullptr，避免泄漏）+ 返回 nullptr + 设置 loadErrInfo，调用方收到明确错误信号 |
+| 对调用方的影响 | `LoadNativeModule` 在 OOM 时返回 nullptr，调用方已有处理（与既有的 strdup(moduleKey) 失败、dlopen 失败等错误路径一致） |
+| 可接受性 | P2 OOM 健壮性修复。优雅降级优于继续执行错误状态。**可接受** |
+
+### 验证证据（问题 #10）
+
+| 证据类型 | 命令/路径 | 结果 | 说明 |
+|---------|-----------|------|------|
+| 代码改动 | `native_module_manager.cpp:1499-1506` | PASS（静态审查） | 与 task.md §TASK-10 目标代码逐字一致；8 行追加（null check + 5 步错误处理） |
+| 风格对称性 | 对比 L1489-1495 vs L1499-1506 | PASS | 5 步错误处理模式完全一致 |
+| 回滚正确性 | L1502-1503 | PASS（静态审查） | free + 置 nullptr，避免泄漏和悬空 |
+| 编译验证 | 同问题 #1 | FAIL（环境问题） | `is_host_product` 未定义 |
+| 运行验证 | 未运行 | N/A | 同问题 #1-#9，由 CI 后续补齐 |
+| OOM 路径验证 | 留待 CI | N/A | 无 mock 注入点，靠 CI OOM 注入测试 |
+| 既有用例回归 | 待运行 | N/A | 环境问题 |
+
+### 审查决策（问题 #10）
+
+| 项 | 内容 |
+|----|------|
+| Decision | **代码层 Approved，验证 Deferred** |
+| 下一阶段 | 同问题 #1-#9，等所有问题修完后统一由 CI 验证 |
+| 修改意见 | 阻塞项：无；建议项：CI 必须运行测试 + OOM 注入测试通过后方可合入 |
+
+**审查摘要（问题 #10）：**
+- **结论**：代码层规范符合性 + 代码质量审查全部 PASS。8 行追加，错误处理风格与既有 strdup(moduleKey) 失败处理完全对称。
+- **必须修复项**：无
+- **可接受风险**：本机测试验证跳过（用户决定）；OOM 路径运行验证延后至 CI（无 mock 注入点）
+- **范围合规**：严格遵守"每次仅修问题描述本身"规则，未采用 std::string/unique_ptr 方案、未触碰 L1546 另一处 strdup/NativeModule 结构体重构/既有 strdup(moduleKey) 失败处理

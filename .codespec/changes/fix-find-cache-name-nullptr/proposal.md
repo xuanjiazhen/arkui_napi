@@ -995,3 +995,101 @@ void NativeModuleManager::EmplaceModuleLib(std::string moduleKey, const LIBHANDL
 ### 问题 #9 基线结论
 
 **通过**（待用户批准本基线扩展）
+
+---
+
+## 问题 #10：strdup(loadPath) 返回值未校验即赋给 systemFilePath
+
+### 原始需求
+
+**问题描述（用户原话）：**
+> 在文件 `module_manager/native_module_manager.cpp` 第 1460 行处，`tailNativeModule_->systemFilePath = strdup(loadPath);` 未检查 strdup 返回值。OOM 时返回 nullptr，后续 `FindNativeModuleByCache` 中 `strcmp(temp->systemFilePath, ...)` 与析构 `free(...)` 路径均会出问题。
+>
+> **修复建议：**
+> 1. 检查 strdup 返回值：失败时回滚并返回错误
+> 2. 统一内存管理：用 std::string 或 unique_ptr<char[]> 替代裸 strdup/free
+
+**当前代码（`native_module_manager.cpp:1487-1504`，原 L1460 因前述 #1-#9 修复偏移至 L1498）：**
+```cpp
+std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
+if (tailNativeModule_ && !abcBuffer) {
+    const char* moduleName = strdup(moduleKey.c_str());
+    if (moduleName == nullptr) {
+        // 既有错误处理（已正确）
+        SetLoadErrInfo(loadErrInfo, "internal error: out of memory");
+        MODULEMNG_HILOG_ERROR("strdup faied");
+        SetLoadingNativeModuleKey("");
+        return nullptr;
+    }
+    tailNativeModule_->moduleName = moduleName;
+    tailNativeModule_->systemFilePath = strdup(loadPath);  // ← 未检查返回值（问题点）
+    if (tailNativeModule_->name && strcmp(tailNativeModule_->moduleName, tailNativeModule_->name)) {
+        ...
+    }
+}
+```
+
+**问题链：**
+1. `strdup(loadPath)` 在 OOM 时返回 nullptr
+2. `tailNativeModule_->systemFilePath` 被赋 nullptr
+3. 后续路径：`FindNativeModuleByCache` 中 `strcmp(temp->systemFilePath, ...)`（已被 #2 修复加判空保护，但仍违反"应有有效路径"契约）+ 析构 `RemoveNativeModuleByCache` 的 `free(systemFilePath)` 路径（有判空保护，但 systemFilePath == nullptr 是错误状态）
+
+**影响评估：**
+
+| 维度 | 评估 |
+|------|------|
+| 严重程度 | OOM 下空指针访问 / 契约违反 |
+| 影响范围 | 模块加载（`LoadNativeModule` 错误恢复路径） |
+| 触发条件 | 内存紧张（OOM） |
+| 潜在后果 | 崩溃 / 资源状态不一致 |
+| 修复优先级 | 本月内完成 |
+
+### 问题 #10 澄清记录
+
+| 编号 | 问题 | 结论 |
+|------|------|------|
+| Q10-1 | 方案选择 | **采纳用户建议方案 1（检查 strdup 返回值，失败时回滚并返回错误）**。不采纳方案 2（`std::string`/`unique_ptr` 替代裸 `strdup`/`free`）——改动面巨大（`NativeModule` 是 POD 结构，所有字段都是 `const char*`，替换为 `std::string` 需重构整个模块管理子系统，影响 `Register`/`FindNativeModuleByCache`/`RemoveNativeModuleByCache` 等数十处使用点），超出"每次仅修问题描述本身"规则 |
+| Q10-2 | 回滚策略 | strdup 失败时回滚已 strdup 的 `moduleName`（`free` + 置 nullptr），与 L1489-1495 既有 `strdup(moduleKey)` 失败处理风格**完全一致**：`SetLoadErrInfo(loadErrInfo, "internal error: out of memory")` + `MODULEMNG_HILOG_ERROR` + `SetLoadingNativeModuleKey("")` + `return nullptr` |
+| Q10-3 | 单元测试 | **不补单测**。理由：(a) 修复点在 `LoadNativeModule` 内部（L1488 `if (tailNativeModule_ && !abcBuffer)` 分支），无法独立调用 L1498 这一行；(b) 触发该分支需要构造 `dlopen` 失败 + `GetFileBuffer` 失败 + `tailNativeModule_` 已创建的复杂错误条件；(c) OOM 路径（`strdup` 失败）单测无法模拟（无 mock 注入点）。**既有 `LoadNativeModule` 用例覆盖回归**（AC-10.4） |
+
+### 问题 #10 范围边界
+
+**包含：**
+- `native_module_manager.cpp:1498-1503`：在 `strdup(loadPath)` 后追加 nullptr 检查，失败时回滚 `moduleName`（`free` + 置 nullptr）+ 错误处理 + `return nullptr`
+
+**不包含（严格遵守"每次仅修问题描述本身"规则）：**
+- **方案 2 `std::string`/`unique_ptr` 替代**：超范围，改动面巨大
+- **L1546 另一处 `strdup(loadPath)`**（`RegisterByBuffer` 分支）：不在问题描述范围内（问题描述明确指向 L1460 即 L1498 这处），留作单独问题
+- **`NativeModule` 结构体重构**：超范围
+- **既有 `strdup(moduleKey)` 失败处理**（L1489-1495）：保留不动（已正确处理）
+
+### 问题 #10 用户故事与 AC
+
+| Story ID | 用户故事 | 优先级 |
+|----------|----------|--------|
+| US-10 | 作为系统开发者，我希望 `strdup(loadPath)` 在 OOM 时被检测并安全回滚，以便模块加载在内存紧张时优雅降级而非崩溃或留下不一致状态 | P2 |
+
+| AC编号 | 验收标准 | 类型 | 关联Story |
+|--------|----------|------|-----------|
+| AC-10.1 | WHEN `strdup(loadPath)` 返回 nullptr THEN `tailNativeModule_->systemFilePath` 不被保留为 nullptr，调用方收到 `nullptr` 返回 + `loadErrInfo = "internal error: out of memory"` | 边界 | US-10 |
+| AC-10.2 | WHEN strdup 失败 THEN 已 strdup 的 `moduleName` 被回滚（`free` + 置 nullptr），不泄漏 | 资源 | US-10 |
+| AC-10.3 | WHEN strdup 失败 THEN `SetLoadingNativeModuleKey("")` 被调用（重置加载状态） | 状态 | US-10 |
+| AC-10.4 | WHEN 调用既有全部单元测试 THEN 全部通过（不引入回归） | 回归 | US-10 |
+
+### 问题 #10 兼容性
+
+**对外 API 行为变更：** 无（`LoadNativeModule` 签名/返回值语义不变）
+
+**内部行为变更：**
+- 原行为：`strdup(loadPath)` OOM 时 `systemFilePath` 被赋 nullptr，后续路径可能崩溃或违反契约
+- 修复后行为：OOM 时检测到 strdup 失败，回滚 `moduleName` + 返回 `nullptr` + 设置 `loadErrInfo`
+
+**行为变更可接受性：**
+- P2 OOM 健壮性修复
+- OOM 时返回 `nullptr` 是合理的优雅降级（与既有 `strdup(moduleKey)` 失败处理风格一致）
+- 不影响正常路径（非 OOM 时 strdup 成功，行为不变）
+- 可接受
+
+### 问题 #10 基线结论
+
+**通过**（待用户批准本基线扩展）

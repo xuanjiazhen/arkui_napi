@@ -705,3 +705,47 @@
 | `dlclose` 失败处理 | 否 | 保持 `UnloadModuleLibrary` 原样 |
 | 锁外 `dlclose` 改造 | 否 | 性能改进不属于本问题描述 |
 | 性能/IPC/构建/国际化/数据迁移/API | 否 | 纯内部加固（资源管理维度） |
+
+---
+
+## 问题 #10 规格：strdup(loadPath) 返回值校验
+
+### AC 矩阵
+
+| AC编号 | 关联 FR | 关联 TASK | 验证方式 | 验证要点 |
+|--------|--------|-----------|----------|----------|
+| AC-10.1 | FR-10 | TASK-10 | 静态审查 + CI（OOM 注入） | strdup 失败 → 回滚 + 返回 nullptr + loadErrInfo |
+| AC-10.2 | FR-10 | TASK-10 | 静态审查 + CI | moduleName 被 free |
+| AC-10.3 | FR-10 | TASK-10 | 静态审查 | SetLoadingNativeModuleKey("") 调用 |
+| AC-10.4 | - | TASK-10 | 单测 | 既有用例运行 |
+
+### 功能规则
+
+| 编号 | 规则描述 | 触发条件 | 作用对象 | 关联 AC |
+|------|----------|----------|----------|---------|
+| FR-10 | 在 `native_module_manager.cpp:1498` `tailNativeModule_->systemFilePath = strdup(loadPath);` 之后追加 nullptr 检查：失败时 (a) `free(const_cast<char*>(tailNativeModule_->moduleName)); tailNativeModule_->moduleName = nullptr;`（回滚）；(b) `SetLoadErrInfo(loadErrInfo, "internal error: out of memory");`；(c) `MODULEMNG_HILOG_ERROR("strdup systemFilePath failed");`；(d) `SetLoadingNativeModuleKey("");`；(e) `return nullptr;` | `strdup(loadPath)` 返回 nullptr | `native_module_manager.cpp` LoadNativeModule 内 | AC-10.1/10.2/10.3 |
+
+### 验证映射
+
+| 编号 | 对应规格项 | 验证方式 | 验证重点 |
+|------|------------|----------|----------|
+| VM-10.1 | FR-10 / AC-10.1 | 静态审查 + CI（OOM 注入） | 回滚 + 返回值 + loadErrInfo |
+| VM-10.2 | FR-10 / AC-10.2 | 静态审查 + CI | moduleName 被 free |
+| VM-10.3 | FR-10 / AC-10.3 | 静态审查 | SetLoadingNativeModuleKey 重置 |
+| VM-10.4 | AC-10.4 | 单测 | 既有用例全过 |
+
+### 兼容性声明（问题 #10）
+
+- **已有 API 行为变更:** 否（`LoadNativeModule` 签名/返回值不变）
+- **内部行为变更:** 是（OOM 时由"赋 nullptr 继续执行"改为"回滚 + 返回 nullptr"）
+- **行为变更可接受性:** P2 OOM 健壮性修复。可接受
+
+### 不涉及项（问题 #10）
+
+| 维度 | 涉及？ | 依据 |
+|------|--------|------|
+| 方案 2（`std::string`/`unique_ptr` 替代） | 否 | 改动面巨大（POD 结构重构），超范围 |
+| L1546 另一处 `strdup(loadPath)` | 否 | 不在问题描述范围内，留作单独问题 |
+| `NativeModule` 结构体重构 | 否 | 超范围 |
+| 既有 `strdup(moduleKey)` 失败处理 | 否 | 已正确处理，保留不动 |
+| 性能/IPC/构建/国际化/数据迁移/API | 否 | 纯内部加固（OOM 健壮性维度） |

@@ -1285,3 +1285,106 @@ HWTEST_F(ModuleManagerTest, EmplaceModuleLib_ShouldEmplaceWhenKeyNotExists, Test
 | GREEN 测试 | 待运行 | 待运行 |
 | 既有用例回归 | 待运行 | 待运行 |
 | 重复路径静态审查 | `native_module_manager.cpp` EmplaceModuleLib L175+ | 待审查 |
+
+---
+
+## TASK-10：strdup(loadPath) 返回值校验
+
+### 范围
+
+| 项 | 内容 |
+|----|------|
+| 关联 AC | AC-10.1 / AC-10.2 / AC-10.3 / AC-10.4 |
+| 关联 FR | FR-10 |
+| 修改文件 | `module_manager/native_module_manager.cpp`（仅此一个文件） |
+| 不涉及 | 方案 2（std::string/unique_ptr 替代）、L1546 另一处 strdup、NativeModule 结构体重构、既有 strdup(moduleKey) 失败处理 |
+
+### 目标代码（TASK-10）
+
+#### `native_module_manager.cpp:1487-1504` 追加 nullptr 检查
+
+**原代码（L1487-1504）：**
+```cpp
+std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
+if (tailNativeModule_ && !abcBuffer) {
+    const char* moduleName = strdup(moduleKey.c_str());
+    if (moduleName == nullptr) {
+        SetLoadErrInfo(loadErrInfo, "internal error: out of memory");
+        MODULEMNG_HILOG_ERROR("strdup faied");
+        SetLoadingNativeModuleKey("");
+        return nullptr;
+    }
+
+    tailNativeModule_->moduleName = moduleName;
+    tailNativeModule_->systemFilePath = strdup(loadPath);
+    if (tailNativeModule_->name && strcmp(tailNativeModule_->moduleName, tailNativeModule_->name)) {
+        MODULEMNG_HILOG_WARN("%{public}s Name mismatch: %{public}s != %{public}s",
+            isAppModule ? "app module:" : "", tailNativeModule_->moduleName, tailNativeModule_->name);
+        MODULEMNG_HILOG_DEBUG("keep .nm_modname match moduleName");
+    }
+}
+```
+
+**目标代码：**
+```cpp
+std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
+if (tailNativeModule_ && !abcBuffer) {
+    const char* moduleName = strdup(moduleKey.c_str());
+    if (moduleName == nullptr) {
+        SetLoadErrInfo(loadErrInfo, "internal error: out of memory");
+        MODULEMNG_HILOG_ERROR("strdup faied");
+        SetLoadingNativeModuleKey("");
+        return nullptr;
+    }
+
+    tailNativeModule_->moduleName = moduleName;
+    tailNativeModule_->systemFilePath = strdup(loadPath);
+    if (tailNativeModule_->systemFilePath == nullptr) {
+        SetLoadErrInfo(loadErrInfo, "internal error: out of memory");
+        MODULEMNG_HILOG_ERROR("strdup systemFilePath failed");
+        free(const_cast<char*>(tailNativeModule_->moduleName));
+        tailNativeModule_->moduleName = nullptr;
+        SetLoadingNativeModuleKey("");
+        return nullptr;
+    }
+    if (tailNativeModule_->name && strcmp(tailNativeModule_->moduleName, tailNativeModule_->name)) {
+        MODULEMNG_HILOG_WARN("%{public}s Name mismatch: %{public}s != %{public}s",
+            isAppModule ? "app module:" : "", tailNativeModule_->moduleName, tailNativeModule_->name);
+        MODULEMNG_HILOG_DEBUG("keep .nm_modname match moduleName");
+    }
+}
+```
+
+**变更说明：**
+- 在 `strdup(loadPath)` 之后、`strcmp` 之前追加 nullptr 检查
+- 失败路径：`free(moduleName)` 回滚（避免泄漏）+ 置 nullptr（避免悬空）+ `SetLoadErrInfo` + `SetLoadingNativeModuleKey("")` + `return nullptr`
+- 与既有 `strdup(moduleKey)` 失败处理（L1490-1495）风格完全一致
+
+### 测试设计（TASK-10）
+
+**不补单测**（详见 proposal §Q10-3）：
+- 修复点在 `LoadNativeModule` 内部 `if (tailNativeModule_ && !abcBuffer)` 分支（L1488），无法独立调用 L1498 这一行
+- 触发该分支需要构造 `dlopen` 失败 + `GetFileBuffer` 失败 + `tailNativeModule_` 已创建的复杂错误条件
+- OOM 路径（`strdup` 失败）单测无法模拟（无 mock 注入点）
+
+**验证方式：** 静态审查（代码结构 + 回滚对称性）+ CI OOM 注入测试 + 既有 `LoadNativeModule` 用例覆盖回归（AC-10.4）
+
+### BUILD.gn 变更
+
+> N/A — 同 TASK-1-#9。
+
+### 验证检查清单（TASK-10）
+
+- [ ] AC-10.1/10.2/10.3/10.4 全部有对应验证（静态审查 + CI）
+- [ ] 构建通过（待环境）
+- [ ] 未修改受影响文件清单之外的内容（仅 `native_module_manager.cpp`）
+- [ ] 完成证据已记录到 review.md
+
+**完成证据（TASK-10）：**
+
+| 证据 | 命令/路径 | 结果 |
+|------|-----------|------|
+| 静态审查（代码结构） | `native_module_manager.cpp:1498-1505` | 待审查 |
+| 回滚对称性 | free + 置 nullptr moduleName | 待审查 |
+| OOM 路径运行验证 | 留待 CI（无 mock 注入点） | 待运行 |
+| 既有用例回归 | 待运行（环境问题，同 TASK-1） | 待运行 |
