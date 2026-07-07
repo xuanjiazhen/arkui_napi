@@ -887,3 +887,111 @@ bool NativeModuleManager::UnloadNativeModule(const std::string& moduleKey)
 ### 问题 #8 基线结论
 
 **通过**（待用户批准本基线扩展）
+
+---
+
+## 问题 #9：EmplaceModuleLib 重复 key 时新句柄泄漏
+
+### 原始需求
+
+**问题描述（用户原话）：**
+> 在文件 `module_manager/native_module_manager.cpp` 第 173-180 行处，`EmplaceModuleLib` 调用 `moduleLibMap_.emplace(moduleKey, lib)`。当 `moduleKey` 已存在时 `emplace` 不覆盖，调用方 `LoadModuleLibrary` 已对新句柄执行了 `dlopen`，但既未入库也未 `dlclose`，构成句柄泄漏。
+>
+> **修复建议：**
+> 1. 检测重复并 dlclose：发现 key 已存在时 `UnloadModuleLibrary(lib)`
+> 2. 覆盖语义：使用 `insert_or_assign`，并先释放旧句柄
+> 3. 测试覆盖：增加重复加载用例验证句柄计数
+
+**用户建议代码：**
+```cpp
+std::lock_guard<std::mutex> lock(moduleLibMutex_);
+if (lib == nullptr) return;
+auto it = moduleLibMap_.find(moduleKey);
+if (it != moduleLibMap_.end()) {
+    UnloadModuleLibrary(lib); // 丢弃重复句柄
+} else {
+    moduleLibMap_.emplace(moduleKey, lib);
+}
+```
+
+**当前 buggy 代码（`native_module_manager.cpp:175-182`）：**
+```cpp
+void NativeModuleManager::EmplaceModuleLib(std::string moduleKey, const LIBHANDLE lib)
+{
+    MODULEMNG_HILOG_DEBUG("module:'%{public}s'", moduleKey.c_str());
+    std::lock_guard<std::mutex> lock(moduleLibMutex_);
+    if (lib != nullptr) {
+        moduleLibMap_.emplace(moduleKey, lib);  // emplace 不覆盖，重复 key 时新句柄泄漏
+    }
+}
+```
+
+**泄漏链：**
+1. 调用方 `LoadModuleLibrary` 对新句柄执行 `dlopen`（引用计数 +1）
+2. 调用 `EmplaceModuleLib(key, newLib)`
+3. 若 key 已存在，`emplace` 不覆盖，`newLib` 既未入库也未 `dlclose`
+4. `newLib` 引用计数永久 +1 → 句柄泄漏
+
+**影响评估：**
+
+| 维度 | 评估 |
+|------|------|
+| 严重程度 | 句柄/内存持续增长 |
+| 影响范围 | 模块加载 |
+| 触发条件 | 同一 moduleKey 多次加载 |
+| 潜在后果 | 资源耗尽 |
+| 修复优先级 | 本月内完成 |
+
+### 问题 #9 澄清记录
+
+| 编号 | 问题 | 结论 |
+|------|------|------|
+| Q9-1 | 方案选择 | **采纳用户建议方案 1（检测重复并 dlclose 新句柄）**，与用户参考代码逐字一致。不采纳方案 2（`insert_or_assign` 覆盖语义）——会破坏既有句柄（`it->second` 被替换前需 `dlclose` 旧值，但旧值仍可能被其他持有者使用，覆盖风险大）；方案 1 仅丢弃新句柄（重复加载本身是无意义的，新 `dlopen` 句柄与旧句柄实际指向同一 lib，`dlclose` 新句柄只是减引用计数，不破坏旧句柄）。**理由：保守策略，不破坏既有句柄** |
+| Q9-2 | 锁内 dlclose 性能 | 接受。`UnloadModuleLibrary` 内部仅调用 `dlclose`（不取 `moduleLibMutex_`），持锁 `dlclose` 不会死锁；性能影响短暂可接受；改造为"锁外 dlclose"超出"每次仅修问题描述本身"范围 |
+| Q9-3 | 单元测试 | **补单测（覆盖 nullptr 早退路径 + 未重复 emplace 入库路径）**：`EmplaceModuleLib_ShouldNotEmplaceWhenLibIsNullptr`（nullptr 早退）+ `EmplaceModuleLib_ShouldEmplaceWhenKeyNotExists`（首次入库）。**重复 key 路径不补单测**——`UnloadModuleLibrary(lib)` 会触发真实 `dlclose`，单测无法安全模拟（无效指针崩溃；`dlopen` 真实库环境依赖）。重复路径靠静态审查 + CI 集成测试覆盖 |
+
+### 问题 #9 范围边界
+
+**包含：**
+- `native_module_manager.cpp:175-182`：重构 `EmplaceModuleLib` 为 `find` → 重复 → `UnloadModuleLibrary(lib)` 丢弃新句柄；否则 `emplace`
+- 新增测试 `EmplaceModuleLib_ShouldNotEmplaceWhenLibIsNullptr` + `EmplaceModuleLib_ShouldEmplaceWhenKeyNotExists`
+
+**不包含（严格遵守"每次仅修问题描述本身"规则）：**
+- **`insert_or_assign` 覆盖语义（用户建议方案 2）**：超范围，破坏既有句柄
+- **其他 `emplace` 调用点**（`EmplaceModuleBuffer` 已在 #3 修复，`nativeEngineList_.emplace` L172 等其他点）：不在问题描述范围内
+- **`LoadModuleLibrary` 调用方逻辑**：未触碰（保持调用方对 newLib 的处理逻辑）
+- **`dlclose` 失败处理**：保持 `UnloadModuleLibrary` 原有逻辑
+- **锁外 `dlclose` 改造**：超范围，性能改进不属于本问题描述
+
+### 问题 #9 用户故事与 AC
+
+| Story ID | 用户故事 | 优先级 |
+|----------|----------|--------|
+| US-9 | 作为系统开发者，我希望 `EmplaceModuleLib` 在 key 已存在时不泄漏新 `dlopen` 句柄，以便长时间运行的进程不会因重复加载导致资源耗尽 | P2 |
+
+| AC编号 | 验收标准 | 类型 | 关联Story |
+|--------|----------|------|-----------|
+| AC-9.1 | WHEN `lib == nullptr` THEN `EmplaceModuleLib` 早退，不触碰 map | 边界 | US-9 |
+| AC-9.2 | WHEN `moduleLibMap_` 不存在 moduleKey THEN `EmplaceModuleLib` 调用 `emplace(moduleKey, lib)`，map 新增条目 | 正常 | US-9 |
+| AC-9.3 | WHEN `moduleLibMap_` 已存在 moduleKey THEN `EmplaceModuleLib` 调用 `UnloadModuleLibrary(lib)` 丢弃新句柄，map 保持不变（旧值未被覆盖） | 正常 | US-9 |
+| AC-9.4 | WHEN 重复 key 路径触发 THEN 调用方 `LoadModuleLibrary` 持有的新 `dlopen` 句柄被 `dlclose`（引用计数减 1），不泄漏 | 资源 | US-9 |
+| AC-9.5 | WHEN 调用既有全部单元测试 THEN 全部通过（不引入回归） | 回归 | US-9 |
+
+### 问题 #9 兼容性
+
+**对外 API 行为变更：** 无（`EmplaceModuleLib` 签名/返回值语义不变；返回 void）
+
+**内部行为变更：**
+- 原行为：重复 key 时新句柄既未入库也未 `dlclose` → 泄漏
+- 修复后行为：重复 key 时新句柄被 `UnloadModuleLibrary` `dlclose`（引用计数减 1）→ 不泄漏
+- 既有句柄（map 中的旧值）：完全不变
+
+**行为变更可接受性：**
+- P2 资源泄漏修复，"消除重复加载句柄泄漏"为目标
+- 调用方 `LoadModuleLibrary` 本不应在 key 已存在时调用 `EmplaceModuleLib`（这是上游逻辑的冗余调用）；新行为是更安全的防御性处理
+- 既有句柄不变 → 不影响其他持有该句柄的代码
+- 可接受
+
+### 问题 #9 基线结论
+
+**通过**（待用户批准本基线扩展）

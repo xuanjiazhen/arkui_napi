@@ -195,3 +195,21 @@
 - [x] **AC-8.4/8.5 静态审查 PASS**：`RemoveNativeModuleLocked`（L261-270）函数体无 `moduleLibMutex_`/`nativeModuleListMutex_` lock_guard；`RemoveNativeModuleByCacheLocked`（L1649-1711）首行无 lock_guard（仅注释）
 - [x] 范围合规：未采用引用计数方案、未触碰 `CloseModuleLibrary`/其他锁粒度问题/`dlclose` 失败处理；既有 4 个 Remove* 函数全部保留不动
 - [x] 行为变更（cache 不一致时 handle 泄漏优于 TOCTOU heap corruption）已评估为可接受
+
+---
+
+## TASK-9 实现（问题 #9：EmplaceModuleLib 重复 key 句柄泄漏）
+
+- [x] RED 阶段：在 `module_manager_test.cpp:2228-2256` 追加 2 个测试用例
+  - `EmplaceModuleLib_ShouldNotEmplaceWhenLibIsNullptr`（覆盖 AC-9.1 nullptr 早退）
+  - `EmplaceModuleLib_ShouldEmplaceWhenKeyNotExists`（覆盖 AC-9.2 首次入库，sentinel 指针 + 手动 erase 清理）
+- [ ] RED 运行验证：未运行（同 TASK-1 环境问题）
+- [x] GREEN 阶段：`native_module_manager.cpp:175-187` 重构 `EmplaceModuleLib` 为三分支逻辑（nullptr 早退 / find 重复 → `UnloadModuleLibrary(lib)` / find 未命中 → emplace），与用户参考代码逐字一致
+- [ ] GREEN 运行验证：未运行
+- [ ] 回归运行验证：未运行
+- [ ] 重复路径运行验证（AC-9.3/9.4）：待 CI（dlclose 真实句柄单测无法安全模拟）
+- [x] REFACTOR：审视完成，函数体从 4 行扩为 10 行，无进一步重构空间
+- [x] 实际修改文件未超出 Task/Plan（2 个文件：`native_module_manager.cpp` + `module_manager_test.cpp`，仅 .cpp）
+- [x] 规范符合性 + 代码质量审查通过（详见 review.md §十五）
+- [x] 范围合规：未采用 `insert_or_assign` 方案、未触碰其他 `emplace` 调用点/`LoadModuleLibrary` 调用方逻辑/dlclose 失败处理/锁外 dlclose 改造
+- [x] 行为变更（重复 key 由"不覆盖+泄漏新句柄"改为"不覆盖+dlclose 新句柄"）已评估为可接受

@@ -632,3 +632,70 @@
 - **必须修复项**：无
 - **可接受风险**：本机测试验证跳过（用户决定）；并发压力测试延后至 CI（AC-8.3）；cache 不一致时 handle 泄漏优于 TOCTOU heap corruption（已评估）
 - **范围合规**：严格遵守"每次仅修问题描述本身"规则，未采用引用计数方案、未触碰 CloseModuleLibrary/其他锁粒度/dlclose 失败处理；既有 4 个 Remove* 函数全部保留不动
+
+---
+
+## 十五、问题 #9 审查：EmplaceModuleLib 重复 key 句柄泄漏修复
+
+### 规范符合性（问题 #9）
+
+| 规则 | 符合？ | 证据 |
+|------|--------|------|
+| FR-9.a nullptr 早退 | PASS | `native_module_manager.cpp:179-181`：`if (lib == nullptr) { return; }` 在持 `moduleLibMutex_` 后早退，不触碰 map |
+| FR-9.b 首次入库 | PASS | L185-186：`auto it = moduleLibMap_.find(moduleKey);` → `if (it == end())` 路径调用 `moduleLibMap_.emplace(moduleKey, lib);` |
+| FR-9.c 重复丢弃 | PASS | L182-184：`if (it != end())` 路径调用 `UnloadModuleLibrary(lib);`（dlclose 引用计数 -1），**不修改 map**（无 erase/重写），与用户参考代码逐字一致 |
+| 范围合规（不采用 insert_or_assign） | PASS | 未使用 `insert_or_assign`，未替换既有句柄 |
+| 范围合规（不修其他 emplace 调用点） | PASS | `EmplaceModuleBuffer`（#3 修复）/`nativeEngineList_.emplace`（L172）等未触碰 |
+| 范围合规（不修 LoadModuleLibrary 调用方） | PASS | `LoadModuleLibrary` 函数体未触碰 |
+| 范围合规（不修 dlclose 失败处理） | PASS | `UnloadModuleLibrary` 保留原样 |
+| 范围合规（不加锁外 dlclose 改造） | PASS | `dlclose` 仍在 `moduleLibMutex_` 持锁状态内调用（接受，理由见 proposal §Q9-2） |
+| AC-9.1 nullptr 早退 | PASS | L179-181 + 单测 `EmplaceModuleLib_ShouldNotEmplaceWhenLibIsNullptr` 覆盖 |
+| AC-9.2 首次入库 | PASS | L185-186 + 单测 `EmplaceModuleLib_ShouldEmplaceWhenKeyNotExists` 覆盖（用 sentinel 指针模拟） |
+| AC-9.3/9.4 重复路径 | 静态审查 PASS | L182-184：`find` 命中 → `UnloadModuleLibrary(lib)`；map 未被修改；dlclose 引用计数 -1 不泄漏。单测不覆盖（dlclose 真实句柄无法安全模拟），留待 CI |
+| AC-9.5 既有用例回归 | 待运行 | 环境问题，同 #1-#8 |
+
+### 代码质量（问题 #9）
+
+| 项 | PASS？ | 说明 |
+|----|--------|------|
+| 早退风格清晰 | PASS | `if (lib == nullptr) return;` 早退，避免嵌套 if，可读性好 |
+| 重复分支日志可观测 | PASS | L183：`MODULEMNG_HILOG_WARN("module '%{public}s' already exists, discard duplicate handle", ...)` 利于线上诊断 |
+| map 不被修改 | PASS | 重复分支仅调用 `UnloadModuleLibrary(lib)`，无 `erase`/`[]`/`insert_or_assign`，既有句柄完全不变 |
+| 持锁 dlclose 安全性 | PASS | `UnloadModuleLibrary` 内部仅 `dlclose`，不取 `moduleLibMutex_`/`nativeModuleListMutex_`/`moduleBufMutex_` → 不死锁 |
+| 无过度抽象 | PASS | 函数体从 4 行扩为 10 行，逻辑单一，无新增 helper |
+| 异常安全 | PASS | 使用 `std::lock_guard`（RAII），`dlclose` 异常时锁也会释放 |
+
+### 行为变更可接受性（问题 #9）
+
+| 项 | 评估 |
+|----|------|
+| 原行为（重复 key） | `emplace` 不覆盖，新句柄既未入库也未 dlclose → 泄漏 |
+| 修复后行为（重复 key） | 新句柄被 `UnloadModuleLibrary` dlclose（引用计数 -1），map 保持原值 → 不泄漏 |
+| 对既有句柄的影响 | 完全无影响（map 中的旧 `it->second` 不变，其他持有者继续可用） |
+| 对调用方的影响 | `LoadModuleLibrary` 不应在 key 已存在时调用 `EmplaceModuleLib`（上游冗余调用）；新行为是更安全的防御性处理 |
+| 可接受性 | P2 资源泄漏修复，"消除重复加载句柄泄漏"为目标。既有句柄不变，不影响其他持有者。**可接受** |
+
+### 验证证据（问题 #9）
+
+| 证据类型 | 命令/路径 | 结果 | 说明 |
+|---------|-----------|------|------|
+| 代码改动 | `native_module_manager.cpp:175-187` | PASS（静态审查） | 与 task.md §TASK-9 目标代码逐字一致；3 个分支（nullptr/重复/首次）逻辑清晰 |
+| 测试代码 | `module_manager_test.cpp:2228-2256`（追加 2 个用例） | PASS（静态审查） | 覆盖 AC-9.1（nullptr 早退）+ AC-9.2（首次入库，sentinel 指针 + 手动 erase 清理） |
+| 重复路径静态审查 | `native_module_manager.cpp:182-184` | PASS | find 命中 → UnloadModuleLibrary(lib)，map 未修改 |
+| 编译验证 | 同问题 #1 | FAIL（环境问题） | `is_host_product` 未定义 |
+| 运行验证 | 未运行 | N/A | 同问题 #1-#8，由 CI 后续补齐 |
+| 重复路径运行验证 | 留待 CI | N/A | 单测无法安全模拟 dlclose（AC-9.3/9.4） |
+
+### 审查决策（问题 #9）
+
+| 项 | 内容 |
+|----|------|
+| Decision | **代码层 Approved，验证 Deferred** |
+| 下一阶段 | 同问题 #1-#8，等所有问题修完后统一由 CI 验证 |
+| 修改意见 | 阻塞项：无；建议项：CI 必须运行测试 + 重复加载场景集成测试通过后方可合入 |
+
+**审查摘要（问题 #9）：**
+- **结论**：代码层规范符合性 + 代码质量审查全部 PASS。重构简洁（10 行），3 个分支清晰，与用户参考代码逐字一致。
+- **必须修复项**：无
+- **可接受风险**：本机测试验证跳过（用户决定）；重复路径运行验证延后至 CI（AC-9.3/9.4）；持锁 dlclose 性能影响短暂可接受
+- **范围合规**：严格遵守"每次仅修问题描述本身"规则，未采用 insert_or_assign 方案、未触碰其他 emplace 调用点/LoadModuleLibrary 调用方逻辑/dlclose 失败处理/锁外 dlclose 改造

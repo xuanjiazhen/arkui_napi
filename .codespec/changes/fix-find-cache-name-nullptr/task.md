@@ -1165,3 +1165,123 @@ HWTEST_F(ModuleManagerTest, UnloadNativeModule_WhenModuleNotInLibMapShouldReturn
 | GREEN 测试 | 待运行 | 待运行 |
 | 既有用例回归 | 待运行 | 待运行 |
 | 锁顺序静态审查 | grep 全仓 `moduleLibMutex_` + `nativeModuleListMutex_` 双锁嵌套 | 待审查 |
+
+---
+
+## TASK-9：EmplaceModuleLib 重复 key 句柄泄漏修复
+
+### 范围
+
+| 项 | 内容 |
+|----|------|
+| 关联 AC | AC-9.1 / AC-9.2 / AC-9.3 / AC-9.4 / AC-9.5 |
+| 关联 FR | FR-9.a / FR-9.b / FR-9.c |
+| 修改文件 | `module_manager/native_module_manager.cpp` + `module_manager/test/unittest/module_manager_test/module_manager_test.cpp` |
+| 不涉及 | `insert_or_assign` 方案、其他 `emplace` 调用点、`LoadModuleLibrary` 调用方逻辑、dlclose 失败处理、锁外 dlclose 改造 |
+
+### 目标代码（TASK-9）
+
+#### `native_module_manager.cpp` 重构 `EmplaceModuleLib`（L175-182）
+
+**原代码：**
+```cpp
+void NativeModuleManager::EmplaceModuleLib(std::string moduleKey, const LIBHANDLE lib)
+{
+    MODULEMNG_HILOG_DEBUG("module:'%{public}s'", moduleKey.c_str());
+    std::lock_guard<std::mutex> lock(moduleLibMutex_);
+    if (lib != nullptr) {
+        moduleLibMap_.emplace(moduleKey, lib);
+    }
+}
+```
+
+**目标代码（按用户建议代码，与方案 A 一致）：**
+```cpp
+void NativeModuleManager::EmplaceModuleLib(std::string moduleKey, const LIBHANDLE lib)
+{
+    MODULEMNG_HILOG_DEBUG("module:'%{public}s'", moduleKey.c_str());
+    std::lock_guard<std::mutex> lock(moduleLibMutex_);
+    if (lib == nullptr) {
+        return;
+    }
+    auto it = moduleLibMap_.find(moduleKey);
+    if (it != moduleLibMap_.end()) {
+        MODULEMNG_HILOG_WARN("module '%{public}s' already exists, discard duplicate handle", moduleKey.c_str());
+        UnloadModuleLibrary(lib);  // discard duplicate handle, refcount -1
+        return;
+    }
+    moduleLibMap_.emplace(moduleKey, lib);
+}
+```
+
+### 测试设计（TASK-9）
+
+**测试 1：** `EmplaceModuleLib_ShouldNotEmplaceWhenLibIsNullptr`
+
+覆盖 AC-9.1（nullptr 早退路径）。
+
+```cpp
+HWTEST_F(ModuleManagerTest, EmplaceModuleLib_ShouldNotEmplaceWhenLibIsNullptr, TestSize.Level1)
+{
+    /**
+     * @tc.name: EmplaceModuleLib_ShouldNotEmplaceWhenLibIsNullptr
+     * @tc.desc: 验证 lib == nullptr 时早退，不触碰 map
+     * @tc.type: FUNC
+     * @tc.require: issue #2157 问题 #9
+     */
+    NativeModuleManager& mgr = NativeModuleManager::GetInstance();
+    size_t before = mgr.moduleLibMap_.size();
+    mgr.EmplaceModuleLib("test_emplace_nullptr_key", nullptr);
+    EXPECT_EQ(mgr.moduleLibMap_.size(), before);
+    EXPECT_EQ(mgr.moduleLibMap_.count("test_emplace_nullptr_key"), 0u);
+}
+```
+
+**测试 2：** `EmplaceModuleLib_ShouldEmplaceWhenKeyNotExists`
+
+覆盖 AC-9.2（首次入库路径）。注意使用 sentinel 指针（不触发 dlclose，因为首次入库不走 `UnloadModuleLibrary`）。
+
+```cpp
+HWTEST_F(ModuleManagerTest, EmplaceModuleLib_ShouldEmplaceWhenKeyNotExists, TestSize.Level1)
+{
+    /**
+     * @tc.name: EmplaceModuleLib_ShouldEmplaceWhenKeyNotExists
+     * @tc.desc: 验证 key 不存在时 emplace 入库
+     * @tc.type: FUNC
+     * @tc.require: issue #2157 问题 #9
+     */
+    NativeModuleManager& mgr = NativeModuleManager::GetInstance();
+    LIBHANDLE sentinel = reinterpret_cast<LIBHANDLE>(0xDEADBEEF);
+    mgr.EmplaceModuleLib("test_emplace_new_key", sentinel);
+    EXPECT_EQ(mgr.moduleLibMap_.count("test_emplace_new_key"), 1u);
+    EXPECT_EQ(mgr.moduleLibMap_["test_emplace_new_key"], sentinel);
+    // 清理 sentinel，避免污染后续测试（不是真实 dlopen 句柄，不能 dlclose）
+    mgr.moduleLibMap_.erase("test_emplace_new_key");
+}
+```
+
+**注意事项：**
+- 测试 1 直接覆盖早退路径，map 状态不变
+- 测试 2 用 sentinel 指针（reinterpret_cast<LIBHANDLE>(0xDEADBEEF)）模拟 dlopen 句柄，验证首次入库 map 状态正确；测试结束手动 erase 清理（避免后续测试触发 dlclose sentinel 崩溃）
+- 重复 key 路径（AC-9.3/9.4）不在单测覆盖，原因：会触发真实 `dlclose`，单测无法安全模拟
+
+### BUILD.gn 变更
+
+> N/A — 同 TASK-1-#8。
+
+### 验证检查清单（TASK-9）
+
+- [ ] AC-9.1/9.2/9.3/9.4/9.5 全部有对应验证（单测 + 静态审查）
+- [ ] RED-GREEN-REFACTOR 执行（待环境）
+- [ ] 构建通过（待环境）
+- [ ] 未修改受影响文件清单之外的内容
+- [ ] 完成证据已记录到 review.md
+
+**完成证据（TASK-9）：**
+
+| 证据 | 命令/路径 | 结果 |
+|------|-----------|------|
+| RED 测试 | 待运行（环境问题，同 TASK-1） | 待运行 |
+| GREEN 测试 | 待运行 | 待运行 |
+| 既有用例回归 | 待运行 | 待运行 |
+| 重复路径静态审查 | `native_module_manager.cpp` EmplaceModuleLib L175+ | 待审查 |

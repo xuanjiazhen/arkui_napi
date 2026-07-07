@@ -656,3 +656,52 @@
 | 既有 4 个 Remove* 函数 | 否 | 保留不动（仍被其他路径使用） |
 | 并发压力测试 | 否 | 单测框架不适合 flaky 并发测试，留待 CI |
 | 性能/IPC/构建/国际化/数据迁移/API | 否 | 纯内部加固（含并发安全维度改进） |
+
+---
+
+## 问题 #9 规格：EmplaceModuleLib 重复 key 句柄泄漏修复
+
+### AC 矩阵
+
+| AC编号 | 关联 FR | 关联 TASK | 验证方式 | 验证要点 |
+|--------|--------|-----------|----------|----------|
+| AC-9.1 | FR-9.a | TASK-9 | 单测 | nullptr 早退 |
+| AC-9.2 | FR-9.b | TASK-9 | 单测 | 未重复 emplace 入库 |
+| AC-9.3 | FR-9.c | TASK-9 | 静态审查 + CI | 重复路径：find 命中 → UnloadModuleLibrary(lib)，map 不变 |
+| AC-9.4 | FR-9.c | TASK-9 | CI（dlclose 引用计数） | 重复路径触发 dlclose |
+| AC-9.5 | - | TASK-9 | 单测 | 既有用例运行 |
+
+### 功能规则
+
+| 编号 | 规则描述 | 触发条件 | 作用对象 | 关联 AC |
+|------|----------|----------|----------|---------|
+| FR-9.a | `EmplaceModuleLib` 重构为：`lock_guard<mutex> lock(moduleLibMutex_)`；`if (lib == nullptr) return;`（早退） | `lib == nullptr` | `native_module_manager.cpp` EmplaceModuleLib | AC-9.1 |
+| FR-9.b | 否则 `auto it = moduleLibMap_.find(moduleKey);` 若 `it == end()` 则 `moduleLibMap_.emplace(moduleKey, lib);`（首次入库） | key 不存在 | 同上 | AC-9.2 |
+| FR-9.c | 若 `it != end()`（重复 key）则 `UnloadModuleLibrary(lib);`（丢弃新句柄，dlclose 引用计数 -1），**不修改 map**（保持既有句柄） | key 已存在 | 同上 | AC-9.3/9.4 |
+
+### 验证映射
+
+| 编号 | 对应规格项 | 验证方式 | 验证重点 |
+|------|------------|----------|----------|
+| VM-9.1 | FR-9.a / AC-9.1 | 单测 | nullptr 早退 |
+| VM-9.2 | FR-9.b / AC-9.2 | 单测 | 首次入库 |
+| VM-9.3 | FR-9.c / AC-9.3 | 静态审查 + CI | 重复路径不覆盖 |
+| VM-9.4 | FR-9.c / AC-9.4 | CI（dlclose 引用计数） | 新句柄 dlclose |
+| VM-9.5 | AC-9.5 | 单测 | 既有用例全过 |
+
+### 兼容性声明（问题 #9）
+
+- **已有 API 行为变更:** 否（`EmplaceModuleLib` 签名/返回值不变）
+- **内部行为变更:** 是（重复 key 由"不覆盖+泄漏新句柄"改为"不覆盖+dlclose 新句柄"）
+- **行为变更可接受性:** P2 资源泄漏修复。既有句柄不变，不影响其他持有者。可接受
+
+### 不涉及项（问题 #9）
+
+| 维度 | 涉及？ | 依据 |
+|------|--------|------|
+| `insert_or_assign` 覆盖语义（用户建议方案 2） | 否 | 破坏既有句柄，超范围 |
+| 其他 `emplace` 调用点（`nativeEngineList_.emplace` 等） | 否 | 不在问题描述范围内 |
+| `LoadModuleLibrary` 调用方逻辑 | 否 | 保持原样 |
+| `dlclose` 失败处理 | 否 | 保持 `UnloadModuleLibrary` 原样 |
+| 锁外 `dlclose` 改造 | 否 | 性能改进不属于本问题描述 |
+| 性能/IPC/构建/国际化/数据迁移/API | 否 | 纯内部加固（资源管理维度） |
