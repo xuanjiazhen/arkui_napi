@@ -21,7 +21,7 @@ typedef enum {
     napi_qos_utility = 1,
     napi_qos_default = 2,
     napi_qos_user_initiated = 3,
-    NAPI_QOS_USER_INTERACTIVE = 5,
+    napi_qos_user_interactive = 5,
 } napi_qos_t;
 
 typedef enum {
