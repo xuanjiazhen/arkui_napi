@@ -95,7 +95,7 @@ ohos_shared_library("ark_interop") {
 
     # macro in runtime_core in full repo will effect build napi
     if (ohos_indep_compiler_enable) {
-      external_deps += [ "runtime_core:libarkbase_static" ]
+      external_deps += [ "runtime_core:libarkbase_shared" ]
     }
   }
 
@@ -110,12 +110,12 @@ ohos_shared_library("ark_interop") {
 
   if (is_arkui_x) {
     deps += [
-      "//third_party/bounds_checking_function:libsec_static",
+      "//third_party/bounds_checking_function:libsec_shared",
       "//third_party/libuv:uv",
     ]
   } else {
     external_deps += [
-      "bounds_checking_function:libsec_static",
+      "bounds_checking_function:libsec_shared",
       "libuv:uv",
     ]
   }
