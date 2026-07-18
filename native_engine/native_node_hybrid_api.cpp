@@ -541,6 +541,17 @@ NAPI_EXTERN napi_status napi_mark_worker_thread(napi_env env)
     return GET_RETURN_STATUS(env);
 }
 
+NAPI_EXTERN napi_status napi_init_worker_env(napi_env env)
+{
+    NAPI_PREAMBLE(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    if (!engine->CallInitWorkerFunc(engine)) {
+        return napi_generic_failure;
+    }
+    return GET_RETURN_STATUS(env);
+}
+
 NAPI_EXTERN napi_status napi_is_worker_thread(napi_env env, bool* result)
 {
     NAPI_PREAMBLE(env);
