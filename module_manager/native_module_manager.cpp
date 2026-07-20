@@ -1316,14 +1316,33 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string& moduleKey, const c
     return EmplaceModuleLib(moduleKey, lib);
 }
 
+bool NativeModuleManager::ReadAbcFileContent(std::ifstream& inFile, size_t len,
+    std::unique_ptr<uint8_t[]>& outBuffer)
+{
+#ifdef ENABLE_HITRACE
+    StartTrace(HITRACE_TAG_ACE, "GetFileBuffer::read");
+#endif
+    outBuffer = std::make_unique<uint8_t[]>(len);
+    inFile.seekg(0);
+    inFile.read(reinterpret_cast<char*>(outBuffer.get()), len);
+#ifdef ENABLE_HITRACE
+    FinishTrace(HITRACE_TAG_ACE);
+#endif
+    if (static_cast<size_t>(inFile.gcount()) != len) {
+        MODULEMNG_HILOG_ERROR("short read: expected %{public}zu, got %{public}zu",
+            len, static_cast<size_t>(inFile.gcount()));
+        return false;
+    }
+    return true;
+}
+
 const uint8_t* NativeModuleManager::GetFileBuffer(const std::string& filePath,
     const std::string& moduleKey, size_t &len)
 {
-    const uint8_t* lib = nullptr;
     std::ifstream inFile(filePath, std::ios::ate | std::ios::binary);
     if (!inFile.is_open()) {
         MODULEMNG_HILOG_DEBUG("failed");
-        return lib;
+        return nullptr;
     }
     std::streampos pos = inFile.tellg();
     if (pos < 0) {
@@ -1340,33 +1359,17 @@ const uint8_t* NativeModuleManager::GetFileBuffer(const std::string& filePath,
     }
     len = fileSize;
     std::string abcModuleKey = moduleKey;
-    lib = GetBufferHandle(abcModuleKey);
-    if (lib != nullptr) {
+    const uint8_t* cached = GetBufferHandle(abcModuleKey);
+    if (cached != nullptr) {
         MODULEMNG_HILOG_DEBUG("module:%{public}s", moduleKey.c_str());
-        inFile.close();
-        return lib;
+        return cached;
     }
-
     std::unique_ptr<uint8_t[]> buffer;
-    {
-#ifdef ENABLE_HITRACE
-        StartTrace(HITRACE_TAG_ACE, "GetFileBuffer::read");
-#endif
-        buffer = std::make_unique<uint8_t[]>(len);
-        inFile.seekg(0);
-        inFile.read(reinterpret_cast<char*>(buffer.get()), len);
-#ifdef ENABLE_HITRACE
-        FinishTrace(HITRACE_TAG_ACE);
-#endif
-    }
-    if (static_cast<size_t>(inFile.gcount()) != len) {
-        MODULEMNG_HILOG_ERROR("short read: expected %{public}zu, got %{public}zu",
-            len, static_cast<size_t>(inFile.gcount()));
+    if (!ReadAbcFileContent(inFile, len, buffer)) {
         len = 0;
         return nullptr;
     }
-    inFile.close();
-    lib = buffer.release();
+    const uint8_t* lib = buffer.release();
     EmplaceModuleBuffer(abcModuleKey, lib);
     return lib;
 }
@@ -1617,6 +1620,24 @@ void NativeModuleManager::RegisterByBuffer(const std::string& moduleKey, const u
     MODULEMNG_HILOG_INFO("Module:%{public}s", tailNativeModule_->moduleName);
 }
 
+void NativeModuleManager::FreeNativeModuleFields(NativeModule* node) const
+{
+    if (node == nullptr) {
+        return;
+    }
+    free(const_cast<char *>(node->name));
+    if (node->moduleName) {
+        free(const_cast<char *>(node->moduleName));
+    }
+    if (node->jsABCCode) {
+        delete[] node->jsABCCode;
+    }
+    if (node->systemFilePath && node->systemFilePath[0] != '\0') {
+        free(const_cast<char *>(node->systemFilePath));
+    }
+    delete node;
+}
+
 bool NativeModuleManager::RemoveNativeModuleByCacheLocked(const std::string& moduleKey)
 {
     // Caller holds nativeModuleListMutex_
@@ -1630,17 +1651,7 @@ bool NativeModuleManager::RemoveNativeModuleByCacheLocked(const std::string& mod
             tailNativeModule_ = nullptr;
         }
         headNativeModule_ = headNativeModule_->next;
-        free(const_cast<char *>(nativeModule->name));
-        if (nativeModule->moduleName) {
-            free(const_cast<char *>(nativeModule->moduleName));
-        }
-        if (nativeModule->jsABCCode) {
-            delete[] nativeModule->jsABCCode;
-        }
-        if (nativeModule->systemFilePath && nativeModule->systemFilePath[0] != '\0') {
-            free(const_cast<char *>(nativeModule->systemFilePath));
-        }
-        delete nativeModule;
+        FreeNativeModuleFields(nativeModule);
         MODULEMNG_HILOG_DEBUG("module %{public}s deleted from cache", moduleKey.c_str());
         return true;
     }
@@ -1653,17 +1664,7 @@ bool NativeModuleManager::RemoveNativeModuleByCacheLocked(const std::string& mod
                 tailNativeModule_ = prev;
             }
             prev->next = curr->next;
-            free(const_cast<char *>(curr->name));
-            if (curr->moduleName) {
-                free(const_cast<char *>(curr->moduleName));
-            }
-            if (curr->jsABCCode) {
-                delete[] curr->jsABCCode;
-            }
-            if (curr->systemFilePath && curr->systemFilePath[0] != '\0') {
-                free(const_cast<char *>(curr->systemFilePath));
-            }
-            delete curr;
+            FreeNativeModuleFields(curr);
             MODULEMNG_HILOG_DEBUG("module %{public}s deleted from cache", moduleKey.c_str());
             moduleDeleted = true;
             break;

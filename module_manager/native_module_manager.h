@@ -161,6 +161,7 @@ private:
     LIBHANDLE LoadModuleLibrary(std::string& moduleKey, const char* path, const char* pathKey,
         const bool isAppModule, std::string& errInfo, uint32_t& errReason);
     const uint8_t* GetFileBuffer(const std::string& filePath, const std::string& moduleKey, size_t &len);
+    bool ReadAbcFileContent(std::ifstream& inFile, size_t len, std::unique_ptr<uint8_t[]>& outBuffer);
     bool UnloadModuleLibrary(LIBHANDLE handle);
     bool CloseModuleLibrary(LIBHANDLE handle);
     void CreateLdNamespace(const std::string moduleName, const char* lib_ld_path, const bool& isSystemApp);
@@ -168,6 +169,7 @@ private:
     static bool IsSafeRelativePath(const std::string& p);
     static bool IsValidLibNameStrict(const std::string& libName);
     bool RemoveNativeModuleByCacheLocked(const std::string& moduleKey);
+    void FreeNativeModuleFields(NativeModule* node) const;
     bool RemoveNativeModuleLocked(const std::string& moduleKey);
     LIBHANDLE EmplaceModuleLib(const std::string moduleKey, LIBHANDLE lib);
     void EmplaceModuleBuffer(const std::string moduleKey, const uint8_t* lib);
