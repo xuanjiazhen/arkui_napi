@@ -149,9 +149,24 @@ private:
 
     bool GetNativeModulePath(const char* moduleName, const char* path, const char* relativePath,
         bool isAppModule, char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength);
+    const char* ResolveModulePrefix(const char* path, bool isAppModule, const char* relativePath,
+        char* dupModuleName, int32_t lengthOfModuleName, std::string& sysPrefix, std::string& sysAbcPrefix);
+    bool BuildPathsForPlainName(const char* prefix, const char* zfix, const char* soPostfix, const char* abcfix,
+        const std::string& sysAbcPrefix, bool isAppModule, const char* path, const char* dupModuleName,
+        char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength) const;
+    bool BuildPathsForDottedName(const char* prefix, const char* zfix, const char* soPostfix, const char* abcfix,
+        const std::string& sysAbcPrefix, bool isAppModule, const char* path, const char* moduleName,
+        const char* dupModuleName, char* lastDot, char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength) const;
     NativeModule* FindNativeModuleByDisk(const char* moduleName, const char* path, const char* relativePath,
         bool internal, const bool isAppModule, std::string& errInfo, std::string* loadErrInfo,
         char nativeModulePath[][NAPI_PATH_MAX], NativeModule* cacheNativeModule);
+    LIBHANDLE TryLoadLibraryOnBothPaths(std::string& moduleKey, const char* path, bool isAppModule,
+        char nativeModulePath[][NAPI_PATH_MAX], std::string& errInfo, std::string& firstErrInfo,
+        std::string& secondErrInfo, bool& dlopenFailed, std::string& dlopenErrMsg);
+    bool FinalizeDiskLoadedModule(const std::string& moduleKey, const char* moduleName, const char* loadPath,
+        bool internal, bool isAppModule, LIBHANDLE lib, const uint8_t* abcBuffer, size_t len,
+        std::unique_ptr<ApiAllowListChecker>& apiAllowListChecker, std::string& errInfo,
+        std::string* loadErrInfo);
     NativeModule* FindNativeModuleByCache(const char* moduleName,
                                           char nativeModulePath[][NAPI_PATH_MAX],
                                           NativeModule*& cacheNativeModule,
@@ -160,7 +175,10 @@ private:
     bool CheckModuleExist(const char* modulePath);
     LIBHANDLE LoadModuleLibrary(std::string& moduleKey, const char* path, const char* pathKey,
         const bool isAppModule, std::string& errInfo, uint32_t& errReason);
+    LIBHANDLE DoDlopenByPlatform(const char* path, const char* pathKey, const bool isAppModule,
+        std::string& errInfo, uint32_t& errReason);
     const uint8_t* GetFileBuffer(const std::string& filePath, const std::string& moduleKey, size_t &len);
+    bool ReadAbcFileContent(std::ifstream& inFile, size_t len, std::unique_ptr<uint8_t[]>& outBuffer);
     bool UnloadModuleLibrary(LIBHANDLE handle);
     bool CloseModuleLibrary(LIBHANDLE handle);
     void CreateLdNamespace(const std::string moduleName, const char* lib_ld_path, const bool& isSystemApp);
@@ -168,6 +186,7 @@ private:
     static bool IsSafeRelativePath(const std::string& p);
     static bool IsValidLibNameStrict(const std::string& libName);
     bool RemoveNativeModuleByCacheLocked(const std::string& moduleKey);
+    void FreeNativeModuleFields(NativeModule* node) const;
     bool RemoveNativeModuleLocked(const std::string& moduleKey);
     LIBHANDLE EmplaceModuleLib(const std::string moduleKey, LIBHANDLE lib);
     void EmplaceModuleBuffer(const std::string moduleKey, const uint8_t* lib);

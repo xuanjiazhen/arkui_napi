@@ -28,7 +28,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// NAME_MAX (typically 255 on Linux/bionic) is not reliably exposed by <climits>
+// NAME_MAX (typically 255 on Linux) is not reliably exposed by <climits>
 // across all OH build toolchains. Provide a local fallback so IsValidLibNameStrict
 // compiles deterministically.
 #ifndef NAME_MAX
@@ -115,19 +115,7 @@ NativeModuleManager::~NativeModuleManager()
         NativeModule* nativeModule = headNativeModule_;
         while (nativeModule != nullptr) {
             nativeModule = nativeModule->next;
-            if (headNativeModule_->name) {
-                free(const_cast<char *>(headNativeModule_->name));
-            }
-            if (headNativeModule_->moduleName) {
-                free(const_cast<char *>(headNativeModule_->moduleName));
-            }
-            if (headNativeModule_->jsABCCode) {
-                delete[] headNativeModule_->jsABCCode;
-            }
-            if (headNativeModule_->systemFilePath && headNativeModule_->systemFilePath[0] != '\0') {
-                free(const_cast<char *>(headNativeModule_->systemFilePath));
-            }
-            delete headNativeModule_;
+            FreeNativeModuleFields(headNativeModule_);
             headNativeModule_ = nativeModule;
         }
         headNativeModule_ = nullptr;
@@ -1014,6 +1002,189 @@ bool NativeModuleManager::CheckNativeListChanged(const NativeModule* cacheHeadNa
 
     return false;
 }
+const char* NativeModuleManager::ResolveModulePrefix(const char* path, bool isAppModule,
+    const char* relativePath, char* dupModuleName, int32_t lengthOfModuleName,
+    std::string& sysPrefix, std::string& sysAbcPrefix)
+{
+    const char* prefix = nullptr;
+    if (isAppModule && path != nullptr) {
+        std::lock_guard<std::mutex> guard(appLibPathMapMutex_);
+        auto it = appLibPathMap_.find(path);
+        if (it != appLibPathMap_.end()) {
+            prefix = it->second;
+        }
+    }
+    if (prefix != nullptr) {
+#ifdef ANDROID_PLATFORM
+        for (int32_t i = 0; i < lengthOfModuleName; i++) {
+            dupModuleName[i] = tolower(dupModuleName[i]);
+        }
+        if (prefix == nullptr) {
+            return nullptr;
+        }
+        /*
+         * The requirement is to ensure the abc format file is placed in the path
+         * /data/user/0/com.example.myapplication/files/arkui-x/systemres/abc.
+         * Steps to follow:
+         * 1.	First, check if the /files/arkui-x directory exists.
+         * 2.	Verify that the original path consists of two paths separated by a colon (:).
+         * 3.	Identify whether /files/arkui-x is located in the portion before or after the colon.
+         * 4.	Extract and concatenate the appropriate part of the path to construct
+         *      the full abc file path for subsequent logic to access the file
+         */
+        std::string prefixStr(prefix);
+        const std::string arkuiKey = "/files/arkui-x";
+        std::size_t arkuiPos = prefixStr.find(arkuiKey);
+        if (arkuiPos != std::string::npos) {
+            std::size_t endPos = arkuiPos + arkuiKey.length();
+            std::size_t delimiterPos = prefixStr.find(':');
+            if (delimiterPos != std::string::npos) {
+                sysAbcPrefix = (arkuiPos < delimiterPos)
+                                   ? prefixStr.substr(0, endPos) + "/systemres/abc"
+                                   : prefixStr.substr(delimiterPos + 1, endPos - (delimiterPos + 1)) +
+                                        "/systemres/abc";
+            } else {
+                sysAbcPrefix = prefixStr.substr(0, endPos) + "/systemres/abc";
+            }
+        }
+#endif
+        return prefix;
+    }
+
+    if (relativePath[0]) {
+        if (previewSearchPath_.empty()) {
+            sysPrefix = sysPrefix + "/" + relativePath;
+        } else {
+            sysPrefix = previewSearchPath_ + "/module";
+        }
+    }
+    prefix = sysPrefix.c_str();
+    for (int32_t i = 0; i < lengthOfModuleName; i++) {
+        dupModuleName[i] = tolower(dupModuleName[i]);
+    }
+#ifdef IOS_PLATFORM
+    if (appLibPathMap_.find("default") != appLibPathMap_.end()) {
+        std::string sandboxPath(appLibPathMap_["default"]);
+        sysAbcPrefix = sandboxPath + "/systemres/abc";
+    }
+#endif
+    return prefix;
+}
+
+bool NativeModuleManager::BuildPathsForPlainName(const char* prefix, const char* zfix, const char* soPostfix,
+    const char* abcfix, const std::string& sysAbcPrefix, bool isAppModule, const char* path,
+    const char* dupModuleName, char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength) const
+{
+    if (!isAppModule || !IsExistedPath(path)) {
+#ifdef ANDROID_PLATFORM
+        if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix) == -1) {
+            return false;
+        }
+#else
+        if (sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s%s",
+            prefix, dupModuleName, zfix, soPostfix) == -1) {
+            return false;
+        }
+#endif
+        if (sprintf_s(nativeModulePath[1], pathLength, "%s/lib%s_napi%s%s",
+            prefix, dupModuleName, zfix, soPostfix) == -1) {
+            return false;
+        }
+        if (sprintf_s(nativeModulePath[MODULE_PATH_SECONDARY_INDEX], pathLength, "%s/%s%s",
+            sysAbcPrefix.c_str(), dupModuleName, abcfix) == -1) {
+            return false;
+        }
+        return true;
+    }
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
+    if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix) == -1) {
+        return false;
+    }
+    return true;
+#elif defined(ANDROID_PLATFORM)
+    std::string libPath;
+    int sprintfResult = 0;
+    std::string prefixStr = std::string(prefix);
+    std::size_t pos = prefixStr.find(':');
+    if (pos != std::string::npos) {
+        sprintfResult = sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s",
+            prefixStr.substr(0, pos).c_str(), dupModuleName, soPostfix);
+        libPath = prefixStr.substr(pos + 1);
+    } else {
+        sprintfResult = sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix);
+        libPath = prefixStr;
+    }
+    if (sprintfResult == -1) {
+        return false;
+    }
+    if (sprintf_s(nativeModulePath[1], pathLength, "%s/lib%s%s", libPath.c_str(),
+        dupModuleName, soPostfix) == -1) {
+        return false;
+    }
+    if (IsExistedPath(libPath.c_str())) {
+        std::swap(nativeModulePath[0], nativeModulePath[1]);
+    }
+    char* lastUnderScore = strrchr(const_cast<char*>(dupModuleName), '_');
+    const char* moduleNamePart = (lastUnderScore != nullptr) ? (lastUnderScore + 1) : dupModuleName;
+    return sprintf_s(nativeModulePath[MODULE_PATH_SECONDARY_INDEX], pathLength, "%s/%s%s",
+        sysAbcPrefix.c_str(), moduleNamePart, abcfix) != -1;
+#else
+    return sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s", prefix, dupModuleName, soPostfix) != -1;
+#endif
+}
+
+bool NativeModuleManager::BuildPathsForDottedName(const char* prefix, const char* zfix, const char* soPostfix,
+    const char* abcfix, const std::string& sysAbcPrefix, bool isAppModule, const char* path, const char* moduleName,
+    const char* dupModuleName, char* lastDot, char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength) const
+{
+    char* afterDot = lastDot + 1;
+    if (*afterDot == '\0') {
+        return false;
+    }
+    *lastDot = '\0';
+    int32_t lengthOfModuleName = strlen(dupModuleName);
+    for (int32_t i = 0; i < lengthOfModuleName; i++) {
+        if (*(dupModuleName + i) == '.') {
+            *(dupModuleName + i) = '/';
+        }
+    }
+    if (!isAppModule || !IsExistedPath(path)) {
+        if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s/lib%s%s%s",
+            prefix, dupModuleName, afterDot, zfix, soPostfix) == -1) {
+            return false;
+        }
+        if (sprintf_s(nativeModulePath[1], pathLength, "%s/%s/lib%s_napi%s%s",
+            prefix, dupModuleName, afterDot, zfix, soPostfix) == -1) {
+            return false;
+        }
+#ifdef IOS_PLATFORM
+        return sprintf_s(nativeModulePath[MODULE_PATH_SECONDARY_INDEX], pathLength, "%s/%s%s",
+            sysAbcPrefix.c_str(), afterDot, abcfix) != -1;
+#else
+        return sprintf_s(nativeModulePath[2], pathLength, "%s/%s/%s%s", // 2 : Element index value
+            sysAbcPrefix.c_str(), dupModuleName, afterDot, abcfix) != -1;
+#endif
+    }
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
+    if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", afterDot, soPostfix) == -1) {
+        return false;
+    }
+#else
+    if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s/lib%s%s",
+        prefix, dupModuleName, afterDot, soPostfix) == -1) {
+        return false;
+    }
+#endif
+#ifdef ANDROID_PLATFORM
+    return sprintf_s(nativeModulePath[1], pathLength, "%s/%s/lib%s%s",
+        prefix, moduleName, afterDot, soPostfix) != -1;
+#else
+    return true;
+#endif
+}
+
 bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char* path,
     const char* relativePath, bool isAppModule, char nativeModulePath[][NAPI_PATH_MAX], int32_t pathLength)
 {
@@ -1059,212 +1230,31 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
         return false;
     }
 
-    const char* prefix = nullptr;
-    if (isAppModule && path != nullptr) {
-        std::lock_guard<std::mutex> guard(appLibPathMapMutex_);
-        auto it = appLibPathMap_.find(path);
-        if (it != appLibPathMap_.end()) {
-            prefix = it->second;
-        }
-    }
-    if (prefix != nullptr) {
-#ifdef ANDROID_PLATFORM
-        for (int32_t i = 0; i < lengthOfModuleName; i++) {
-            dupModuleName[i] = tolower(dupModuleName[i]);
-        }
-        if (prefix == nullptr) {
-            return false;
-        }
-        /*
-         * The requirement is to ensure the abc format file is placed in the path
-         * /data/user/0/com.example.myapplication/files/arkui-x/systemres/abc.
-         * Steps to follow:
-         * 1.	First, check if the /files/arkui-x directory exists.
-         * 2.	Verify that the original path consists of two paths separated by a colon (:).
-         * 3.	Identify whether /files/arkui-x is located in the portion before or after the colon.
-         * 4.	Extract and concatenate the appropriate part of the path to construct
-         *      the full abc file path for subsequent logic to access the file
-         */
-        std::string prefixStr(prefix);
-        const std::string arkuiKey = "/files/arkui-x";
-        std::size_t arkuiPos = prefixStr.find(arkuiKey);
-        if (arkuiPos != std::string::npos) {
-            std::size_t endPos = arkuiPos + arkuiKey.length();
-            std::size_t delimiterPos = prefixStr.find(':');
-            if (delimiterPos != std::string::npos) {
-                sysAbcPrefix = (arkuiPos < delimiterPos)
-                                   ? prefixStr.substr(0, endPos) + "/systemres/abc"
-                                   : prefixStr.substr(delimiterPos + 1, endPos - (delimiterPos + 1)) +
-                                        "/systemres/abc";
-            } else {
-                sysAbcPrefix = prefixStr.substr(0, endPos) + "/systemres/abc";
-            }
-        }
-#endif
-    } else {
-        if (relativePath[0]) {
-            if (previewSearchPath_.empty()) {
-                sysPrefix = sysPrefix + "/" + relativePath;
-            } else {
-                sysPrefix = previewSearchPath_ + "/module";
-            }
-        }
-        prefix = sysPrefix.c_str();
-        for (int32_t i = 0; i < lengthOfModuleName; i++) {
-            dupModuleName[i] = tolower(dupModuleName[i]);
-        }
-#ifdef IOS_PLATFORM
-        if (appLibPathMap_.find("default") != appLibPathMap_.end()) {
-            std::string sandboxPath(appLibPathMap_["default"]);
-            sysAbcPrefix = sandboxPath + "/systemres/abc";
-        }
-#endif
+    const char* prefix = ResolveModulePrefix(path, isAppModule, relativePath, dupModuleName,
+        lengthOfModuleName, sysPrefix, sysAbcPrefix);
+    if (prefix == nullptr) {
+        return false;
     }
 
     int32_t lengthOfPostfix = strlen(soPostfix);
     if ((lengthOfModuleName > lengthOfPostfix) &&
         (strcmp(dupModuleName + lengthOfModuleName - lengthOfPostfix, soPostfix) == 0)) {
-        if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s", prefix, dupModuleName) == -1) {
-            return false;
-        }
-        return true;
+        return sprintf_s(nativeModulePath[0], pathLength, "%s/%s", prefix, dupModuleName) != -1;
     }
 
     char* lastDot = strrchr(dupModuleName, '.');
     if (lastDot == nullptr) {
-        if (!isAppModule || !IsExistedPath(path)) {
-#ifdef ANDROID_PLATFORM
-            if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix) == -1) {
-                return false;
-            }
-#else
-            if (sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s%s",
-                prefix, dupModuleName, zfix, soPostfix) == -1) {
-                return false;
-            }
-#endif
-            if (sprintf_s(nativeModulePath[1], pathLength, "%s/lib%s_napi%s%s",
-                prefix, dupModuleName, zfix, soPostfix) == -1) {
-                return false;
-            }
-
-            if (sprintf_s(nativeModulePath[MODULE_PATH_SECONDARY_INDEX], pathLength, "%s/%s%s",
-                sysAbcPrefix.c_str(), dupModuleName, abcfix) == -1) {
-                return false;
-            }
-        } else {
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
-    !defined(LINUX_PLATFORM)
-            if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix) == -1) {
-                return false;
-            }
-#elif defined(ANDROID_PLATFORM)
-            std::string libPath;
-            int sprintfResult = 0;
-            std::string prefixStr = std::string(prefix);
-            std::size_t pos = prefixStr.find(':');
-            if (pos != std::string::npos) {
-                sprintfResult = sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s",
-                    prefixStr.substr(0, pos).c_str(), dupModuleName, soPostfix);
-                libPath = prefixStr.substr(pos + 1);
-            } else {
-                sprintfResult = sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", dupModuleName, soPostfix);
-                libPath = prefixStr;
-            }
-            if (sprintfResult == -1) {
-                return false;
-            }
-#else
-            if (sprintf_s(nativeModulePath[0], pathLength, "%s/lib%s%s", prefix, dupModuleName, soPostfix) == -1) {
-                return false;
-            }
-#endif
-#ifdef ANDROID_PLATFORM
-            if (sprintf_s(nativeModulePath[1], pathLength, "%s/lib%s%s", libPath.c_str(),
-                dupModuleName, soPostfix) == -1) {
-                return false;
-            }
-            if (IsExistedPath(libPath.c_str())) {
-                std::swap(nativeModulePath[0], nativeModulePath[1]);
-            }
-            char* lastUnderScore = strrchr(dupModuleName, '_');
-            const char* moduleNamePart = (lastUnderScore != nullptr) ? (lastUnderScore + 1) : dupModuleName;
-            if (sprintf_s(nativeModulePath[MODULE_PATH_SECONDARY_INDEX], pathLength, "%s/%s%s",
-                sysAbcPrefix.c_str(), moduleNamePart, abcfix) == -1) {
-                return false;
-            }
-#endif
-        }
-    } else {
-        char* afterDot = lastDot + 1;
-        if (*afterDot == '\0') {
-            return false;
-        }
-        *lastDot = '\0';
-        lengthOfModuleName = strlen(dupModuleName);
-        for (int32_t i = 0; i < lengthOfModuleName; i++) {
-            if (*(dupModuleName + i) == '.') {
-                *(dupModuleName + i) = '/';
-            }
-        }
-        if (!isAppModule || !IsExistedPath(path)) {
-            if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s/lib%s%s%s",
-                prefix, dupModuleName, afterDot, zfix, soPostfix) == -1) {
-                return false;
-            }
-            if (sprintf_s(nativeModulePath[1], pathLength, "%s/%s/lib%s_napi%s%s",
-                prefix, dupModuleName, afterDot, zfix, soPostfix) == -1) {
-                return false;
-            }
-#ifdef IOS_PLATFORM
-            if (sprintf_s(nativeModulePath[MODULE_PATH_SECONDARY_INDEX], pathLength, "%s/%s%s",
-                sysAbcPrefix.c_str(), afterDot, abcfix) == -1) {
-                return false;
-            }
-#else
-            if (sprintf_s(nativeModulePath[2], pathLength, "%s/%s/%s%s", // 2 : Element index value
-                sysAbcPrefix.c_str(), dupModuleName, afterDot, abcfix) == -1) {
-                return false;
-            }
-#endif
-        } else {
-#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
-    !defined(LINUX_PLATFORM)
-            if (sprintf_s(nativeModulePath[0], pathLength, "lib%s%s", afterDot, soPostfix) == -1) {
-                return false;
-            }
-#else
-            if (sprintf_s(nativeModulePath[0], pathLength, "%s/%s/lib%s%s",
-                prefix, dupModuleName, afterDot, soPostfix) == -1) {
-                return false;
-            }
-#endif
-#ifdef ANDROID_PLATFORM
-            if (sprintf_s(nativeModulePath[1], pathLength, "%s/%s/lib%s%s",
-                prefix, moduleName, afterDot, soPostfix) == -1) {
-                return false;
-            }
-#endif
-        }
+        return BuildPathsForPlainName(prefix, zfix, soPostfix, abcfix, sysAbcPrefix, isAppModule, path,
+            dupModuleName, nativeModulePath, pathLength);
     }
-    return true;
+    return BuildPathsForDottedName(prefix, zfix, soPostfix, abcfix, sysAbcPrefix, isAppModule, path, moduleName,
+        dupModuleName, lastDot, nativeModulePath, pathLength);
 }
 
-LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string& moduleKey, const char* path,
-    const char* pathKey, const bool isAppModule, std::string& errInfo, uint32_t& errReason)
+LIBHANDLE NativeModuleManager::DoDlopenByPlatform(const char* path, const char* pathKey, const bool isAppModule,
+    std::string& errInfo, uint32_t& errReason)
 {
-    if (strlen(path) == 0) {
-        errInfo += "load module " + moduleKey  + " failed.";
-        MODULEMNG_HILOG_DEBUG("%{public}s", errInfo.c_str());
-        return nullptr;
-    }
-
     LIBHANDLE lib = nullptr;
-
-    MODULEMNG_HILOG_DEBUG("path: %{public}s, pathKey: %{public}s, isAppModule: %{public}d", path, pathKey, isAppModule);
-#ifdef ENABLE_HITRACE
-    StartTrace(HITRACE_TAG_ACE, path);
-#endif
 #if defined(WINDOWS_PLATFORM)
     if (CheckModuleExist(path) == false) {
         errReason = MODULE_NOT_EXIST;
@@ -1288,7 +1278,6 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string& moduleKey, const c
         auto dlerrMsg = dlerr != nullptr ? dlerr : "dlerror msg is empty";
         errInfo += "failed " +  std::string(dlerrMsg);
     }
-
 #elif defined(IOS_PLATFORM)
     lib = nullptr;
 #else
@@ -1302,11 +1291,27 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string& moduleKey, const c
     }
     if (lib == nullptr) {
         char* dlerr = dlerror();
-        auto dlerrMsg = dlerr != nullptr ? dlerr :
-            std::string(path) + " not exist";
+        auto dlerrMsg = dlerr != nullptr ? dlerr : std::string(path) + " not exist";
         errInfo += "failed " +  std::string(dlerrMsg);
     }
 #endif
+    return lib;
+}
+
+LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string& moduleKey, const char* path,
+    const char* pathKey, const bool isAppModule, std::string& errInfo, uint32_t& errReason)
+{
+    if (strlen(path) == 0) {
+        errInfo += "load module " + moduleKey  + " failed.";
+        MODULEMNG_HILOG_DEBUG("%{public}s", errInfo.c_str());
+        return nullptr;
+    }
+
+    MODULEMNG_HILOG_DEBUG("path: %{public}s, pathKey: %{public}s, isAppModule: %{public}d", path, pathKey, isAppModule);
+#ifdef ENABLE_HITRACE
+    StartTrace(HITRACE_TAG_ACE, path);
+#endif
+    LIBHANDLE lib = DoDlopenByPlatform(path, pathKey, isAppModule, errInfo, errReason);
 #ifdef ENABLE_HITRACE
     FinishTrace(HITRACE_TAG_ACE);
 #endif
@@ -1316,14 +1321,33 @@ LIBHANDLE NativeModuleManager::LoadModuleLibrary(std::string& moduleKey, const c
     return EmplaceModuleLib(moduleKey, lib);
 }
 
+bool NativeModuleManager::ReadAbcFileContent(std::ifstream& inFile, size_t len,
+    std::unique_ptr<uint8_t[]>& outBuffer)
+{
+#ifdef ENABLE_HITRACE
+    StartTrace(HITRACE_TAG_ACE, "GetFileBuffer::read");
+#endif
+    outBuffer = std::make_unique<uint8_t[]>(len);
+    inFile.seekg(0);
+    inFile.read(reinterpret_cast<char*>(outBuffer.get()), len);
+#ifdef ENABLE_HITRACE
+    FinishTrace(HITRACE_TAG_ACE);
+#endif
+    if (static_cast<size_t>(inFile.gcount()) != len) {
+        MODULEMNG_HILOG_ERROR("short read: expected %{public}zu, got %{public}zu",
+            len, static_cast<size_t>(inFile.gcount()));
+        return false;
+    }
+    return true;
+}
+
 const uint8_t* NativeModuleManager::GetFileBuffer(const std::string& filePath,
     const std::string& moduleKey, size_t &len)
 {
-    const uint8_t* lib = nullptr;
     std::ifstream inFile(filePath, std::ios::ate | std::ios::binary);
     if (!inFile.is_open()) {
         MODULEMNG_HILOG_DEBUG("failed");
-        return lib;
+        return nullptr;
     }
     std::streampos pos = inFile.tellg();
     if (pos < 0) {
@@ -1340,33 +1364,17 @@ const uint8_t* NativeModuleManager::GetFileBuffer(const std::string& filePath,
     }
     len = fileSize;
     std::string abcModuleKey = moduleKey;
-    lib = GetBufferHandle(abcModuleKey);
-    if (lib != nullptr) {
+    const uint8_t* cached = GetBufferHandle(abcModuleKey);
+    if (cached != nullptr) {
         MODULEMNG_HILOG_DEBUG("module:%{public}s", moduleKey.c_str());
-        inFile.close();
-        return lib;
+        return cached;
     }
-
     std::unique_ptr<uint8_t[]> buffer;
-    {
-#ifdef ENABLE_HITRACE
-        StartTrace(HITRACE_TAG_ACE, "GetFileBuffer::read");
-#endif
-        buffer = std::make_unique<uint8_t[]>(len);
-        inFile.seekg(0);
-        inFile.read(reinterpret_cast<char*>(buffer.get()), len);
-#ifdef ENABLE_HITRACE
-        FinishTrace(HITRACE_TAG_ACE);
-#endif
-    }
-    if (static_cast<size_t>(inFile.gcount()) != len) {
-        MODULEMNG_HILOG_ERROR("short read: expected %{public}zu, got %{public}zu",
-            len, static_cast<size_t>(inFile.gcount()));
+    if (!ReadAbcFileContent(inFile, len, buffer)) {
         len = 0;
         return nullptr;
     }
-    inFile.close();
-    lib = buffer.release();
+    const uint8_t* lib = buffer.release();
     EmplaceModuleBuffer(abcModuleKey, lib);
     return lib;
 }
@@ -1415,99 +1423,57 @@ void NativeModuleManager::Napi_onLoadCallback(LIBHANDLE lib, const char* moduleN
     }
 }
 
-NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName, const char* path,
-    const char* relativePath, bool internal, const bool isAppModule, std::string& errInfo,
-    std::string* loadErrInfo, char nativeModulePath[][NAPI_PATH_MAX], NativeModule* cacheNativeModule)
+LIBHANDLE NativeModuleManager::TryLoadLibraryOnBothPaths(std::string& moduleKey, const char* path,
+    bool isAppModule, char nativeModulePath[][NAPI_PATH_MAX], std::string& errInfo,
+    std::string& firstErrInfo, std::string& secondErrInfo, bool& dlopenFailed, std::string& dlopenErrMsg)
 {
-    std::unique_ptr<ApiAllowListChecker> apiAllowListChecker = nullptr;
-    if (moduleLoadChecker_ && !moduleLoadChecker_->CheckModuleLoadable(moduleName, apiAllowListChecker, isAppModule)) {
-        errInfo = "module " + std::string(moduleName) + " is in blocklist, loading prohibited";
-        SetLoadErrInfo(loadErrInfo, std::string("module ") + moduleName + " is in blocklist");
-        MODULEMNG_HILOG_WARN("%{public}s", errInfo.c_str());
-        return nullptr;
-    }
-
-    std::string moduleKey(moduleName);
-    if (isAppModule) {
-        moduleKey = path;
-        moduleKey = moduleKey + '/' + moduleName;
-    }
-    loadingModuleName_ = moduleKey;
-
-    // load primary module path first
     char* loadPath = nativeModulePath[0];
-    MODULEMNG_HILOG_DEBUG("moduleName:%{public}s. path:%{public}s", moduleName, loadPath);
+    MODULEMNG_HILOG_DEBUG("moduleName path:%{public}s", loadPath);
     uint32_t errReason0 = MODULE_LOAD_SUCCESS;
-    std::string firstErrInfo;
     LIBHANDLE lib = LoadModuleLibrary(moduleKey, loadPath, path, isAppModule, firstErrInfo, errReason0);
-    bool dlopenFailed = false;
-    std::string dlopenErrMsg;
-    std::string secondErrInfo;
-    if (lib == nullptr) {
-        // Check if path[0] went through dlopen
-        if ((isAppModule && IsExistedPath(path)) ||
-            (!isAppModule && nativeModulePath[0][0] != '\0' && access(nativeModulePath[0], F_OK) == 0)) {
-            dlopenFailed = true;
-            dlopenErrMsg = firstErrInfo;
-        }
-        loadPath = nativeModulePath[1];
-        MODULEMNG_HILOG_DEBUG("try to load secondary module path: %{public}s", loadPath);
-        uint32_t errReason1 = MODULE_LOAD_SUCCESS;
-        lib = LoadModuleLibrary(moduleKey, loadPath, path, isAppModule, secondErrInfo, errReason1);
-        if (lib == nullptr) {
-            if ((isAppModule && IsExistedPath(path)) ||
-                (!isAppModule && nativeModulePath[1][0] != '\0' && access(nativeModulePath[1], F_OK) == 0)) {
-                dlopenFailed = true;
-                dlopenErrMsg = secondErrInfo;
-            }
-            // Reconstruct original errInfo format
-            errInfo = "First: " + firstErrInfo + ".Second: " + secondErrInfo;
-            if (errReason0 == MODULE_NOT_EXIST && errReason1 == MODULE_NOT_EXIST) {
-                MODULEMNG_HILOG_DEBUG("Not exist:%{public}s, %{public}s errMsg:%{public}s", nativeModulePath[0],
-                    isAppModule ? ("key:" + moduleKey).c_str() : "", errInfo.c_str());
-            }
-        }
-    }
-
-    //Maintain compatibility
-    if (lib == nullptr && cacheNativeModule != nullptr) {
-        MODULEMNG_HILOG_DEBUG("Maintain compatibility.");
-        return cacheNativeModule;
-    }
-
-    const uint8_t* abcBuffer = nullptr;
-    size_t len = 0;
-    if (lib == nullptr) {
-        loadPath = nativeModulePath[2]; // 2 : Element index value
-        MODULEMNG_HILOG_DEBUG("try to load abc module path: %{public}s", loadPath);
-        abcBuffer = GetFileBuffer(loadPath, moduleKey, len);
-        if (!abcBuffer) {
-            // Restore original errInfo format
-            errInfo += ".load " + std::string(loadPath) + " failed";
-            MODULEMNG_HILOG_WARN("%{public}s %{public}s", isAppModule ? ("key:" + moduleKey).c_str() : "",
-                errInfo.c_str());
-            // Set precise loadErrInfo for NAPI layer
-            LoadErrorContext ctx = { dlopenFailed, dlopenErrMsg, isAppModule, IsExistedPath(path), path };
-            ClassifyLoadError(loadErrInfo, ctx);
-            return nullptr;
-        }
-    }
-
     if (lib != nullptr) {
-        Napi_onLoadCallback(lib, moduleName);
+        return lib;
     }
+    if ((isAppModule && IsExistedPath(path)) ||
+        (!isAppModule && nativeModulePath[0][0] != '\0' && access(nativeModulePath[0], F_OK) == 0)) {
+        dlopenFailed = true;
+        dlopenErrMsg = firstErrInfo;
+    }
+    loadPath = nativeModulePath[1];
+    MODULEMNG_HILOG_DEBUG("try to load secondary module path: %{public}s", loadPath);
+    uint32_t errReason1 = MODULE_LOAD_SUCCESS;
+    lib = LoadModuleLibrary(moduleKey, loadPath, path, isAppModule, secondErrInfo, errReason1);
+    if (lib != nullptr) {
+        return lib;
+    }
+    if ((isAppModule && IsExistedPath(path)) ||
+        (!isAppModule && nativeModulePath[1][0] != '\0' && access(nativeModulePath[1], F_OK) == 0)) {
+        dlopenFailed = true;
+        dlopenErrMsg = secondErrInfo;
+    }
+    errInfo = "First: " + firstErrInfo + ".Second: " + secondErrInfo;
+    if (errReason0 == MODULE_NOT_EXIST && errReason1 == MODULE_NOT_EXIST) {
+        MODULEMNG_HILOG_DEBUG("Not exist:%{public}s, %{public}s errMsg:%{public}s", nativeModulePath[0],
+            isAppModule ? ("key:" + moduleKey).c_str() : "", errInfo.c_str());
+    }
+    return nullptr;
+}
 
+bool NativeModuleManager::FinalizeDiskLoadedModule(const std::string& moduleKey, const char* moduleName,
+    const char* loadPath, bool internal, bool isAppModule, LIBHANDLE lib, const uint8_t* abcBuffer, size_t len,
+    std::unique_ptr<ApiAllowListChecker>& apiAllowListChecker, std::string& errInfo,
+    std::string* loadErrInfo)
+{
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
     if (tailNativeModule_ && !abcBuffer) {
-        const char* moduleName = strdup(moduleKey.c_str());
-        if (moduleName == nullptr) {
+        const char* modName = strdup(moduleKey.c_str());
+        if (modName == nullptr) {
             SetLoadErrInfo(loadErrInfo, "internal error: out of memory");
             MODULEMNG_HILOG_ERROR("strdup faied");
             SetLoadingNativeModuleKey("");
-            return nullptr;
+            return false;
         }
-
-        tailNativeModule_->moduleName = moduleName;
+        tailNativeModule_->moduleName = modName;
         tailNativeModule_->systemFilePath = strdup(loadPath);
         if (tailNativeModule_->systemFilePath == nullptr) {
             SetLoadErrInfo(loadErrInfo, "internal error: out of memory");
@@ -1515,7 +1481,7 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName
             free(const_cast<char*>(tailNativeModule_->moduleName));
             tailNativeModule_->moduleName = nullptr;
             SetLoadingNativeModuleKey("");
-            return nullptr;
+            return false;
         }
         if (tailNativeModule_->name && strcmp(tailNativeModule_->moduleName, tailNativeModule_->name)) {
             MODULEMNG_HILOG_WARN("%{public}s Name mismatch: %{public}s != %{public}s",
@@ -1534,24 +1500,21 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName
             SetLoadErrInfo(loadErrInfo, "symbol format error");
             MODULEMNG_HILOG_ERROR("%{public}s", errInfo.c_str());
             SetLoadingNativeModuleKey("");
-            return nullptr;
+            return false;
         }
-
-        // replace '.' and '/' with '_'
         for (char* p = strchr(symbol, '.'); p != nullptr; p = strchr(p + 1, '.')) {
             *p = '_';
         }
         for (char* p = strchr(symbol, '/'); p != nullptr; p = strchr(p + 1, '/')) {
             *p = '_';
         }
-
         if (lib != nullptr) {
             auto getJSCode = reinterpret_cast<GetJSCodeCallback>(LIBSYM(lib, symbol));
             if (getJSCode == nullptr) {
                 MODULEMNG_HILOG_DEBUG("ignore: no %{public}s in %{public}s", symbol, loadPath);
                 MoveApiAllowListCheckerPtr(apiAllowListChecker, tailNativeModule_);
                 SetLoadingNativeModuleKey("");
-                return tailNativeModule_;
+                return true;
             }
             const char* buf = nullptr;
             int bufLen = 0;
@@ -1580,6 +1543,66 @@ NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName
         MoveApiAllowListCheckerPtr(apiAllowListChecker, tailNativeModule_);
     } else {
         SetLoadErrInfo(loadErrInfo, "internal error: module create failed");
+    }
+    return true;
+}
+
+NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName, const char* path,
+    const char* relativePath, bool internal, const bool isAppModule, std::string& errInfo,
+    std::string* loadErrInfo, char nativeModulePath[][NAPI_PATH_MAX], NativeModule* cacheNativeModule)
+{
+    std::unique_ptr<ApiAllowListChecker> apiAllowListChecker = nullptr;
+    if (moduleLoadChecker_ && !moduleLoadChecker_->CheckModuleLoadable(moduleName, apiAllowListChecker, isAppModule)) {
+        errInfo = "module " + std::string(moduleName) + " is in blocklist, loading prohibited";
+        SetLoadErrInfo(loadErrInfo, std::string("module ") + moduleName + " is in blocklist");
+        MODULEMNG_HILOG_WARN("%{public}s", errInfo.c_str());
+        return nullptr;
+    }
+
+    std::string moduleKey(moduleName);
+    if (isAppModule) {
+        moduleKey = path;
+        moduleKey = moduleKey + '/' + moduleName;
+    }
+    loadingModuleName_ = moduleKey;
+
+    std::string firstErrInfo;
+    std::string secondErrInfo;
+    bool dlopenFailed = false;
+    std::string dlopenErrMsg;
+    LIBHANDLE lib = TryLoadLibraryOnBothPaths(moduleKey, path, isAppModule, nativeModulePath, errInfo,
+        firstErrInfo, secondErrInfo, dlopenFailed, dlopenErrMsg);
+
+    //Maintain compatibility
+    if (lib == nullptr && cacheNativeModule != nullptr) {
+        MODULEMNG_HILOG_DEBUG("Maintain compatibility.");
+        return cacheNativeModule;
+    }
+
+    const uint8_t* abcBuffer = nullptr;
+    size_t len = 0;
+    const char* loadPath = nativeModulePath[0];
+    if (lib == nullptr) {
+        loadPath = nativeModulePath[2]; // 2 : Element index value
+        MODULEMNG_HILOG_DEBUG("try to load abc module path: %{public}s", loadPath);
+        abcBuffer = GetFileBuffer(loadPath, moduleKey, len);
+        if (!abcBuffer) {
+            errInfo += ".load " + std::string(loadPath) + " failed";
+            MODULEMNG_HILOG_WARN("%{public}s %{public}s", isAppModule ? ("key:" + moduleKey).c_str() : "",
+                errInfo.c_str());
+            LoadErrorContext ctx = { dlopenFailed, dlopenErrMsg, isAppModule, IsExistedPath(path), path };
+            ClassifyLoadError(loadErrInfo, ctx);
+            return nullptr;
+        }
+    }
+
+    if (lib != nullptr) {
+        Napi_onLoadCallback(lib, moduleName);
+    }
+
+    if (!FinalizeDiskLoadedModule(moduleKey, moduleName, loadPath, internal, isAppModule, lib, abcBuffer, len,
+        apiAllowListChecker, errInfo, loadErrInfo)) {
+        return nullptr;
     }
     return tailNativeModule_;
 }
@@ -1617,6 +1640,24 @@ void NativeModuleManager::RegisterByBuffer(const std::string& moduleKey, const u
     MODULEMNG_HILOG_INFO("Module:%{public}s", tailNativeModule_->moduleName);
 }
 
+void NativeModuleManager::FreeNativeModuleFields(NativeModule* node) const
+{
+    if (node == nullptr) {
+        return;
+    }
+    free(const_cast<char *>(node->name));
+    if (node->moduleName) {
+        free(const_cast<char *>(node->moduleName));
+    }
+    if (node->jsABCCode) {
+        delete[] node->jsABCCode;
+    }
+    if (node->systemFilePath && node->systemFilePath[0] != '\0') {
+        free(const_cast<char *>(node->systemFilePath));
+    }
+    delete node;
+}
+
 bool NativeModuleManager::RemoveNativeModuleByCacheLocked(const std::string& moduleKey)
 {
     // Caller holds nativeModuleListMutex_
@@ -1630,17 +1671,7 @@ bool NativeModuleManager::RemoveNativeModuleByCacheLocked(const std::string& mod
             tailNativeModule_ = nullptr;
         }
         headNativeModule_ = headNativeModule_->next;
-        free(const_cast<char *>(nativeModule->name));
-        if (nativeModule->moduleName) {
-            free(const_cast<char *>(nativeModule->moduleName));
-        }
-        if (nativeModule->jsABCCode) {
-            delete[] nativeModule->jsABCCode;
-        }
-        if (nativeModule->systemFilePath && nativeModule->systemFilePath[0] != '\0') {
-            free(const_cast<char *>(nativeModule->systemFilePath));
-        }
-        delete nativeModule;
+        FreeNativeModuleFields(nativeModule);
         MODULEMNG_HILOG_DEBUG("module %{public}s deleted from cache", moduleKey.c_str());
         return true;
     }
@@ -1653,17 +1684,7 @@ bool NativeModuleManager::RemoveNativeModuleByCacheLocked(const std::string& mod
                 tailNativeModule_ = prev;
             }
             prev->next = curr->next;
-            free(const_cast<char *>(curr->name));
-            if (curr->moduleName) {
-                free(const_cast<char *>(curr->moduleName));
-            }
-            if (curr->jsABCCode) {
-                delete[] curr->jsABCCode;
-            }
-            if (curr->systemFilePath && curr->systemFilePath[0] != '\0') {
-                free(const_cast<char *>(curr->systemFilePath));
-            }
-            delete curr;
+            FreeNativeModuleFields(curr);
             MODULEMNG_HILOG_DEBUG("module %{public}s deleted from cache", moduleKey.c_str());
             moduleDeleted = true;
             break;
@@ -1758,12 +1779,15 @@ bool NativeModuleManager::IsSafeRelativePath(const std::string& p)
 bool NativeModuleManager::IsValidLibNameStrict(const std::string& libName)
 {
     // Greylist data is externally supplied and cannot be trusted. Guard the suffix
-    // check first: substr(size()-3) underflows when size() < 3 and throws std::out_of_range.
-    // The shortest legal name is "x.so" (4 bytes), so reject anything shorter than 4.
-    if (libName.size() < 4 || libName.size() >= NAME_MAX) {
+    // check first: substr(size()-soSuffixLen) underflows when size() < soSuffixLen and
+    // throws std::out_of_range. The shortest legal name is "x.so" (4 bytes), so reject
+    // anything shorter than 4.
+    constexpr std::string::size_type soSuffixLen = 3;
+    constexpr std::string::size_type minSoNameLen = 4;
+    if (libName.size() < minSoNameLen || libName.size() >= NAME_MAX) {
         return false;
     }
-    if (libName.compare(libName.size() - 3, 3, ".so") != 0) {
+    if (libName.compare(libName.size() - soSuffixLen, soSuffixLen, ".so") != 0) {
         return false;
     }
     for (char c : libName) {
