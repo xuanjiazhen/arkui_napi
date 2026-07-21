@@ -628,6 +628,16 @@ bool NativeEngine::CallInitWorkerFunc(NativeEngine* engine)
     return false;
 }
 
+void NativeEngine::SetWorkerInitMask(uint32_t mask)
+{
+    workerInitMask_ = mask;
+}
+
+uint32_t NativeEngine::GetWorkerInitMask() const
+{
+    return workerInitMask_;
+}
+
 bool NativeEngine::CallGetAssetFunc(const std::string& uri, uint8_t** buffer, size_t* bufferSize,
     std::vector<uint8_t>& content, std::string& ami, bool &useSecureMem, void** mapper, bool isRestrictedWorker)
 {
@@ -995,6 +1005,7 @@ void NativeEngine::RegisterWorkerFunction(const NativeEngine* engine)
         return;
     }
     SetInitWorkerFunc(engine->GetInitWorkerFunc());
+    SetWorkerInitMask(engine->GetWorkerInitMask());
     SetGetAssetFunc(engine->GetGetAssetFunc());
     SetOffWorkerFunc(engine->GetOffWorkerFunc());
 }

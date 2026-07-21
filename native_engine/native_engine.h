@@ -110,6 +110,15 @@ private:
     uint32_t checkCount_ {0};
 };
 
+// Bitmask for selective worker module initialization
+constexpr uint32_t WORKER_INIT_MODULE_INTL         = 0x01;
+constexpr uint32_t WORKER_INIT_MODULE_SYSCAP       = 0x02;
+constexpr uint32_t WORKER_INIT_MODULE_CONSOLE      = 0x04;
+constexpr uint32_t WORKER_INIT_MODULE_UI_PRELOAD   = 0x08;
+constexpr uint32_t WORKER_INIT_MODULE_JS_FRAMEWORK = 0x10;
+constexpr uint32_t WORKER_INIT_MODULE_DEBUGGER     = 0x20;
+constexpr uint32_t WORKER_INIT_MODULE_ALL          = 0x3F;
+
 using CleanupCallback = void (*)(void*);
 using CleanupFinalizerCallBack = void (*)(void*);
 using ThreadId = uint32_t;
@@ -409,6 +418,8 @@ public:
     // register init worker func
     virtual void SetInitWorkerFunc(InitWorkerFunc func);
     InitWorkerFunc GetInitWorkerFunc() const;
+    void SetWorkerInitMask(uint32_t mask);
+    uint32_t GetWorkerInitMask() const;
     virtual void SetGetAssetFunc(GetAssetFunc func);
     GetAssetFunc GetGetAssetFunc() const;
     virtual void SetOffWorkerFunc(OffWorkerFunc func);
@@ -709,6 +720,7 @@ protected:
     // register for worker
     void* worker_ = nullptr;
     InitWorkerFunc initWorkerFunc_ {nullptr};
+    uint32_t workerInitMask_ {0};  // 0 = init all
     GetAssetFunc getAssetFunc_ {nullptr};
     OffWorkerFunc offWorkerFunc_ {nullptr};
 #if !defined(PREVIEW)

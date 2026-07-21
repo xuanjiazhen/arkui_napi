@@ -520,6 +520,18 @@ NAPI_EXTERN napi_status napi_set_is_hybrid_vm(napi_env env, bool isHybrid)
     return GET_RETURN_STATUS(env);
 }
 
+NAPI_EXTERN napi_status napi_init_worker_env(napi_env env, uint32_t initMask)
+{
+    NAPI_PREAMBLE(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    engine->SetWorkerInitMask(initMask);
+    if (!engine->CallInitWorkerFunc(engine)) {
+        return napi_generic_failure;
+    }
+    return GET_RETURN_STATUS(env);
+}
+
 NAPI_EXTERN napi_status napi_is_hybrid_vm(napi_env env, bool* result)
 {
     CHECK_ENV(env);
