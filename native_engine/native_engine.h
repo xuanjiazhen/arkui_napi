@@ -142,6 +142,7 @@ using NapiHasAllUnhandledRejectionCallback = std::function<bool()>;
 using GCTaskFinishedCallback = std::function<void()>;
 using SerializeOptions = panda::SerializeOptions;
 using TaskPoolShrinkCallback = std::function<void(bool inBackground)>;
+using NativeMemoryPressureLevel = panda::JSNApi::MemoryPressureLevel;
 
 // Define method to load counter values of different types
 #define NAPI_COUNTER_ATOMIC_LOAD(storage) (storage).load()
@@ -483,7 +484,11 @@ public:
     virtual void NotifyApplicationState(bool inBackground) = 0;
     virtual void NotifyIdleStatusControl(std::function<void(bool)> callback) = 0;
     virtual void NotifyIdleTime(int idleMicroSec) = 0;
-    virtual void NotifyMemoryPressure(bool inHighMemoryPressure = false) = 0;
+    /**
+     * @brief Notify all VMs to system memory pressure
+     * @param level Current system memory pressure level
+     */
+    virtual void NotifyMemoryPressure([[maybe_unused]] NativeMemoryPressureLevel level) {}
     virtual void NotifyForceExpandState(int32_t value) = 0;
     virtual void NotifyForceExpandState(uint64_t tid, int32_t value) = 0;
     virtual void RegisterAppStateCallback(NapiAppStateCallback callback) = 0;

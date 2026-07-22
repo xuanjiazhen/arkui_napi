@@ -16,6 +16,7 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 
+#include <atomic>
 #include <memory>
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
 #include <sys/wait.h>
@@ -322,7 +323,11 @@ public:
     void NotifyApplicationState(bool inBackground) override;
     void NotifyIdleStatusControl(std::function<void(bool)> callback) override;
     void NotifyIdleTime(int idleMicroSec) override;
-    void NotifyMemoryPressure(bool inHighMemoryPressure = false) override;
+    /**
+     * @brief Notify memory pressure level for the main VM and forwards the request to worker VMs
+     * @param level Current system memory pressure level.
+     */
+    void NotifyMemoryPressure(NativeMemoryPressureLevel level) override;
     void NotifyForceExpandState(int32_t value) override;
     void NotifyForceExpandState(uint64_t tid, int32_t value) override;
     void RegisterAppStateCallback(NapiAppStateCallback callback) override;
@@ -345,6 +350,11 @@ public:
     void PostFinalizeTasks();
     void PostAsyncTask(panda::AsyncNativeCallbacksPack *callbacksPack);
     void PostTriggerGCTask(panda::TriggerGCData& data, GCTaskFinishedCallback callback = nullptr) override;
+    /**
+     * @brief Posts a memory pressure notification to this worker VM's owner thread
+     * @param level Current system memory pressure level
+     */
+    void PostMemoryPressureGCTask(NativeMemoryPressureLevel level);
     void InitPostTaskToThreadCallback();
 
     ArkFinalizersPack &GetArkFinalizersPack()

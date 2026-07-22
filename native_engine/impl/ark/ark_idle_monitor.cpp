@@ -426,6 +426,19 @@ void ArkIdleMonitor::UnregisterEnv(NativeEngine *engine)
 #endif
 }
 
+void ArkIdleMonitor::NotifyMemoryPressure(JSNApi::MemoryPressureLevel level)
+{
+    std::lock_guard<std::mutex> lock(envVectorMutex_);
+    for (auto workerEnv : workerEnvVector_) {
+        auto arkNativeEngine = reinterpret_cast<ArkNativeEngine *>(workerEnv);
+        if (!NativeEngine::IsAlive(arkNativeEngine)) {
+            continue;
+        }
+        // Run the hint on the worker UV loop because each VM is thread-affine.
+        arkNativeEngine->PostMemoryPressureGCTask(level);
+    }
+}
+
 uint64_t ArkIdleMonitor::GetIdleMonitoringInterval()
 {
 #if defined(ENABLE_EVENT_HANDLER)
