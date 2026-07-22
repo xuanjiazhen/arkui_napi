@@ -627,6 +627,8 @@ ArkNativeEngine::~ArkNativeEngine()
                isMainEnvContext_ ? "" : "ArkContextEngine", GetId());
 
     engineState_ = ArkNativeEngineState::RELEASING;
+    // Invalidate queued worker hints before the VM starts tearing down.
+    memoryPressureGeneration_->fetch_add(1, std::memory_order_relaxed);
 
     if (isMainEnvContext_) {
         // unregister worker env for idle GC
@@ -2280,6 +2282,19 @@ public:
     GCTaskFinishedCallback callback_ {nullptr};
 };
 
+class MemoryPressureCallbackData {
+public:
+    MemoryPressureCallbackData(EcmaVM *vm, NativeMemoryPressureLevel level,
+        std::shared_ptr<std::atomic<uint64_t>> generation, uint64_t expectedGeneration)
+        : vm_(vm), level_(level), generation_(std::move(generation)),
+          expectedGeneration_(expectedGeneration) {}
+
+    EcmaVM *vm_ {nullptr};
+    NativeMemoryPressureLevel level_ {NativeMemoryPressureLevel::NONE};
+    std::shared_ptr<std::atomic<uint64_t>> generation_;
+    uint64_t expectedGeneration_ {0};
+};
+
 void ArkNativeEngine::PostTriggerGCTask(TriggerGCData& data, GCTaskFinishedCallback callback)
 {
     TriggerGCData *triggerGCData = new TriggerGCData(data);
@@ -2303,6 +2318,32 @@ void ArkNativeEngine::PostTriggerGCTask(TriggerGCData& data, GCTaskFinishedCallb
         delete callbackData;
         delete syncWork;
         delete triggerGCData;
+    }
+}
+
+void ArkNativeEngine::PostMemoryPressureGCTask(NativeMemoryPressureLevel level)
+{
+    // A generation token drops stale hints queued for the same worker VM.
+    uint64_t expectedGeneration = memoryPressureGeneration_->fetch_add(1, std::memory_order_relaxed) + 1;
+    auto *callbackData = new MemoryPressureCallbackData(
+        vm_, level, memoryPressureGeneration_, expectedGeneration);
+    auto *syncWork = new uv_work_t;
+    syncWork->data = reinterpret_cast<void *>(callbackData);
+    int ret = uv_queue_work_with_qos(GetUVLoop(), syncWork, [](uv_work_t *) {}, [](uv_work_t *syncWork, int32_t) {
+        auto *callbackData = reinterpret_cast<MemoryPressureCallbackData *>(syncWork->data);
+        if (callbackData->expectedGeneration_ == callbackData->generation_->load(std::memory_order_relaxed)) {
+            DFXJSNApi::NotifyMemoryPressure(callbackData->vm_, callbackData->level_);
+        }
+        delete callbackData;
+        delete syncWork;
+    }, uv_qos_t(napi_qos_user_initiated));
+    if (ret != 0) {
+        HILOG_ERROR("queue memory pressure task failed, ret=%{public}d", ret);
+        uint64_t currentGeneration = expectedGeneration;
+        memoryPressureGeneration_->compare_exchange_strong(
+            currentGeneration, expectedGeneration - 1, std::memory_order_relaxed);
+        delete callbackData;
+        delete syncWork;
     }
 }
 
@@ -3021,9 +3062,11 @@ void ArkNativeEngine::NotifyIdleTime(int idleMicroSec)
     DFXJSNApi::NotifyIdleTime(vm_, idleMicroSec);
 }
 
-void ArkNativeEngine::NotifyMemoryPressure(bool inHighMemoryPressure)
+void ArkNativeEngine::NotifyMemoryPressure(NativeMemoryPressureLevel level)
 {
-    DFXJSNApi::NotifyMemoryPressure(vm_, inHighMemoryPressure);
+    DFXJSNApi::NotifyMemoryPressure(vm_, level);
+    // The system PSI signal applies to worker heaps as well as the main VM.
+    ArkIdleMonitor::GetInstance()->NotifyMemoryPressure(level);
 }
 
 NativeEngine* ArkNativeEngine::GetArkNativeEngineByID(uint64_t tid)
@@ -3172,9 +3215,10 @@ void ArkNativeEngine::NotifyIdleTime([[maybe_unused]] int idleMicroSec)
     HILOG_WARN("ARK does not support dfx on windows");
 }
 
-void ArkNativeEngine::NotifyMemoryPressure([[maybe_unused]] bool inHighMemoryPressure)
+void ArkNativeEngine::NotifyMemoryPressure([[maybe_unused]] NativeMemoryPressureLevel level)
 {
     HILOG_WARN("ARK does not support dfx on windows");
+    return false;
 }
 
 void ArkNativeEngine::NotifyForceExpandState([[maybe_unused]] int32_t value)

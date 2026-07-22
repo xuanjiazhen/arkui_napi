@@ -16,6 +16,7 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 
+#include <atomic>
 #include <memory>
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
 #include <sys/wait.h>
@@ -322,7 +323,11 @@ public:
     void NotifyApplicationState(bool inBackground) override;
     void NotifyIdleStatusControl(std::function<void(bool)> callback) override;
     void NotifyIdleTime(int idleMicroSec) override;
-    void NotifyMemoryPressure(bool inHighMemoryPressure = false) override;
+    /**
+     * @brief Notify memory pressure level for the main VM and forwards the request to worker VMs
+     * @param level Current system memory pressure level.
+     */
+    void NotifyMemoryPressure(NativeMemoryPressureLevel level) override;
     void NotifyForceExpandState(int32_t value) override;
     void NotifyForceExpandState(uint64_t tid, int32_t value) override;
     void RegisterAppStateCallback(NapiAppStateCallback callback) override;
@@ -345,6 +350,14 @@ public:
     void PostFinalizeTasks();
     void PostAsyncTask(panda::AsyncNativeCallbacksPack *callbacksPack);
     void PostTriggerGCTask(panda::TriggerGCData& data, GCTaskFinishedCallback callback = nullptr) override;
+    /**
+     * @brief Posts a one-shot memory pressure GC request to this VM's owner thread.
+     *
+     * A newer queued request supersedes an older request for the same worker VM.
+     *
+     * @param level Current system memory pressure level.
+     */
+    void PostMemoryPressureGCTask(NativeMemoryPressureLevel level);
     void InitPostTaskToThreadCallback();
 
     ArkFinalizersPack &GetArkFinalizersPack()
@@ -577,6 +590,9 @@ private:
     uv_async_t threadTaskAsync_ {};
     bool threadTaskAsyncInitialized_ = false;
     std::mutex threadTaskMutex_;
+    // Drop stale worker pressure hints and invalidate queued callbacks during VM teardown.
+    std::shared_ptr<std::atomic<uint64_t>> memoryPressureGeneration_ {
+        std::make_shared<std::atomic<uint64_t>>(0)};
     std::function<void()> pendingThreadTask_;
     static std::map<std::string, std::string> hookList_;
 };
