@@ -278,6 +278,12 @@ public:
     void PostLooperTriggerIdleGCTask();
     void EnableIdleGC(NativeEngine *engine);
     void UnregisterEnv(NativeEngine *engine);
+    /**
+     * @brief Forwards a memory pressure GC request to all registered worker engines.
+     *
+     * @param level Current system memory pressure level.
+     */
+    void TriggerGCForMemoryPressure(JSNApi::MemoryPressureLevel level);
     void NotifyNeedFreeze(bool needFreeze);
     ReportDataFunc LoadReportDataFunc();
 

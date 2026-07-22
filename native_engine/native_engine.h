@@ -145,6 +145,7 @@ using NapiHasAllUnhandledRejectionCallback = std::function<bool()>;
 using GCTaskFinishedCallback = std::function<void()>;
 using SerializeOptions = panda::SerializeOptions;
 using TaskPoolShrinkCallback = std::function<void(bool inBackground)>;
+using NativeMemoryPressureLevel = panda::JSNApi::MemoryPressureLevel;
 
 // Define method to load counter values of different types
 #define NAPI_COUNTER_ATOMIC_LOAD(storage) (storage).load()
@@ -778,6 +779,16 @@ private:
     static NativeEngine* g_mainThreadEngine_;
 
 public:
+    /**
+     * @brief Attempts a one-shot GC in response to system memory pressure.
+     *
+     * This method remains at the end of the virtual method list to preserve existing vtable slots.
+     *
+     * @param level Current system memory pressure level.
+     * @return true if a collection was triggered synchronously for this engine; otherwise false.
+     */
+    virtual bool TriggerGCForMemoryPressure([[maybe_unused]] NativeMemoryPressureLevel level) { return false; }
+
     inline std::shared_mutex& GetEventMutex() const
     {
         return eventMutex_;
