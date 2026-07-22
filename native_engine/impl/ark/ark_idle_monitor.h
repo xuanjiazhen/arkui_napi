@@ -278,6 +278,7 @@ public:
     void PostLooperTriggerIdleGCTask();
     void EnableIdleGC(NativeEngine *engine);
     void UnregisterEnv(NativeEngine *engine);
+    void NotifyMemoryPressure(JSNApi::MemoryPressureLevel level, bool triggerGC);
     void NotifyNeedFreeze(bool needFreeze);
     ReportDataFunc LoadReportDataFunc();
 

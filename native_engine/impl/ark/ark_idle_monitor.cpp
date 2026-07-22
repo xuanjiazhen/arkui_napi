@@ -426,6 +426,18 @@ void ArkIdleMonitor::UnregisterEnv(NativeEngine *engine)
 #endif
 }
 
+void ArkIdleMonitor::NotifyMemoryPressure(JSNApi::MemoryPressureLevel level, bool triggerGC)
+{
+    std::lock_guard<std::mutex> lock(envVectorMutex_);
+    for (auto workerEnv : workerEnvVector_) {
+        auto arkNativeEngine = reinterpret_cast<ArkNativeEngine *>(workerEnv);
+        if (!NativeEngine::IsAlive(arkNativeEngine)) {
+            continue;
+        }
+        arkNativeEngine->PostMemoryPressureTask(level, triggerGC);
+    }
+}
+
 uint64_t ArkIdleMonitor::GetIdleMonitoringInterval()
 {
 #if defined(ENABLE_EVENT_HANDLER)

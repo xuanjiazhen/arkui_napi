@@ -16,6 +16,7 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 
+#include <atomic>
 #include <memory>
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
 #include <sys/wait.h>
@@ -322,6 +323,7 @@ public:
     void NotifyIdleStatusControl(std::function<void(bool)> callback) override;
     void NotifyIdleTime(int idleMicroSec) override;
     void NotifyMemoryPressure(bool inHighMemoryPressure = false) override;
+    bool NotifyMemoryPressure(NativeMemoryPressureLevel level, bool triggerGC) override;
     void NotifyForceExpandState(int32_t value) override;
     void NotifyForceExpandState(uint64_t tid, int32_t value) override;
     void RegisterAppStateCallback(NapiAppStateCallback callback) override;
@@ -344,6 +346,7 @@ public:
     void PostFinalizeTasks();
     void PostAsyncTask(panda::AsyncNativeCallbacksPack *callbacksPack);
     void PostTriggerGCTask(panda::TriggerGCData& data, GCTaskFinishedCallback callback = nullptr) override;
+    void PostMemoryPressureTask(NativeMemoryPressureLevel level, bool triggerGC);
     void InitPostTaskToThreadCallback();
 
     ArkFinalizersPack &GetArkFinalizersPack()
@@ -576,6 +579,8 @@ private:
     uv_async_t threadTaskAsync_ {};
     bool threadTaskAsyncInitialized_ = false;
     std::mutex threadTaskMutex_;
+    std::shared_ptr<std::atomic<uint64_t>> memoryPressureGeneration_ {
+        std::make_shared<std::atomic<uint64_t>>(0)};
     std::function<void()> pendingThreadTask_;
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */
