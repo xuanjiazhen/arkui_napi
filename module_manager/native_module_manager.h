@@ -91,6 +91,12 @@ public:
     void UpdateNamespaceLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath);
     bool GetLdNamespaceName(const std::string &moduleName, std::string &nsName);
     NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
+        std::string& errInfo, bool internal = false, const char* relativePath = "");
+    // New variant carrying an additional loadErrInfo outparam so JS Crash faultlog
+    // can surface precise SO load failure reasons. Legacy callers (including
+    // third-party apps linked against older libace_napi.z.so) keep using the
+    // 6-param LoadNativeModule above — its mangled symbol is unchanged.
+    NativeModule* LoadNativeModuleWithErrorInfo(const char* moduleName, const char* path, bool isAppModule,
         std::string& errInfo, bool internal = false, const char* relativePath = "",
         std::string* loadErrInfo = nullptr);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
