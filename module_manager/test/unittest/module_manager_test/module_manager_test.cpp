@@ -1413,8 +1413,8 @@ HWTEST_F(ModuleManagerTest, LoadNativeModule_ErrInfo_ModuleNameNull, TestSize.Le
     std::string errInfo = "";
     std::string loadErrInfo = "";
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    NativeModule* module = moduleManager->LoadNativeModule(nullptr, nullptr, false, errInfo, false, nullptr,
-        &loadErrInfo);
+    NativeModule* module = moduleManager->LoadNativeModuleWithErrorInfo(nullptr, nullptr, false, errInfo,
+        false, nullptr, &loadErrInfo);
     EXPECT_EQ(module, nullptr);
     EXPECT_EQ(errInfo, "nullptr");
     EXPECT_EQ(loadErrInfo, "moduleName is nullptr");
@@ -1435,8 +1435,8 @@ HWTEST_F(ModuleManagerTest, LoadNativeModule_ErrInfo_RelativePathNull, TestSize.
     std::string errInfo = "";
     std::string loadErrInfo = "";
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    NativeModule* module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false, nullptr,
-        &loadErrInfo);
+    NativeModule* module = moduleManager->LoadNativeModuleWithErrorInfo(moduleName, nullptr, false, errInfo,
+        false, nullptr, &loadErrInfo);
     EXPECT_EQ(module, nullptr);
     EXPECT_EQ(errInfo, "nullptr");
     EXPECT_EQ(loadErrInfo, "relativePath is nullptr");
@@ -1457,8 +1457,8 @@ HWTEST_F(ModuleManagerTest, LoadNativeModule_ErrInfo_InvalidRelativePath, TestSi
     std::string errInfo = "";
     std::string loadErrInfo = "";
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
-    NativeModule* module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false, "../test",
-        &loadErrInfo);
+    NativeModule* module = moduleManager->LoadNativeModuleWithErrorInfo(moduleName, nullptr, false, errInfo,
+        false, "../test", &loadErrInfo);
     EXPECT_EQ(module, nullptr);
     EXPECT_EQ(loadErrInfo, "invalid relativePath");
 
@@ -1484,7 +1484,8 @@ HWTEST_F(ModuleManagerTest, LoadNativeModule_ErrInfo_RelativePathNotContainDotDo
     EXPECT_EQ(module, nullptr);
     // relativePath does not contain "..", should NOT set "invalid relativePath" in loadErrInfo
     std::string loadErrInfo;
-    module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false, "validPath", &loadErrInfo);
+    module = moduleManager->LoadNativeModuleWithErrorInfo(moduleName, nullptr, false, errInfo, false,
+        "validPath", &loadErrInfo);
     EXPECT_EQ(module, nullptr);
     EXPECT_NE(loadErrInfo, "invalid relativePath");
 
@@ -1513,8 +1514,8 @@ HWTEST_F(ModuleManagerTest, LoadNativeModule_ErrInfo_Blocklisted, TestSize.Level
     MockDiskCheckOnly(false);
     MockLoadModuleLibrary(nullptr);
 
-    NativeModule* module = moduleManager->LoadNativeModule(moduleName, nullptr, false, errInfo, false, "path",
-        &loadErrInfo);
+    NativeModule* module = moduleManager->LoadNativeModuleWithErrorInfo(moduleName, nullptr, false, errInfo,
+        false, "path", &loadErrInfo);
     EXPECT_EQ(module, nullptr);
     EXPECT_EQ(loadErrInfo, std::string("module ") + moduleName + " is in blocklist");
 
