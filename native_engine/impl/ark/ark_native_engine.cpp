@@ -2334,7 +2334,6 @@ void ArkNativeEngine::SetAttribute(bool isLimitedWorker, panda::RuntimeOption &o
     option.SetGcThreadNum(gcThreadNum);
     option.SetLongPauseTime(longPauseTime);
     option.SetEnableAsmInterpreter(asmInterpreterEnabled);
-    option.SetAsmOpcodeDisableRange(asmOpcodeDisableRange);
     option.SetIsWorker();
     option.SetIsRestrictedWorker(isLimitedWorker);
     HILOG_DEBUG("ArkNativeEngineImpl::CreateRuntimeFunc ark properties = %{public}d, bundlename = %{public}s",
