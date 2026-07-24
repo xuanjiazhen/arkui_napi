@@ -86,7 +86,8 @@ static void ClassifyLoadError(std::string* loadErrInfo, const LoadErrorContext& 
         }
         *loadErrInfo = "dlopen failed: " + rawErr;
     } else if (ctx.isAppModule && !ctx.pathRegistered) {
-        *loadErrInfo = std::string("app lib path not registered in namespace '") + ctx.path + "'";
+        *loadErrInfo = std::string("app lib path not registered in namespace '")
+                       + (ctx.path != nullptr ? ctx.path : "<null>") + "'";
     } else {
         *loadErrInfo = "module not found";
     }
@@ -1411,6 +1412,12 @@ void NativeModuleManager::Napi_onLoadCallback(LIBHANDLE lib, const char* moduleN
 #endif
         MODULEMNG_HILOG_INFO("napi_onLoad call, module:%{public}s", moduleName);
     }
+}
+
+NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
+    std::string& errInfo, bool internal, const char* relativePath)
+{
+    return LoadNativeModule(moduleName, path, isAppModule, errInfo, internal, relativePath, nullptr);
 }
 
 NativeModule* NativeModuleManager::FindNativeModuleByDisk(const char* moduleName, const char* path,
