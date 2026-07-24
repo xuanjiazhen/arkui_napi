@@ -91,6 +91,9 @@ public:
     void UpdateNamespaceLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath);
     bool GetLdNamespaceName(const std::string &moduleName, std::string &nsName);
     NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
+        std::string& errInfo, bool internal = false, const char* relativePath = "");
+    // Variant with loadErrInfo outparam for precise SO load failure diagnostics.
+    NativeModule* LoadNativeModuleWithErrorInfo(const char* moduleName, const char* path, bool isAppModule,
         std::string& errInfo, bool internal = false, const char* relativePath = "",
         std::string* loadErrInfo = nullptr);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
