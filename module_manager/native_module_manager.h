@@ -91,8 +91,17 @@ public:
     void UpdateNamespaceLibPath(const std::string& moduleName, const std::vector<std::string>& appLibPath);
     bool GetLdNamespaceName(const std::string &moduleName, std::string &nsName);
     NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
-        std::string& errInfo, bool internal = false, const char* relativePath = "",
-        std::string* loadErrInfo = nullptr);
+        std::string& errInfo, bool internal, const char* relativePath,
+        std::string* loadErrInfo);
+    // ABI-compat shim: keeps the pre-loadErrInfo (6-param) mangled symbol exported
+    // so third-party apps linked against older libace_napi.z.so still resolve at runtime.
+    // Delegates to the 7-param primary with loadErrInfo = nullptr.
+    // Rationale: primary intentionally carries NO default args so it is only viable
+    // for full 7-arg calls; 4/5/6-arg source calls bind unambiguously to this shim
+    // (whose internal/relativePath defaults preserve pre-PR source-level usage).
+    // Do NOT remove — removing breaks ABI for legacy third-party callers.
+    NativeModule* LoadNativeModule(const char* moduleName, const char* path, bool isAppModule,
+        std::string& errInfo, bool internal = false, const char* relativePath = "");
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     bool UnloadNativeModule(const std::string& moduleKey);
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);
