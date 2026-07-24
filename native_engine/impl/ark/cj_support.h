@@ -19,7 +19,7 @@
 
 #include "js_native_api.h"
 
-bool IsCJModule(const char* moduleName);
-napi_value LoadCJModule(napi_env env, const char* nameBuf);
+__attribute__((visibility("hidden"))) bool IsCJModule(const char* moduleName);
+__attribute__((visibility("hidden"))) napi_value LoadCJModule(napi_env env, const char* nameBuf);
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_CJ_SUPPORT_H */
