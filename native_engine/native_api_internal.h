@@ -28,6 +28,29 @@ static inline napi_status napi_clear_last_error(napi_env env)
     return napi_ok;
 }
 
+__attribute__((noinline)) static napi_status NapiSwitchContext(napi_env env)
+{
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
+    panda::Local<panda::JSValueRef> envContext = engine->GetContext();
+    if (!(envContext == panda::JSNApi::GetCurrentContext(vm))) {
+        napi_status status = engine->SwitchContext();
+        if (status != napi_ok) {
+            return napi_set_last_error(env, status);
+        }
+    }
+    return napi_ok;
+}
+
+__attribute__((noinline)) static napi_status NapiConvertToObjectCold(
+    napi_env env, const EcmaVM* vm, panda::Local<panda::JSValueRef> nativeValue,
+    panda::Local<panda::ObjectRef>& outObj)
+{
+    bool isFunc = nativeValue->IsFunction(vm);
+    RETURN_STATUS_IF_FALSE(env, isFunc, napi_object_expected);
+    outObj = nativeValue->ToEcmaObjectWithoutSwitchState(vm);
+    return napi_ok;
+}
 static inline napi_status napi_set_last_error(napi_env env,
                                               napi_status error_code,
                                               uint32_t engine_error_code = 0,
@@ -73,6 +96,18 @@ static inline napi_status napi_set_last_error(napi_env env,
     } else {                                                                   \
         (obj) = (nativeValue)->ToEcmaObjectWithoutSwitchState((vm));           \
     }
+
+#define CHECK_AND_CONVERT_TO_OBJECT_HOTPOT_OPT(env, vm, nativeValue, obj)                    \
+    bool isObj = nativeValue->IsObjectWithoutSwitchState(vm);                                \
+    Local<panda::ObjectRef> nativeObject;                                                    \
+    if (LIKELY(isObj)) {                                                                     \
+        obj = Local<panda::ObjectRef>(nativeValue);                                          \
+    } else {                                                                                 \
+        napi_status cvtStatus = NapiConvertToObjectCold(env, vm, nativeValue, obj);          \
+        if (cvtStatus != napi_ok) {                                                          \
+            return cvtStatus;                                                                \
+        }                                                                                    \
+    }                                                                                        \
 
 #define CROSS_THREAD_CHECK(env)                                                     \
     do {                                                                            \
@@ -169,5 +204,13 @@ inline bool EnableContainerScope(napi_env env)
             }                                                                       \
         }                                                                           \
     }
+
+#define SWITCH_CONTEXT_HOTPOT_OPT(env)                                              \
+    if (UNLIKELY(reinterpret_cast<NativeEngine*>(env)->IsMultiContextEnabled())) {  \
+        napi_status ctxStatus = NapiSwitchContext(env);                             \
+        if (ctxStatus != napi_ok) {                                                 \
+            return ctxStatus;                                                       \
+        }                                                                           \
+    }                                                                               \
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_API_INTERNAL_H */
