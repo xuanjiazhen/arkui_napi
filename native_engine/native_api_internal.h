@@ -28,6 +28,15 @@ static inline napi_status napi_clear_last_error(napi_env env)
     return napi_ok;
 }
 
+static inline napi_status napi_set_last_error(napi_env env,
+                                              napi_status error_code,
+                                              uint32_t engine_error_code = 0,
+                                              void* engine_reserved = nullptr)
+{
+    ((NativeEngine*)env)->SetLastError(error_code, engine_error_code, engine_reserved);
+    return error_code;
+}
+
 __attribute__((noinline)) static napi_status NapiSwitchContext(napi_env env)
 {
     auto engine = reinterpret_cast<NativeEngine*>(env);
@@ -50,14 +59,6 @@ __attribute__((noinline)) static napi_status NapiConvertToObjectCold(
     RETURN_STATUS_IF_FALSE(env, isFunc, napi_object_expected);
     outObj = nativeValue->ToEcmaObjectWithoutSwitchState(vm);
     return napi_ok;
-}
-static inline napi_status napi_set_last_error(napi_env env,
-                                              napi_status error_code,
-                                              uint32_t engine_error_code = 0,
-                                              void* engine_reserved = nullptr)
-{
-    ((NativeEngine*)env)->SetLastError(error_code, engine_error_code, engine_reserved);
-    return error_code;
 }
 
 #define RETURN_STATUS_IF_FALSE(env, condition, status) \
