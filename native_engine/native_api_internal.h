@@ -28,29 +28,6 @@ static inline napi_status napi_clear_last_error(napi_env env)
     return napi_ok;
 }
 
-__attribute__((noinline)) static napi_status NapiSwitchContext(napi_env env)
-{
-    auto engine = reinterpret_cast<NativeEngine*>(env);
-    auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
-    panda::Local<panda::JSValueRef> envContext = engine->GetContext();
-    if (!(envContext == panda::JSNApi::GetCurrentContext(vm))) {
-        napi_status status = engine->SwitchContext();
-        if (status != napi_ok) {
-            return napi_set_last_error(env, status);
-        }
-    }
-    return napi_ok;
-}
-
-__attribute__((noinline)) static napi_status NapiConvertToObjectCold(
-    napi_env env, const EcmaVM* vm, panda::Local<panda::JSValueRef> nativeValue,
-    panda::Local<panda::ObjectRef>& outObj)
-{
-    bool isFunc = nativeValue->IsFunction(vm);
-    RETURN_STATUS_IF_FALSE(env, isFunc, napi_object_expected);
-    outObj = nativeValue->ToEcmaObjectWithoutSwitchState(vm);
-    return napi_ok;
-}
 static inline napi_status napi_set_last_error(napi_env env,
                                               napi_status error_code,
                                               uint32_t engine_error_code = 0,
@@ -71,6 +48,30 @@ static inline napi_status napi_set_last_error(napi_env env,
     }
 
 #define CHECK_ARG(env, arg) RETURN_STATUS_IF_FALSE((env), ((arg) != nullptr), napi_invalid_arg)
+
+__attribute__((noinline)) static inline napi_status NapiSwitchContext(napi_env env)
+{
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
+    panda::Local<panda::JSValueRef> envContext = engine->GetContext();
+    if (!(envContext == panda::JSNApi::GetCurrentContext(vm))) {
+        napi_status status = engine->SwitchContext();
+        if (status != napi_ok) {
+            return napi_set_last_error(env, status);
+        }
+    }
+    return napi_ok;
+}
+
+__attribute__((noinline)) static inline napi_status NapiConvertToObjectCold(
+    napi_env env, const EcmaVM* vm, panda::Local<panda::JSValueRef> nativeValue,
+    panda::Local<panda::ObjectRef>& outObj)
+{
+    bool isFunc = nativeValue->IsFunction(vm);
+    RETURN_STATUS_IF_FALSE(env, isFunc, napi_object_expected);
+    outObj = nativeValue->ToEcmaObjectWithoutSwitchState(vm);
+    return napi_ok;
+}
 
 #define NAPI_PREAMBLE(env)                                                     \
     CHECK_ENV((env));                                                          \
