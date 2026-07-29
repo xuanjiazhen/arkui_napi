@@ -37,7 +37,19 @@ static inline napi_status napi_set_last_error(napi_env env,
     return error_code;
 }
 
-__attribute__((noinline)) static napi_status NapiSwitchContext(napi_env env)
+#define RETURN_STATUS_IF_FALSE(env, condition, status) \
+    if (!(condition)) {                                \
+        return napi_set_last_error((env), (status));   \
+    }
+
+#define CHECK_ENV(env)           \
+    if ((env) == nullptr) {      \
+        return napi_invalid_arg; \
+    }
+
+#define CHECK_ARG(env, arg) RETURN_STATUS_IF_FALSE((env), ((arg) != nullptr), napi_invalid_arg)
+
+__attribute__((noinline)) static inline napi_status NapiSwitchContext(napi_env env)
 {
     auto engine = reinterpret_cast<NativeEngine*>(env);
     auto vm = const_cast<EcmaVM*>(engine->GetEcmaVm());
@@ -51,7 +63,7 @@ __attribute__((noinline)) static napi_status NapiSwitchContext(napi_env env)
     return napi_ok;
 }
 
-__attribute__((noinline)) static napi_status NapiConvertToObjectCold(
+__attribute__((noinline)) static inline napi_status NapiConvertToObjectCold(
     napi_env env, const EcmaVM* vm, panda::Local<panda::JSValueRef> nativeValue,
     panda::Local<panda::ObjectRef>& outObj)
 {
@@ -60,18 +72,6 @@ __attribute__((noinline)) static napi_status NapiConvertToObjectCold(
     outObj = nativeValue->ToEcmaObjectWithoutSwitchState(vm);
     return napi_ok;
 }
-
-#define RETURN_STATUS_IF_FALSE(env, condition, status) \
-    if (!(condition)) {                                \
-        return napi_set_last_error((env), (status));   \
-    }
-
-#define CHECK_ENV(env)           \
-    if ((env) == nullptr) {      \
-        return napi_invalid_arg; \
-    }
-
-#define CHECK_ARG(env, arg) RETURN_STATUS_IF_FALSE((env), ((arg) != nullptr), napi_invalid_arg)
 
 #define NAPI_PREAMBLE(env)                                                     \
     CHECK_ENV((env));                                                          \
