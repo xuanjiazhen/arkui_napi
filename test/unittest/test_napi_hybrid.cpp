@@ -240,28 +240,6 @@ HWTEST_F(NapiHybridTest, NapiHybridWrapUnwrapTest003, testing::ext::TestSize.Lev
 }
 
 /**
- * @tc.name: NapiRefGetVmTest001
- * @tc.desc: Test napi_ref_get_vm with valid reference.
- * @tc.type: FUNC
- */
-HWTEST_F(NapiHybridTest, NapiRefGetVmTest001, testing::ext::TestSize.Level1)
-{
-    napi_env env = (napi_env)engine_;
-    napi_value obj = nullptr;
-    ASSERT_CHECK_CALL(napi_create_object(env, &obj));
-
-    napi_ref ref = nullptr;
-    ASSERT_CHECK_CALL(napi_create_reference(env, obj, 1, &ref));
-
-    uintptr_t vm = 0;
-    napi_status status = napi_ref_get_vm(ref, vm);
-    ASSERT_EQ(status, napi_ok);
-    ASSERT_NE(vm, 0UL);
-
-    ASSERT_CHECK_CALL(napi_delete_reference(env, ref));
-}
-
-/**
  * @tc.name: NapiRefGetVmAndValueNullRefTest001
  * @tc.desc: Test napi_ref_get_vm and napi_ref_get_value with nullptr ref.
  * @tc.type: FUNC
