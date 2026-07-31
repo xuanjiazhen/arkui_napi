@@ -16,21 +16,50 @@
 #ifndef NAPI_ARK_INTEROP_SCOPE_H
 #define NAPI_ARK_INTEROP_SCOPE_H
 
-#include <vector>
+#include <list>
+#include <map>
 
 #include "ark_interop_napi.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ark_interop_internal.h"
 
 namespace panda::ecmascript {
 class EcmaVM;
 }
 
-namespace CJ {
-class ARKTS_ScopeManager final {
+struct ARKTS_Scope_ {
 public:
-    static ARKTS_Scope OpenScope(panda::ecmascript::EcmaVM* vm);
+    static void DisposeEnv(ARKTS_Env env);
+    static ARKTS_Scope NewScope(ARKTS_Env env);
     static bool CloseScope(ARKTS_Scope target);
+    static ARKTS_Value NormalPointer(void* pointer);
+    static ARKTS_Value NewValue(ARKTS_Env env, panda::Local<panda::JSValueRef> ref);
+    __attribute__((no_sanitize("hwaddress"))) static panda::Local<panda::JSValueRef> GetLocal(ARKTS_Env env, ARKTS_Value value);
+    __attribute__((no_sanitize("hwaddress"))) static panda::JSValueRef GetValueRef(ARKTS_Value value);
+
+private:
+    struct ThreadScopes {
+        ARKTS_Scope top;
+        std::vector<ARKTS_Scope> toDispose;
+        bool isDisposing;
+        ~ThreadScopes();
+    };
+    static void AddToDisposeQueue(ARKTS_Scope scope);
+    static ThreadScopes& GetThreadScopes(ARKTS_Env env);
+
+    ARKTS_Scope_(ARKTS_Env env, ARKTS_Scope_* parent): env_(env), parentScope_(parent), scope_(std::nullopt) {
+        if (parent == nullptr) {
+            scope_ = panda::LocalScope(reinterpret_cast<panda::EcmaVM*>(env));
+        }
+    }
+
+    std::list<panda::Local<panda::JSValueRef>> handledValues_;
+    const ARKTS_Env env_;
+    const ARKTS_Scope_* parentScope_;
+    std::optional<panda::LocalScope> scope_;
+
+    static std::mutex threadMutex_;
+    static std::map<ARKTS_Env, ThreadScopes> threads_;
 };
-}
 
 #endif //NAPI_ARK_INTEROP_SCOPE_H

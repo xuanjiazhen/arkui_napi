@@ -21,8 +21,16 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ark_interop_scope.h"
+
 using namespace panda;
 using namespace panda::ecmascript;
+
+#ifdef HW_ASAN
+constexpr bool UseHWASAN = true;
+#else
+constexpr bool UseHWASAN = false;
+#endif
 
 struct ARKTS_Global_ {
     ARKTS_Global_(EcmaVM *vm, const Local<JSValueRef>& value): ref(vm, value), isDisposed(false) {}
@@ -68,8 +76,11 @@ struct ARKTS_Global_ {
         if (isDisposed) {
             return ARKTS_CreateUndefined();
         }
-        auto result = BIT_CAST(ref, const Local<JSValueRef>);
-        return ARKTS_FromHandle(result);
+        if constexpr (UseHWASAN) {
+            return ARKTS_Scope_::NormalPointer(const_cast<ARKTS_Global_*>(this));
+        } else {
+            return ARKTS_Scope_::NormalPointer(BIT_CAST(const_cast<Global<JSValueRef>&>(ref), void*));
+        }
     }
 
     bool IsAlive() const
@@ -240,7 +251,7 @@ ARKTS_Global ARKTS_CreateGlobal(ARKTS_Env env, ARKTS_Value value)
     panda::JsiFastNativeScope fastNativeScope(vm);
     ARKTS_ASSERT_P(ARKTS_IsHeapObject(value), "value is not heap object");
 
-    auto handle = BIT_CAST(value, Local<JSValueRef>);
+    auto handle = ARKTS_Scope_::GetLocal(env, value);
     auto result = new ARKTS_Global_(vm, handle);
 
     return P_CAST(result, ARKTS_Global);
