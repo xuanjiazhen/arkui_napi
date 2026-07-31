@@ -214,6 +214,17 @@ TEST_F(ArkInteropTest, GlobalWeak)
     EXPECT_TRUE(weakTest.IsComplete());
 }
 
+static void* RemoveTag(void* addr)
+{
+    if constexpr (sizeof(void*) == 8) {
+        auto value = reinterpret_cast<uintptr_t>(addr);
+        auto removedTag = value & 0xFFFF'FFFF'FFFF;
+        return reinterpret_cast<void*>(removedTag);
+    } else {
+        return addr;
+    }
+}
+
 TEST_F(ArkInteropTest, GlobalToValue)
 {
     MockContext mockCtx;
@@ -224,7 +235,7 @@ TEST_F(ArkInteropTest, GlobalToValue)
         auto global = ARKTS_CreateGlobal(env, object);
         auto value = ARKTS_GlobalToValue(env, global);
         auto received = ARKTS_GlobalFromValue(env, value);
-        EXPECT_EQ(received, global);
+        EXPECT_EQ(received, RemoveTag(global));
         ARKTS_DisposeGlobalSync(env, global);
         ARKTS_CloseScope(env, scope);
     }
@@ -727,7 +738,7 @@ TEST_F(ArkInteropTest, CreateGlobal)
     auto value = ARKTS_GlobalToValue(env, global);
     auto global2 = ARKTS_GlobalFromValue(env, value);
 
-    EXPECT_EQ(global, global2);
+    EXPECT_EQ(RemoveTag(global), global2);
 
     ARKTS_DisposeGlobal(env, global);
 
@@ -1209,6 +1220,31 @@ TEST_F(ArkInteropTest, CreateAsyncTaskWithNullEnv)
     constexpr int64_t asyncTaskId = 12345;
     ARKTS_CreateAsyncTask(nullptr, asyncTaskId);
     EXPECT_TRUE(errCtx.HasAndClearNativeError());
+}
+
+TEST_F(ArkInteropTest, ToNapiValue)
+{
+    MockContext mockCtx;
+    auto engine = mockCtx.GetEngine();
+    auto env = reinterpret_cast<napi_env>(ARKTS_GetNAPIEnv(engine));
+    auto value = ARKTS_CreateUndefined();
+    auto napiValue = ARKTS_ToNapiValue(env, value);
+    bool isUndefined = false;
+    auto status = napi_is_undefined(env, napiValue, &isUndefined);
+    EXPECT_EQ(status, napi_ok);
+    EXPECT_TRUE(isUndefined);
+}
+
+TEST_F(ArkInteropTest, FromNapiValue)
+{
+    MockContext mockCtx;
+    auto engine = mockCtx.GetEngine();
+    auto env = reinterpret_cast<napi_env>(ARKTS_GetNAPIEnv(engine));
+    napi_value undefined = nullptr;
+    auto status = napi_get_undefined(env, &undefined);
+    EXPECT_EQ(status, napi_ok);
+    auto value = ARKTS_FromNapiValue(env, undefined);
+    EXPECT_TRUE(ARKTS_IsUndefined(value));
 }
 
 namespace panda {
