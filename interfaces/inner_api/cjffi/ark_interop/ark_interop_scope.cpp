@@ -15,17 +15,149 @@
 
 #include "ark_interop_scope.h"
 
-namespace CJ {
-ARKTS_Scope ARKTS_ScopeManager::OpenScope(panda::ecmascript::EcmaVM* vm)
+#ifdef HW_ASAN
+constexpr bool UseHWASAN = true;
+#else
+constexpr bool UseHWASAN = false;
+#endif
+
+std::mutex ARKTS_Scope_::threadMutex_;
+std::map<ARKTS_Env, ARKTS_Scope_::ThreadScopes> ARKTS_Scope_::threads_;
+
+ARKTS_Scope_::ThreadScopes& ARKTS_Scope_::GetThreadScopes(ARKTS_Env env)
 {
-    auto scopeId = new panda::LocalScope(vm);
-    return P_CAST(scopeId, ARKTS_Scope);
+    ThreadScopes* thread;
+    {
+        std::lock_guard lock(threadMutex_);
+        thread = &threads_[env];
+    }
+    if (!thread->top) {
+        thread->top = new ARKTS_Scope_(env, nullptr);
+    }
+    return *thread;
 }
 
-bool ARKTS_ScopeManager::CloseScope(ARKTS_Scope target)
+void ARKTS_Scope_::DisposeEnv(ARKTS_Env env)
 {
-    auto targetScope = P_CAST(target, panda::LocalScope*);
-    delete targetScope;
+    std::lock_guard lock(threadMutex_);
+    threads_.erase(env);
+}
+
+ARKTS_Scope_::ThreadScopes::~ThreadScopes()
+{
+    auto current = top;
+    while (current != nullptr) {
+        auto parent = const_cast<ARKTS_Scope>(current->parentScope_);
+        delete current;
+        current = parent;
+    }
+    for (auto scope : toDispose) {
+        delete scope;
+    }
+    toDispose.clear();
+}
+
+ARKTS_Scope ARKTS_Scope_::NewScope(ARKTS_Env env)
+{
+    auto& thread = GetThreadScopes(env);
+    auto newScope = new ARKTS_Scope_(env, thread.top);
+    thread.top = newScope;
+    return newScope;
+}
+
+bool ARKTS_Scope_::CloseScope(ARKTS_Scope target)
+{
+    auto& thread = GetThreadScopes(target->env_);
+    if (thread.top != target) {
+        return false;
+    }
+    auto parent = const_cast<ARKTS_Scope>(target->parentScope_);
+    if (parent->parentScope_ != nullptr) {
+        AddToDisposeQueue(target);
+        thread.top = parent;
+    } else {
+        AddToDisposeQueue(target);
+        AddToDisposeQueue(parent);
+        thread.top = nullptr;
+        parent->scope_ = std::nullopt;
+    }
+
     return true;
 }
+
+ARKTS_Value ARKTS_Scope_::NormalPointer(void* pointer)
+{
+    if constexpr (sizeof(void*) == 8) {
+        constexpr uintptr_t addrMask = 0xFFFF'FFFF'FFFF;
+        auto addr = reinterpret_cast<uintptr_t>(pointer) & addrMask;
+        return {.pointer = reinterpret_cast<void*>(addr)};
+    } else {
+        return {.pointer = pointer};
+    }
+}
+
+ARKTS_Value ARKTS_Scope_::NewValue(ARKTS_Env env, panda::Local<panda::JSValueRef> ref)
+{
+    if (ref.IsNull()) {
+        return ARKTS_CreateUndefined();
+    }
+    if (!ref->IsHeapObject()) {
+        return {.value = *reinterpret_cast<uint64_t*>(*ref)};
+    }
+    if constexpr (UseHWASAN) {
+        auto topScope = GetThreadScopes(env).top;
+        auto pointer = &topScope->handledValues_.emplace_back(ref);
+        return NormalPointer(pointer);
+    } else {
+        return NormalPointer(BIT_CAST(ref, void*));
+    }
+}
+
+panda::Local<panda::JSValueRef> ARKTS_Scope_::GetLocal(ARKTS_Env env, ARKTS_Value value)
+{
+    if (ARKTS_IsHeapObject(value)) {
+        if constexpr (UseHWASAN) {
+            return *reinterpret_cast<panda::Local<panda::JSValueRef>*>(value.pointer);
+        } else {
+            return BIT_CAST(value, panda::Local<panda::JSValueRef>);
+        }
+    } else {
+        auto vm = reinterpret_cast<panda::EcmaVM*>(env);
+        auto tag = BIT_CAST(value, panda::JSValueRef);
+        return panda::JSNApi::CreateLocal(vm, tag);
+    }
+}
+
+panda::JSValueRef ARKTS_Scope_::GetValueRef(ARKTS_Value value)
+{
+    if (ARKTS_IsHeapObject(value)) {
+        if constexpr (UseHWASAN) {
+            return **reinterpret_cast<panda::JSValueRef**>(value.pointer);
+        } else {
+            return *reinterpret_cast<panda::JSValueRef*>(value.pointer);
+        }
+    } else {
+        return BIT_CAST(value, panda::JSValueRef);
+    }
+}
+
+void ARKTS_Scope_::AddToDisposeQueue(ARKTS_Scope scope)
+{
+    if constexpr (UseHWASAN) {
+        auto& thread = GetThreadScopes(scope->env_);
+        thread.toDispose.push_back(scope);
+        if (!thread.isDisposing) {
+            thread.isDisposing = true;
+            ARKTSInner_CreateAsyncTask(scope->env_, [](ARKTS_Env env, int64_t id) {
+                auto thread = reinterpret_cast<ThreadScopes*>(static_cast<uintptr_t>(id));
+                thread->isDisposing = false;
+                for (auto scope : thread->toDispose) {
+                    delete scope;
+                }
+                thread->toDispose.clear();
+            }, reinterpret_cast<uintptr_t>(&thread));
+        }
+    } else {
+        delete scope;
+    }
 }
