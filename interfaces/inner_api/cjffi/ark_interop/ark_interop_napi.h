@@ -259,6 +259,10 @@ typedef enum ARKTS_ModuleKind_ {
     ARKTS_NormalModule,
 } ARKTS_ModuleKind;
 EXPORT ARKTS_Value ARKTS_RequireArkModule(ARKTS_Env env, const char* path, size_t pathLen, ARKTS_ModuleKind kind);
+typedef struct napi_env__* napi_env;
+typedef struct napi_value__* napi_value;
+EXPORT napi_value ARKTS_ToNapiValue(napi_env env, ARKTS_Value value);
+EXPORT ARKTS_Value ARKTS_FromNapiValue(napi_env env, napi_value value);
 
 DECL_END
 
