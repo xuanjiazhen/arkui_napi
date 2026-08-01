@@ -80,6 +80,23 @@ struct NativeModuleHeadTailStruct {
     NativeModule* tailNativeModule = nullptr;
     NativeModule* matchLoadingNativeModule = nullptr;
 };
+
+/**
+ * @brief Plain data snapshot of a loaded native module.
+ *
+ * All string fields are deep-copied from the internal NativeModule node,
+ * so the snapshot stays valid even if the original module is unloaded later.
+ */
+struct NativeModuleInfo {
+    std::string name;        /* .nm_modname from native c++ register info */
+    std::string moduleName;  /* moduleName required or imported */
+    std::string fileName;    /* file path the module was loaded from */
+    int32_t version = 0;
+    uint32_t loadCount = 0;  /* snapshot of NativeModule.refCount */
+    bool isAppModule = false;
+    bool moduleLoaded = false;
+};
+
 class NAPI_EXPORT NativeModuleManager {
 public:
     static NativeModuleManager* GetInstance();
@@ -96,6 +113,18 @@ public:
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     bool UnloadNativeModule(const std::string& moduleKey);
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);
+
+    /**
+     * @brief Take a snapshot of all currently loaded native modules.
+     *
+     * The internal module list is traversed under lock and every field is
+     * deep-copied, so the result is consistent and independent of the
+     * lifetime of internal nodes. If no module is loaded, an empty vector
+     * is returned. The output parameter is always cleared first.
+     *
+     * @param infos output snapshot list, previous content is discarded
+     */
+    void GetLoadedModuleInfos(std::vector<NativeModuleInfo>& infos);
 
     /**
      * @brief Set the path for searching napi dynamic libraries, only for the previewer.

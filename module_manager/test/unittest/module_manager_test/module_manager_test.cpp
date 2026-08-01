@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <fstream>
 #include <string>
@@ -2356,4 +2357,147 @@ HWTEST_F(ModuleManagerTest, GetInstance_ShouldReturnStablePointerAcrossCalls, Te
     EXPECT_EQ(p1, p2);
 
     GTEST_LOG_(INFO) << "GetInstance_ShouldReturnStablePointerAcrossCalls end";
+
+/**
+ * @tc.name: GetLoadedModuleInfos_EmptyWhenNoModuleRegistered
+ * @tc.desc: snapshot is empty when no module is loaded, and stale output content is discarded
+ * @tc.type: FUNC
+ */
+HWTEST_F(ModuleManagerTest, GetLoadedModuleInfos_EmptyWhenNoModuleRegistered, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetLoadedModuleInfos_EmptyWhenNoModuleRegistered starts";
+
+    NativeModuleManager moduleManager;
+    std::vector<NativeModuleInfo> infos;
+    NativeModuleInfo stale;
+    stale.name = "stale";
+    infos.push_back(stale);
+
+    moduleManager.GetLoadedModuleInfos(infos);
+    EXPECT_TRUE(infos.empty());
+
+    GTEST_LOG_(INFO) << "GetLoadedModuleInfos_EmptyWhenNoModuleRegistered end";
+}
+
+/**
+ * @tc.name: GetLoadedModuleInfos_SnapshotMatchesRegisteredModules
+ * @tc.desc: snapshot fields match the internal list after Register, including loadCount from refCount
+ * @tc.type: FUNC
+ */
+HWTEST_F(ModuleManagerTest, GetLoadedModuleInfos_SnapshotMatchesRegisteredModules, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetLoadedModuleInfos_SnapshotMatchesRegisteredModules starts";
+
+    static const char FILE_NAME_ONE[] = "/system/lib64/module/libtest_one.z.so";
+    static const char FILE_NAME_TWO[] = "/system/lib64/module/libtest_two.z.so";
+    NativeModuleManager moduleManager;
+
+    NativeModule moduleOne;
+    moduleOne.name = strdup("snapshot_module_one");
+    moduleOne.fileName = FILE_NAME_ONE;
+    moduleOne.version = 7;
+    moduleOne.refCount = 3;
+    moduleManager.Register(&moduleOne);
+
+    NativeModule moduleTwo;
+    moduleTwo.name = strdup("snapshot_module_two");
+    moduleTwo.fileName = FILE_NAME_TWO;
+    moduleTwo.version = 1;
+    moduleTwo.refCount = 0;
+    moduleManager.Register(&moduleTwo);
+
+    std::vector<NativeModuleInfo> infos;
+    moduleManager.GetLoadedModuleInfos(infos);
+    ASSERT_EQ(infos.size(), static_cast<size_t>(2));
+
+    const NativeModuleInfo* one = nullptr;
+    const NativeModuleInfo* two = nullptr;
+    for (const auto& info : infos) {
+        if (info.name == "snapshot_module_one") {
+            one = &info;
+        } else if (info.name == "snapshot_module_two") {
+            two = &info;
+        }
+    }
+    ASSERT_NE(one, nullptr);
+    ASSERT_NE(two, nullptr);
+    EXPECT_EQ(one->fileName, FILE_NAME_ONE);
+    EXPECT_EQ(one->version, 7);
+    EXPECT_EQ(one->loadCount, 3u);
+    EXPECT_TRUE(one->moduleLoaded);
+    EXPECT_FALSE(one->isAppModule);
+    EXPECT_EQ(two->fileName, FILE_NAME_TWO);
+    EXPECT_EQ(two->loadCount, 0u);
+
+    free(const_cast<char*>(moduleOne.name));
+    free(const_cast<char*>(moduleTwo.name));
+
+    GTEST_LOG_(INFO) << "GetLoadedModuleInfos_SnapshotMatchesRegisteredModules end";
+}
+
+/**
+ * @tc.name: GetLoadedModuleInfos_SnapshotSurvivesManagerDestruction
+ * @tc.desc: returned snapshot is a deep copy and stays valid after the manager frees the module list
+ * @tc.type: FUNC
+ */
+HWTEST_F(ModuleManagerTest, GetLoadedModuleInfos_SnapshotSurvivesManagerDestruction, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetLoadedModuleInfos_SnapshotSurvivesManagerDestruction starts";
+
+    std::vector<NativeModuleInfo> infos;
+    {
+        NativeModuleManager moduleManager;
+        NativeModule module;
+        module.name = strdup("deepcopy_module");
+        module.version = 2;
+        module.refCount = 5;
+        moduleManager.Register(&module);
+        free(const_cast<char*>(module.name));
+
+        moduleManager.GetLoadedModuleInfos(infos);
+        ASSERT_EQ(infos.size(), static_cast<size_t>(1));
+    } // moduleManager destructs here and frees every internal node
+
+    EXPECT_EQ(infos[0].name, "deepcopy_module");
+    EXPECT_EQ(infos[0].version, 2);
+    EXPECT_EQ(infos[0].loadCount, 5u);
+
+    GTEST_LOG_(INFO) << "GetLoadedModuleInfos_SnapshotSurvivesManagerDestruction end";
+}
+
+/**
+ * @tc.name: GetLoadedModuleInfos_ConsistentUnderConcurrentReads
+ * @tc.desc: concurrent snapshot calls never observe torn entries
+ * @tc.type: FUNC
+ */
+HWTEST_F(ModuleManagerTest, GetLoadedModuleInfos_ConsistentUnderConcurrentReads, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetLoadedModuleInfos_ConsistentUnderConcurrentReads starts";
+
+    NativeModuleManager moduleManager;
+    NativeModule module;
+    module.name = strdup("concurrent_module");
+    module.refCount = 1;
+    moduleManager.Register(&module);
+    free(const_cast<char*>(module.name));
+
+    std::atomic<bool> consistent { true };
+    auto reader = [&moduleManager, &consistent]() {
+        for (int i = 0; i < 100; ++i) {
+            std::vector<NativeModuleInfo> infos;
+            moduleManager.GetLoadedModuleInfos(infos);
+            for (const auto& info : infos) {
+                if (info.name.empty()) {
+                    consistent = false;
+                }
+            }
+        }
+    };
+    std::thread t1(reader);
+    std::thread t2(reader);
+    t1.join();
+    t2.join();
+    EXPECT_TRUE(consistent);
+
+    GTEST_LOG_(INFO) << "GetLoadedModuleInfos_ConsistentUnderConcurrentReads end";
 }

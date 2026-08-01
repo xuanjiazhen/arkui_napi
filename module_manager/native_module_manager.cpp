@@ -329,6 +329,37 @@ std::string NativeModuleManager::GetModuleFileName(const char* moduleName, bool 
     return loadPath;
 }
 
+void NativeModuleManager::GetLoadedModuleInfos(std::vector<NativeModuleInfo>& infos)
+{
+    infos.clear();
+    // Locking contract: Register/UnloadNativeModule mutate or free list nodes only
+    // under nativeModuleListMutex_, so traversing under the same lock guarantees
+    // no use-after-free and stable string fields. moduleLoaded/loadCount are
+    // single-word best-effort reads and may lag an in-flight dlopen by one round.
+    std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
+    for (NativeModule* module = headNativeModule_; module != nullptr; module = module->next) {
+        // skip defensive sentinel nodes carrying no identity at all
+        if (module->name == nullptr && module->moduleName == nullptr) {
+            continue;
+        }
+        NativeModuleInfo info;
+        if (module->name != nullptr) {
+            info.name = module->name;
+        }
+        if (module->moduleName != nullptr) {
+            info.moduleName = module->moduleName;
+        }
+        if (module->fileName != nullptr) {
+            info.fileName = module->fileName;
+        }
+        info.version = module->version;
+        info.loadCount = module->refCount;
+        info.isAppModule = module->isAppModule;
+        info.moduleLoaded = module->moduleLoaded;
+        infos.emplace_back(std::move(info));
+    }
+}
+
 void NativeModuleManager::SetLoadingNativeModuleKey(const char *moduleName)
 {
     if (moduleName == nullptr) {
