@@ -2357,6 +2357,7 @@ HWTEST_F(ModuleManagerTest, GetInstance_ShouldReturnStablePointerAcrossCalls, Te
     EXPECT_EQ(p1, p2);
 
     GTEST_LOG_(INFO) << "GetInstance_ShouldReturnStablePointerAcrossCalls end";
+}
 
 /**
  * @tc.name: GetLoadedModuleInfos_EmptyWhenNoModuleRegistered
