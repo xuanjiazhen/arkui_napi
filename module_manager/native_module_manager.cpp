@@ -337,6 +337,12 @@ void NativeModuleManager::GetLoadedModuleInfos(std::vector<NativeModuleInfo>& in
     // no use-after-free and stable string fields. moduleLoaded/loadCount are
     // single-word best-effort reads and may lag an in-flight dlopen by one round.
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
+    // snapshot the relativePath map under its own lock (order: list -> relativePath)
+    std::map<std::string, std::string> relPaths;
+    {
+        std::lock_guard<std::mutex> rpLock(relativePathMutex_);
+        relPaths = moduleRelativePath_;
+    }
     for (NativeModule* module = headNativeModule_; module != nullptr; module = module->next) {
         // skip defensive sentinel nodes carrying no identity at all
         if (module->name == nullptr && module->moduleName == nullptr) {
@@ -351,6 +357,15 @@ void NativeModuleManager::GetLoadedModuleInfos(std::vector<NativeModuleInfo>& in
         }
         if (module->fileName != nullptr) {
             info.fileName = module->fileName;
+        }
+        // replay the relativePath used at LoadNativeModule time; prefer moduleName,
+        // fall back to the register name when moduleName is empty
+        const std::string& key = !info.moduleName.empty() ? info.moduleName : info.name;
+        if (!key.empty()) {
+            auto it = relPaths.find(key);
+            if (it != relPaths.end()) {
+                info.relativePath = it->second;
+            }
         }
         info.version = module->version;
         info.loadCount = module->refCount;
@@ -904,6 +919,13 @@ NativeModule* NativeModuleManager::LoadNativeModule(const char* moduleName, cons
 
     MODULEMNG_HILOG_DEBUG("moduleName is %{public}s, path is %{public}s, relativePath is %{public}s",
         moduleName, path, relativePath);
+
+    // record the relativePath used for this import so snapshots can replay it
+    // at preload time; only kept for moduleNames that end up loaded are emitted.
+    {
+        std::lock_guard<std::mutex> rpLock(relativePathMutex_);
+        moduleRelativePath_[std::string(moduleName)] = relativePath != nullptr ? relativePath : "";
+    }
 
     std::unique_ptr<ApiAllowListChecker> apiAllowListChecker = nullptr;
     if (moduleLoadChecker_ && !moduleLoadChecker_->DiskCheckOnly() &&

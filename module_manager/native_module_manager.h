@@ -91,6 +91,7 @@ struct NativeModuleInfo {
     std::string name;        /* .nm_modname from native c++ register info */
     std::string moduleName;  /* moduleName required or imported */
     std::string fileName;    /* file path the module was loaded from */
+    std::string relativePath;/* relativePath passed to LoadNativeModule */
     int32_t version = 0;
     uint32_t loadCount = 0;  /* snapshot of NativeModule.refCount */
     bool isAppModule = false;
@@ -226,6 +227,12 @@ private:
     NativeModule* headNativeModule_ = nullptr;
     NativeModule* tailNativeModule_ = nullptr;
     std::string loadingModuleKey_;
+
+    // relativePath passed at LoadNativeModule time, keyed by moduleName; kept
+    // apart from NativeModule nodes so no node-lifetime management is needed.
+    // Lock order: nativeModuleListMutex_ -> relativePathMutex_ (never reverse).
+    std::mutex relativePathMutex_;
+    std::map<std::string, std::string> moduleRelativePath_;
 
     static std::atomic<NativeModuleManager*> instance_;
     pthread_mutex_t mutex_;
