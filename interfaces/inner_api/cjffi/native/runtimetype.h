@@ -52,11 +52,11 @@ public:
             return false;
         }
         
-        if (strcmp(this->GetTypeName(), target->GetTypeName())) {
+        if (this == target) {
             return true;
         }
         for (auto parent : parents_) {
-            if (parent->IsType(target)) {
+            if (parent != nullptr && parent->IsType(target)) {
                 return true;
             }
         }
