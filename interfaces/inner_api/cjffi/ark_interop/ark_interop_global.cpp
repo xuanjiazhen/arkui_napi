@@ -24,6 +24,12 @@
 
 #include "ark_interop_scope.h"
 
+#ifdef HW_ASAN
+constexpr bool USE_HWASAN = true;
+#else
+constexpr bool USE_HWASAN = false;
+#endif
+
 using namespace panda;
 using namespace panda::ecmascript;
 
@@ -74,7 +80,11 @@ struct ARKTS_Global_ {
         if (isDisposed) {
             return ARKTS_CreateUndefined();
         }
-        return ARKTS_Scope_::NormalPointer(BIT_CAST(const_cast<Global<JSValueRef>&>(ref), void*));
+        if constexpr (USE_HWASAN) {
+            return ARKTS_Scope_::NormalPointer(const_cast<ARKTS_Global_*>(this));
+        } else {
+            return ARKTS_Scope_::NormalPointer(BIT_CAST(const_cast<Global<JSValueRef>&>(ref), void*));
+        }
     }
 
     bool IsAlive() const
@@ -214,7 +224,6 @@ GlobalManager::~GlobalManager()
         std::swap(toDispose, handlesToDispose_);
     }
     for (auto global : toDispose) {
-        global->SetDisposed();
         delete global;
     }
 }
@@ -278,7 +287,22 @@ constexpr uint64_t GLOBAL_MASK = 0x0000'FFFF'FFFF'FFFF;
 
 double GlobalManager::RecordGlobal(ARKTS_Env env, ARKTS_Global global)
 {
-    auto value = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(global)) & GLOBAL_MASK;
+    if constexpr (!USE_HWASAN) {
+        auto value = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(global)) & GLOBAL_MASK;
+        value = value | GLOBAL_TAG;
+        return value;
+    }
+    GlobalManager* current = nullptr;
+    {
+        std::lock_guard lock(managersMutex_);
+        current = managers_[env];
+    }
+    if (!current) {
+        return NAN;
+    }
+    auto index = current->records_.size();
+    current->records_.push_back(global);
+    auto value = static_cast<uint64_t>(static_cast<uintptr_t>(index)) & GLOBAL_MASK;
     value = value | GLOBAL_TAG;
     return value;
 }
@@ -295,9 +319,24 @@ ARKTS_Value ARKTS_GlobalToValue(ARKTS_Env env, ARKTS_Global global)
 
 ARKTS_Global GlobalManager::GetRecord(ARKTS_Env env, double value)
 {
+    if constexpr (!USE_HWASAN) {
+        auto iValue = static_cast<uint64_t>(value) & GLOBAL_MASK;
+        uintptr_t addr = iValue;
+        return reinterpret_cast<ARKTS_Global>(addr);
+    }
+    GlobalManager* current = nullptr;
+    {
+        std::lock_guard lock(managersMutex_);
+        current = managers_[env];
+    }
+    if (!current) {
+        return nullptr;
+    }
     auto iValue = static_cast<uint64_t>(value) & GLOBAL_MASK;
-    uintptr_t addr = iValue;
-    return reinterpret_cast<ARKTS_Global>(addr);
+    if (iValue >= current->records_.size()) {
+        return nullptr;
+    }
+    return current->records_[iValue];
 }
 
 ARKTS_Global ARKTS_GlobalFromValue(ARKTS_Env env, ARKTS_Value value)
