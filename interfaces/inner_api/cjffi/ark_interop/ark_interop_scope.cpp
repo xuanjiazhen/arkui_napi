@@ -17,6 +17,12 @@
 
 #include "native_engine/impl/ark/ark_native_engine.h"
 
+#ifdef HW_ASAN
+constexpr bool USE_HWASAN = true;
+#else
+constexpr bool USE_HWASAN = false;
+#endif
+
 std::mutex ARKTS_Scope_::threadMutex;
 std::map<ARKTS_Env, ARKTS_Scope_::ThreadScopes> ARKTS_Scope_::threads;
 
@@ -49,7 +55,13 @@ ARKTS_Scope_::ThreadScopes* ARKTS_Scope_::GetThreadOpt(ARKTS_Env env)
 ARKTS_Scope_::ARKTS_Scope_(ARKTS_Env env, ARKTS_Scope_* parent): currentEnv(env), parentScope(parent),
     scope(std::nullopt)
 {
-    scope.emplace(reinterpret_cast<panda::EcmaVM*>(env));
+    if constexpr (USE_HWASAN) {
+        if (env != nullptr && parent == nullptr) {
+            scope.emplace(reinterpret_cast<panda::EcmaVM*>(env));
+        }
+    } else {
+        scope.emplace(reinterpret_cast<panda::EcmaVM*>(env));
+    }
 }
 
 void ARKTS_Scope_::DisposeEnv(ARKTS_Env env)
@@ -60,6 +72,10 @@ void ARKTS_Scope_::DisposeEnv(ARKTS_Env env)
 
 ARKTS_Scope_::ThreadScopes::~ThreadScopes()
 {
+    for (auto scope : toDispose) {
+        delete scope;
+    }
+    toDispose.clear();
     auto current = top;
     while (current != nullptr) {
         auto parent = const_cast<ARKTS_Scope>(current->parentScope);
@@ -76,6 +92,30 @@ ARKTS_Scope ARKTS_Scope_::NewScope(ARKTS_Env env)
     return newScope;
 }
 
+void ARKTS_Scope_::AddToDisposeQueue(ARKTS_Scope scope)
+{
+    if constexpr (!USE_HWASAN) {
+        delete scope;
+        return;
+    }
+    auto& thread = GetThreadScopes(scope->currentEnv);
+    thread.toDispose.push_back(scope);
+    if (!thread.isDisposing) {
+        thread.isDisposing = true;
+        ARKTSInner_CreateAsyncTask(scope->currentEnv, [](ARKTS_Env env, int64_t) {
+            auto thread = GetThreadOpt(env);
+            if (!thread) {
+                return;
+            }
+            thread->isDisposing = false;
+            for (auto scope : thread->toDispose) {
+                delete scope;
+            }
+            thread->toDispose.clear();
+        }, 0);
+    }
+}
+
 bool ARKTS_Scope_::CloseScope(ARKTS_Scope target)
 {
     auto& thread = GetThreadScopes(target->currentEnv);
@@ -84,12 +124,12 @@ bool ARKTS_Scope_::CloseScope(ARKTS_Scope target)
     }
     auto parent = const_cast<ARKTS_Scope>(target->parentScope);
     if (parent->parentScope != nullptr) {
-        delete target;
+        AddToDisposeQueue(target);
         thread.top = parent;
     } else {
         parent->scope = std::nullopt;
-        delete target;
-        delete parent;
+        AddToDisposeQueue(target);
+        AddToDisposeQueue(parent);
         thread.top = nullptr;
     }
 
@@ -123,13 +163,24 @@ ARKTS_Value ARKTS_Scope_::NewValue(ARKTS_Env env, panda::Local<panda::JSValueRef
             .value = *reinterpret_cast<uint64_t*>(*ref)
         };
     }
-    return NormalPointer(BIT_CAST(ref, void*));
+
+    if constexpr (USE_HWASAN) {
+        auto topScope = GetThreadScopes(env).top;
+        auto pointer = &topScope->handledValues.emplace_back(ref);
+        return NormalPointer(pointer);
+    } else {
+        return NormalPointer(BIT_CAST(ref, void*));
+    }
 }
 
 panda::Local<panda::JSValueRef> ARKTS_Scope_::GetLocal(ARKTS_Env env, ARKTS_Value value)
 {
     if (ARKTS_IsHeapObject(value)) {
-        return BIT_CAST(value, panda::Local<panda::JSValueRef>);
+        if constexpr (USE_HWASAN) {
+            return *reinterpret_cast<panda::Local<panda::JSValueRef>*>(value.pointer);
+        } else {
+            return BIT_CAST(value, panda::Local<panda::JSValueRef>);
+        }
     } else {
         auto vm = reinterpret_cast<panda::EcmaVM*>(env);
         auto tag = BIT_CAST(value, panda::JSValueRef);
@@ -140,7 +191,11 @@ panda::Local<panda::JSValueRef> ARKTS_Scope_::GetLocal(ARKTS_Env env, ARKTS_Valu
 panda::JSValueRef ARKTS_Scope_::GetValueRef(ARKTS_Value value)
 {
     if (ARKTS_IsHeapObject(value)) {
-        return *reinterpret_cast<panda::JSValueRef*>(value.pointer);
+        if constexpr (USE_HWASAN) {
+            return **reinterpret_cast<panda::JSValueRef**>(value.pointer);
+        } else {
+            return *reinterpret_cast<panda::JSValueRef*>(value.pointer);
+        }
     } else {
         return BIT_CAST(value, panda::JSValueRef);
     }
