@@ -63,7 +63,7 @@ bool ARKTS_IsObject(ARKTS_Env env, ARKTS_Value value)
         return false;
     }
     auto handle = BIT_CAST(value, Local<JSValueRef>);
-    return handle->IsObject(vm);
+    return handle->IsObjectWithoutSwitchState(vm);
 }
 
 bool ARKTS_HasOwnProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey)
