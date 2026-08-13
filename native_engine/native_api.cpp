@@ -540,7 +540,7 @@ NAPI_EXTERN napi_status napi_create_symbol(napi_env env, napi_value description,
     } else {
         object = LocalValueFromJsValue(description);
     }
-    RETURN_STATUS_IF_FALSE(env, object->IsString(vm), napi_invalid_arg);
+    RETURN_STATUS_IF_FALSE(env, object->IsStringWithoutSwitchState(vm), napi_invalid_arg);
     Local<panda::SymbolRef> symbol = panda::SymbolRef::New(vm, object);
     *result = JsValueFromLocalValue(symbol);
 
@@ -599,11 +599,12 @@ NAPI_EXTERN napi_status napi_create_error(napi_env env, napi_value code, napi_va
     Local<panda::JSValueRef> codeValue = panda::JSValueRef::Undefined(vm);
     if (code != nullptr) {
         codeValue = LocalValueFromJsValue(code);
-        RETURN_STATUS_IF_FALSE(env, codeValue->IsString(vm) || codeValue->IsNumber(), napi_invalid_arg);
+        RETURN_STATUS_IF_FALSE(env, codeValue->IsStringWithoutSwitchState(vm) || codeValue->IsNumber(),
+            napi_invalid_arg);
     }
 
     auto msgValue = LocalValueFromJsValue(msg);
-    RETURN_STATUS_IF_FALSE(env, msgValue->IsString(vm), napi_invalid_arg);
+    RETURN_STATUS_IF_FALSE(env, msgValue->IsStringWithoutSwitchState(vm), napi_invalid_arg);
 
     Local<panda::JSValueRef> errorVal = panda::Exception::Error(vm, msgValue);
     if (code != nullptr) {
@@ -628,10 +629,11 @@ NAPI_EXTERN napi_status napi_create_type_error(napi_env env, napi_value code, na
     Local<panda::JSValueRef> codeValue = panda::JSValueRef::Undefined(vm);
     if (code != nullptr) {
         codeValue = LocalValueFromJsValue(code);
-        RETURN_STATUS_IF_FALSE(env, codeValue->IsString(vm) || codeValue->IsNumber(), napi_invalid_arg);
+        RETURN_STATUS_IF_FALSE(env, codeValue->IsStringWithoutSwitchState(vm) || codeValue->IsNumber(),
+            napi_invalid_arg);
     }
     auto msgValue = LocalValueFromJsValue(msg);
-    RETURN_STATUS_IF_FALSE(env, msgValue->IsString(vm), napi_invalid_arg);
+    RETURN_STATUS_IF_FALSE(env, msgValue->IsStringWithoutSwitchState(vm), napi_invalid_arg);
 
     Local<panda::JSValueRef> errorVal = panda::Exception::Error(vm, msgValue);
     if (code != nullptr) {
@@ -657,10 +659,11 @@ NAPI_EXTERN napi_status napi_create_range_error(napi_env env, napi_value code, n
 
     if (code != nullptr) {
         codeValue = LocalValueFromJsValue(code);
-        RETURN_STATUS_IF_FALSE(env, codeValue->IsString(vm) || codeValue->IsNumber(), napi_invalid_arg);
+        RETURN_STATUS_IF_FALSE(env, codeValue->IsStringWithoutSwitchState(vm) || codeValue->IsNumber(),
+            napi_invalid_arg);
     }
     auto msgValue = LocalValueFromJsValue(msg);
-    RETURN_STATUS_IF_FALSE(env, msgValue->IsString(vm), napi_invalid_arg);
+    RETURN_STATUS_IF_FALSE(env, msgValue->IsStringWithoutSwitchState(vm), napi_invalid_arg);
 
     Local<panda::JSValueRef> errorVal = panda::Exception::Error(vm, msgValue);
     if (code != nullptr) {
@@ -687,11 +690,11 @@ NAPI_EXTERN napi_status napi_typeof(napi_env env, napi_value value, napi_valuety
 
     if (valueObj->IsNumber()) {
         resultType = napi_number;
-    } else if (valueObj->IsString(vm)) {
+    } else if (valueObj->IsStringWithoutSwitchState(vm)) {
         resultType = napi_string;
-    } else if (valueObj->IsFunction(vm)) {
+    } else if (valueObj->IsFunctionWithoutSwitchState(vm)) {
         resultType = napi_function;
-    } else if (valueObj->IsNativePointer(vm)) {
+    } else if (valueObj->IsNativePointerWithoutSwitchState(vm)) {
         resultType = napi_external;
     } else if (valueObj->IsNull()) {
         resultType = napi_null;
@@ -699,11 +702,11 @@ NAPI_EXTERN napi_status napi_typeof(napi_env env, napi_value value, napi_valuety
         resultType = napi_boolean;
     } else if (valueObj->IsUndefined()) {
         resultType = napi_undefined;
-    } else if (valueObj->IsSymbol(vm)) {
+    } else if (valueObj->IsSymbolWithoutSwitchState(vm)) {
         resultType = napi_symbol;
-    } else if (valueObj->IsBigInt(vm)) {
+    } else if (valueObj->IsBigIntWithoutSwitchState(vm)) {
         resultType = napi_bigint;
-    } else if (valueObj->IsObject(vm)) {
+    } else if (valueObj->IsObjectWithoutSwitchState(vm)) {
         resultType = napi_object;
     } else {
         resultType = napi_undefined;
@@ -1194,7 +1197,8 @@ NAPI_EXTERN napi_status napi_delete_property(napi_env env, napi_value object, na
     SWITCH_CONTEXT(env);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObjectWithoutSwitchState(vm) || nativeValue->IsFunction(vm),
+    RETURN_STATUS_IF_FALSE(env,
+        nativeValue->IsObjectWithoutSwitchState(vm) || nativeValue->IsFunctionWithoutSwitchState(vm),
         napi_object_expected);
     auto deleteResult = JSNApi::NapiDeleteProperty(vm, reinterpret_cast<uintptr_t>(object),
                                                    reinterpret_cast<uintptr_t>(key));
@@ -1238,7 +1242,8 @@ NAPI_EXTERN napi_status napi_set_named_property(napi_env env, napi_value object,
     SWITCH_CONTEXT(env);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsObjectWithoutSwitchState(vm) || nativeValue->IsFunction(vm),
+    RETURN_STATUS_IF_FALSE(env,
+        nativeValue->IsObjectWithoutSwitchState(vm) || nativeValue->IsFunctionWithoutSwitchState(vm),
         napi_object_expected);
     Local<panda::ObjectRef> obj(nativeValue);
     obj->SetWithoutSwitchState(vm, utf8name, propVal);
@@ -1399,7 +1404,9 @@ NAPI_EXTERN napi_status napi_define_properties(napi_env env,
     for (size_t i = 0; i < property_count; i++) {
         if (nativeProperties[i].utf8name == nullptr) {
             auto name = LocalValueFromJsValue(nativeProperties[i].name);
-            RETURN_STATUS_IF_FALSE(env, !name.IsEmpty() && (name->IsString(vm) || name->IsSymbol(vm)),
+            RETURN_STATUS_IF_FALSE(env,
+                !name.IsEmpty() &&
+                    (name->IsStringWithoutSwitchState(vm) || name->IsSymbolWithoutSwitchState(vm)),
                 napi_name_expected);
         }
         NapiDefineProperty(env, nativeObject, nativeProperties[i]);
@@ -1480,9 +1487,9 @@ NAPI_EXTERN napi_status napi_is_sendable(napi_env env, napi_value value, bool* r
     auto vm = engine->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    *result = nativeValue->IsJSShared(vm) || nativeValue->IsString(vm) || nativeValue->IsNumber() ||
-              nativeValue->IsBoolean() || nativeValue->IsUndefined() || nativeValue->IsNull() ||
-              nativeValue->IsBigInt(vm);
+    *result = nativeValue->IsJSSharedWithoutSwitchState(vm) || nativeValue->IsStringWithoutSwitchState(vm) ||
+              nativeValue->IsNumber() || nativeValue->IsBoolean() || nativeValue->IsUndefined() ||
+              nativeValue->IsNull() || nativeValue->IsBigIntWithoutSwitchState(vm);
     return napi_clear_last_error(env);
 }
 
@@ -1521,7 +1528,8 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     auto vm = reinterpret_cast<NativeEngine *>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    RETURN_STATUS_IF_FALSE(env, reinterpret_cast<panda::JSValueRef *>(func)->IsFunction(vm), napi_function_expected);
+    RETURN_STATUS_IF_FALSE(env, reinterpret_cast<panda::JSValueRef *>(func)->IsFunctionWithoutSwitchState(vm),
+        napi_function_expected);
     panda::JSValueRef* thisObj = reinterpret_cast<panda::JSValueRef *>(recv);
     panda::FunctionRef* function = reinterpret_cast<panda::FunctionRef *>(func);
 #ifdef ENABLE_CONTAINER_SCOPE
@@ -1571,7 +1579,7 @@ NAPI_EXTERN napi_status napi_new_instance(napi_env env,
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    RETURN_STATUS_IF_FALSE(env, reinterpret_cast<panda::JSValueRef*>(constructor)->IsFunction(vm),
+    RETURN_STATUS_IF_FALSE(env, reinterpret_cast<panda::JSValueRef*>(constructor)->IsFunctionWithoutSwitchState(vm),
         napi_function_expected);
     panda::FunctionRef* constructorVal = reinterpret_cast<panda::FunctionRef*>(constructor);
     panda::JSValueRef* instance = constructorVal->ConstructorOptimize(vm,
@@ -1599,7 +1607,7 @@ NAPI_EXTERN napi_status napi_instanceof(napi_env env, napi_value object, napi_va
     auto nativeValue = LocalValueFromJsValue(object);
     auto nativeConstructor = LocalValueFromJsValue(constructor);
     RETURN_STATUS_IF_FALSE(env, nativeValue->IsObjectWithoutSwitchState(vm), napi_object_expected);
-    RETURN_STATUS_IF_FALSE(env, nativeConstructor->IsFunction(vm), napi_function_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeConstructor->IsFunctionWithoutSwitchState(vm), napi_function_expected);
     *result = nativeValue->InstanceOf(vm, nativeConstructor);
 
     return GET_RETURN_STATUS(env);
@@ -2739,7 +2747,7 @@ NAPI_EXTERN napi_status napi_throw(napi_env env, napi_value error)
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsError(vm), napi_invalid_arg);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsErrorWithoutSwitchState(vm), napi_invalid_arg);
     panda::JSNApi::ThrowException(vm, nativeValue);
     return napi_clear_last_error(env);
 }
@@ -3951,7 +3959,7 @@ NAPI_EXTERN napi_status napi_get_value_bigint_int64(
     auto nativeValue = LocalValueFromJsValue(value);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsBigInt(vm), napi_bigint_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsBigIntWithoutSwitchState(vm), napi_bigint_expected);
     Local<panda::BigIntRef> bigIntVal = nativeValue->ToBigInt(vm);
     bigIntVal->BigIntToInt64(vm, result, lossless);
 
@@ -3969,7 +3977,7 @@ NAPI_EXTERN napi_status napi_get_value_bigint_uint64(
     auto nativeValue = LocalValueFromJsValue(value);
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsBigInt(vm), napi_bigint_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsBigIntWithoutSwitchState(vm), napi_bigint_expected);
     Local<panda::BigIntRef> bigIntVal = nativeValue->ToBigInt(vm);
     bigIntVal->BigIntToUint64(vm, result, lossless);
 
@@ -4169,7 +4177,7 @@ NAPI_EXTERN napi_status napi_check_object_type_tag(napi_env env,
     *result = obj->Has(vm, key);
     if (*result) {
         Local<panda::JSValueRef> object = obj->Get(vm, key);
-        if (object->IsBigInt(vm)) {
+        if (object->IsBigIntWithoutSwitchState(vm)) {
             int sign;
             size_t size = 2; // 2: Indicates that the number of elements is 2
             NapiTypeTag tag;
@@ -4288,7 +4296,7 @@ NAPI_EXTERN napi_status napi_get_value_bigint_words(napi_env env,
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsBigInt(vm), napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsBigIntWithoutSwitchState(vm), napi_object_expected);
     auto BigintObj = nativeValue->ToBigInt(vm);
     size_t size = static_cast<size_t>(BigintObj->GetWordsArraySize(vm));
     if (sign_bit == nullptr && words == nullptr) {
@@ -4550,7 +4558,7 @@ NAPI_EXTERN napi_status napi_add_detached_finalizer(napi_env env,
     Local<ObjectRef> nativeObject(jsValue);
 
     Local<panda::NativePointerRef> nativeBindingPointer = nativeObject->GetNativeBindingPointer(vm);
-    if (!nativeBindingPointer->IsNativePointer(vm)) {
+    if (!nativeBindingPointer->IsNativePointerWithoutSwitchState(vm)) {
         return napi_generic_failure;
     }
 
@@ -4574,7 +4582,7 @@ NAPI_EXTERN napi_status napi_get_print_string(napi_env env, napi_value value, st
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
     panda::JsiFastNativeScope fastNativeScope(vm);
 
-    if (nativeValue->IsString(vm)) {
+    if (nativeValue->IsStringWithoutSwitchState(vm)) {
         Local<panda::StringRef> stringVal(nativeValue);
         result = stringVal->ToString(vm);
     }
@@ -4749,7 +4757,7 @@ NAPI_EXTERN napi_status napi_encode(napi_env env, napi_value src, napi_value* re
     panda::JsiFastNativeScope fastNativeScoper(vm);
 
     auto nativeValue = LocalValueFromJsValue(src);
-    RETURN_STATUS_IF_FALSE(env, nativeValue->IsString(vm), napi_string_expected);
+    RETURN_STATUS_IF_FALSE(env, nativeValue->IsStringWithoutSwitchState(vm), napi_string_expected);
     Local<panda::StringRef> stringVal(nativeValue);
     Local<TypedArrayRef> typedArray = stringVal->EncodeIntoUint8Array(vm);
     *result = JsValueFromLocalValue(typedArray);
