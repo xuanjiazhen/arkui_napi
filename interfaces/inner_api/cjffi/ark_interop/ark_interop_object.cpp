@@ -64,7 +64,7 @@ bool ARKTS_IsObject(ARKTS_Env env, ARKTS_Value value)
         return false;
     }
     v = ARKTS_Scope_::GetValueRef(value);
-    return v.IsObject(vm);
+    return v.IsObjectWithoutSwitchState(vm);
 }
 
 bool ARKTS_HasOwnProperty(ARKTS_Env env, ARKTS_Value jobj, ARKTS_Value jkey)
