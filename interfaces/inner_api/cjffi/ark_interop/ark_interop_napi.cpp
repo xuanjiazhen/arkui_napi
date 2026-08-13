@@ -86,17 +86,17 @@ std::string ARKTSInner_FormatJSError(ARKTS_Env env, ARKTS_Value jsError)
     auto vm = P_CAST(env, EcmaVM*);
     panda::JsiFastNativeScope fastNativeScope(vm);
     auto exception = BIT_CAST(jsError, Local<JSValueRef>);
-    if (exception->IsString(vm)) {
+    if (exception->IsStringWithoutSwitchState(vm)) {
         auto errorInsJs = *BIT_CAST(jsError, StringRef*);
         return errorInsJs.ToString(vm);
-    } else if (exception->IsError(vm)) {
+    } else if (exception->IsErrorWithoutSwitchState(vm)) {
         auto errorObJ = *BIT_CAST(jsError, ObjectRef*);
         auto nameValue = errorObJ.Get(vm, StringRef::NewFromUtf8(vm, "name"));
         auto messageValue = errorObJ.Get(vm, StringRef::NewFromUtf8(vm, "message"));
         auto stackValue = errorObJ.Get(vm, StringRef::NewFromUtf8(vm, "stack"));
-        std::string name = nameValue->IsString(vm) ? nameValue->ToString(vm)->ToString(vm) : "";
-        auto message = messageValue->IsString(vm) ? messageValue->ToString(vm)->ToString(vm) : "";
-        auto stack = stackValue->IsString(vm) ? stackValue->ToString(vm)->ToString(vm) : "";
+        std::string name = nameValue->IsStringWithoutSwitchState(vm) ? nameValue->ToString(vm)->ToString(vm) : "";
+        auto message = messageValue->IsStringWithoutSwitchState(vm) ? messageValue->ToString(vm)->ToString(vm) : "";
+        auto stack = stackValue->IsStringWithoutSwitchState(vm) ? stackValue->ToString(vm)->ToString(vm) : "";
         return name + "\n" + message + "\n" + stack;
     } else {
         return "[unknown js Error type]";
@@ -659,7 +659,7 @@ bool ARKTS_IsExternal(ARKTS_Env env, ARKTS_Value value)
     auto vm = P_CAST(env, EcmaVM*);
     JsiFastNativeScope fastNativeScope(vm);
     auto handle = BIT_CAST(value, JSValueRef*);
-    return handle->IsNativePointer(vm);
+    return handle->IsNativePointerWithoutSwitchState(vm);
 }
 
 int64_t ARKTS_GetExternalData(ARKTS_Env env, ARKTS_Value value)
@@ -840,7 +840,7 @@ void ARKTS_Throw(ARKTS_Env env, ARKTS_Value error)
     }
 
     auto exception = ARKTS_ToHandle<JSValueRef>(error);
-    if (exception->IsString(vm)) {
+    if (exception->IsStringWithoutSwitchState(vm)) {
         JSNApi::ThrowException(vm, Exception::Error(vm, BIT_CAST(exception, Local<StringRef>)));
     } else {
         JSNApi::ThrowException(vm, exception);

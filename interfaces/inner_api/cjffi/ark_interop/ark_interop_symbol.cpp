@@ -47,7 +47,7 @@ bool ARKTS_IsSymbol(ARKTS_Env env, ARKTS_Value value)
     auto vm = P_CAST(env, EcmaVM*);
     JsiFastNativeScope fastNativeScope(vm);
     auto handle = BIT_CAST(value, Local<JSValueRef>);
-    return handle->IsSymbol(vm);
+    return handle->IsSymbolWithoutSwitchState(vm);
 }
 
 const char* ARKTS_GetSymbolDesc(ARKTS_Env env, ARKTS_Value value)
