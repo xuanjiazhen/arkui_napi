@@ -53,11 +53,17 @@ namespace {
 constexpr static int32_t MODULE_PATH_SECONDARY_INDEX = 2;
 constexpr static int32_t NATIVE_PATH_NUMBER = 3;
 constexpr static int32_t IS_APP_MODULE_FLAGS = 100;
+constexpr char SYSTEM_MODULE_LIB64[] = "/system/lib64/module";
 thread_local bool g_isLoadingModule = false;
 enum ModuleLoadFailedReason : uint32_t {
     MODULE_LOAD_SUCCESS = 0,
     MODULE_NOT_EXIST    = 1,
 };
+
+static inline bool ContainsParentDirRef(const char* s)
+{
+    return (s != nullptr) && (strstr(s, "../") != nullptr);
+}
 
 static inline void SetLoadErrInfo(std::string& loadErrInfo, const std::string& msg)
 {
@@ -859,13 +865,6 @@ NativeModule* NativeModuleManager::LoadNativeModuleWithErrorInfo(const char* mod
         return nullptr;
     }
 
-    std::string relativePathStr(relativePath);
-    if (relativePathStr.find("..") != std::string::npos) {
-        SetLoadErrInfo(loadErrInfo, "invalid relativePath");
-        MODULEMNG_HILOG_ERROR("invalid relativePath");
-        return nullptr;
-    }
-
     MODULEMNG_HILOG_DEBUG("moduleName is %{public}s, path is %{public}s, relativePath is %{public}s",
         moduleName, path, relativePath);
 
@@ -1097,6 +1096,12 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
         }
 #endif
     } else {
+        if (sysPrefix == SYSTEM_MODULE_LIB64 &&
+            (ContainsParentDirRef(relativePath) || ContainsParentDirRef(dupModuleName))) {
+            MODULEMNG_HILOG_ERROR("block path traversal under system module dir, module: %{public}s",
+                dupModuleName);
+            return false;
+        }
         if (relativePath[0]) {
             if (previewSearchPath_.empty()) {
                 sysPrefix = sysPrefix + "/" + relativePath;

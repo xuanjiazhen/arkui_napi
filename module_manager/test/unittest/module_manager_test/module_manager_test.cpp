@@ -1447,7 +1447,7 @@ HWTEST_F(ModuleManagerTest, LoadNativeModule_ErrInfo_RelativePathNull, TestSize.
 
 /*
  * @tc.name: LoadNativeModule_ErrInfo_InvalidRelativePath
- * @tc.desc: test LoadNativeModule errInfo when relativePath contains ".."
+ * @tc.desc: test LoadNativeModule errInfo when relativePath contains "../" under system module prefix
  * @tc.type: FUNC
  */
 HWTEST_F(ModuleManagerTest, LoadNativeModule_ErrInfo_InvalidRelativePath, TestSize.Level1)
@@ -1461,7 +1461,11 @@ HWTEST_F(ModuleManagerTest, LoadNativeModule_ErrInfo_InvalidRelativePath, TestSi
     NativeModule* module = moduleManager->LoadNativeModuleWithErrorInfo(moduleName, nullptr, false, errInfo,
         false, "../test", loadErrInfo);
     EXPECT_EQ(module, nullptr);
-    EXPECT_EQ(loadErrInfo, "invalid relativePath");
+#if defined(_ARM64_) || defined(SIMULATOR)
+    EXPECT_EQ(loadErrInfo, "cannot construct module path");
+#else
+    EXPECT_NE(loadErrInfo, "invalid relativePath");
+#endif
 
     GTEST_LOG_(INFO) << "LoadNativeModule_ErrInfo_InvalidRelativePath end";
 }
@@ -1883,6 +1887,43 @@ HWTEST_F(ModuleManagerTest, GetNativeModulePath_WhenAppLibPathValueIsNullptrShou
     moduleManager.appLibPathMap_.clear();
 
     GTEST_LOG_(INFO) << "GetNativeModulePath_WhenAppLibPathValueIsNullptrShouldNotCrash end";
+}
+
+/*
+ * @tc.name: GetNativeModulePath_BlockTraversalUnderSystemModuleDir
+ * @tc.desc: test GetNativeModulePath blocks "../" traversal under /system/lib64/module prefix only
+ * @tc.type: FUNC
+ * @tc.require: #I76XTV
+ */
+HWTEST_F(ModuleManagerTest, GetNativeModulePath_BlockTraversalUnderSystemModuleDir, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetNativeModulePath_BlockTraversalUnderSystemModuleDir starts";
+
+    NativeModuleManager moduleManager;
+    char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
+    const char* moduleName = "somemodule";
+
+#if defined(_ARM64_) || defined(SIMULATOR)
+    bool ret = moduleManager.GetNativeModulePath(moduleName, "", "../evil", false,
+        nativeModulePath, NAPI_PATH_MAX);
+    EXPECT_FALSE(ret);
+
+    ret = moduleManager.GetNativeModulePath("../evil", "", "", false, nativeModulePath, NAPI_PATH_MAX);
+    EXPECT_FALSE(ret);
+
+    ret = moduleManager.GetNativeModulePath(moduleName, "", "normal", false, nativeModulePath, NAPI_PATH_MAX);
+    EXPECT_TRUE(ret);
+#endif
+
+    const std::string key = "test.app.path.normal";
+    moduleManager.appLibPathMap_[key] = "/data/app/libs";
+    bool retApp = moduleManager.GetNativeModulePath(moduleName, key.c_str(), "../compat", true,
+        nativeModulePath, NAPI_PATH_MAX);
+    EXPECT_TRUE(retApp);
+
+    moduleManager.appLibPathMap_.clear();
+
+    GTEST_LOG_(INFO) << "GetNativeModulePath_BlockTraversalUnderSystemModuleDir end";
 }
 
 /*
