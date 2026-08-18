@@ -472,6 +472,8 @@ public:
 #endif
 
     void SetTaskpoolShrinkCallback(TaskPoolShrinkCallback callback) override;
+    void SetHookList(const std::string& hookList);
+    std::string GetHookModule(const std::string& preModule);
 private:
     // ArkNativeEngine constructor for multi-context
     ArkNativeEngine(NativeEngine* parent, EcmaVM* vm, const Local<JSValueRef>& context);
@@ -574,5 +576,6 @@ private:
     bool threadTaskAsyncInitialized_ = false;
     std::mutex threadTaskMutex_;
     std::function<void()> pendingThreadTask_;
+    std::map<std::string, std::string> hookList_;
 };
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H */
