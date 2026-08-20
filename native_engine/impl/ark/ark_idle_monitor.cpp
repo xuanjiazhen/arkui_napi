@@ -1074,28 +1074,9 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcessCrossPlatformGC(TRIGGER_IDLE_G
         return;
     }
 
-    MainThreadGCData* data = new MainThreadGCData();
-    data->monitor = this;
-    data->type = type;
-
-    uv_async_t* async = new uv_async_t();
-    async->data = data;
-    if (uv_async_init(mainLoop_, async, ArkIdleMonitor::OnMainThreadGCTask) != 0) {
-        HILOG_ERROR("ArkIdleMonitor: uv_async_init failed");
-        delete data;
-        delete async;
-        return;
-    }
-    const char* gcTypeStr = (type == TRIGGER_IDLE_GC_TYPE::FULL_GC) ? "local full gc" : "shared full gc";
-    HILOG_DEBUG("ArkIdleMonitor: try trigger %s start", gcTypeStr);
-    uv_async_send(async);
-
-    {
-        std::unique_lock<std::mutex> lock(data->mtx);
-        data->cv.wait(lock, [data]() { return data->finished; });
-        HILOG_DEBUG("ArkIdleMonitor: try trigger %s end", gcTypeStr);
-    }
-    delete data;
+    HILOG_DEBUG("ArkIdleMonitor: try trigger SHARED_CONCURRENT_MARK start, type:%{public}d", type);
+    JSNApi::TriggerIdleGC(GetMainThreadEcmaVM(), TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    HILOG_DEBUG("ArkIdleMonitor: try trigger SHARED_CONCURRENT_MARK end");
 }
 #endif
 } // namespace panda::ecmascript
