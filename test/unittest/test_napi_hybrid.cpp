@@ -262,6 +262,22 @@ HWTEST_F(NapiHybridTest, NapiRefGetVmTest001, testing::ext::TestSize.Level1)
 }
 
 /**
+ * @tc.name: NapiRefGetVmAndValueTest002
+ * @tc.desc: Test napi_ref_get_vm and napi_ref_get_value with nullptr ref.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiHybridTest, NapiRefGetVmAndValueTest002, testing::ext::TestSize.Level1)
+{
+    uintptr_t vm = 0;
+    napi_status status = napi_ref_get_vm(nullptr, vm);
+    ASSERT_EQ(status, napi_invalid_arg);
+ 
+    uintptr_t value = 0;
+    status = napi_ref_get_value(nullptr, value);
+    ASSERT_EQ(status, napi_invalid_arg);
+}
+
+/**
  * @tc.name: NapiRefGetVmAndValueNullRefTest001
  * @tc.desc: Test napi_ref_get_vm and napi_ref_get_value with nullptr ref.
  * @tc.type: FUNC
