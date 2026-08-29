@@ -133,6 +133,63 @@ int ArkNativeEngine::napiApiTraceEnabled {0};
 bool ArkNativeEngine::napiProfilerParamReaded {false};
 PermissionCheckCallback ArkNativeEngine::permissionCheckCallback_ {nullptr};
 std::atomic<NapiModuleValidateCallback> ArkNativeEngine::moduleValidateCallback_ {nullptr};
+std::mutex ArkNativeEngine::sharedRootMutex_;
+std::map<std::string, panda::SendableGlobal<panda::JSValueRef>> ArkNativeEngine::sharedRootMap_;
+std::condition_variable ArkNativeEngine::sharedRootCv_;
+
+panda::Local<panda::JSValueRef> ArkNativeEngine::CreateSharedRootOnMain(NativeModuleManager* moduleManager,
+    NativeModule* module, const std::string& canonicalKey)
+{
+    std::lock_guard<std::mutex> lock(sharedRootMutex_);
+    auto existIt = sharedRootMap_.find(canonicalKey);
+    if (existIt != sharedRootMap_.end()) {
+        return existIt->second.ToLocal(vm_);
+    }
+    panda::Local<panda::JSValueRef> undefVal = panda::JSValueRef::Undefined(vm_);
+    napi_value exportsVal = JsValueFromLocalValue(undefVal);
+    napi_value cbResult = module->registerCallback(reinterpret_cast<napi_env>(this), exportsVal);
+    if (cbResult == nullptr) {
+        HILOG_ERROR("shared module %{public}s init returned null", canonicalKey.c_str());
+        return panda::Local<panda::JSValueRef>();
+    }
+    panda::Local<panda::JSValueRef> root = LocalValueFromJsValue(cbResult);
+    if (!root->IsJSShared(vm_)) {
+        HILOG_ERROR("shared module %{public}s init returned non-sendable root", canonicalKey.c_str());
+        return panda::Local<panda::JSValueRef>();
+    }
+    auto [insIt, inserted] = sharedRootMap_.try_emplace(canonicalKey, vm_, root);
+    moduleManager->MarkSharedSoPinned(canonicalKey);
+    sharedRootCv_.notify_all();
+    return insIt->second.ToLocal(vm_);
+}
+
+panda::Local<panda::JSValueRef> ArkNativeEngine::AcquireSharedRoot(const std::string& canonicalKey,
+    EcmaVM* vm, const panda::Local<panda::JSValueRef>& root)
+{
+    std::lock_guard<std::mutex> lock(sharedRootMutex_);
+    auto [it, inserted] = sharedRootMap_.try_emplace(canonicalKey, vm, root);
+    return it->second.ToLocal(vm);
+}
+
+panda::Local<panda::JSValueRef> ArkNativeEngine::LookupSharedRoot(const std::string& canonicalKey, EcmaVM* vm)
+{
+    std::lock_guard<std::mutex> lock(sharedRootMutex_);
+    auto it = sharedRootMap_.find(canonicalKey);
+    if (it != sharedRootMap_.end()) {
+        return it->second.ToLocal(vm);
+    }
+    return panda::Local<panda::JSValueRef>();
+}
+
+void ArkNativeEngine::ReleaseSharedRoot(const std::string& canonicalKey, EcmaVM* vm)
+{
+    std::lock_guard<std::mutex> lock(sharedRootMutex_);
+    auto it = sharedRootMap_.find(canonicalKey);
+    if (it != sharedRootMap_.end()) {
+        it->second.FreeSendableGlobalHandleAddr(vm);
+        sharedRootMap_.erase(it);
+    }
+}
 #if defined(PREVIEW)
 bool ArkNativeEngine::enableFileOperation_ {false};
 #endif
@@ -853,6 +910,41 @@ Local<JSValueRef> ArkNativeEngine::LoadNativeModule(
     std::string strModuleName = moduleName->ToString(vm_);
     moduleManager->SetNativeEngine(strModuleName, this);
     MoudleNameLocker nameLocker(strModuleName);
+
+    if (IsSharedModuleApiVersion() && module->napiModulePtr != nullptr &&
+        module->napiModulePtr->nm_shared != 0 && module->registerCallback != nullptr) {
+        std::string canonicalKey = strModuleName;
+        Local<JSValueRef> sharedRoot = LookupSharedRoot(canonicalKey, vm_);
+        if (!sharedRoot.IsEmpty()) {
+            return scope.Escape(sharedRoot);
+        }
+        if (IsMainEnvContext()) {
+            Local<JSValueRef> root = CreateSharedRootOnMain(moduleManager, module, canonicalKey);
+            if (root.IsEmpty()) {
+                return scope.Escape(exports);
+            }
+            return scope.Escape(root);
+        }
+        NativeEngine* mainEngine = NativeEngine::GetMainThreadEngine();
+        if (mainEngine != nullptr) {
+            napi_send_event(reinterpret_cast<napi_env>(mainEngine),
+                [mainEngine, moduleManager, module, canonicalKey]() {
+                    static_cast<ArkNativeEngine*>(mainEngine)->CreateSharedRootOnMain(
+                        moduleManager, module, canonicalKey);
+                }, napi_eprio_immediate, "sharedRootInit");
+        }
+        std::unique_lock<std::mutex> lock(sharedRootMutex_);
+        bool ready = sharedRootCv_.wait_for(lock, std::chrono::seconds(5),
+            [canonicalKey]() { return sharedRootMap_.count(canonicalKey) > 0; });
+        if (ready) {
+            auto it = sharedRootMap_.find(canonicalKey);
+            if (it != sharedRootMap_.end()) {
+                return scope.Escape(it->second.ToLocal(vm_));
+            }
+        }
+        HILOG_ERROR("shared module %{public}s root creation timed out from main env", strModuleName.c_str());
+        return scope.Escape(exports);
+    }
 
     if (module->jsCode == nullptr && module->getABCCode != nullptr) {
         module->getABCCode(&module->jsCode, &module->jsCodeLen);

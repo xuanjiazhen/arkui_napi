@@ -24,6 +24,8 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <condition_variable>
+#include <chrono>
 #include <regex>
 #include <thread>
 #include <unistd.h>
@@ -175,6 +177,13 @@ public:
     const EcmaVM* GetEcmaVm() const override;
     const EcmaVM* GetEcmaVmCritical() const override;
     const ArkNativeEngine* GetParent() const override;
+
+    static panda::Local<panda::JSValueRef> AcquireSharedRoot(const std::string& canonicalKey,
+        EcmaVM* vm, const panda::Local<panda::JSValueRef>& root);
+    static panda::Local<panda::JSValueRef> LookupSharedRoot(const std::string& canonicalKey, EcmaVM* vm);
+    static void ReleaseSharedRoot(const std::string& canonicalKey, EcmaVM* vm);
+    panda::Local<panda::JSValueRef> CreateSharedRootOnMain(NativeModuleManager* moduleManager,
+        NativeModule* module, const std::string& canonicalKey);
 
     void Loop(LoopMode mode, bool needSync = false) override;
     void SetPromiseRejectCallback(NativeReference* rejectCallbackRef, NativeReference* checkCallbackRef) override;
@@ -554,6 +563,9 @@ private:
     NativeReference* promiseRejectCallbackRef_ { nullptr };
     NativeReference* checkCallbackRef_ { nullptr };
     std::map<NativeModule*, panda::Global<panda::JSValueRef>> loadedModules_ {};
+    static std::mutex sharedRootMutex_;
+    static std::map<std::string, panda::SendableGlobal<panda::JSValueRef>> sharedRootMap_;
+    static std::condition_variable sharedRootCv_;
     static PermissionCheckCallback permissionCheckCallback_;
     NapiUncaughtExceptionCallback napiUncaughtExceptionCallback_ { nullptr };
     NapiAllPromiseRejectCallback allPromiseRejectCallback_ {nullptr};

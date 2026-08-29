@@ -742,6 +742,11 @@ bool NativeEngine::IsApplicationApiVersionAPI11Plus()
     return apiVersion_ > API11;
 }
 
+bool NativeEngine::IsSharedModuleApiVersion()
+{
+    return apiVersion_ >= NAPI_API_VERSION_SHARED_MODULE;
+}
+
 napi_status NativeEngine::AddCleanupFinalizer(CleanupFinalizerCallBack fun, void* arg)
 {
     auto insertion_info = instanceFinalizer_.emplace(arg,
