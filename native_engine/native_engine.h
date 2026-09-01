@@ -442,6 +442,8 @@ public:
     virtual int32_t GetApiVersion();
     virtual int32_t GetRealApiVersion();
     virtual bool IsApplicationApiVersionAPI11Plus();
+    static constexpr int32_t NAPI_API_VERSION_SHARED_MODULE = 26;
+    bool IsSharedModuleApiVersion();
 
     virtual napi_status AddCleanupHook(CleanupCallback fun, void* arg);
     virtual napi_status RemoveCleanupHook(CleanupCallback fun, void* arg);
