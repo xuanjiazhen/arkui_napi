@@ -60,6 +60,7 @@ struct NativeModule {
     const char* fileName = nullptr;
     const char* systemFilePath = nullptr;
     RegisterCallback registerCallback = nullptr;
+    unsigned int shared = 0;
     GetJSCodeCallback getABCCode = nullptr;
     GetJSCodeCallback getJSCode = nullptr;
     int32_t version = 0;
@@ -95,6 +96,8 @@ public:
         std::string* loadErrInfo = nullptr);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     bool UnloadNativeModule(const std::string& moduleKey);
+    void MarkSharedSoPinned(const std::string& moduleKey);
+    bool IsSharedSoPinned(const std::string& moduleKey);
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);
 
     /**
@@ -216,6 +219,8 @@ private:
     std::map<std::string, char*> appLibPathMap_;
     std::string previewSearchPath_;
     std::unique_ptr<ModuleLoadChecker> moduleLoadChecker_ = nullptr;
+    std::mutex sharedSoPinMutex_;
+    std::unordered_set<std::string> pinnedSharedSo_;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H */
