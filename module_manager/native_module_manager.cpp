@@ -270,6 +270,10 @@ bool NativeModuleManager::RemoveNativeModuleLocked(const std::string& moduleKey)
 bool NativeModuleManager::UnloadNativeModule(const std::string& moduleKey)
 {
     MODULEMNG_HILOG_DEBUG("module:'%{public}s'", moduleKey.c_str());
+    if (IsSharedSoPinned(moduleKey)) {
+        MODULEMNG_HILOG_INFO("module:'%{public}s' pinned by shared root, skip unload", moduleKey.c_str());
+        return true;
+    }
     LIBHANDLE handle = nullptr;
     bool removed = false;
     {
@@ -289,6 +293,18 @@ bool NativeModuleManager::UnloadNativeModule(const std::string& moduleKey)
         return false;
     }
     return UnloadModuleLibrary(handle);
+}
+
+void NativeModuleManager::MarkSharedSoPinned(const std::string& moduleKey)
+{
+    std::lock_guard<std::mutex> lock(sharedSoPinMutex_);
+    pinnedSharedSo_.insert(moduleKey);
+}
+
+bool NativeModuleManager::IsSharedSoPinned(const std::string& moduleKey)
+{
+    std::lock_guard<std::mutex> lock(sharedSoPinMutex_);
+    return pinnedSharedSo_.find(moduleKey) != pinnedSharedSo_.end();
 }
 
 std::string NativeModuleManager::GetModuleFileName(const char* moduleName, bool isAppModule)
@@ -373,6 +389,7 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
         tailNativeModule_->moduleName = nullptr;  /* we update moduleName later */
         tailNativeModule_->refCount = nativeModule->refCount;
         tailNativeModule_->registerCallback = nativeModule->registerCallback;
+        tailNativeModule_->shared = nativeModule->shared;
         tailNativeModule_->getJSCode = nativeModule->getJSCode;
         tailNativeModule_->getABCCode = nativeModule->getABCCode;
         tailNativeModule_->next = nullptr;
@@ -395,6 +412,7 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
         headNativeModule_->name = moduleName;
         headNativeModule_->refCount = nativeModule->refCount;
         headNativeModule_->registerCallback = nativeModule->registerCallback;
+        headNativeModule_->shared = nativeModule->shared;
         headNativeModule_->getJSCode = nativeModule->getJSCode;
         headNativeModule_->getABCCode = nativeModule->getABCCode;
         headNativeModule_->moduleLoaded = true;
