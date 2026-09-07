@@ -1,0 +1,18 @@
+[
+    {
+        "apiText": "A",
+        "apiType": "class",
+        "kit": "test"
+    },
+    {
+        "apiText": "foo",
+        "apiType": "method",
+        "className": "A",
+        "kit": "test"
+    },
+    {
+        "apiText": "bar",
+        "apiType": "method",
+        "kit": "test"
+    }
+]

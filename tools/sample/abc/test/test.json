@@ -1,0 +1,35 @@
+[
+    {
+        "apiText": "A",
+        "apiType": "class",
+        "kit": "test"
+    },
+    {
+        "apiText": "foo",
+        "apiType": "method",
+        "className": "A",
+        "kit": "test"
+    },
+    {
+        "apiText": "s_foo",
+        "apiType": "method",
+        "className": "A",
+        "kit": "test"
+    },
+    {
+        "apiText": "x",
+        "apiType": "field",
+        "className": "A",
+        "kit": "test"
+    },
+    {
+        "apiText": "bar",
+        "apiType": "method",
+        "kit": "test"
+    },
+    {
+        "apiText": "dd",
+        "apiType": "field",
+        "kit": "test"
+    }
+]

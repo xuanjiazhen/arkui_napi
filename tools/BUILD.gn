@@ -1,0 +1,55 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//foundation/arkui/napi/napi.gni")
+
+if (ark_standalone_build) {
+  import("$build_root/ark.gni")
+} else {
+  import("//build/ohos.gni")
+}
+
+# 宿主机侧 API 非法暴露检查工具：
+# 加载 abc / native so，提取运行时导出面并与合法API列表比对
+ohos_executable("checkapi") {
+  use_exceptions = true
+
+  sources = [
+    "check_api.cpp",
+    "check_helper.cpp",
+    "check_match.cpp",
+    "load_abc.cpp",
+    "load_so.cpp",
+    "parse_json.cpp",
+  ]
+
+  include_dirs = [ "." ]
+
+  # 链接 libace_napi.so：保证 requireNapi/native_module_manager 与被检查 so 共享同一实例；
+  # ace_napi 的 public_configs 会传播本仓库头文件与平台宏（LINUX_PLATFORM/OHOS_PLATFORM 等）
+  deps = [ "//foundation/arkui/napi:ace_napi" ]
+
+  external_deps = [
+    "cJSON:cjson",
+    "ets_runtime:libark_jsruntime",
+  ]
+
+  subsystem_name = "arkui"
+  part_name = "napi"
+}
+
+# 样例端到端测试（abc + so），按需构建：
+#   ninja -C out/<dir> checkapi_samples
+group("checkapi_samples") {
+  deps = [ "sample:run_test" ]
+}
