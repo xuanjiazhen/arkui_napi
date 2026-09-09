@@ -63,6 +63,10 @@ test_ark_unittest("hybrid") {
   sources = [ "test_napi_hybrid.cpp" ]
 }
 
+test_ark_unittest("microtask_scope") {
+  sources = [ "test_napi_microtask_scope.cpp" ]
+}
+
 test_ark_unittest("idle_monitor") {
   sources = [ "test_ark_idle_monitor.cpp" ]
 }
@@ -135,6 +139,7 @@ group("unittest") {
     ":test_ark_unittest_hybrid",
     ":test_ark_unittest_hook_list",
     ":test_ark_unittest_idle_monitor",
+    ":test_ark_unittest_microtask_scope",
     ":test_ark_unittest_threadsafe",
     ":test_unittest_sendevent",
     ":test_worker_manager",

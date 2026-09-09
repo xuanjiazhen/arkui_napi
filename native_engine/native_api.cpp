@@ -5025,3 +5025,27 @@ NAPI_EXTERN napi_status napi_get_strong_sendable_reference_value(napi_env env,
     *result = value;
     return napi_clear_last_error(env);
 }
+
+// ================================== microtask scope ================================== //
+NAPI_EXTERN napi_status napi_open_microtask_scope(napi_env env, napi_microtask_scope* result)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, result);
+
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    panda::ecmascript::napi_microtask_scope__* scopeHandle = nullptr;
+    RETURN_STATUS_IF_FALSE(env, JSNApi::OpenMicrotaskScope(vm, &scopeHandle), napi_invalid_arg);
+    *result = reinterpret_cast<napi_microtask_scope>(scopeHandle);
+    return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status napi_close_microtask_scope(napi_env env, napi_microtask_scope scope)
+{
+    NAPI_PREAMBLE(env);
+    CHECK_ARG(env, scope);
+
+    auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
+    auto scopeHandle = reinterpret_cast<panda::ecmascript::napi_microtask_scope__*>(scope);
+    RETURN_STATUS_IF_FALSE(env, JSNApi::CloseMicrotaskScope(vm, scopeHandle), napi_invalid_arg);
+    return GET_RETURN_STATUS(env);
+}

@@ -273,6 +273,21 @@ NAPI_EXTERN napi_status napi_set_property_with_callsite_info(napi_env env,
 
 NAPI_EXTERN napi_status napi_get_global_handle_count(napi_env env, size_t* count);
 
+// ================================== microtask scope ================================== //
+// Opaque handle of the microtask scope, opened by napi_open_microtask_scope and
+// closed by napi_close_microtask_scope (which drains the accumulated microtasks).
+typedef struct napi_microtask_scope__* napi_microtask_scope;
+
+// Open a microtask scope. While open, napi_call_function / napi_new_instance /
+// napi_resolve_deferred / napi_reject_deferred defer the implicit microtask draining.
+// Nesting is not supported: returns napi_invalid_arg if a scope is already open.
+NAPI_EXTERN napi_status napi_open_microtask_scope(napi_env env,
+                                                  napi_microtask_scope* result);
+// Close the microtask scope and drain the accumulated microtasks (including the ones
+// enqueued during draining). The handle becomes invalid afterwards.
+NAPI_EXTERN napi_status napi_close_microtask_scope(napi_env env,
+                                                   napi_microtask_scope scope);
+
 #ifdef __cplusplus
 }
 #endif
