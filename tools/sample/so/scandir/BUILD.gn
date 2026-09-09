@@ -1,0 +1,51 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//foundation/arkui/napi/napi.gni")
+
+if (ark_standalone_build) {
+  import("$build_root/ark.gni")
+} else {
+  import("//build/ohos.gni")
+}
+
+# scan-dir 回归样例：@ohos.app.ability.* 形态（so 在 module/app/ability/ 两级目录）
+ohos_shared_library("scandirdemo") {
+    sources = [ "scandirdemo.cpp" ]
+
+    deps = [ "../../../..:ace_napi" ]
+
+    subsystem_name = "arkui"
+    part_name = "napi"
+}
+
+# scan-dir 回归样例：@hms.* 全名形态（so 在 module/hms/core/ar/ 三级目录）
+ohos_shared_library("hmsdemo") {
+    sources = [ "hmsdemo.cpp" ]
+
+    deps = [ "../../../..:ace_napi" ]
+
+    subsystem_name = "arkui"
+    part_name = "napi"
+}
+
+# scan-dir 回归样例：废弃桶模块（so 在 module/ability/ 旧名布局，白名单为
+# API10LessDeprecatedModules.json 冻结快照形态），锁定 DeprecatedModules 独立归类
+ohos_shared_library("depdemo") {
+    sources = [ "depdemo.cpp" ]
+
+    deps = [ "../../../..:ace_napi" ]
+
+    subsystem_name = "arkui"
+    part_name = "napi"
+}

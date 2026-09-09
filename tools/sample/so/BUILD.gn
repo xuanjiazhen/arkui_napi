@@ -1,0 +1,123 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../test_list.gni")
+
+foreach(test, so_test_list) {
+    _host_checkapi_target_ = "../..:checkapi"
+    _root_out_dir_ = get_label_info(_host_checkapi_target_, "root_out_dir")
+
+    _host_test_target_ = "test:${test}"
+    _test_json_path_ = "test/${test}.json"
+    _result_path_ = "${_root_out_dir_}/checkapi/so/${test}/result.json"
+
+    action("run_${test}") {
+        deps = [
+            _host_checkapi_target_,
+            _host_test_target_
+        ]
+
+        inputs = [ _test_json_path_ ]
+
+        # run_check.py <checkapi> <root_out_dir> <kit> <so module name> <legal json> <result json>
+        args = [
+            rebase_path("${_root_out_dir_}/arkui/napi/checkapi"),
+            rebase_path("${_root_out_dir_}"),
+            test,
+            "@ohos.${test}",
+            rebase_path(_test_json_path_),
+            rebase_path(_result_path_),
+        ]
+
+        script = "../../run_check.py"
+
+        outputs = [ _result_path_ ]
+    }
+}
+
+# 污染回归用例：poison（含抛异常 getter 的模块）在前、常规 test 模块在后，
+# 单次运行双模块。修复前（遍历失败分支/模块边界不清挂起异常）poison 遍历
+# 留下的异常会让 test 模块的 requireNapi 查找（napi_get_named_property 带
+# NAPI_PREAMBLE）短路失败，整个 action 以非零退出码失败；修复后两模块
+# 全部完成检查并以 0 退出（poison 自身通过、test 按 test.json 通过）。
+# 白名单 poison.json 额外覆盖 test 模块的导出（kit 归属 poison）。
+action("run_poison") {
+    _host_checkapi_target_ = "../..:checkapi"
+    _root_out_dir_ = get_label_info(_host_checkapi_target_, "root_out_dir")
+    _result_path_ = "${_root_out_dir_}/checkapi/so/poison/result.json"
+
+    deps = [
+        _host_checkapi_target_,
+        "test:test",
+        "poison:poison",
+    ]
+
+    inputs = [ "poison/poison.json" ]
+
+    args = [
+        rebase_path("${_root_out_dir_}/arkui/napi/checkapi"),
+        rebase_path("${_root_out_dir_}"),
+        "poison",
+        "@ohos.poison,@ohos.test",
+        rebase_path("poison/poison.json"),
+        rebase_path(_result_path_),
+    ]
+
+    script = "../../run_check.py"
+
+    outputs = [ _result_path_ ]
+}
+
+# scan-dir 回归用例：多级目录 so 布局 + 白名单目录驱动的 scan-dir 模式。
+# 修复前两处映射缺陷叠加：(1) SoFileToModuleName 把目录分隔符留在
+# requireName 里（module/app/ability/ 枚举成 "app/ability.scandirdemo"，
+# 与白名单反查键 "app.ability.scandirdemo" 永不相等）；(2) @hms. 剥首段
+# （"@hms.core.ar.hmsdemo" -> "core.ar.hmsdemo"，路径不存在）。两个样例
+# 模块全部落入 UnknownModules、退出码 2002（ninja action 失败）；修复后
+# 完成映射、加载与检查，全部通过并 0 退出。真机数据复算：该修复把
+# scan-dir 模块映射覆盖率从 37%（426/1163）提升到 72%（835/1163）。
+# 第三个样例 depdemo 映射到废弃桶白名单（API10LessDeprecatedModules）：
+# 其 newApi 导出在冻结快照中必然缺失，锁定"DeprecatedModules 独立归类，
+# 不混入 IllegalApis、不影响退出码"（方案 B）——驱动脚本断言 result.json
+# 的段结构与退出码。
+action("run_scandir") {
+    _host_checkapi_target_ = "../..:checkapi"
+    _root_out_dir_ = get_label_info(_host_checkapi_target_, "root_out_dir")
+    _result_path_ = "${_root_out_dir_}/checkapi/so/scandir/result.json"
+
+    deps = [
+        _host_checkapi_target_,
+        "scandir:scandirdemo",
+        "scandir:hmsdemo",
+        "scandir:depdemo",
+    ]
+
+    inputs = [
+        "scandir/scandir.json",
+        "scandir/scandir_deprecated.json",
+    ]
+
+    args = [
+        rebase_path("${_root_out_dir_}/arkui/napi/checkapi"),
+        rebase_path("${_root_out_dir_}"),
+        "scandir",
+        "@ohos.app.ability.scandirdemo,@hms.core.ar.hmsdemo,@ohos.ability.depdemo",
+        rebase_path("scandir/scandir.json"),
+        rebase_path(_result_path_),
+        rebase_path("scandir/scandir_deprecated.json"),
+    ]
+
+    script = "../../run_scan_check.py"
+
+    outputs = [ _result_path_ ]
+}
