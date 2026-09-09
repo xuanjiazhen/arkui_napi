@@ -294,6 +294,9 @@ if (is_arkui_x) {
       ]
     }
   }
+  group("checkapi_tools") {
+    deps = [ "tools:checkapi" ]
+  }
 }
 
 if (is_arkui_x) {
