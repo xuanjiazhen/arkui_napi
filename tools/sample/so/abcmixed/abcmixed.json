@@ -1,0 +1,17 @@
+[
+    {
+        "apiText": "DemoAbc",
+        "apiType": "class",
+        "kit": "abcmixed"
+    },
+    {
+        "apiText": "abcFunc",
+        "apiType": "method",
+        "kit": "abcmixed"
+    },
+    {
+        "apiText": "abcConst",
+        "apiType": "field",
+        "kit": "abcmixed"
+    }
+]
