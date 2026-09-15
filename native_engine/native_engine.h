@@ -199,6 +199,17 @@ public:
     virtual bool ReinitUVLoop();
 
     virtual void Loop(LoopMode mode, bool needSync = false);
+    // Microtask scope: while open, engine-side microtask pumping after JS calls
+    // (napi_call_function, napi_resolve_deferred, ...) is suppressed. NOT nestable:
+    // opening fails (returns false) if a scope is already open.
+    virtual bool OpenMicrotaskScope()
+    {
+        return true;
+    }
+    virtual bool CloseMicrotaskScope()
+    {
+        return true;
+    }
     virtual void SetPostTask(PostTask postTask);
     virtual void TriggerPostTask();
 #if !defined(PREVIEW)

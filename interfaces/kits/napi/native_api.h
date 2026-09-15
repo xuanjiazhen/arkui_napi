@@ -84,6 +84,22 @@ typedef struct napi_strong_ref__* napi_strong_ref;
 typedef struct napi_critical_scope__* napi_critical_scope;
 typedef struct napi_sendable_ref__* napi_sendable_ref;
 
+typedef struct napi_microtask_scope__* napi_microtask_scope;
+
+// Opens a microtask scope on the env: while the scope is open, microtask queue pumping
+// triggered by engine entry points (napi_call_function, napi_resolve_deferred,
+// napi_reject_deferred, explicit job execution, ...) is suppressed; microtasks enqueued
+// during the scope stay queued. NOT nestable: at most one microtask scope may be open per
+// env at a time; opening while a scope is already open returns napi_microtask_scope_mismatch.
+// Each successful open must be matched by a close on the same env. The scope handle is an
+// opaque token - it owns no per-scope resource.
+NAPI_EXTERN napi_status napi_open_microtask_scope(napi_env env, napi_microtask_scope* result);
+// Closes a microtask scope previously opened on the same env. Pumping resumes immediately;
+// queued microtasks are NOT flushed by closing - they run at the next pump entry. Closing
+// when no scope is open on the env returns napi_microtask_scope_mismatch. Closing a scope
+// from another env is undefined behavior (same contract as napi_close_handle_scope).
+NAPI_EXTERN napi_status napi_close_microtask_scope(napi_env env, napi_microtask_scope scope);
+
 NAPI_EXTERN napi_status napi_load_module(napi_env env, const char* path, napi_value* result);
 NAPI_EXTERN napi_status napi_load_module_with_info(napi_env env,
                                                    const char* path,

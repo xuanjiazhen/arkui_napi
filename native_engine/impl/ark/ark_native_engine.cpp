@@ -1665,6 +1665,16 @@ void ArkNativeEngine::Loop(LoopMode mode, bool needSync)
     JSNApi::ExecutePendingJob(vm_);
 }
 
+bool ArkNativeEngine::OpenMicrotaskScope()
+{
+    return JSNApi::OpenMicrotaskScope(vm_);
+}
+
+bool ArkNativeEngine::CloseMicrotaskScope()
+{
+    return JSNApi::CloseMicrotaskScope(vm_);
+}
+
 void ArkNativeEngine::SetModuleName(Local<ObjectRef> &nativeObj, std::string moduleName)
 {
 #ifdef ENABLE_HITRACE
