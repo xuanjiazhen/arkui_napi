@@ -178,6 +178,8 @@ public:
     const ArkNativeEngine* GetParent() const override;
 
     void Loop(LoopMode mode, bool needSync = false) override;
+    bool OpenMicrotaskScope() override;
+    bool CloseMicrotaskScope() override;
     void SetPromiseRejectCallback(NativeReference* rejectCallbackRef, NativeReference* checkCallbackRef) override;
     static bool SetModuleValidateCallback(NapiModuleValidateCallback validateCallback);
     // For concurrent

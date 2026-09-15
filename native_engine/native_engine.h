@@ -199,6 +199,14 @@ public:
     virtual bool ReinitUVLoop();
 
     virtual void Loop(LoopMode mode, bool needSync = false);
+    virtual bool OpenMicrotaskScope()
+    {
+        return true;
+    }
+    virtual bool CloseMicrotaskScope()
+    {
+        return true;
+    }
     virtual void SetPostTask(PostTask postTask);
     virtual void TriggerPostTask();
 #if !defined(PREVIEW)

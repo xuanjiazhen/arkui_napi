@@ -84,6 +84,11 @@ typedef struct napi_strong_ref__* napi_strong_ref;
 typedef struct napi_critical_scope__* napi_critical_scope;
 typedef struct napi_sendable_ref__* napi_sendable_ref;
 
+typedef struct napi_microtask_scope__* napi_microtask_scope;
+
+NAPI_EXTERN napi_status napi_open_microtask_scope(napi_env env, napi_microtask_scope* result);
+NAPI_EXTERN napi_status napi_close_microtask_scope(napi_env env, napi_microtask_scope scope);
+
 NAPI_EXTERN napi_status napi_load_module(napi_env env, const char* path, napi_value* result);
 NAPI_EXTERN napi_status napi_load_module_with_info(napi_env env,
                                                    const char* path,

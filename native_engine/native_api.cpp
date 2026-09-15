@@ -102,6 +102,11 @@ inline HandleScopeWrapper* NapiHandleScopeToHandleScope(napi_handle_scope s)
     return reinterpret_cast<HandleScopeWrapper*>(s);
 }
 
+inline napi_microtask_scope EngineToNapiMicrotaskScope(NativeEngine* engine)
+{
+    return reinterpret_cast<napi_microtask_scope>(engine);
+}
+
 inline napi_escapable_handle_scope EscapableHandleScopeToNapiEscapableHandleScope(EscapableHandleScopeWrapper* s)
 {
     return reinterpret_cast<napi_escapable_handle_scope>(s);
@@ -2682,6 +2687,33 @@ NAPI_EXTERN napi_status napi_close_handle_scope(napi_env env, napi_handle_scope 
 
     engine->openHandleScopes_--;
     delete NapiHandleScopeToHandleScope(scope);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_open_microtask_scope(napi_env env, napi_microtask_scope* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, result);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    if (!engine->OpenMicrotaskScope()) {
+        return napi_set_last_error(env, napi_microtask_scope_mismatch);
+    }
+
+    *result = EngineToNapiMicrotaskScope(engine);
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_close_microtask_scope(napi_env env, napi_microtask_scope scope)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, scope);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    if (!engine->CloseMicrotaskScope()) {
+        return napi_set_last_error(env, napi_microtask_scope_mismatch);
+    }
+
     return napi_clear_last_error(env);
 }
 
