@@ -43,14 +43,6 @@ public:
         }
         runner_.Run(UV_RUN_NOWAIT);
     }
-    void SetUp() override
-    {
-        napi_open_critical_scope(reinterpret_cast<napi_env>(engine_), &scope_);
-    }
-    void TearDown() override
-    {
-        napi_close_critical_scope(reinterpret_cast<napi_env>(engine_), scope_);
-    }
 
 private:
 public:
@@ -60,7 +52,6 @@ public:
         ASSERT_TRUE(false);
     }
     UVLoopRunner runner_;
-    napi_critical_scope scope_ = nullptr;
 };
 
 napi_value EmptyNapiCallback(napi_env env, napi_callback_info info)
@@ -2195,10 +2186,66 @@ HWTEST_F(NapiCriticalTest, NapiNonCriticalTest094, testing::ext::TestSize.Level1
     ASSERT_TRUE(deathTest.GetResult());
 }
 
+/**
+ * @tc.name: AllowExecutionOnFreeze001
+ * @tc.desc: Test interface can be invoked while critical scope is open on freeze.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiCriticalTest, AllowExecutionOnFreeze001, testing::ext::TestSize.Level1)
+{
+    auto env = reinterpret_cast<napi_env>(engine_);
+    auto vm = const_cast<EcmaVM*>(engine_->GetEcmaVmCritical());
+    NapiCriticalScope scope(env);
+    ASSERT_TRUE(engine_->HasCriticalScope());
+
+    if (!JSNApi::CheckAndSetAllowCrossThreadExecution(vm)) {
+        // Cross-thread execution cannot be enabled either because CMS GC is
+        // configured (this testcase is always skipped on such devices) or a
+        // GC is in progress right now, so the core path below is untested.
+        GTEST_SKIP() << "cross-thread execution not allowed";
+    }
+    // napi_get_undefined should invoke successfully while the critical scope
+    // opened above is still open, as long as cross-thread execution is allowed
+    napi_value undefined {};
+    EXPECT_EQ(napi_get_undefined(env, &undefined), napi_ok);
+    JSNApi::DisallowCrossThreadExecution(vm);
+}
+
+/**
+ * @tc.name: AllowExecutionOnFreeze002
+ * @tc.desc: Test napi function callback can pass the critical scope check while scope is open on freeze.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiCriticalTest, AllowExecutionOnFreeze002, testing::ext::TestSize.Level1)
+{
+    auto env = reinterpret_cast<napi_env>(engine_);
+    auto vm = const_cast<EcmaVM*>(engine_->GetEcmaVmCritical());
+    napi_value func {};
+    ASSERT_EQ(napi_create_function(
+        env, "testFn", NAPI_AUTO_LENGTH, [](napi_env, napi_callback_info) -> napi_value { return nullptr; },
+        nullptr, &func), napi_ok);
+
+    NapiCriticalScope scope(env);
+    ASSERT_TRUE(engine_->HasCriticalScope());
+
+    if (!JSNApi::CheckAndSetAllowCrossThreadExecution(vm)) {
+        // Cross-thread execution cannot be enabled either because CMS GC is
+        // configured (this testcase is always skipped on such devices) or a
+        // GC is in progress right now, so the core path below is untested.
+        GTEST_SKIP() << "cross-thread execution not allowed";
+    }
+    // napi_call_function should invoke successfully while the critical scope opened
+    // above is still open, and the 'still open after callback returned' check in
+    // ArkNativeFunctionCallBack must be skipped when cross-thread execution is allowed
+    EXPECT_EQ(napi_call_function(env, nullptr, func, 0, nullptr, nullptr), napi_ok);
+    JSNApi::DisallowCrossThreadExecution(vm);
+}
+
 #ifdef NAPI_TARGET_ARM64
 HWTEST_F(NapiCriticalTest, NapiCreateRuntimeInCriticalScope, testing::ext::TestSize.Level1)
 {
     auto env = reinterpret_cast<napi_env>(engine_);
+    NapiCriticalScope scope(env);
     napi_env newEnv {};
     ASSERT_EQ(napi_create_runtime(env, &newEnv), napi_ok);
     ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
