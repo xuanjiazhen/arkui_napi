@@ -1114,6 +1114,14 @@ bool NativeModuleManager::GetNativeModulePath(const char* moduleName, const char
                 sysPrefix = previewSearchPath_ + "/module";
             }
         }
+        if (strcmp(moduleName, "ets_interop_js_napi") == 0) {
+            const std::string moduleSuffix = "/module";
+            size_t prefixLen = sysPrefix.size();
+            if (prefixLen > moduleSuffix.size() &&
+                sysPrefix.compare(prefixLen - moduleSuffix.size(), moduleSuffix.size(), moduleSuffix) == 0) {
+                sysPrefix = sysPrefix.substr(0, prefixLen - moduleSuffix.size());
+            }
+        }
         prefix = sysPrefix.c_str();
         for (int32_t i = 0; i < lengthOfModuleName; i++) {
             dupModuleName[i] = tolower(dupModuleName[i]);
