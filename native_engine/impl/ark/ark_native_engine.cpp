@@ -767,6 +767,12 @@ Local<JSValueRef> ArkNativeEngine::GetContext() const
 
 __attribute__((noinline)) void ArkNativeEngine::GetEcmaVmFatal() const
 {
+    if (JSNApi::IsCrossThreadExecutionAllowed(vm_)) {
+        HILOG_DEBUG("napi critical scope is still opening, "
+            "but execution allowd by Cross Thread Execution Policy, "
+            "id: %{public}" PRIu64, GetId());
+        return;
+    }
     HILOG_FATAL("napi cannot invoke under critical scope, id: %{public}" PRIu64, GetId());
 }
 
