@@ -2195,6 +2195,28 @@ HWTEST_F(NapiCriticalTest, NapiNonCriticalTest094, testing::ext::TestSize.Level1
     ASSERT_TRUE(deathTest.GetResult());
 }
 
+/**
+ * @tc.name: AllowExecutionOnFreeze
+ * @tc.desc: Test interface can be invoked while critical scope is open on freeze.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiCriticalTest, AllowExecutionOnFreeze, testing::ext::TestSize.Level1)
+{
+    auto env = reinterpret_cast<napi_env>(engine_);
+    auto vm = const_cast<EcmaVM*>(engine_->GetEcmaVm());
+
+    napi_critical_scope scope {};
+    ASSERT_EQ(napi_open_critical_scope(env, &scope), napi_ok);
+    if (JSNApi::CheckAndSetAllowCrossThreadExecution(vm)) {
+        napi_value undefined {};
+        // napi_get_undefined should invoke successfully while critical scope is open,
+        // if cross thread execution is allowed
+        EXPECT_EQ(napi_get_undefined(env, &undefined), napi_ok);
+        JSNApi::DisallowCrossThreadExecution(vm);
+    }
+    ASSERT_EQ(napi_close_critical_scope(env, scope), napi_ok);
+}
+
 #ifdef NAPI_TARGET_ARM64
 HWTEST_F(NapiCriticalTest, NapiCreateRuntimeInCriticalScope, testing::ext::TestSize.Level1)
 {
