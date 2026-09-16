@@ -2195,6 +2195,29 @@ HWTEST_F(NapiCriticalTest, NapiNonCriticalTest094, testing::ext::TestSize.Level1
     ASSERT_TRUE(deathTest.GetResult());
 }
 
+/**
+ * @tc.name: AllowExecutionOnFreeze
+ * @tc.desc: Test interface can be invoked while critical scope is open on freeze.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiCriticalTest, AllowExecutionOnFreeze, testing::ext::TestSize.Level1)
+{
+    auto env = reinterpret_cast<napi_env>(engine_);
+    auto vm = const_cast<EcmaVM*>(engine_->GetEcmaVmCritical());
+
+    if (!JSNApi::CheckAndSetAllowCrossThreadExecution(vm)) {
+        // Cross-thread execution cannot be enabled either because CMS GC is
+        // configured (this testcase is always skipped on such devices) or a
+        // GC is in progress right now, so the core path below is untested.
+        GTEST_SKIP() << "cross-thread execution not allowed";
+    }
+    // napi_get_undefined should invoke successfully while the critical scope
+    // held by the fixture SetUp is open, if cross-thread execution is allowed
+    napi_value undefined {};
+    EXPECT_EQ(napi_get_undefined(env, &undefined), napi_ok);
+    JSNApi::DisallowCrossThreadExecution(vm);
+}
+
 #ifdef NAPI_TARGET_ARM64
 HWTEST_F(NapiCriticalTest, NapiCreateRuntimeInCriticalScope, testing::ext::TestSize.Level1)
 {
