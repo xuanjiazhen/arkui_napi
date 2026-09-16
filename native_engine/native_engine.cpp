@@ -972,6 +972,21 @@ bool NativeEngine::HasCriticalScope() const
     return (*criticalScopeCounter_) > 0;
 }
 
+void NativeEngine::SetMicrotaskScopeOpen()
+{
+    microtaskScopeOpen_ = true;
+}
+
+void NativeEngine::SetMicrotaskScopeClosed()
+{
+    microtaskScopeOpen_ = false;
+}
+
+bool NativeEngine::HasMicrotaskScope() const
+{
+    return microtaskScopeOpen_;
+}
+
 // alias for HasListening
 bool NativeEngine::HasListeningCounter()
 {

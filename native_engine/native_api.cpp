@@ -2685,6 +2685,40 @@ NAPI_EXTERN napi_status napi_close_handle_scope(napi_env env, napi_handle_scope 
     return napi_clear_last_error(env);
 }
 
+NAPI_EXTERN napi_status napi_open_microtask_scope(napi_env env, napi_microtask_scope* result)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, result);
+    CROSS_THREAD_CHECK(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    if (engine->HasMicrotaskScope()) {
+        HILOG_ERROR("Microtask scope mismatch, cannot nest microtask scope.");
+        return napi_set_last_error(env, napi_microtask_scope_mismatch);
+    }
+
+    *result = reinterpret_cast<napi_microtask_scope>(new panda::JsiMicrotaskScope(engine->GetEcmaVm()));
+    engine->SetMicrotaskScopeOpen();
+    return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_close_microtask_scope(napi_env env, napi_microtask_scope scope)
+{
+    CHECK_ENV(env);
+    CHECK_ARG(env, scope);
+    CROSS_THREAD_CHECK(env);
+
+    auto engine = reinterpret_cast<NativeEngine*>(env);
+    if (!engine->HasMicrotaskScope()) {
+        HILOG_ERROR("Microtask scope mismatch, cannot close microtask scope.");
+        return napi_set_last_error(env, napi_microtask_scope_mismatch);
+    }
+
+    engine->SetMicrotaskScopeClosed();
+    delete reinterpret_cast<panda::JsiMicrotaskScope*>(scope);
+    return napi_clear_last_error(env);
+}
+
 NAPI_EXTERN napi_status napi_open_escapable_handle_scope(napi_env env, napi_escapable_handle_scope* result)
 {
     CHECK_ENV(env);

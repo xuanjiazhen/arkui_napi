@@ -396,6 +396,10 @@ public:
     void DecreaseCriticalScopeCounter();
     bool HasCriticalScope() const;
 
+    void SetMicrotaskScopeOpen();
+    void SetMicrotaskScopeClosed();
+    bool HasMicrotaskScope() const;
+
     // alias for HasListening
     bool HasListeningCounter();
     void SetCleanEnv(CleanEnv cleanEnv)
@@ -757,6 +761,8 @@ private:
     NAPI_COUNTER_METHOD(DCL_STORAGE_COUNTER)
 #undef DCL_STORAGE_COUNTER
     std::shared_ptr<uint64_t> criticalScopeCounter_ {};
+
+    bool microtaskScopeOpen_ {false};
 
     std::atomic_bool isStopping_ { false };
 
