@@ -296,6 +296,15 @@ if (is_arkui_x) {
   }
 }
 
+# Host-side illegal-API checker entry point. Defined at top level (not inside the
+# is_arkui_x branch) so the label always exists for external references; the tool itself
+# is only built for non-ArkUI-X configurations, so the group is empty there.
+group("checkapi_tools") {
+  if (!is_arkui_x) {
+    deps = [ "tools:checkapi" ]
+  }
+}
+
 if (is_arkui_x) {
   ohos_static_library("ace_napi_test") {
     deps = [ ":ace_napi_static" ]
