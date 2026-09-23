@@ -585,42 +585,50 @@ void ArkIdleMonitor::PostSwitchBackgroundGCTask()
     if (switchBackgroundTimerHandler_ != -1) {
         ffrt_timer_stop(ffrt_qos_user_initiated, switchBackgroundTimerHandler_);
     }
+    using BgGcCtx = std::tuple<ArkIdleMonitor*, int64_t, int64_t, uint32_t, ffrt_timer_cb>;
     auto nowTimestamp = std::chrono::time_point_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now()).time_since_epoch().count();
-    std::tuple<ArkIdleMonitor*, int64_t, int64_t> myTuple = std::make_tuple(this, nowTimestamp, GetTotalIdleDuration());
-    auto* taskData = new std::tuple<ArkIdleMonitor*, int64_t, int64_t>(myTuple);
+    auto* taskData = new BgGcCtx(this, nowTimestamp, GetTotalIdleDuration(), 0, nullptr);
     auto task = [](void* data) {
-        auto* tuple = reinterpret_cast<std::tuple<ArkIdleMonitor*, int64_t, int64_t>*>(data);
+        auto* tuple = static_cast<BgGcCtx*>(data);
         if (tuple == nullptr || std::get<0>(*tuple) == nullptr) {
             delete tuple;
             return;
         }
         auto* monitor = std::get<0>(*tuple);
-        for (uint32_t retry = 0; retry < BACKGROUND_GC_CHECK_COUNT; ++retry) {
-            if (!monitor->IsInBackground()) {
-                HILOG_INFO("ArkIdleMonitor exit BGGCTask loop, app switched to foreground");
-                break;
-            }
+        bool finalize = false;
+        if (!monitor->IsInBackground()) {
+            HILOG_INFO("ArkIdleMonitor exit BGGCTask loop, app switched to foreground");
+            finalize = true;
+        } else {
             bool triggered = monitor->SwitchBackgroundCheckGCTask(std::get<1>(*tuple), std::get<2>(*tuple));
             if (triggered) {
-                break;
-            }
-            HILOG_INFO("ArkIdleMonitor retry BGGCTask, count:%{public}u", retry + 1);
-            if (retry < BACKGROUND_GC_CHECK_COUNT - 1) {
-                std::get<1>(*tuple) = std::chrono::time_point_cast<std::chrono::milliseconds>(
-                    std::chrono::high_resolution_clock::now()).time_since_epoch().count();
-                std::get<2>(*tuple) = monitor->GetTotalIdleDuration();
-                ffrt_usleep(BACKGROUND_GC_CHECK_INTERVAL * 1000); // ms → µs
+                finalize = true;
+            } else {
+                ++std::get<3>(*tuple);
+                HILOG_INFO("ArkIdleMonitor retry BGGCTask, count:%{public}u", std::get<3>(*tuple));
+                if (std::get<3>(*tuple) >= BACKGROUND_GC_CHECK_COUNT) {
+                    finalize = true;
+                }
             }
         }
-        JSNApi::ExecuteTaskpoolShrinkCallback(monitor->inBackground_);
-        monitor->StopIdleMonitorTimerTaskAndPostSleepTask();
-        monitor->ClearIdleStats();
-        monitor->SetDuringBackgroundTask(false);
-        delete tuple;
+        if (finalize) {
+            JSNApi::ExecuteTaskpoolShrinkCallback(monitor->inBackground_);
+            monitor->StopIdleMonitorTimerTaskAndPostSleepTask();
+            monitor->ClearIdleStats();
+            monitor->SetDuringBackgroundTask(false);
+            delete tuple;
+        } else {
+            std::get<1>(*tuple) = std::chrono::time_point_cast<std::chrono::milliseconds>(
+                std::chrono::high_resolution_clock::now()).time_since_epoch().count();
+            std::get<2>(*tuple) = monitor->GetTotalIdleDuration();
+            monitor->switchBackgroundTimerHandler_ = ffrt_timer_start(ffrt_qos_user_initiated,
+                BACKGROUND_GC_CHECK_INTERVAL, data, std::get<4>(*tuple), false);
+        }
     };
+    std::get<4>(*taskData) = task;
     switchBackgroundTimerHandler_ = ffrt_timer_start(ffrt_qos_user_initiated, BACKGROUND_GC_CHECK_INTERVAL,
-                                                     reinterpret_cast<void*>(taskData), task, false);
+                                                     static_cast<void*>(taskData), task, false);
     SetDuringBackgroundTask(true);
 #endif
 }
