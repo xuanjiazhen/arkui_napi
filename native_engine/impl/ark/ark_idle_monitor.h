@@ -300,6 +300,7 @@ private:
     void StopIdleMonitorTimerTaskAndPostSleepTask();
     void CheckShortIdleTask(int64_t timestamp, int idleTime);
     void PostSwitchBackgroundGCTask();
+    static void BackgroundGcTimerCallback(void* data);
     void ReportDataToRSS(bool needFreeze);
     void TryTriggerCompressGCOfProcess(bool isSwitchToBackground);
     void TryTriggerWorkerLocalGC();
