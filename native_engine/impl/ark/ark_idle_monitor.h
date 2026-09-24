@@ -300,7 +300,6 @@ private:
     void StopIdleMonitorTimerTaskAndPostSleepTask();
     void CheckShortIdleTask(int64_t timestamp, int idleTime);
     void PostSwitchBackgroundGCTask();
-    static void BackgroundGcTimerCallback(void* data);
     void ReportDataToRSS(bool needFreeze);
     void TryTriggerCompressGCOfProcess(bool isSwitchToBackground);
     void TryTriggerWorkerLocalGC();
@@ -312,6 +311,7 @@ private:
     };
     WorkerGCResult EvaluateWorkerGC(napi_env workerEnv, bool isForeground);
     void PostWorkerFullGC(napi_env workerEnv, bool notifyFinished);
+    static void BackgroundGcTimerCallback(void* data);
     static uint64_t GetIdleMonitoringInterval();
 
     EcmaVM* mainVM_ {nullptr};
