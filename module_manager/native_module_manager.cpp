@@ -98,7 +98,6 @@ std::mutex g_instanceMutex;
 NativeModuleManager::NativeModuleManager()
 {
     MODULEMNG_HILOG_DEBUG("enter");
-    pthread_mutex_init(&mutex_, nullptr);
     moduleLoadChecker_ = std::make_unique<ModuleLoadChecker>();
 }
 
@@ -155,7 +154,6 @@ NativeModuleManager::~NativeModuleManager()
             delete item.second;
         }
     }
-    pthread_mutex_destroy(&mutex_);
 }
 
 NativeModuleManager* NativeModuleManager::GetInstance()
@@ -299,6 +297,7 @@ std::string NativeModuleManager::GetModuleFileName(const char* moduleName, bool 
     }
     MODULEMNG_HILOG_INFO("moduleName:%{public}s, isApp:%{public}d", moduleName, isAppModule);
 
+    std::lock_guard<std::recursive_mutex> mutexLock(mutex_);
     std::string loadPath;
     std::string name = isAppModule ? (prefix_ + "/" + moduleName) : moduleName;
     char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
@@ -345,6 +344,7 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
     }
 
     MODULEMNG_HILOG_DEBUG("native module name is '%{public}s'", nativeModule->name);
+    std::lock_guard<std::recursive_mutex> mutexLock(mutex_);
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
     const char *nativeModuleName = nativeModule->name == nullptr ? "" : nativeModule->name;
     std::string appName = prefix_ + "/" + nativeModuleName;
@@ -951,7 +951,7 @@ NativeModule* NativeModuleManager::LoadNativeModuleWithErrorInfo(const char* mod
         FindNativeModuleByCache(key.c_str(), nativeModulePath, cacheNativeModule, cacheHeadTailNativeModule, true);
 #endif
     if (nativeModule == nullptr) {
-        (void)pthread_mutex_lock(&mutex_);
+        std::lock_guard<std::recursive_mutex> mutexLock(mutex_);
 #ifndef IOS_PLATFORM
         if (CheckNativeListChanged(cacheHeadTailNativeModule.headNativeModule,
             cacheHeadTailNativeModule.tailNativeModule, cacheHeadTailNativeModule.matchLoadingNativeModule)) {
@@ -992,7 +992,6 @@ NativeModule* NativeModuleManager::LoadNativeModuleWithErrorInfo(const char* mod
 #endif
             g_isLoadingModule = false;
         }
-        (void)pthread_mutex_unlock(&mutex_);
     }
     if (nativeModule != nullptr && nativeModule->apiAllowListChecker == nullptr) {
         MoveApiAllowListCheckerPtr(apiAllowListChecker, nativeModule);

@@ -200,7 +200,7 @@ private:
     std::string loadingModuleKey_;
 
     static std::atomic<NativeModuleManager*> instance_;
-    pthread_mutex_t mutex_;
+    std::recursive_mutex mutex_;
     std::string prefix_;
     bool isAppModule_ = false;
     std::string loadingModuleName_;
