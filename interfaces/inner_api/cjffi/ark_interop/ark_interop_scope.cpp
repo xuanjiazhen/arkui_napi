@@ -121,6 +121,9 @@ bool ARKTS_Scope_::CloseScope(ARKTS_Scope target)
         return false;
     }
     auto parent = const_cast<ARKTS_Scope>(target->parentScope);
+    if (parent == nullptr) {
+        return false;
+    }
     if (parent->parentScope != nullptr) {
         AddToDisposeQueue(target);
         thread.top = parent;
