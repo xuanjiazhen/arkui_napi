@@ -113,6 +113,9 @@ void ARKTS_Scope_::AddToDisposeQueue(ARKTS_Scope scope)
 
 bool ARKTS_Scope_::CloseScope(ARKTS_Scope target)
 {
+    if (target == nullptr) {
+        return false;
+    }
     ThreadScopes& thread = GetThreadScopes(target->currentEnv);
     if (thread.top != target) {
         return false;
