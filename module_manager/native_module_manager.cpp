@@ -297,9 +297,16 @@ std::string NativeModuleManager::GetModuleFileName(const char* moduleName, bool 
     }
     MODULEMNG_HILOG_INFO("moduleName:%{public}s, isApp:%{public}d", moduleName, isAppModule);
 
-    std::lock_guard<std::recursive_mutex> mutexLock(mutex_);
+    // mutex_ is held across the whole dlopen in LoadNativeModuleWithErrorInfo, so only guard the
+    // prefix_ snapshot here (same scoped-guard pattern as appLibPathMapMutex_ below) to avoid
+    // blocking GetModuleFileName for the entire duration of a concurrent module load.
+    std::string prefix;
+    {
+        std::lock_guard<std::recursive_mutex> mutexLock(mutex_);
+        prefix = prefix_;
+    }
     std::string loadPath;
-    std::string name = isAppModule ? (prefix_ + "/" + moduleName) : moduleName;
+    std::string name = isAppModule ? (prefix + "/" + moduleName) : moduleName;
     char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
     const char* pathKey = "default";
     if (!GetNativeModulePath(moduleName, pathKey, "", isAppModule, nativeModulePath, NAPI_PATH_MAX)) {
