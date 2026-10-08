@@ -1611,7 +1611,7 @@ void NativeModuleManager::RegisterByBuffer(const std::string& moduleKey, const u
 
     char *moduleName = strdup(moduleKey.c_str());
     if (moduleName == nullptr) {
-        MODULEMNG_HILOG_ERROR("failed");
+        MODULEMNG_HILOG_ERROR("strdup moduleKey failed, null name node left in cache: %{public}s", moduleKey.c_str());
         return;
     }
     if (tailNativeModule_ == nullptr) {
@@ -1622,7 +1622,7 @@ void NativeModuleManager::RegisterByBuffer(const std::string& moduleKey, const u
     tailNativeModule_->moduleName = moduleName;
     tailNativeModule_->name = strdup(moduleName);
     if (tailNativeModule_->name == nullptr) {
-        MODULEMNG_HILOG_ERROR("failed");
+        MODULEMNG_HILOG_ERROR("strdup name failed, null name node left in cache: %{public}s", moduleName);
         free(moduleName);
         tailNativeModule_->moduleName = nullptr;
         return;
@@ -1698,6 +1698,11 @@ NativeModule* NativeModuleManager::FindNativeModuleByCache(const char* moduleNam
         return cacheHeadTailStruct.matchLoadingNativeModule;
     }
     for (NativeModule* temp = headNativeModule_; temp != nullptr; temp = temp->next) {
+        if (temp->name == nullptr) {
+            MODULEMNG_HILOG_WARN("Null name node in module cache, moduleName: %{public}s, "
+                "this node may be left by a strdup failure branch",
+                temp->moduleName == nullptr ? "null" : temp->moduleName);
+        }
         if ((temp->moduleName && !strcmp(temp->moduleName, moduleName))
             || (temp->name != nullptr && !strcasecmp(temp->name, moduleName))) {
             int label = 0;
