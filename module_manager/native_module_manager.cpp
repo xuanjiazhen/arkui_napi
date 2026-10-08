@@ -344,9 +344,9 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
         return;
     }
 
-    MODULEMNG_HILOG_DEBUG("native module name is '%{public}s'", nativeModule->name);
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
     const char *nativeModuleName = nativeModule->name == nullptr ? "" : nativeModule->name;
+    MODULEMNG_HILOG_DEBUG("native module name is '%{public}s'", nativeModuleName);
     std::string appName = prefix_ + "/" + nativeModuleName;
     std::string tmpName = isAppModule_ ? appName : nativeModuleName;
     if (nativeModule->flags == IS_APP_MODULE_FLAGS) {
@@ -1010,6 +1010,11 @@ bool NativeModuleManager::CheckNativeListChanged(const NativeModule* cacheHeadNa
     std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
     if (!cacheHeadNativeModule || !cacheTailNativeModule || !headNativeModule_ || !tailNativeModule_ ||
         (matchLoadingNativeModule != nullptr)) {
+        return true;
+    }
+    if (cacheHeadNativeModule->name == nullptr || headNativeModule_->name == nullptr ||
+        cacheTailNativeModule->name == nullptr || tailNativeModule_->name == nullptr) {
+        MODULEMNG_HILOG_WARN("Null name node in module list, treat list as changed");
         return true;
     }
     if (strcmp(cacheHeadNativeModule->name, headNativeModule_->name) != 0 ||
