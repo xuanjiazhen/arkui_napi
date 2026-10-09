@@ -760,6 +760,10 @@ ArkIdleMonitor::~ArkIdleMonitor()
         ffrt_timer_stop(ffrt_qos_user_initiated, timerHandlerQueue_.front());
         timerHandlerQueue_.pop();
     }
+    if (switchBackgroundTimerHandler_ != -1) {
+        ffrt_timer_stop(ffrt_qos_user_initiated, switchBackgroundTimerHandler_);
+        switchBackgroundTimerHandler_ = -1;
+    }
 #endif
 #if defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
     if (CrossPlatformBgGCThreadStarted_) {
