@@ -394,6 +394,8 @@ NAPI_EXTERN napi_status napi_create_threadsafe_function(napi_env env, napi_value
     if (ret) {
         *result = reinterpret_cast<napi_threadsafe_function>(safeAsyncWork);
     } else {
+        delete safeAsyncWork;
+        safeAsyncWork = nullptr;
         return napi_status::napi_generic_failure;
     }
 
