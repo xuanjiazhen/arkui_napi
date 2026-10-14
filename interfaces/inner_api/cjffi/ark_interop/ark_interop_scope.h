@@ -18,6 +18,7 @@
 
 #include <list>
 #include <map>
+#include <atomic>
 
 #include "ark_interop_napi.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -58,7 +59,7 @@ private:
     std::optional<panda::LocalScope> scope;
 
     static std::mutex threadMutex;
-    static std::map<ARKTS_Env, ThreadScopes> threads;
+    static std::map<ARKTS_Env, std::atomic<ThreadScopes*>> threads;
 };
 
 #endif //NAPI_ARK_INTEROP_SCOPE_H

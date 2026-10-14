@@ -24,14 +24,18 @@ constexpr bool USE_HWASAN = false;
 #endif
 
 std::mutex ARKTS_Scope_::threadMutex;
-std::map<ARKTS_Env, ARKTS_Scope_::ThreadScopes> ARKTS_Scope_::threads;
+std::map<ARKTS_Env, std::atomic<ARKTS_Scope_::ThreadScopes*>> ARKTS_Scope_::threads;
 
 ARKTS_Scope_::ThreadScopes& ARKTS_Scope_::GetThreadScopes(ARKTS_Env env)
 {
     ThreadScopes* thread;
     {
         std::lock_guard lock(threadMutex);
-        thread = &threads[env];
+        thread = threads[env];
+        if (!thread) {
+            thread = new ThreadScopes();
+            threads[env] = thread;
+        }
     }
     if (!thread->top) {
         thread->top = new ARKTS_Scope_(env, nullptr);
@@ -46,7 +50,7 @@ ARKTS_Scope_::ThreadScopes* ARKTS_Scope_::GetThreadOpt(ARKTS_Env env)
         std::lock_guard lock(threadMutex);
         auto exist = threads.find(env);
         if (exist != threads.end()) {
-            thread = &exist->second;
+            thread = exist->second;
         }
     }
     return thread;
@@ -61,7 +65,12 @@ ARKTS_Scope_::ARKTS_Scope_(ARKTS_Env env, ARKTS_Scope_* parent): currentEnv(env)
 void ARKTS_Scope_::DisposeEnv(ARKTS_Env env)
 {
     std::lock_guard lock(threadMutex);
-    threads.erase(env);
+    auto exist = threads.find(env);
+    if (exist != threads.end()) {
+        ThreadScopes* thread= exist->second;
+        delete thread;
+        threads.erase(exist);
+    }
 }
 
 ARKTS_Scope_::ThreadScopes::~ThreadScopes()
