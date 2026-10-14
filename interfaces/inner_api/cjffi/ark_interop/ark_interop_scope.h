@@ -29,7 +29,7 @@ class EcmaVM;
 
 struct ARKTS_Scope_ {
 public:
-    static void DisposeEnv(ARKTS_Env env);
+    EXPORT static void DisposeEnv(ARKTS_Env env);
     static ARKTS_Scope NewScope(ARKTS_Env env);
     static bool CloseScope(ARKTS_Scope target);
     static ARKTS_Value NormalPointer(void* pointer);

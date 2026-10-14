@@ -15,6 +15,8 @@
 
 #include "test_ark_interop_common.h"
 
+#include "ark_interop_scope.h"
+
 using namespace testing;
 using namespace testing::ext;
 
@@ -272,6 +274,8 @@ TEST_F(ArkInteropTest, ScopeMT)
             auto scope = ARKTS_OpenScope(env);
             EXPECT_TRUE(scope);
             ARKTS_CloseScope(env, scope);
+            // remove env from table, in case of the EcmaVM malloced at the same place.
+            ARKTS_Scope_::DisposeEnv(env);
             panda::JSNApi::DestroyJSVM(vm);
         });
     }
