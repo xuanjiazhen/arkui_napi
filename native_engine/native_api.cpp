@@ -3523,7 +3523,7 @@ NAPI_EXTERN napi_status napi_load_module_with_info(napi_env env,
 }
 
 // Memory management
-NAPI_INNER_EXTERN napi_status napi_adjust_external_memory(
+NAPI_EXTERN napi_status napi_adjust_external_memory(
     napi_env env, int64_t change_in_bytes, int64_t* adjusted_value)
 {
     CHECK_ENV(env);
