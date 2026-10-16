@@ -324,6 +324,63 @@ std::string NativeModuleManager::GetModuleFileName(const char* moduleName, bool 
     return loadPath;
 }
 
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
+// dlopen_preload is provided by musl (see third_party/musl/include/linux/dlfcn_ext.h:96-101) and exposed via the sysroot.
+// Declared as a weak reference to avoid a hard symbol dependency on build targets that do not provide it.
+extern "C" int dlopen_preload(const char *file, int mode) __attribute__((weak));
+#endif
+
+std::vector<std::string> NativeModuleManager::GetLoadedSystemNativeModules() const
+{
+    std::vector<std::string> result;
+    std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
+    for (const NativeModule* cur = headNativeModule_; cur != nullptr; cur = cur->next) {
+        // Only return fully loaded system modules (isAppModule=false); app modules are excluded
+        if (!cur->isAppModule && cur->moduleLoaded && cur->name != nullptr && cur->name[0] != '\0') {
+            result.emplace_back(cur->name);
+        }
+    }
+    return result;
+}
+
+int NativeModuleManager::PreloadSystemNativeModule(const char* moduleName)
+{
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
+    if (moduleName == nullptr || dlopen_preload == nullptr) {
+        MODULEMNG_HILOG_ERROR("null moduleName or dlopen_preload unavailable");
+        return -1;
+    }
+    // Resolve the system SO path on the napi side (reuse existing path resolution, without loading)
+    char nativeModulePath[NATIVE_PATH_NUMBER][NAPI_PATH_MAX];
+    nativeModulePath[0][0] = 0;
+    if (!GetNativeModulePath(moduleName, "default", "", false, nativeModulePath, NAPI_PATH_MAX)) {
+        MODULEMNG_HILOG_ERROR("get native module path failed: %{public}s", moduleName);
+        return -1;
+    }
+    const char* soPath = nativeModulePath[0];
+    if (soPath[0] == 0) {
+        MODULEMNG_HILOG_ERROR("empty system module path: %{public}s", moduleName);
+        return -1;
+    }
+    // dlopen_preload only does load/link: no constructors, no module registration (anti self-reinforcement)
+    errno = 0;
+    int ret = dlopen_preload(soPath, RTLD_NOW | RTLD_LOCAL);
+    if (ret != 0) {
+        int err = errno;
+        MODULEMNG_HILOG_WARN("dlopen_preload failed: %{public}s, errno:%{public}d", soPath, err);
+        return -1;
+    }
+    MODULEMNG_HILOG_INFO("preload system module done: %{public}s", moduleName);
+    return 0;
+#else
+    (void)moduleName;
+    return -1;
+#endif
+}
+
+
 void NativeModuleManager::SetLoadingNativeModuleKey(const char *moduleName)
 {
     if (moduleName == nullptr) {

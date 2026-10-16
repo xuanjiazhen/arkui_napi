@@ -71,6 +71,44 @@ void ModuleManagerTest::InitNativeModule(NativeModule* nativeModule, std::string
     nativeModule->name = strdup(moduleName.c_str());
 }
 
+/**
+ * @tc.number: GetLoadedSystemNativeModules_001
+ * @tc.desc: AC-8: only loaded system module names are returned; app modules are excluded.
+ *           (private members are exposed via mock_native_module_manager.h's private-public toggle)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ModuleManagerTest, GetLoadedSystemNativeModules_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ModuleManagerTest, GetLoadedSystemNativeModules_001 starts";
+
+    NativeModuleManager* mgr = NativeModuleManager::GetInstance();
+    // reset the module list to isolate this test
+    mgr->headNativeModule_ = nullptr;
+    mgr->tailNativeModule_ = nullptr;
+
+    NativeModule sysMod;
+    sysMod.name = strdup("sysModuleA");
+    mgr->isAppModule_ = false;
+    mgr->Register(&sysMod);
+
+    NativeModule appMod;
+    appMod.name = strdup("appModuleA");
+    mgr->isAppModule_ = true;
+    mgr->Register(&appMod);
+    mgr->isAppModule_ = false;
+
+    std::string appNodeName = mgr->prefix_ + "/" + std::string("appModuleA");
+    auto names = mgr->GetLoadedSystemNativeModules();
+    // the system module is returned by name
+    EXPECT_NE(std::find(names.begin(), names.end(), std::string("sysModuleA")), names.end());
+    // the app module (registered with isAppModule=true) is not returned
+    EXPECT_EQ(std::find(names.begin(), names.end(), appNodeName), names.end());
+
+    mgr->headNativeModule_ = nullptr;
+    mgr->tailNativeModule_ = nullptr;
+    GTEST_LOG_(INFO) << "ModuleManagerTest, GetLoadedSystemNativeModules_001 ends";
+}
+
 constexpr char MODULE_NS[] = "moduleNs_";
 
 /*

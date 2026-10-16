@@ -100,6 +100,23 @@ public:
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);
 
     /**
+     * @brief Enumerate names of system native modules that are already loaded.
+     * Only system modules (isAppModule=false) are returned; neither isAppModule
+     * nor the SO file path is exposed to the caller. Returns an empty vector
+     * when no system module has been loaded.
+     */
+    std::vector<std::string> GetLoadedSystemNativeModules() const;
+
+    /**
+     * @brief Preload a system native module via dlopen_preload (load/link only,
+     * no constructors and no module registration). The system SO path is
+     * resolved internally; the caller only passes the module name.
+     * @param moduleName the system module name
+     * @return 0 on success, -1 on failure
+     */
+    int PreloadSystemNativeModule(const char* moduleName);
+
+    /**
      * @brief Set the path for searching napi dynamic libraries, only for the previewer.
      *
      * @param previewSearchPath the path for searching napi dynamic libraries
@@ -194,7 +211,7 @@ private:
     std::map<std::string, Dl_namespace> nsMap_;
 #endif
 
-    std::mutex nativeModuleListMutex_;
+    mutable std::mutex nativeModuleListMutex_;
     NativeModule* headNativeModule_ = nullptr;
     NativeModule* tailNativeModule_ = nullptr;
     std::string loadingModuleKey_;
