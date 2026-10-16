@@ -54,14 +54,22 @@ CheckErrorCode CollectModuleNames(
 );
 
 /**
- * @brief Writes the result json: IllegalApis, plus DeprecatedModules and UnknownModules
- * sections when non-empty (deprecated entries never mix into IllegalApis).
+ * @brief Writes the result json: IllegalApis, plus the DeprecatedModules section when
+ * non-empty (deprecated entries never mix into IllegalApis).
  */
 CheckErrorCode SaveIllegalApiToJson(
     const std::string& outputFilePath,
     const std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>& illegalMap,
-    const std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>& deprecatedMap = {},
-    const std::vector<std::string>& unknownModules = {}
+    const std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>& deprecatedMap = {}
+);
+
+/**
+ * @brief Writes the unknown-module json: the UnknownModules array (scan-dir .so files
+ * with no whitelist registration). Written to a dedicated file next to the result json.
+ */
+CheckErrorCode SaveUnknownModulesToJson(
+    const std::string& outputFilePath,
+    const std::vector<std::string>& unknownModules
 );
 
 }
