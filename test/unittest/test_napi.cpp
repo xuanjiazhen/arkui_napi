@@ -38,6 +38,10 @@
 #include "test_common.h"
 #include "utils/log.h"
 
+#if !defined(PREVIEW)
+#include "ecmascript/ecma_vm.h"
+#endif
+
 static constexpr int MAX_BUFFER_SIZE = 2;
 static constexpr int BUFFER_SIZE_FIVE = 5;
 static constexpr int BUFFER_SIZE_TEN = 10;
@@ -3107,6 +3111,55 @@ HWTEST_F(NapiBasicTest, DestroyRuntimeTest001, testing::ext::TestSize.Level1)
     status = napi_destroy_runtime(newEnv);
     ASSERT_EQ(status, napi_ok);
 }
+
+#if !defined(PREVIEW)
+/**
+ * @tc.name: DestroyRuntimeTest002
+ * @tc.desc: Test destroying a runtime removes its worker VM from the host VM.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, DestroyRuntimeTest002, testing::ext::TestSize.Level1)
+{
+    NativeEngineProxy host;
+    auto hostVM = host->GetEcmaVm();
+    auto workerThreadId = JSNApi::GetCurrentThreadId();
+    for (int i = 0; i < INT_TWO; i++) {
+        napi_env newEnv = nullptr;
+        ASSERT_EQ(napi_create_runtime(host, &newEnv), napi_ok);
+        ASSERT_NE(newEnv, nullptr);
+        auto workerEngine = reinterpret_cast<NativeEngine*>(newEnv);
+        EXPECT_EQ(workerEngine->GetHostEngine(), *host);
+        auto workers = hostVM->GetWorkList();
+        EXPECT_EQ(workers.size(), 1U);
+        EXPECT_EQ(workers[workerThreadId], workerEngine->GetEcmaVm());
+
+        ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
+        EXPECT_TRUE(hostVM->GetWorkList().empty());
+    }
+}
+
+/**
+ * @tc.name: DestroyRuntimeTest003
+ * @tc.desc: Test destroying a limited runtime removes its worker VM from the host VM.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, DestroyRuntimeTest003, testing::ext::TestSize.Level1)
+{
+    NativeEngineProxy host;
+    auto hostVM = host->GetEcmaVm();
+    napi_env newEnv = nullptr;
+    ASSERT_EQ(napi_create_limit_runtime(host, &newEnv), napi_ok);
+    ASSERT_NE(newEnv, nullptr);
+    auto workerEngine = reinterpret_cast<NativeEngine*>(newEnv);
+    EXPECT_EQ(workerEngine->GetHostEngine(), *host);
+    auto workers = hostVM->GetWorkList();
+    EXPECT_EQ(workers.size(), 1U);
+    EXPECT_EQ(workers[JSNApi::GetCurrentThreadId()], workerEngine->GetEcmaVm());
+
+    ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
+    EXPECT_TRUE(hostVM->GetWorkList().empty());
+}
+#endif
 
 /**
  * @tc.name: CreateLimitRuntimeTest001
