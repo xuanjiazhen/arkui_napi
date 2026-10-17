@@ -1304,6 +1304,23 @@ HWTEST_F(NapiContextTest, NapiAsyncWorkWithContextEnv004, testing::ext::TestSize
 }
 
 /**
+ * @tc.name: NapiAsyncWorkWithContextEnv005
+ * @tc.desc: Test interface of napi_queue_async_work_with_qos
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiContextTest, NapiAsyncWorkWithContextEnv005, testing::ext::TestSize.Level1)
+{
+    UVLoopRunner runner(engine_);
+    NativeEngineProxy contextEngine(engine_);
+    ContextAsyncWorkTestData* work = new ContextAsyncWorkTestData(contextEngine, GetTestCaseName());
+    ASSERT_CHECK_CALL(work->Queue(napi_qos_user_interactive));
+    runner.Run();
+    ASSERT_TRUE(work->executeSucc_);
+    ASSERT_TRUE(work->completeSucc_);
+    delete work;
+}
+
+/**
  * @tc.name: NapiCreateTSFNWithContextEnv005
  * @tc.desc: Test interface of napi_queue_async_work_with_qos
  * @tc.type: FUNC

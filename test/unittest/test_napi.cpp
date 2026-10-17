@@ -15545,6 +15545,16 @@ HWTEST_F(NapiBasicTest, NapiQueueAsyncWorkWithQueueTest009, testing::ext::TestSi
     ASSERT_EQ(res, napi_ok);
 }
 
+/**
+ * @tc.name: NapiQueueAsyncWorkWithQueueTest010
+ * @tc.desc: Test interface of napi_queue_async_work_with_queue
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiBasicTest, NapiQueueAsyncWorkWithQueueTest010, testing::ext::TestSize.Level1)
+{
+    TestQueueAsyncWorkWithQueue(engine_, napi_qos_user_interactive);
+}
+
 static napi_value Func(napi_env env, napi_callback_info info)
 {
     napi_value num = nullptr;
