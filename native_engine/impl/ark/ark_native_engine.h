@@ -501,6 +501,15 @@ private:
         NativeModule* module,
         Local<JSValueRef> exports,
         std::string &errInfo);
+    // Shared-sendable loading: claims the process-level shared root from
+    // NativeSendableManager. On the first load in the process this runs the register
+    // callback once and publishes its sendable return value as the root; later loads
+    // return the cached root. Returns the root as a Local in this VM, or undefined on
+    // failure (null or non-sendable callback return, or a previously failed init).
+    Local<JSValueRef> LoadSharedSendableModule(
+        NativeModuleManager* moduleManager,
+        NativeModule* module,
+        const std::string& strModuleName);
     static Local<JSValueRef> RequireNapi(JsiRuntimeCallInfo *info);
     static Local<JSValueRef> RequireNapiForCtxEnv(JsiRuntimeCallInfo *info);
     static Local<JSValueRef> RequireInternal(JsiRuntimeCallInfo *info);
