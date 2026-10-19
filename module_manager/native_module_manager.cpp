@@ -40,6 +40,7 @@
 #endif
 #include "module_load_checker.h"
 #include "native_engine/native_engine.h"
+#include "native_sendable_manager.h"
 #include "securec.h"
 #include "utils/log.h"
 
@@ -100,6 +101,12 @@ NativeModuleManager::NativeModuleManager()
     MODULEMNG_HILOG_DEBUG("enter");
     pthread_mutex_init(&mutex_, nullptr);
     moduleLoadChecker_ = std::make_unique<ModuleLoadChecker>();
+    sendableManager_ = std::make_unique<NativeSendableManager>();
+}
+
+NativeSendableManager* NativeModuleManager::GetNativeSendableManager()
+{
+    return sendableManager_.get();
 }
 
 NativeModuleManager::~NativeModuleManager()
@@ -373,6 +380,7 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
         tailNativeModule_->moduleName = nullptr;  /* we update moduleName later */
         tailNativeModule_->refCount = nativeModule->refCount;
         tailNativeModule_->registerCallback = nativeModule->registerCallback;
+        tailNativeModule_->isSharedSendable = nativeModule->isSharedSendable;
         tailNativeModule_->getJSCode = nativeModule->getJSCode;
         tailNativeModule_->getABCCode = nativeModule->getABCCode;
         tailNativeModule_->next = nullptr;
@@ -395,6 +403,7 @@ void NativeModuleManager::Register(NativeModule* nativeModule)
         headNativeModule_->name = moduleName;
         headNativeModule_->refCount = nativeModule->refCount;
         headNativeModule_->registerCallback = nativeModule->registerCallback;
+        headNativeModule_->isSharedSendable = nativeModule->isSharedSendable;
         headNativeModule_->getJSCode = nativeModule->getJSCode;
         headNativeModule_->getABCCode = nativeModule->getABCCode;
         headNativeModule_->moduleLoaded = true;

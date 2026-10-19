@@ -501,6 +501,10 @@ private:
         NativeModule* module,
         Local<JSValueRef> exports,
         std::string &errInfo);
+    Local<JSValueRef> LoadSharedSendableModule(
+        NativeModuleManager* moduleManager,
+        NativeModule* module,
+        const std::string& strModuleName);
     static Local<JSValueRef> RequireNapi(JsiRuntimeCallInfo *info);
     static Local<JSValueRef> RequireNapiForCtxEnv(JsiRuntimeCallInfo *info);
     static Local<JSValueRef> RequireInternal(JsiRuntimeCallInfo *info);

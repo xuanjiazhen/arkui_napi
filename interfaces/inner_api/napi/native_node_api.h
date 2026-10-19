@@ -62,6 +62,7 @@ NAPI_EXTERN napi_status napi_create_string_utf8_with_replacement(napi_env env,
                                                                  size_t length, napi_value* result);
 NAPI_EXTERN napi_status napi_create_limit_runtime(napi_env env, napi_env* result_env);
 NAPI_EXTERN void napi_module_with_js_register(napi_module_with_js* mod);
+NAPI_EXTERN void napi_shared_module_register(napi_module* mod);
 NAPI_EXTERN napi_status napi_is_callable(napi_env env, napi_value value, bool* result);
 NAPI_EXTERN napi_status napi_create_runtime(napi_env env, napi_env* result_env);
 NAPI_EXTERN napi_status napi_destroy_runtime(napi_env env);

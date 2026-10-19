@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -49,6 +50,8 @@ class NativeValue;
 
 class NativeEngine;
 
+class NativeSendableManager;
+
 typedef napi_value (*RegisterCallback)(napi_env, napi_value);
 
 typedef void (*GetJSCodeCallback)(const char** buf, int* bufLen);
@@ -72,6 +75,7 @@ struct NativeModule {
     int32_t jsCodeLen = 0;
     bool moduleLoaded = false;
     bool isAppModule = false;
+    bool isSharedSendable = false;
     std::unique_ptr<ApiAllowListChecker> apiAllowListChecker = nullptr;
 };
 
@@ -97,6 +101,7 @@ public:
         std::string& errInfo, bool internal, const char* relativePath, std::string& loadErrInfo);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     bool UnloadNativeModule(const std::string& moduleKey);
+    NativeSendableManager* GetNativeSendableManager();
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);
 
     /**
@@ -218,6 +223,9 @@ private:
     std::map<std::string, char*> appLibPathMap_;
     std::string previewSearchPath_;
     std::unique_ptr<ModuleLoadChecker> moduleLoadChecker_ = nullptr;
+    // No "= nullptr" initializer: the default member initializer would instantiate the
+    // unique_ptr deleter (needs the complete type) in every TU that includes this header.
+    std::unique_ptr<NativeSendableManager> sendableManager_;
 };
 
 #endif /* FOUNDATION_ACE_NAPI_MODULE_MANAGER_NATIVE_MODULE_MANAGER_H */

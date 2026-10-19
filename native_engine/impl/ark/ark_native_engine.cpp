@@ -28,6 +28,7 @@
 #include "ark_native_reference.h"
 #include "ark_hybrid_native_reference.h"
 #include "ark_native_timer.h"
+#include "module_manager/native_sendable_manager.h"
 #include "native_engine/native_utils.h"
 #include "native_sendable.h"
 #include "cj_support.h"
@@ -846,6 +847,47 @@ int ArkNativeEngine::CheckAndGetModule(
 #endif
 }
 
+Local<JSValueRef> ArkNativeEngine::LoadSharedSendableModule(
+    NativeModuleManager* moduleManager,
+    NativeModule* module,
+    const std::string& strModuleName)
+{
+    if (module->registerCallback == nullptr) {
+        HILOG_ERROR("shared sendable module has no register callback, moduleName:%{public}s",
+            strModuleName.c_str());
+        return JSValueRef::Undefined(vm_);
+    }
+    NativeSendableManager* sendableManager = moduleManager->GetNativeSendableManager();
+    Local<JSValueRef> root;
+    NativeSendableManager::SharedRootResult result =
+        sendableManager->GetOrWaitSharedRoot(vm_, module, &root);
+    if (result == NativeSendableManager::SharedRootResult::FAILED) {
+        HILOG_ERROR("shared sendable module init failed before, moduleName:%{public}s",
+            strModuleName.c_str());
+        return JSValueRef::Undefined(vm_);
+    }
+    if (result == NativeSendableManager::SharedRootResult::START_INIT) {
+        Local<JSValueRef> undefined = JSValueRef::Undefined(vm_);
+        napi_value cbResult = module->registerCallback(reinterpret_cast<napi_env>(this),
+                                                       JsValueFromLocalValue(undefined));
+        if (cbResult == nullptr) {
+            HILOG_ERROR("shared sendable module callback returned null, moduleName:%{public}s",
+                strModuleName.c_str());
+            sendableManager->MarkInitFailed(module);
+            return JSValueRef::Undefined(vm_);
+        }
+        root = LocalValueFromJsValue(cbResult);
+        if (root->IsUndefined() || !root->IsSendable(vm_)) {
+            HILOG_ERROR("shared sendable module callback returned no sendable root, moduleName:%{public}s",
+                strModuleName.c_str());
+            sendableManager->MarkInitFailed(module);
+            return JSValueRef::Undefined(vm_);
+        }
+        sendableManager->PublishSharedRoot(module, vm_, root);
+    }
+    return root;
+}
+
 Local<JSValueRef> ArkNativeEngine::LoadNativeModule(
     NativeModuleManager* moduleManager,
     Local<StringRef> &moduleName,
@@ -864,6 +906,21 @@ Local<JSValueRef> ArkNativeEngine::LoadNativeModule(
     std::string strModuleName = moduleName->ToString(vm_);
     moduleManager->SetNativeEngine(strModuleName, this);
     MoudleNameLocker nameLocker(strModuleName);
+
+    if (module->isSharedSendable) {
+        exports = LoadSharedSendableModule(moduleManager, module, strModuleName);
+        if (exports->IsUndefined()) {
+            return scope.Escape(exports);
+        }
+        panda::Local<panda::ObjectRef> sharedRoot(exports);
+        panda::Local<panda::ObjectRef> exportCopy = panda::ObjectRef::New(vm_);
+        panda::ecmascript::ApiCheckContext context{moduleManager, vm_, moduleName, sharedRoot, scope};
+        if (CheckArkApiAllowList(module, context, exportCopy)) {
+            return scope.Escape(exportCopy);
+        }
+        loadedModules_[module] = Global<JSValueRef>(vm_, exports);
+        return scope.Escape(exports);
+    }
 
     if (module->jsCode == nullptr && module->getABCCode != nullptr) {
         module->getABCCode(&module->jsCode, &module->jsCodeLen);
@@ -1081,6 +1138,11 @@ Local<JSValueRef> ArkNativeEngine::RequireInternal(JsiRuntimeCallInfo *info)
             } else {
                 HILOG_ERROR("requireInternal Init function is nullptr.");
             }
+            return scope.Escape(exports);
+        }
+        if (module->isSharedSendable) {
+            HILOG_ERROR("shared sendable module is not supported by requireInternal, moduleName:%{public}s",
+                moduleName->ToString(ecmaVm).c_str());
             return scope.Escape(exports);
         }
 
