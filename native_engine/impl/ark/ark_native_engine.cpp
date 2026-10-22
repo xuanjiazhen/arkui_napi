@@ -2852,6 +2852,17 @@ bool ArkNativeEngine::EnableLocalHandleDetection()
     return true;
 }
 
+void ArkNativeEngine::HintGC(uint32_t degree)
+{
+    const EcmaVM* vm = GetEcmaVm();
+    if (vm == nullptr) {
+        HILOG_ERROR("HintGC: vm is null");
+        return;
+    }
+    
+    DFXJSNApi::HintGCByIncrement(vm, degree);
+}
+
 void ArkNativeEngine::GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();

@@ -309,6 +309,7 @@ public:
     virtual int64_t GetDetectionInterval() = 0;
     virtual std::vector<HeapMemoryInfo> GetAllVMHeapMemoryInfo() = 0;
     virtual bool EnableLocalHandleDetection() = 0;
+    virtual void HintGC(uint32_t degree) = 0;
     virtual void GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr) = 0;
     virtual void GetJsonExtraInfoForCrash(napi_env env, std::string &jsonStr, uint32_t &position) = 0;
     virtual void SerializeJSError(napi_env env, napi_value object,
