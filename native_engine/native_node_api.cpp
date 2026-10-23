@@ -39,6 +39,8 @@ NAPI_EXTERN void napi_module_register(napi_module* mod)
         return;
     }
 
+    HILOG_INFO("napi_module_register: registering module '%{public}s'", mod->nm_modname);
+
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
     NativeModule module;
 
@@ -57,6 +59,8 @@ NAPI_EXTERN void napi_module_with_js_register(napi_module_with_js* mod)
         HILOG_ERROR("mod is nullptr");
         return;
     }
+
+    HILOG_INFO("napi_module_with_js_register: registering module '%{public}s'", mod->nm_modname);
 
     NativeModuleManager* moduleManager = NativeModuleManager::GetInstance();
     NativeModule module;
