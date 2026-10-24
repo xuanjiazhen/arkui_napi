@@ -252,8 +252,8 @@ bool NativeModuleManager::RemoveNativeModule(const std::string& moduleKey)
 bool NativeModuleManager::UnloadNativeModule(const std::string& moduleKey)
 {
     MODULEMNG_HILOG_DEBUG("module:'%{public}s'", moduleKey.c_str());
-    if (IsSharedSoPinned(moduleKey)) {
-        MODULEMNG_HILOG_INFO("module:'%{public}s' pinned by shared root, skip unload", moduleKey.c_str());
+    if (IsSharedModule(moduleKey)) {
+        MODULEMNG_HILOG_INFO("module:'%{public}s' is shared, skip unload", moduleKey.c_str());
         return true;
     }
     LIBHANDLE handle = GetNativeModuleHandle(moduleKey);
@@ -270,16 +270,16 @@ bool NativeModuleManager::UnloadNativeModule(const std::string& moduleKey)
     return UnloadModuleLibrary(handle);
 }
 
-void NativeModuleManager::MarkSharedSoPinned(const std::string& moduleKey)
+bool NativeModuleManager::IsSharedModule(const std::string& moduleKey)
 {
-    std::lock_guard<std::mutex> lock(sharedSoPinMutex_);
-    pinnedSharedSo_.insert(moduleKey);
-}
-
-bool NativeModuleManager::IsSharedSoPinned(const std::string& moduleKey)
-{
-    std::lock_guard<std::mutex> lock(sharedSoPinMutex_);
-    return pinnedSharedSo_.find(moduleKey) != pinnedSharedSo_.end();
+    std::lock_guard<std::mutex> lock(nativeModuleListMutex_);
+    for (NativeModule* curr = headNativeModule_; curr != nullptr; curr = curr->next) {
+        if ((curr->moduleName && !strcasecmp(curr->moduleName, moduleKey.c_str()))
+            || (curr->name && !strcasecmp(curr->name, moduleKey.c_str()))) {
+            return curr->shared != 0;
+        }
+    }
+    return false;
 }
 
 std::string NativeModuleManager::GetModuleFileName(const char* moduleName, bool isAppModule)

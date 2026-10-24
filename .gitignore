@@ -1,0 +1,5 @@
+# ODK bridge workspaces
+openspec/
+docs/superpowers/
+matspec/
+.matspec-cli/
