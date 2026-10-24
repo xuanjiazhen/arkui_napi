@@ -16,17 +16,13 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 
-#include <memory>
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
 #include <sys/wait.h>
 #include <sys/types.h>
 #endif
 #include <iostream>
 #include <map>
-#include <memory>
 #include <mutex>
-#include <atomic>
-#include <condition_variable>
 #include <regex>
 #include <thread>
 #include <unistd.h>
@@ -160,14 +156,6 @@ public:
 
 private:
     NapiAppStateCallback callback_ {nullptr};
-};
-
-struct SharedRootEntry {
-    std::unique_ptr<panda::SendableGlobal<JSValueRef>> root;
-    std::mutex mtx;
-    std::condition_variable cv;
-    std::atomic<bool> initializing {false};
-    std::atomic<bool> errored {false};
 };
 
 class NAPI_EXPORT ArkNativeEngine : public NativeEngine {
@@ -570,9 +558,8 @@ private:
     NativeReference* promiseRejectCallbackRef_ { nullptr };
     NativeReference* checkCallbackRef_ { nullptr };
     std::map<NativeModule*, panda::Global<panda::JSValueRef>> loadedModules_ {};
-    static std::mutex sharedRootIndexMutex_;
-    static std::map<std::string, SharedRootEntry> sharedRootMap_;
-    SharedRootEntry& GetOrCreateSharedRootEntry(const std::string& key);
+    static std::mutex sharedRootMutex_;
+    static std::map<NativeModule*, panda::SendableGlobal<JSValueRef>> sharedRootMap_;
     static PermissionCheckCallback permissionCheckCallback_;
     NapiUncaughtExceptionCallback napiUncaughtExceptionCallback_ { nullptr };
     NapiAllPromiseRejectCallback allPromiseRejectCallback_ {nullptr};

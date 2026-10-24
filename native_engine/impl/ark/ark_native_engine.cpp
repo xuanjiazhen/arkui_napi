@@ -133,8 +133,8 @@ int ArkNativeEngine::napiApiTraceEnabled {0};
 bool ArkNativeEngine::napiProfilerParamReaded {false};
 PermissionCheckCallback ArkNativeEngine::permissionCheckCallback_ {nullptr};
 std::atomic<NapiModuleValidateCallback> ArkNativeEngine::moduleValidateCallback_ {nullptr};
-std::mutex ArkNativeEngine::sharedRootIndexMutex_;
-std::map<std::string, SharedRootEntry> ArkNativeEngine::sharedRootMap_;
+std::mutex ArkNativeEngine::sharedRootMutex_;
+std::map<NativeModule*, panda::SendableGlobal<JSValueRef>> ArkNativeEngine::sharedRootMap_;
 #if defined(PREVIEW)
 bool ArkNativeEngine::enableFileOperation_ {false};
 #endif
@@ -842,13 +842,6 @@ bool ArkNativeEngine::IsSharedModule(NativeModule* module) const
     return module != nullptr && module->shared != 0;
 }
 
-SharedRootEntry& ArkNativeEngine::GetOrCreateSharedRootEntry(const std::string& key)
-{
-    std::lock_guard<std::mutex> lock(sharedRootIndexMutex_);
-    auto result = sharedRootMap_.try_emplace(key);
-    return result.first->second;
-}
-
 Local<JSValueRef> ArkNativeEngine::CreateSendableRoot(NativeModule* module)
 {
     if (module == nullptr || module->registerCallback == nullptr) {
@@ -873,45 +866,18 @@ Local<JSValueRef> ArkNativeEngine::CreateSendableRoot(NativeModule* module)
 Local<JSValueRef> ArkNativeEngine::LoadSharedNativeModule(
     NativeModuleManager* moduleManager, NativeModule* module, const std::string& key)
 {
-    SharedRootEntry& entry = GetOrCreateSharedRootEntry(key);
-
-    {
-        std::unique_lock<std::mutex> lock(entry.mtx);
-        if (entry.root) {
-            return entry.root->ToLocal(vm_);
-        }
-        while (entry.initializing.load()) {
-            entry.cv.wait(lock);
-        }
-        if (entry.root) {
-            return entry.root->ToLocal(vm_);
-        }
-        if (entry.errored.load()) {
-            HILOG_ERROR("shared module %{public}s previously errored", key.c_str());
-            return JSValueRef::Undefined(vm_);
-        }
-        entry.initializing.store(true);
+    std::lock_guard<std::mutex> lock(sharedRootMutex_);
+    auto it = sharedRootMap_.find(module);
+    if (it != sharedRootMap_.end()) {
+        return it->second.ToLocal(vm_);
     }
-
-    Local<JSValueRef> root = CreateSendableRoot(module);
-    bool ok = !root.IsEmpty() && root->IsJSShared(vm_);
-
-    {
-        std::unique_lock<std::mutex> lock(entry.mtx);
-        if (ok) {
-            entry.root = std::make_unique<panda::SendableGlobal<JSValueRef>>(vm_, root);
-            moduleManager->MarkSharedSoPinned(key);
-        } else {
-            entry.errored.store(true);
-            HILOG_ERROR("shared module %{public}s init failed", key.c_str());
-        }
-        entry.initializing.store(false);
-        entry.cv.notify_all();
+    Local<JSValueRef> newRoot = CreateSendableRoot(module);
+    bool ok = !newRoot.IsEmpty() && newRoot->IsJSShared(vm_);
+    if (ok) {
+        auto result = sharedRootMap_.try_emplace(module, vm_, newRoot);
+        return result.first->second.ToLocal(vm_);
     }
-
-    if (ok && entry.root) {
-        return entry.root->ToLocal(vm_);
-    }
+    HILOG_ERROR("shared module %{public}s init failed", key.c_str());
     return JSValueRef::Undefined(vm_);
 }
 
