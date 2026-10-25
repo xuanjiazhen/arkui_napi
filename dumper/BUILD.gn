@@ -1,0 +1,37 @@
+import("//build/ohos.gni")
+
+# Single executable — merges hook stubs + dumper into one binary.
+# With -Wl,--export-dynamic, the executable's napi symbols have the highest
+# priority in the global scope. When target .so is dlopen'd, its napi calls
+# resolve to our stubs automatically — no separate hook .so needed.
+#
+# Uses real napi headers via external_deps — type consistency guaranteed.
+# C++ name mangling is automatic — no asm aliases needed.
+ohos_executable("napi_dumper") {
+  sources = [
+    "napi_dumper.cpp",        # main + global state + data capture + SIGSEGV
+    "napi_dumper_stubs.cpp",  # ~200 napi stubs (no global refs, avoids ThinLTO)
+  ]
+  visibility = [ "*" ]
+  subsystem_name = "arkui"
+  part_name = "napi"
+
+  # Use deps (same part) — gets real napi headers (via ace_napi_config)
+  # and links libace_napi.z.so. Our definitions override its symbols
+  # (executable symbols have higher priority with --export-dynamic).
+  deps = [ "//foundation/arkui/napi:ace_napi" ]
+
+  libs = [ "dl" ]
+
+  ldflags = [
+    "-Wl,--export-dynamic",   # Export all symbols to global scope (for dlopen)
+    "-Wl,--no-as-needed",     # Keep libace_napi.z.so in NEEDED (for RTLD)
+  ]
+
+  cflags = [
+    "-Wall",
+    "-Wno-unused-parameter",
+    "-Wno-deprecated-declarations",
+    "-O2",
+  ]
+}
