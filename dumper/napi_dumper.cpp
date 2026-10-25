@@ -25,272 +25,443 @@
 #include "napi/native_node_api.h"
 
 /* ===== Captured data structures ===== */
-#define MAX_IFACES 512
-#define MAX_CLASSES 64
-#define MAX_METHODS 128
-#define MAX_NAME 256
-#define MAX_MODULES 8
+constexpr int kMaxIfaces = 512;
+constexpr int kMaxClasses = 64;
+constexpr int kMaxMethods = 128;
+constexpr int kMaxName = 256;
+constexpr int kMaxModules = 8;
+constexpr int kMaxSoPath = 512;
+constexpr int kDummyEnvSize = 8192;
+constexpr int kDummyExportsSize = 256;
 
 struct CapturedIface {
-    char name[MAX_NAME];
+    char name[kMaxName];
     int type;
-    void* callback_addr;
-    char callback_name[MAX_NAME];
-    char so_path[512];
+    void* callbackAddr;
+    char callbackName[kMaxName];
+    char soPath[kMaxSoPath];
 };
+
 struct CapturedClass {
-    char class_name[MAX_NAME];
-    void* ctor_addr;
-    char ctor_name[MAX_NAME];
+    char className[kMaxName];
+    void* ctorAddr;
+    char ctorName[kMaxName];
     CapturedIface* methods;
-    int method_count;
+    int methodCount;
 };
+
 struct CapturedModule {
-    char module_name[MAX_NAME];
-    int nm_version;
-    unsigned int nm_flags;
-    const char* nm_filename;
-    void* register_func_addr;
-    char register_func_name[MAX_NAME];
-    char register_so_path[512];
-    int registration_type;
-    int has_js_code;
-    int has_abc_code;
+    char moduleName[kMaxName];
+    int nmVersion;
+    unsigned int nmFlags;
+    const char* nmFilename;
+    void* registerFuncAddr;
+    char registerFuncName[kMaxName];
+    char registerSoPath[kMaxSoPath];
+    int registrationType;
+    int hasJsCode;
+    int hasAbcCode;
     CapturedIface* interfaces;
-    int iface_count;
+    int ifaceCount;
     CapturedClass* classes;
-    int class_count;
+    int classCount;
 };
 
 /* ===== Global state ===== */
-static CapturedModule* g_modules[MAX_MODULES];
-static int g_module_count = 0;
+static CapturedModule* g_modules[kMaxModules];
+static int g_moduleCount = 0;
 static CapturedModule* g_current = nullptr;
 static int g_capture = 0;
-static int g_crash_count = 0;
+static int g_crashCount = 0;
 static int g_verbose = 0;
-static napi_value s_dummy = (napi_value)0xDEAD;
+static napi_value g_dummy = reinterpret_cast<napi_value>(0xDEAD);
 
-#define LOG(...) do { if (g_verbose) fprintf(stderr, __VA_ARGS__); } while(0)
+static void LogMsg(const char* fmt, ...)
+{
+    if (!g_verbose) {
+        return;
+    }
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+}
 
 /* ===== Symbol resolution ===== */
-static void resolve_symbol(void* addr, char* name_buf, int ns, char* path_buf, int ps) {
-    Dl_info info{};
-    name_buf[0] = path_buf[0] = '\0';
-    if (addr && dladdr(addr, &info)) {
-        if (info.dli_sname) { strncpy(name_buf, info.dli_sname, ns-1); name_buf[ns-1]='\0'; }
-        if (info.dli_fname) { strncpy(path_buf, info.dli_fname, ps-1); path_buf[ps-1]='\0'; }
+static void ResolveSymbol(void* addr, char* nameBuf, int nameSize, char* pathBuf, int pathSize)
+{
+    Dl_info info {};
+    nameBuf[0] = '\0';
+    pathBuf[0] = '\0';
+    if (addr == nullptr || dladdr(addr, &info) == 0) {
+        return;
+    }
+    if (info.dli_sname != nullptr) {
+        strncpy(nameBuf, info.dli_sname, nameSize - 1);
+        nameBuf[nameSize - 1] = '\0';
+    }
+    if (info.dli_fname != nullptr) {
+        strncpy(pathBuf, info.dli_fname, pathSize - 1);
+        pathBuf[pathSize - 1] = '\0';
     }
 }
 
-static void capture_from_desc(const napi_property_descriptor* d, CapturedIface* f) {
-    memset(f, 0, sizeof(*f));
-    if (d->utf8name) strncpy(f->name, d->utf8name, MAX_NAME-1);
-    if (d->method) { f->type=0; f->callback_addr=(void*)d->method; }
-    else if (d->getter && d->setter) { f->type=4; f->callback_addr=(void*)d->getter; }
-    else if (d->getter) { f->type=1; f->callback_addr=(void*)d->getter; }
-    else if (d->setter) { f->type=2; f->callback_addr=(void*)d->setter; }
-    else { f->type=3; f->callback_addr=nullptr; }
-    if (f->callback_addr) resolve_symbol(f->callback_addr, f->callback_name, MAX_NAME, f->so_path, 512);
+static void CaptureFromDesc(const napi_property_descriptor* desc, CapturedIface* iface)
+{
+    memset(iface, 0, sizeof(*iface));
+    if (desc->utf8name != nullptr) {
+        strncpy(iface->name, desc->utf8name, kMaxName - 1);
+    }
+    if (desc->method != nullptr) {
+        iface->type = 0;
+        iface->callbackAddr = reinterpret_cast<void*>(desc->method);
+    } else if (desc->getter != nullptr && desc->setter != nullptr) {
+        iface->type = 4;
+        iface->callbackAddr = reinterpret_cast<void*>(desc->getter);
+    } else if (desc->getter != nullptr) {
+        iface->type = 1;
+        iface->callbackAddr = reinterpret_cast<void*>(desc->getter);
+    } else if (desc->setter != nullptr) {
+        iface->type = 2;
+        iface->callbackAddr = reinterpret_cast<void*>(desc->setter);
+    } else {
+        iface->type = 3;
+        iface->callbackAddr = nullptr;
+    }
+    if (iface->callbackAddr != nullptr) {
+        ResolveSymbol(iface->callbackAddr, iface->callbackName, kMaxName, iface->soPath, kMaxSoPath);
+    }
 }
 
 /* ===== Data-capturing napi functions ===== */
-void napi_module_register(napi_module* mod) {
-    if (!mod || g_module_count >= MAX_MODULES) return;
-    auto m = (CapturedModule*)calloc(1, sizeof(CapturedModule));
-    if (!m) return;
-    g_modules[g_module_count++] = m;
-    if (mod->nm_modname) strncpy(m->module_name, mod->nm_modname, MAX_NAME-1);
-    m->nm_version = mod->nm_version;
-    m->nm_flags = mod->nm_flags;
-    m->nm_filename = mod->nm_filename;
-    m->register_func_addr = (void*)mod->nm_register_func;
-    m->registration_type = 0;
-    m->interfaces = (CapturedIface*)calloc(MAX_IFACES, sizeof(CapturedIface));
-    m->classes = (CapturedClass*)calloc(MAX_CLASSES, sizeof(CapturedClass));
-    if (mod->nm_register_func)
-        resolve_symbol((void*)mod->nm_register_func, m->register_func_name, MAX_NAME, m->register_so_path, 512);
-    LOG("[dumper] Module registered: %s\n", m->module_name);
+void napi_module_register(napi_module* mod)
+{
+    if (mod == nullptr || g_moduleCount >= kMaxModules) {
+        return;
+    }
+    auto m = static_cast<CapturedModule*>(calloc(1, sizeof(CapturedModule)));
+    if (m == nullptr) {
+        return;
+    }
+    g_modules[g_moduleCount++] = m;
+    if (mod->nm_modname != nullptr) {
+        strncpy(m->moduleName, mod->nm_modname, kMaxName - 1);
+    }
+    m->nmVersion = mod->nm_version;
+    m->nmFlags = mod->nm_flags;
+    m->nmFilename = mod->nm_filename;
+    m->registerFuncAddr = reinterpret_cast<void*>(mod->nm_register_func);
+    m->registrationType = 0;
+    m->interfaces = static_cast<CapturedIface*>(calloc(kMaxIfaces, sizeof(CapturedIface)));
+    m->classes = static_cast<CapturedClass*>(calloc(kMaxClasses, sizeof(CapturedClass)));
+    if (mod->nm_register_func != nullptr) {
+        ResolveSymbol(reinterpret_cast<void*>(mod->nm_register_func),
+                      m->registerFuncName, kMaxName, m->registerSoPath, kMaxSoPath);
+    }
+    LogMsg("[dumper] Module registered: %s\n", m->moduleName);
 }
 
-void napi_module_with_js_register(napi_module_with_js* mod) {
-    if (!mod || g_module_count >= MAX_MODULES) return;
-    auto m = (CapturedModule*)calloc(1, sizeof(CapturedModule));
-    if (!m) return;
-    g_modules[g_module_count++] = m;
-    if (mod->nm_modname) strncpy(m->module_name, mod->nm_modname, MAX_NAME-1);
-    m->nm_version = mod->nm_version;
-    m->nm_flags = mod->nm_flags;
-    m->nm_filename = mod->nm_filename;
-    m->register_func_addr = (void*)mod->nm_register_func;
-    m->registration_type = 1;
-    m->has_js_code = (mod->nm_get_js_code != nullptr);
-    m->has_abc_code = (mod->nm_get_abc_code != nullptr);
-    m->interfaces = (CapturedIface*)calloc(MAX_IFACES, sizeof(CapturedIface));
-    m->classes = (CapturedClass*)calloc(MAX_CLASSES, sizeof(CapturedClass));
-    if (mod->nm_register_func)
-        resolve_symbol((void*)mod->nm_register_func, m->register_func_name, MAX_NAME, m->register_so_path, 512);
-    LOG("[dumper] Module registered (with_js): %s\n", m->module_name);
+void napi_module_with_js_register(napi_module_with_js* mod)
+{
+    if (mod == nullptr || g_moduleCount >= kMaxModules) {
+        return;
+    }
+    auto m = static_cast<CapturedModule*>(calloc(1, sizeof(CapturedModule)));
+    if (m == nullptr) {
+        return;
+    }
+    g_modules[g_moduleCount++] = m;
+    if (mod->nm_modname != nullptr) {
+        strncpy(m->moduleName, mod->nm_modname, kMaxName - 1);
+    }
+    m->nmVersion = mod->nm_version;
+    m->nmFlags = mod->nm_flags;
+    m->nmFilename = mod->nm_filename;
+    m->registerFuncAddr = reinterpret_cast<void*>(mod->nm_register_func);
+    m->registrationType = 1;
+    m->hasJsCode = (mod->nm_get_js_code != nullptr) ? 1 : 0;
+    m->hasAbcCode = (mod->nm_get_abc_code != nullptr) ? 1 : 0;
+    m->interfaces = static_cast<CapturedIface*>(calloc(kMaxIfaces, sizeof(CapturedIface)));
+    m->classes = static_cast<CapturedClass*>(calloc(kMaxClasses, sizeof(CapturedClass)));
+    if (mod->nm_register_func != nullptr) {
+        ResolveSymbol(reinterpret_cast<void*>(mod->nm_register_func),
+                      m->registerFuncName, kMaxName, m->registerSoPath, kMaxSoPath);
+    }
+    LogMsg("[dumper] Module registered (with_js): %s\n", m->moduleName);
 }
 
-napi_status napi_define_properties(napi_env, napi_value, size_t count, const napi_property_descriptor* props) {
-    if (!g_capture || !g_current || !props) return napi_ok;
-    for (size_t i = 0; i < count && g_current->iface_count < MAX_IFACES; i++)
-        capture_from_desc(&props[i], &g_current->interfaces[g_current->iface_count++]);
+napi_status napi_define_properties(napi_env, napi_value, size_t count, const napi_property_descriptor* props)
+{
+    if (!g_capture || g_current == nullptr || props == nullptr) {
+        return napi_ok;
+    }
+    for (size_t i = 0; i < count && g_current->ifaceCount < kMaxIfaces; i++) {
+        CaptureFromDesc(&props[i], &g_current->interfaces[g_current->ifaceCount++]);
+    }
     return napi_ok;
 }
 
 napi_status napi_define_class(napi_env, const char* name, size_t len,
-    napi_callback ctor, void*, size_t count, const napi_property_descriptor* props, napi_value* result) {
-    if (result) *result = s_dummy;
-    if (!g_capture || !g_current || g_current->class_count >= MAX_CLASSES) return napi_ok;
-    auto c = &g_current->classes[g_current->class_count++];
-    memset(c, 0, sizeof(*c));
-    c->methods = (CapturedIface*)calloc(MAX_METHODS, sizeof(CapturedIface));
-    if (name) {
-        size_t n = (len == NAPI_AUTO_LENGTH) ? strlen(name) : len;
-        size_t cp = n < MAX_NAME-1 ? n : MAX_NAME-1;
-        memcpy(c->class_name, name, cp); c->class_name[cp] = '\0';
+    napi_callback ctor, void*, size_t count, const napi_property_descriptor* props, napi_value* result)
+{
+    if (result != nullptr) {
+        *result = g_dummy;
     }
-    c->ctor_addr = (void*)ctor;
-    if (ctor) resolve_symbol((void*)ctor, c->ctor_name, MAX_NAME, nullptr, 0);
-    if (props)
-        for (size_t i = 0; i < count && c->method_count < MAX_METHODS; i++)
-            capture_from_desc(&props[i], &c->methods[c->method_count++]);
+    if (!g_capture || g_current == nullptr || g_current->classCount >= kMaxClasses) {
+        return napi_ok;
+    }
+    auto c = &g_current->classes[g_current->classCount++];
+    memset(c, 0, sizeof(*c));
+    c->methods = static_cast<CapturedIface*>(calloc(kMaxMethods, sizeof(CapturedIface)));
+    if (name != nullptr) {
+        size_t n = (len == NAPI_AUTO_LENGTH) ? strlen(name) : len;
+        size_t copyLen = (n < kMaxName - 1) ? n : kMaxName - 1;
+        memcpy(c->className, name, copyLen);
+        c->className[copyLen] = '\0';
+    }
+    c->ctorAddr = reinterpret_cast<void*>(ctor);
+    if (ctor != nullptr) {
+        ResolveSymbol(reinterpret_cast<void*>(ctor), c->ctorName, kMaxName, nullptr, 0);
+    }
+    if (props != nullptr) {
+        for (size_t i = 0; i < count && c->methodCount < kMaxMethods; i++) {
+            CaptureFromDesc(&props[i], &c->methods[c->methodCount++]);
+        }
+    }
     return napi_ok;
 }
 
 napi_status napi_create_function(napi_env, const char* name, size_t len,
-    napi_callback cb, void*, napi_value* result) {
-    if (result) *result = s_dummy;
-    if (!g_capture || !g_current || g_current->iface_count >= MAX_IFACES) return napi_ok;
-    auto f = &g_current->interfaces[g_current->iface_count++];
-    memset(f, 0, sizeof(*f));
-    f->type = 0; f->callback_addr = (void*)cb;
-    if (name) {
-        size_t n = (len == NAPI_AUTO_LENGTH) ? strlen(name) : len;
-        size_t cp = n < MAX_NAME-1 ? n : MAX_NAME-1;
-        memcpy(f->name, name, cp); f->name[cp] = '\0';
+    napi_callback cb, void*, napi_value* result)
+{
+    if (result != nullptr) {
+        *result = g_dummy;
     }
-    if (cb) resolve_symbol((void*)cb, f->callback_name, MAX_NAME, f->so_path, 512);
+    if (!g_capture || g_current == nullptr || g_current->ifaceCount >= kMaxIfaces) {
+        return napi_ok;
+    }
+    auto f = &g_current->interfaces[g_current->ifaceCount++];
+    memset(f, 0, sizeof(*f));
+    f->type = 0;
+    f->callbackAddr = reinterpret_cast<void*>(cb);
+    if (name != nullptr) {
+        size_t n = (len == NAPI_AUTO_LENGTH) ? strlen(name) : len;
+        size_t copyLen = (n < kMaxName - 1) ? n : kMaxName - 1;
+        memcpy(f->name, name, copyLen);
+        f->name[copyLen] = '\0';
+    }
+    if (cb != nullptr) {
+        ResolveSymbol(reinterpret_cast<void*>(cb), f->callbackName, kMaxName, f->soPath, kMaxSoPath);
+    }
     return napi_ok;
 }
 
 /* ===== SIGSEGV recovery ===== */
 static sigjmp_buf g_jmp;
-static volatile sig_atomic_t g_in_init = 0;
-static void sig_handler(int) {
-    if (g_in_init) { g_crash_count++; siglongjmp(g_jmp, 1); }
+static volatile sig_atomic_t g_inInit = 0;
+
+static void SigHandler(int)
+{
+    if (g_inInit) {
+        g_crashCount++;
+        siglongjmp(g_jmp, 1);
+    }
     _exit(1);
 }
 
 /* ===== Output helpers ===== */
-static const char* itype(int t) {
-    switch(t) { case 0: return "function"; case 1: return "getter"; case 2: return "setter";
-        case 3: return "property"; case 4: return "getter_setter"; default: return "unknown"; }
+static const char* IfaceTypeName(int type)
+{
+    switch (type) {
+        case 0:
+            return "function";
+        case 1:
+            return "getter";
+        case 2:
+            return "setter";
+        case 3:
+            return "property";
+        case 4:
+            return "getter_setter";
+        default:
+            return "unknown";
+    }
 }
 
-static void jesc(const char* s) {
-    if (!s) { printf("null"); return; }
+static void JsonEscape(const char* str)
+{
+    if (str == nullptr) {
+        printf("null");
+        return;
+    }
     putchar('"');
-    for (; *s; s++) {
-        switch (*s) { case '"': printf("\\\""); break; case '\\': printf("\\\\"); break;
-            case '\n': printf("\\n"); break; case '\t': printf("\\t"); break; default: putchar(*s); }
+    for (; *str != '\0'; str++) {
+        switch (*str) {
+            case '"':
+                printf("\\\"");
+                break;
+            case '\\':
+                printf("\\\\");
+                break;
+            case '\n':
+                printf("\\n");
+                break;
+            case '\t':
+                printf("\\t");
+                break;
+            default:
+                putchar(*str);
+                break;
+        }
     }
     putchar('"');
 }
 
 /* ===== Text output ===== */
-static void output_text() {
-    if (g_module_count == 0) {
+static void OutputText()
+{
+    if (g_moduleCount == 0) {
         printf("No NAPI modules found.\n");
         return;
     }
-    for (int i = 0; i < g_module_count; i++) {
+    for (int i = 0; i < g_moduleCount; i++) {
         auto m = g_modules[i];
-        if (!m) continue;
-        printf("=== Module: %s ===\n", m->module_name[0] ? m->module_name : "(unknown)");
-        printf("  Type:         %s\n", m->registration_type ? "napi_module_with_js_register" : "napi_module_register");
-        printf("  Version:      %d\n", m->nm_version);
-        printf("  Init:         %s", m->register_func_name[0] ? m->register_func_name : "(unknown)");
-        if (m->register_func_addr) printf(" @ %p", m->register_func_addr);
+        if (m == nullptr) {
+            continue;
+        }
+        printf("=== Module: %s ===\n", m->moduleName[0] ? m->moduleName : "(unknown)");
+        printf("  Type:         %s\n",
+               m->registrationType ? "napi_module_with_js_register" : "napi_module_register");
+        printf("  Version:      %d\n", m->nmVersion);
+        printf("  Init:         %s", m->registerFuncName[0] ? m->registerFuncName : "(unknown)");
+        if (m->registerFuncAddr != nullptr) {
+            printf(" @ %p", m->registerFuncAddr);
+        }
         printf("\n");
-        if (m->register_so_path[0]) printf("  SO:           %s\n", m->register_so_path);
-        if (m->has_js_code)  printf("  Has JS Code:  yes\n");
-        if (m->has_abc_code) printf("  Has ABC Code: yes\n");
+        if (m->registerSoPath[0]) {
+            printf("  SO:           %s\n", m->registerSoPath);
+        }
+        if (m->hasJsCode) {
+            printf("  Has JS Code:  yes\n");
+        }
+        if (m->hasAbcCode) {
+            printf("  Has ABC Code: yes\n");
+        }
 
-        printf("  Interfaces (%d):\n", m->iface_count);
-        for (int j = 0; j < m->iface_count; j++) {
+        printf("  Interfaces (%d):\n", m->ifaceCount);
+        for (int j = 0; j < m->ifaceCount; j++) {
             auto f = &m->interfaces[j];
-            printf("    [%-12s] %-30s", itype(f->type), f->name[0] ? f->name : "(unknown)");
-            if (f->callback_name[0]) printf(" -> %s", f->callback_name);
-            if (f->callback_addr) printf(" @ %p", f->callback_addr);
+            printf("    [%-12s] %-30s", IfaceTypeName(f->type), f->name[0] ? f->name : "(unknown)");
+            if (f->callbackName[0]) {
+                printf(" -> %s", f->callbackName);
+            }
+            if (f->callbackAddr != nullptr) {
+                printf(" @ %p", f->callbackAddr);
+            }
             printf("\n");
         }
 
-        if (m->class_count > 0) {
-            printf("  Classes (%d):\n", m->class_count);
-            for (int j = 0; j < m->class_count; j++) {
+        if (m->classCount > 0) {
+            printf("  Classes (%d):\n", m->classCount);
+            for (int j = 0; j < m->classCount; j++) {
                 auto c = &m->classes[j];
-                printf("    %s", c->class_name[0] ? c->class_name : "(unknown)");
-                if (c->ctor_name[0]) printf(" (ctor: %s)", c->ctor_name);
+                printf("    %s", c->className[0] ? c->className : "(unknown)");
+                if (c->ctorName[0]) {
+                    printf(" (ctor: %s)", c->ctorName);
+                }
                 printf("\n");
-                for (int k = 0; k < c->method_count; k++) {
+                for (int k = 0; k < c->methodCount; k++) {
                     auto m2 = &c->methods[k];
-                    printf("      [%-12s] %-28s", itype(m2->type), m2->name[0] ? m2->name : "(unknown)");
-                    if (m2->callback_name[0]) printf(" -> %s", m2->callback_name);
+                    printf("      [%-12s] %-28s", IfaceTypeName(m2->type),
+                           m2->name[0] ? m2->name : "(unknown)");
+                    if (m2->callbackName[0]) {
+                        printf(" -> %s", m2->callbackName);
+                    }
                     printf("\n");
                 }
             }
         }
         printf("\n");
     }
-    if (g_crash_count)
-        printf("*** WARNING: %d module(s) crashed during Init (data may be incomplete) ***\n", g_crash_count);
+    if (g_crashCount) {
+        printf("*** WARNING: %d module(s) crashed during Init (data may be incomplete) ***\n",
+               g_crashCount);
+    }
 }
 
 /* ===== JSON output ===== */
-static const char* g_so_path = nullptr;
+static const char* g_soPath = nullptr;
 
-static void output_json() {
+static void OutputJson()
+{
     printf("{\"so_path\":");
-    jesc(g_so_path ? g_so_path : "");
+    JsonEscape(g_soPath != nullptr ? g_soPath : "");
     printf(",\"modules\":[");
-    for (int i = 0; i < g_module_count; i++) {
+    for (int i = 0; i < g_moduleCount; i++) {
         auto m = g_modules[i];
-        if (!m) continue;
-        if (i) printf(",");
-        printf("{\"module_name\":"); jesc(m->module_name[0]?m->module_name:nullptr);
-        printf(",\"registration_type\":\"%s\"", m->registration_type ? "napi_module_with_js_register":"napi_module_register");
-        printf(",\"nm_version\":%d,\"nm_flags\":%u", m->nm_version, m->nm_flags);
-        printf(",\"init_func\":"); jesc(m->register_func_name[0]?m->register_func_name:nullptr);
-        if (m->register_func_addr) printf(",\"init_addr\":\"%p\"", m->register_func_addr);
-        if (m->register_so_path[0]) { printf(",\"init_so\":"); jesc(m->register_so_path); }
-        if (m->has_js_code) printf(",\"has_js_code\":true");
-        if (m->has_abc_code) printf(",\"has_abc_code\":true");
+        if (m == nullptr) {
+            continue;
+        }
+        if (i) {
+            printf(",");
+        }
+        printf("{\"module_name\":");
+        JsonEscape(m->moduleName[0] ? m->moduleName : nullptr);
+        printf(",\"registration_type\":\"%s\"",
+               m->registrationType ? "napi_module_with_js_register" : "napi_module_register");
+        printf(",\"nm_version\":%d,\"nm_flags\":%u", m->nmVersion, m->nmFlags);
+        printf(",\"init_func\":");
+        JsonEscape(m->registerFuncName[0] ? m->registerFuncName : nullptr);
+        if (m->registerFuncAddr != nullptr) {
+            printf(",\"init_addr\":\"%p\"", m->registerFuncAddr);
+        }
+        if (m->registerSoPath[0]) {
+            printf(",\"init_so\":");
+            JsonEscape(m->registerSoPath);
+        }
+        if (m->hasJsCode) {
+            printf(",\"has_js_code\":true");
+        }
+        if (m->hasAbcCode) {
+            printf(",\"has_abc_code\":true");
+        }
         printf(",\"interfaces\":[");
-        for (int j=0; j<m->iface_count; j++) {
-            auto f=&m->interfaces[j];
-            if (j) printf(",");
-            printf("{\"name\":"); jesc(f->name[0]?f->name:nullptr);
-            printf(",\"type\":\"%s\"", itype(f->type));
-            printf(",\"callback\":"); jesc(f->callback_name[0]?f->callback_name:nullptr);
-            if (f->callback_addr) printf(",\"callback_addr\":\"%p\"", f->callback_addr);
+        for (int j = 0; j < m->ifaceCount; j++) {
+            auto f = &m->interfaces[j];
+            if (j) {
+                printf(",");
+            }
+            printf("{\"name\":");
+            JsonEscape(f->name[0] ? f->name : nullptr);
+            printf(",\"type\":\"%s\"", IfaceTypeName(f->type));
+            printf(",\"callback\":");
+            JsonEscape(f->callbackName[0] ? f->callbackName : nullptr);
+            if (f->callbackAddr != nullptr) {
+                printf(",\"callback_addr\":\"%p\"", f->callbackAddr);
+            }
             printf("}");
         }
         printf("],\"classes\":[");
-        for (int j=0; j<m->class_count; j++) {
-            auto c=&m->classes[j];
-            if (j) printf(",");
-            printf("{\"class_name\":"); jesc(c->class_name[0]?c->class_name:nullptr);
-            printf(",\"constructor\":"); jesc(c->ctor_name[0]?c->ctor_name:nullptr);
+        for (int j = 0; j < m->classCount; j++) {
+            auto c = &m->classes[j];
+            if (j) {
+                printf(",");
+            }
+            printf("{\"class_name\":");
+            JsonEscape(c->className[0] ? c->className : nullptr);
+            printf(",\"constructor\":");
+            JsonEscape(c->ctorName[0] ? c->ctorName : nullptr);
             printf(",\"methods\":[");
-            for (int k=0; k<c->method_count; k++) {
-                auto m2=&c->methods[k];
-                if (k) printf(",");
-                printf("{\"name\":"); jesc(m2->name[0]?m2->name:nullptr);
-                printf(",\"type\":\"%s\"", itype(m2->type));
-                printf(",\"callback\":"); jesc(m2->callback_name[0]?m2->callback_name:nullptr);
+            for (int k = 0; k < c->methodCount; k++) {
+                auto m2 = &c->methods[k];
+                if (k) {
+                    printf(",");
+                }
+                printf("{\"name\":");
+                JsonEscape(m2->name[0] ? m2->name : nullptr);
+                printf(",\"type\":\"%s\"", IfaceTypeName(m2->type));
+                printf(",\"callback\":");
+                JsonEscape(m2->callbackName[0] ? m2->callbackName : nullptr);
                 printf("}");
             }
             printf("]}");
@@ -298,12 +469,15 @@ static void output_json() {
         printf("]}");
     }
     printf("]");
-    if (g_crash_count) printf(",\"crashed\":true,\"crash_count\":%d", g_crash_count);
+    if (g_crashCount) {
+        printf(",\"crashed\":true,\"crash_count\":%d", g_crashCount);
+    }
     printf("}\n");
 }
 
 /* ===== Usage ===== */
-static void print_usage(const char* prog) {
+static void PrintUsage(const char* prog)
+{
     fprintf(stderr,
         "NAPI Runtime Dumper — extract NAPI module info from .so files\n"
         "\n"
@@ -327,54 +501,66 @@ static void print_usage(const char* prog) {
 }
 
 /* ===== Main ===== */
-int main(int argc, char** argv) {
-    int use_json = 0;
-    const char* so_path = nullptr;
+int main(int argc, char** argv)
+{
+    int useJson = 0;
+    const char* soPath = nullptr;
 
     for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-            print_usage(argv[0]);
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+            PrintUsage(argv[0]);
             return 0;
-        } else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose")) {
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
             g_verbose = 1;
-        } else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--format")) {
-            if (i+1 < argc && !strcmp(argv[i+1], "json")) { use_json = 1; i++; }
-            else if (i+1 < argc && !strcmp(argv[i+1], "text")) { use_json = 0; i++; }
-            else { fprintf(stderr, "Error: -f requires 'json' or 'text'\n"); return 1; }
+        } else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) {
+            if (i + 1 < argc && strcmp(argv[i + 1], "json") == 0) {
+                useJson = 1;
+                i++;
+            } else if (i + 1 < argc && strcmp(argv[i + 1], "text") == 0) {
+                useJson = 0;
+                i++;
+            } else {
+                fprintf(stderr, "Error: -f requires 'json' or 'text'\n");
+                return 1;
+            }
         } else if (argv[i][0] != '-') {
-            so_path = argv[i];
+            soPath = argv[i];
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            print_usage(argv[0]);
+            PrintUsage(argv[0]);
             return 1;
         }
     }
 
-    if (!so_path) {
-        print_usage(argv[0]);
+    if (soPath == nullptr) {
+        PrintUsage(argv[0]);
         return 1;
     }
 
-    struct sigaction sa{}; sa.sa_handler = sig_handler; sigemptyset(&sa.sa_mask);
-    sigaction(SIGSEGV, &sa, nullptr); sigaction(SIGABRT, &sa, nullptr);
+    struct sigaction sa {};
+    sa.sa_handler = SigHandler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGSEGV, &sa, nullptr);
+    sigaction(SIGABRT, &sa, nullptr);
 
-    g_so_path = so_path;
-    LOG("[dumper] Loading: %s\n", so_path);
+    g_soPath = soPath;
+    LogMsg("[dumper] Loading: %s\n", soPath);
 
-    void* handle = dlopen(so_path, RTLD_NOW | RTLD_GLOBAL);
-    if (!handle) {
+    void* handle = dlopen(soPath, RTLD_NOW | RTLD_GLOBAL);
+    if (handle == nullptr) {
         const char* err = dlerror();
-        LOG("[dumper] dlopen failed: %s\n", err);
-        if (use_json) {
+        LogMsg("[dumper] dlopen failed: %s\n", err);
+        if (useJson) {
             printf("{\"so_path\":");
-            jesc(so_path);
+            JsonEscape(soPath);
             printf(",\"modules\":[],\"error\":\"dlopen_failed\"}\n");
-        } else
-            printf("Error: dlopen failed: %s\n", err ? err : "unknown");
+        } else {
+            printf("Error: dlopen failed: %s\n", err != nullptr ? err : "unknown");
+        }
         return 1;
     }
 
-    LOG("[dumper] Modules registered: %d\n", g_module_count);
+    LogMsg("[dumper] Modules registered: %d\n", g_moduleCount);
 
     // Allocate zeroed memory for dummy env/exports.
     // Using calloc ensures NativeEngine member accesses read zeros (false)
@@ -382,26 +568,35 @@ int main(int argc, char** argv) {
     // Zeroed jsThreadType_ = MAIN_THREAD, so IsMainThread()==true,
     // IsWorkerThread()==false, IsRestrictedWorkerThread()==false.
     // IsAlive() returns false (not in alive engine set) via short-circuit.
-    static char* dummy_env_mem = (char*)calloc(1, 8192);
-    static char* dummy_exports_mem = (char*)calloc(1, 256);
+    static char* dummyEnvMem = static_cast<char*>(calloc(1, kDummyEnvSize));
+    static char* dummyExportsMem = static_cast<char*>(calloc(1, kDummyExportsSize));
 
-    for (int mi = 0; mi < g_module_count; mi++) {
+    for (int mi = 0; mi < g_moduleCount; mi++) {
         auto mod = g_modules[mi];
-        if (!mod || !mod->register_func_addr) continue;
-        LOG("[dumper] Calling Init: %s\n", mod->module_name);
-        g_current = mod; g_capture = 1; g_in_init = 1;
-        if (sigsetjmp(g_jmp, 1) == 0) {
-            auto init = (napi_value(*)(napi_env, napi_value))mod->register_func_addr;
-            init((napi_env)dummy_env_mem, (napi_value)dummy_exports_mem);
-            LOG("[dumper] OK: %d ifaces, %d classes\n", mod->iface_count, mod->class_count);
-        } else {
-            LOG("[dumper] CRASH recovered: %d ifaces before crash\n", mod->iface_count);
+        if (mod == nullptr || mod->registerFuncAddr == nullptr) {
+            continue;
         }
-        g_in_init = 0; g_capture = 0; g_current = nullptr;
+        LogMsg("[dumper] Calling Init: %s\n", mod->moduleName);
+        g_current = mod;
+        g_capture = 1;
+        g_inInit = 1;
+        if (sigsetjmp(g_jmp, 1) == 0) {
+            auto init = reinterpret_cast<napi_value(*)(napi_env, napi_value)>(mod->registerFuncAddr);
+            init(reinterpret_cast<napi_env>(dummyEnvMem), reinterpret_cast<napi_value>(dummyExportsMem));
+            LogMsg("[dumper] OK: %d ifaces, %d classes\n", mod->ifaceCount, mod->classCount);
+        } else {
+            LogMsg("[dumper] CRASH recovered: %d ifaces before crash\n", mod->ifaceCount);
+        }
+        g_inInit = 0;
+        g_capture = 0;
+        g_current = nullptr;
     }
 
-    if (use_json) output_json();
-    else output_text();
+    if (useJson) {
+        OutputJson();
+    } else {
+        OutputText();
+    }
 
     fflush(stdout);
     fflush(stderr);

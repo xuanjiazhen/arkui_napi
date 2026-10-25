@@ -38,10 +38,9 @@ def run(cmd, timeout=60):
 
 
 def hdc(target, args, timeout=60):
-    if target:
+    if target is not None:
         return run(["hdc", "-t", target] + args, timeout)
-    else:
-        return run(["hdc"] + args, timeout)
+    return run(["hdc"] + args, timeout)
 
 
 # ── scan ────────────────────────────────────────────────────────
@@ -74,7 +73,8 @@ def cmd_scan(args):
     # Get .so list
     print(f"Scanning {args.so_dir}...", file=sys.stderr)
     out, _, _ = hdc(args.target, ["shell", f"find {args.so_dir} -name '*.so' -type f | sort"])
-    so_list = [l.strip() for l in out.splitlines() if l.strip() and not l.strip().startswith("[")]
+    so_list = [line.strip() for line in out.splitlines()
+               if line.strip() and not line.strip().startswith("[")]
     total = len(so_list)
     print(f"Found {total} .so files", file=sys.stderr)
 
@@ -99,7 +99,7 @@ def cmd_scan(args):
                 napi_count += 1
                 ext = "json" if args.format == "json" else "txt"
                 report_file = os.path.join(output_dir, f"{so_name}.{ext}")
-                with open(report_file, "w") as f:
+                with open(report_file, "w", encoding="utf-8") as f:
                     f.write(out)
                 if args.format == "json":
                     try:
@@ -109,7 +109,7 @@ def cmd_scan(args):
                         cls = sum(len(m.get("classes", [])) for m in data.get("modules", []))
                         if data.get("crashed"):
                             status = "crash_recovered"
-                    except Exception:
+                    except json.JSONDecodeError:
                         pass
                 else:
                     mods = out.count("=== Module:")
@@ -160,23 +160,23 @@ def cmd_scan(args):
     }
 
     summary_json = os.path.join(output_dir, "summary.json")
-    with open(summary_json, "w") as f:
+    with open(summary_json, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
-    _write_summary_txt(output_dir, summary, args, elapsed_total, results, napi_count,
+    _write_summary_txt(output_dir, args, elapsed_total, results, napi_count,
                        crash_count, timeout_count, no_napi_count,
                        total_modules, total_ifaces, total_classes)
 
-    with open(os.path.join(output_dir, "summary.txt")) as f:
+    with open(os.path.join(output_dir, "summary.txt"), encoding="utf-8") as f:
         print(f.read(), file=sys.stderr)
 
     return 0
 
 
-def _write_summary_txt(output_dir, summary, args, elapsed_total, results,
+def _write_summary_txt(output_dir, args, elapsed_total, results,
                        napi_count, crash_count, timeout_count, no_napi_count,
                        total_modules, total_ifaces, total_classes):
-    with open(os.path.join(output_dir, "summary.txt"), "w") as f:
+    with open(os.path.join(output_dir, "summary.txt"), "w", encoding="utf-8") as f:
         f.write("=" * 70 + "\nNAPI Batch Scan Summary\n" + "=" * 70 + "\n\n")
         f.write(f"Device:        {args.target or 'default'}\n")
         f.write(f"SO Directory:  {args.so_dir}\n")
@@ -220,7 +220,7 @@ def load_data(report_dir):
         print("Run 'napi_tool.py scan' first to generate reports.", file=sys.stderr)
         sys.exit(1)
 
-    with open(summary_path) as f:
+    with open(summary_path, encoding="utf-8") as f:
         summary = json.load(f)
 
     so_files = []
@@ -231,12 +231,12 @@ def load_data(report_dir):
         modules = []
         if os.path.exists(detail_path):
             try:
-                with open(detail_path) as f:
+                with open(detail_path, encoding="utf-8") as f:
                     detail = json.load(f)
                 modules = detail.get("modules", [])
                 if not so_path or so_path == so_name:
                     so_path = detail.get("so_path", so_name)
-            except Exception:
+            except json.JSONDecodeError:
                 pass
         so_files.append({
             "name": so_name,
@@ -558,9 +558,9 @@ function showSODetail(name){
 function renderModule(){
   const flat=filterModule();
   let html='<div class="controls"><input type="text" id="modSearch" placeholder="搜索模块名..." oninput="renderModule()">';
-  html+='<div class="btn-group"><button class="btn active" onclick="setModFilter('all',this)">全部</button>';
-  html+='<button class="btn" onclick="setModFilter('napi_module_register',this)">标准注册</button>';
-  html+='<button class="btn" onclick="setModFilter('napi_module_with_js_register',this)">JS+ABC注册</button></div>';
+  html+='<div class="btn-group"><button class="btn active" onclick="setModFilter(\'all\',this)">全部</button>';
+  html+='<button class="btn" onclick="setModFilter(\'napi_module_register\',this)">标准注册</button>';
+  html+='<button class="btn" onclick="setModFilter(\'napi_module_with_js_register\',this)">JS+ABC注册</button></div>';
   html+=`<span style="color:var(--muted);font-size:12px">${flat.length} 个模块</span></div>`;
   html+='<table><thead><tr><th onclick="sortMod(\'name\')">模块名</th><th onclick="sortMod(\'reg_type\')">注册类型</th>';
   html+='<th onclick="sortMod(\'version\')">版本</th><th onclick="sortMod(\'iface_count\')">接口数</th>';
