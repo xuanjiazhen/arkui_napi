@@ -134,7 +134,7 @@ bool ArkNativeEngine::napiProfilerParamReaded {false};
 PermissionCheckCallback ArkNativeEngine::permissionCheckCallback_ {nullptr};
 std::atomic<NapiModuleValidateCallback> ArkNativeEngine::moduleValidateCallback_ {nullptr};
 std::mutex ArkNativeEngine::sharedRootIndexMutex_;
-std::map<std::string, SharedRootEntry> ArkNativeEngine::sharedRootMap_;
+std::map<NativeModule*, SharedRootEntry> ArkNativeEngine::sharedRootMap_;
 #if defined(PREVIEW)
 bool ArkNativeEngine::enableFileOperation_ {false};
 #endif
@@ -842,21 +842,22 @@ bool ArkNativeEngine::IsSharedModule(NativeModule* module) const
     return module != nullptr && module->shared != 0;
 }
 
-SharedRootEntry& ArkNativeEngine::GetOrCreateSharedRootEntry(const std::string& key)
-{
-    std::lock_guard<std::mutex> lock(sharedRootIndexMutex_);
-    auto result = sharedRootMap_.try_emplace(key);
-    return result.first->second;
-}
-
 Local<JSValueRef> ArkNativeEngine::CreateSendableRoot(NativeModule* module)
 {
     if (module == nullptr || module->registerCallback == nullptr) {
         return Local<JSValueRef>();
     }
     Local<JSValueRef> undef = JSValueRef::Undefined(vm_);
+
+    TryCatch tryCatch(reinterpret_cast<napi_env>(this));
+
     napi_value cbResult = module->registerCallback(
         reinterpret_cast<napi_env>(this), JsValueFromLocalValue(undef));
+
+    if (tryCatch.HasCaught()) {
+        HILOG_ERROR("shared module %{public}s callback threw exception", module->name ? module->name : "null");
+        return Local<JSValueRef>();
+    }
     if (cbResult == nullptr) {
         HILOG_ERROR("shared module %{public}s callback returned null", module->name ? module->name : "null");
         return Local<JSValueRef>();
@@ -870,10 +871,17 @@ Local<JSValueRef> ArkNativeEngine::CreateSendableRoot(NativeModule* module)
     return root;
 }
 
+SharedRootEntry& ArkNativeEngine::GetOrCreateSharedRootEntry(NativeModule* key)
+{
+    std::lock_guard<std::mutex> lock(sharedRootIndexMutex_);
+    auto result = sharedRootMap_.try_emplace(key);
+    return result.first->second;
+}
+
 Local<JSValueRef> ArkNativeEngine::LoadSharedNativeModule(
     NativeModuleManager* moduleManager, NativeModule* module, const std::string& key)
 {
-    SharedRootEntry& entry = GetOrCreateSharedRootEntry(key);
+    SharedRootEntry& entry = GetOrCreateSharedRootEntry(module);
 
     {
         std::unique_lock<std::mutex> lock(entry.mtx);
@@ -900,7 +908,6 @@ Local<JSValueRef> ArkNativeEngine::LoadSharedNativeModule(
         std::unique_lock<std::mutex> lock(entry.mtx);
         if (ok) {
             entry.root = std::make_unique<panda::SendableGlobal<JSValueRef>>(vm_, root);
-            moduleManager->MarkSharedSoPinned(key);
         } else {
             entry.errored.store(true);
             HILOG_ERROR("shared module %{public}s init failed", key.c_str());
