@@ -16,7 +16,6 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 
-#include <memory>
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -573,8 +572,8 @@ private:
     NativeReference* checkCallbackRef_ { nullptr };
     std::map<NativeModule*, panda::Global<panda::JSValueRef>> loadedModules_ {};
     static std::mutex sharedRootIndexMutex_;
-    static std::map<std::string, SharedRootEntry> sharedRootMap_;
-    SharedRootEntry& GetOrCreateSharedRootEntry(const std::string& key);
+    static std::map<NativeModule*, SharedRootEntry> sharedRootMap_;
+    SharedRootEntry& GetOrCreateSharedRootEntry(NativeModule* key);
     static PermissionCheckCallback permissionCheckCallback_;
     NapiUncaughtExceptionCallback napiUncaughtExceptionCallback_ { nullptr };
     NapiAllPromiseRejectCallback allPromiseRejectCallback_ {nullptr};
