@@ -2386,6 +2386,7 @@ HWTEST_F(NapiCriticalTest, NapiCreateRuntimeInCriticalScope, testing::ext::TestS
     NapiCriticalScope scope(env);
     napi_env newEnv {};
     ASSERT_EQ(napi_create_runtime(env, &newEnv), napi_ok);
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv));
     ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
 }
 #endif
