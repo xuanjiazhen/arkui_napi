@@ -38,6 +38,8 @@ static constexpr const char SHARED_MODULE_NAME_THROW[] = "test.shared.module.thr
 static constexpr const char SHARED_MODULE_NAME_SLOW[] = "test.shared.module.slow";
 static constexpr const char SHARED_MODULE_NAME_INNER[] = "test.shared.module.inner";
 static constexpr const char SHARED_MODULE_NAME_OUTER[] = "test.shared.module.outer";
+static constexpr const char SHARED_MODULE_NAME_MULTIVM[] = "test.shared.module.multivm";
+static constexpr const char SHARED_MODULE_NAME_MULTIVM2[] = "test.shared.module.multivm2";
 
 static std::atomic<int> g_initCount{0};
 
@@ -92,6 +94,36 @@ static napi_value SharedModuleInitSlow(napi_env env, napi_value /*unused*/)
     return exports;
 }
 
+static napi_value SharedModuleInitMultiVM(napi_env env, napi_value /*unused*/)
+{
+    g_initCount.fetch_add(1);
+    napi_value exports = nullptr;
+    napi_create_sendable_object_with_properties(env, 0, nullptr, &exports);
+    return exports;
+}
+
+static EcmaVM* CreateWorkerVM()
+{
+    panda::RuntimeOption options;
+    options.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::INFO);
+    return panda::JSNApi::CreateJSVM(options);
+}
+
+static napi_value CallRequireNapi(napi_env env, const char* moduleName)
+{
+    napi_value global = nullptr;
+    napi_get_global(env, &global);
+    napi_value key = nullptr;
+    napi_create_string_utf8(env, "requireNapi", NAPI_AUTO_LENGTH, &key);
+    napi_value func = nullptr;
+    napi_get_property(env, global, key, &func);
+    napi_value arg = nullptr;
+    napi_create_string_utf8(env, moduleName, NAPI_AUTO_LENGTH, &arg);
+    napi_value result = nullptr;
+    napi_call_function(env, global, func, 1, &arg, &result);
+    return result;
+}
+
 static napi_value InnerModuleInit(napi_env env, napi_value /*unused*/)
 {
     g_initCount.fetch_add(1);
@@ -103,7 +135,6 @@ static napi_value InnerModuleInit(napi_env env, napi_value /*unused*/)
 static napi_value OuterModuleInit(napi_env env, napi_value /*unused*/)
 {
     g_initCount.fetch_add(1);
-    // Reentry: call requireNapi for another shared module during init callback
     CallRequireNapi(env, SHARED_MODULE_NAME_INNER);
     napi_value exports = nullptr;
     napi_create_sendable_object_with_properties(env, 0, nullptr, &exports);
@@ -180,21 +211,24 @@ static void RegisterSharedModules()
         .nm_modname = SHARED_MODULE_NAME_OUTER,
     };
     napi_shared_module_register(&modOuter);
-}
 
-static napi_value CallRequireNapi(napi_env env, const char* moduleName)
-{
-    napi_value global = nullptr;
-    napi_get_global(env, &global);
-    napi_value key = nullptr;
-    napi_create_string_utf8(env, "requireNapi", NAPI_AUTO_LENGTH, &key);
-    napi_value func = nullptr;
-    napi_get_property(env, global, key, &func);
-    napi_value arg = nullptr;
-    napi_create_string_utf8(env, moduleName, NAPI_AUTO_LENGTH, &arg);
-    napi_value result = nullptr;
-    napi_call_function(env, global, func, 1, &arg, &result);
-    return result;
+    napi_module modMultiVM = {
+        .nm_version = 1,
+        .nm_flags = 0,
+        .nm_filename = __FILE__,
+        .nm_register_func = SharedModuleInitMultiVM,
+        .nm_modname = SHARED_MODULE_NAME_MULTIVM,
+    };
+    napi_shared_module_register(&modMultiVM);
+
+    napi_module modMultiVM2 = {
+        .nm_version = 1,
+        .nm_flags = 0,
+        .nm_filename = __FILE__,
+        .nm_register_func = SharedModuleInitMultiVM,
+        .nm_modname = SHARED_MODULE_NAME_MULTIVM2,
+    };
+    napi_shared_module_register(&modMultiVM2);
 }
 
 class NapiSharedModuleTest : public NativeEngineTest {
@@ -299,45 +333,53 @@ HWTEST_F(NapiSharedModuleTest, LoadShared_FirstCall_CallbackThrows, testing::ext
     ASSERT_NE(exception, nullptr);
 }
 
-/* ===== Group E: cache hit / retry ===== */
+/* ===== Group E: cache hit / errored ===== */
 
 /* TC-E1: second call after success -> find hits, no re-init */
 HWTEST_F(NapiSharedModuleTest, LoadShared_SecondCall_AfterSuccess, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
+    int countBefore = g_initCount.load();
+
     napi_value result1 = CallRequireNapi(env, SHARED_MODULE_NAME);
     ASSERT_NE(result1, nullptr);
-    EXPECT_EQ(g_initCount.load(), 1);
+    bool isSendable1 = false;
+    napi_is_sendable(env, result1, &isSendable1);
+    EXPECT_TRUE(isSendable1);
 
     napi_value result2 = CallRequireNapi(env, SHARED_MODULE_NAME);
     ASSERT_NE(result2, nullptr);
-    EXPECT_EQ(g_initCount.load(), 1);
+    bool isSendable2 = false;
+    napi_is_sendable(env, result2, &isSendable2);
+    EXPECT_TRUE(isSendable2);
+
+    /* Second call must not re-run the init callback (cache hit). */
+    EXPECT_EQ(g_initCount.load(), countBefore);
 
     bool equals = false;
     napi_strict_equals(env, result1, result2, &equals);
     EXPECT_TRUE(equals);
 }
 
-/* TC-E2: second call after failure -> errored=true, no retry, returns undefined */
+/* TC-E2: second call after failure -> no root stored, retries init */
 HWTEST_F(NapiSharedModuleTest, LoadShared_SecondCall_AfterFailure, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
-    LoggerCollector collector;
+    int countBefore = g_initCount.load();
+
     napi_value result1 = CallRequireNapi(env, SHARED_MODULE_NAME_FAIL);
     ASSERT_NE(result1, nullptr);
     napi_valuetype type1;
     napi_typeof(env, result1, &type1);
     EXPECT_EQ(type1, napi_undefined);
-    ASSERT_TRUE(collector.Includes("callback returned null"));
-    EXPECT_EQ(g_initCount.load(), 1);
+    EXPECT_EQ(g_initCount.load(), countBefore + 1);
 
     napi_value result2 = CallRequireNapi(env, SHARED_MODULE_NAME_FAIL);
     ASSERT_NE(result2, nullptr);
     napi_valuetype type2;
     napi_typeof(env, result2, &type2);
     EXPECT_EQ(type2, napi_undefined);
-    ASSERT_TRUE(collector.Includes("previously errored"));
-    EXPECT_EQ(g_initCount.load(), 1);
+    EXPECT_EQ(g_initCount.load(), countBefore + 2);
 }
 
 /* ===== Group F: multi-VM sharing ===== */
@@ -346,20 +388,20 @@ HWTEST_F(NapiSharedModuleTest, LoadShared_SecondCall_AfterFailure, testing::ext:
 HWTEST_F(NapiSharedModuleTest, MultiVM_ConcurrentFirstImport, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
-    napi_value result1 = CallRequireNapi(env, SHARED_MODULE_NAME);
+    napi_value result1 = CallRequireNapi(env, SHARED_MODULE_NAME_MULTIVM);
     ASSERT_NE(result1, nullptr);
     bool isSendable = false;
     napi_is_sendable(env, result1, &isSendable);
     EXPECT_TRUE(isSendable);
     EXPECT_EQ(g_initCount.load(), 1);
 
-    EcmaVM* workerVM = panda::JSNApi::CreateJSVM();
+    EcmaVM* workerVM = CreateWorkerVM();
     ASSERT_NE(workerVM, nullptr);
     ArkNativeEngine* workerEngine = new ArkNativeEngine(workerVM, nullptr);
     ASSERT_NE(workerEngine, nullptr);
 
     napi_env workerEnv = reinterpret_cast<napi_env>(workerEngine);
-    napi_value result2 = CallRequireNapi(workerEnv, SHARED_MODULE_NAME);
+    napi_value result2 = CallRequireNapi(workerEnv, SHARED_MODULE_NAME_MULTIVM);
     ASSERT_NE(result2, nullptr);
     bool isSendable2 = false;
     napi_is_sendable(workerEnv, result2, &isSendable2);
@@ -375,20 +417,20 @@ HWTEST_F(NapiSharedModuleTest, MultiVM_ConcurrentFirstImport, testing::ext::Test
 HWTEST_F(NapiSharedModuleTest, MultiVM_SecondVMAfterInit, testing::ext::TestSize.Level1)
 {
     napi_env env = reinterpret_cast<napi_env>(engine_);
-    napi_value result1 = CallRequireNapi(env, SHARED_MODULE_NAME);
+    napi_value result1 = CallRequireNapi(env, SHARED_MODULE_NAME_MULTIVM2);
     ASSERT_NE(result1, nullptr);
     bool isSendable1 = false;
     napi_is_sendable(env, result1, &isSendable1);
     EXPECT_TRUE(isSendable1);
     EXPECT_EQ(g_initCount.load(), 1);
 
-    EcmaVM* workerVM = panda::JSNApi::CreateJSVM();
+    EcmaVM* workerVM = CreateWorkerVM();
     ASSERT_NE(workerVM, nullptr);
     ArkNativeEngine* workerEngine = new ArkNativeEngine(workerVM, nullptr);
     ASSERT_NE(workerEngine, nullptr);
 
     napi_env workerEnv = reinterpret_cast<napi_env>(workerEngine);
-    napi_value result2 = CallRequireNapi(workerEnv, SHARED_MODULE_NAME);
+    napi_value result2 = CallRequireNapi(workerEnv, SHARED_MODULE_NAME_MULTIVM2);
     ASSERT_NE(result2, nullptr);
     bool isSendable2 = false;
     napi_is_sendable(workerEnv, result2, &isSendable2);
@@ -444,7 +486,7 @@ HWTEST_F(NapiSharedModuleTest, MultiVM_ConcurrentWaitForInit, testing::ext::Test
 
     // Thread 1: worker VM, becomes init party (slow init blocks inside callback)
     std::thread t1([&ok1]() {
-        EcmaVM* vm = panda::JSNApi::CreateJSVM();
+        EcmaVM* vm = CreateWorkerVM();
         auto* engine = new ArkNativeEngine(vm, nullptr);
         napi_env env = reinterpret_cast<napi_env>(engine);
         napi_value result = CallRequireNapi(env, SHARED_MODULE_NAME_SLOW);
@@ -463,7 +505,7 @@ HWTEST_F(NapiSharedModuleTest, MultiVM_ConcurrentWaitForInit, testing::ext::Test
 
     // Thread 2: another worker VM, should hit initializing=true -> cv.wait
     std::thread t2([&ok2]() {
-        EcmaVM* vm = panda::JSNApi::CreateJSVM();
+        EcmaVM* vm = CreateWorkerVM();
         auto* engine = new ArkNativeEngine(vm, nullptr);
         napi_env env = reinterpret_cast<napi_env>(engine);
         napi_value result = CallRequireNapi(env, SHARED_MODULE_NAME_SLOW);

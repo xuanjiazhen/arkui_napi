@@ -905,10 +905,6 @@ Local<JSValueRef> ArkNativeEngine::LoadSharedNativeModule(
         if (entry.root) {
             return entry.root->ToLocal(vm_);
         }
-        if (entry.errored.load()) {
-            HILOG_ERROR("shared module %{public}s previously errored", key.c_str());
-            return JSValueRef::Undefined(vm_);
-        }
         entry.initializing.store(true);
     }
 
@@ -920,7 +916,6 @@ Local<JSValueRef> ArkNativeEngine::LoadSharedNativeModule(
         if (ok) {
             entry.root = std::make_unique<panda::SendableGlobal<JSValueRef>>(vm_, root);
         } else {
-            entry.errored.store(true);
             HILOG_ERROR("shared module %{public}s init failed", key.c_str());
         }
         entry.initializing.store(false);
