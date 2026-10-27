@@ -61,6 +61,7 @@ struct NativeModule {
     const char* fileName = nullptr;
     const char* systemFilePath = nullptr;
     RegisterCallback registerCallback = nullptr;
+    unsigned int shared = 0;
     GetJSCodeCallback getABCCode = nullptr;
     GetJSCodeCallback getJSCode = nullptr;
     int32_t version = 0;
@@ -97,6 +98,7 @@ public:
         std::string& errInfo, bool internal, const char* relativePath, std::string& loadErrInfo);
     void SetNativeEngine(std::string moduleName, NativeEngine* nativeEngine);
     bool UnloadNativeModule(const std::string& moduleKey);
+    bool IsSharedModule(const std::string& moduleKey);
     std::string GetModuleFileName(const char* moduleName, bool isAppModule);
 
     /**
