@@ -2661,13 +2661,13 @@ NAPI_EXTERN napi_status napi_set_store_global_ref(napi_env env, bool enable)
 
 NAPI_EXTERN napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result)
 {
-    CHECK_ENV(env);
+    NAPI_PREAMBLE(env);
     CHECK_ARG(env, result);
 
     auto engine = reinterpret_cast<NativeEngine*>(env);
     *result = HandleScopeToNapiHandleScope(new HandleScopeWrapper(engine));
     engine->openHandleScopes_++;
-    return napi_clear_last_error(env);
+    return GET_RETURN_STATUS(env);
 }
 
 NAPI_EXTERN napi_status napi_close_handle_scope(napi_env env, napi_handle_scope scope)
@@ -2712,6 +2712,11 @@ NAPI_EXTERN napi_status napi_close_microtask_scope(napi_env env, napi_microtask_
     }
 
     delete reinterpret_cast<panda::JsiMicrotaskScope*>(scope);
+    if (UNLIKELY(panda::JSNApi::HasPendingException(engine->GetEcmaVm()))) {
+        HILOG_WARN("pending exception after microtask scope closed, print exception info: ");
+        panda::JSNApi::PrintExceptionInfo(engine->GetEcmaVm());
+        return napi_set_last_error(env, napi_pending_exception);
+    }
     return napi_clear_last_error(env);
 }
 

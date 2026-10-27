@@ -735,3 +735,30 @@ HWTEST_F(NapiPendingExceptionTest, NapiGetValueExternalSTest001, testing::ext::T
     DestructionException();
     ASSERT_EQ(res, napi_pending_exception);
 }
+
+/**
+ * @tc.name: NapiOpenHandleScopeTest
+ * @tc.desc: Test napi_open_handle_scope is short-circuited by a pending exception:
+ *           returns napi_pending_exception without opening the scope
+ * @tc.type: FUNC
+ */
+HWTEST_F(NapiPendingExceptionTest, NapiOpenHandleScopeTest001, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    napi_handle_scope scope = nullptr;
+    uint64_t openScopes = engine_->openHandleScopes_;
+    ConstructionException();
+    napi_status res = napi_open_handle_scope(env, &scope);
+
+    const napi_extended_error_info* errorInfo = nullptr;
+    ASSERT_CHECK_CALL(napi_get_last_error_info(env, &errorInfo));
+    ASSERT_NE(errorInfo, nullptr);
+    ASSERT_EQ(errorInfo->error_code, napi_pending_exception);
+
+    DestructionException();
+    ASSERT_EQ(res, napi_pending_exception);
+    ASSERT_EQ(scope, nullptr);
+    ASSERT_EQ(engine_->openHandleScopes_, openScopes);
+}
