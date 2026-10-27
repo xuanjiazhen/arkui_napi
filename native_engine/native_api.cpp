@@ -2712,6 +2712,11 @@ NAPI_EXTERN napi_status napi_close_microtask_scope(napi_env env, napi_microtask_
     }
 
     delete reinterpret_cast<panda::JsiMicrotaskScope*>(scope);
+    if (UNLIKELY(panda::JSNApi::HasPendingException(engine->GetEcmaVm()))) {
+        HILOG_WARN("pending exception after microtask scope closed, print exception info: ");
+        panda::JSNApi::PrintExceptionInfo(engine->GetEcmaVm());
+        return napi_set_last_error(env, napi_pending_exception);
+    }
     return napi_clear_last_error(env);
 }
 
