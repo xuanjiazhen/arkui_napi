@@ -3069,6 +3069,7 @@ HWTEST_F(NapiBasicTest, CreateRuntimeTest001, testing::ext::TestSize.Level1)
     napi_status status = napi_create_runtime(env, &newEnv);
     ASSERT_EQ(status, napi_ok);
     if (newEnv != nullptr) {
+        engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv));
         ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
     }
 }
@@ -3089,6 +3090,7 @@ HWTEST_F(NapiBasicTest, CreateRuntimeTest002, testing::ext::TestSize.Level1)
     auto workerVM = reinterpret_cast<NativeEngine*>(newEnv)->GetEcmaVm();
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM);
     EXPECT_EQ(func, nullptr); // no function registered in unittest
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv));
     ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
 }
 
@@ -3104,6 +3106,7 @@ HWTEST_F(NapiBasicTest, DestroyRuntimeTest001, testing::ext::TestSize.Level1)
     napi_env newEnv = nullptr;
     napi_status status = napi_create_runtime(env, &newEnv);
     ASSERT_EQ(status, napi_ok);
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv));
     status = napi_destroy_runtime(newEnv);
     ASSERT_EQ(status, napi_ok);
 }
@@ -3186,6 +3189,7 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest001, testing::ext::TestSize.Level1
     auto workerVM = reinterpret_cast<NativeEngine*>(newEnv)->GetEcmaVm();
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM);
     EXPECT_EQ(func, nullptr); // no function registered in unittest
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv));
     ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
 }
 
@@ -14947,9 +14951,7 @@ HWTEST_F(NapiBasicTest, NapiEncodeTest001, testing::ext::TestSize.Level1)
 
     ASSERT_EQ(srcLength, 14); // 14:string length
     char* res = reinterpret_cast<char*>(srcData);
-
-    res[srcLength] = 0;
-    ASSERT_STREQ(res, expected);
+    ASSERT_EQ(std::string_view(res, srcLength), std::string_view(expected));
 }
 
 /**
@@ -16271,6 +16273,7 @@ HWTEST_F(NapiBasicTest, CreateRuntimeTest003, testing::ext::TestSize.Level1)
     JSNApi::RegisterUncatchableErrorHandler(const_cast<panda::EcmaVM*>(workerVM), handler);
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM);
     EXPECT_NE(func, nullptr);
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv));
     ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
 }
 
@@ -16301,7 +16304,9 @@ HWTEST_F(NapiBasicTest, CreateRuntimeTest004, testing::ext::TestSize.Level1)
     auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
     EXPECT_NE(func, nullptr);
+    reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
     ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16332,9 +16337,11 @@ HWTEST_F(NapiBasicTest, CreateRuntimeTest005, testing::ext::TestSize.Level1)
         auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
         JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
         EXPECT_NE(func, nullptr);
+        reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
         ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
     });
     t1.join();
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16359,9 +16366,11 @@ HWTEST_F(NapiBasicTest, CreateRuntimeTest006, testing::ext::TestSize.Level1)
         auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
         JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
         EXPECT_EQ(func, nullptr);
+        reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
         ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
     });
     t1.join();
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16386,6 +16395,7 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest002, testing::ext::TestSize.Level1
     JSNApi::RegisterUncatchableErrorHandler(const_cast<panda::EcmaVM*>(workerVM), handler);
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM);
     EXPECT_NE(func, nullptr);
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv));
     ASSERT_EQ(napi_destroy_runtime(newEnv), napi_ok);
 }
 
@@ -16416,7 +16426,9 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest003, testing::ext::TestSize.Level1
     auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
     EXPECT_NE(func, nullptr);
+    reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
     ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16447,7 +16459,9 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest004, testing::ext::TestSize.Level1
     auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
     EXPECT_NE(func, nullptr);
+    reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
     ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16478,7 +16492,9 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest005, testing::ext::TestSize.Level1
     auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
     JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
     EXPECT_NE(func, nullptr);
+    reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
     ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16509,9 +16525,11 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest006, testing::ext::TestSize.Level1
         auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
         JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
         EXPECT_NE(func, nullptr);
+        reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
         ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
     });
     t1.join();
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16536,9 +16554,11 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest007, testing::ext::TestSize.Level1
         auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
         JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
         EXPECT_EQ(func, nullptr);
+        reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
         ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
     });
     t1.join();
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16570,9 +16590,11 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest008, testing::ext::TestSize.Level1
         auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
         JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
         EXPECT_NE(func, nullptr);
+        reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
         ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
     });
     t1.join();
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
@@ -16604,9 +16626,11 @@ HWTEST_F(NapiBasicTest, CreateLimitRuntimeTest009, testing::ext::TestSize.Level1
         auto workerVM2 = reinterpret_cast<NativeEngine*>(newEnv2)->GetEcmaVm();
         JSNApi::UncatchableErrorHandler func = JSNApi::GetUncatchableErrorHandler(workerVM2);
         EXPECT_NE(func, nullptr);
+        reinterpret_cast<NativeEngine*>(newEnv1)->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv2));
         ASSERT_EQ(napi_destroy_runtime(newEnv2), napi_ok);
     });
     t1.join();
+    engine_->DeleteWorker(reinterpret_cast<NativeEngine*>(newEnv1));
     ASSERT_EQ(napi_destroy_runtime(newEnv1), napi_ok);
 }
 
