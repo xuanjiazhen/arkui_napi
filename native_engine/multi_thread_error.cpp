@@ -15,6 +15,52 @@
 
 #include "multi_thread_error.h"
 
+#include <cstdarg>
+
+#include "securec.h"
+
+std::string ConvertHilongToTmt(const char* hilogFmt)
+{
+    if (hilogFmt == nullptr) {
+        return "";
+    }
+    std::string result;
+    std::string fmt(hilogFmt);
+    size_t pos = 0;
+    while (pos < fmt.size()) {
+        size_t begin = fmt.find("%{", pos);
+        if (begin == std::string::npos) {
+            result.append(fmt, pos, fmt.size() - pos);
+            break;
+        }
+        size_t end = fmt.find('}', begin);
+        if (end == std::string::npos) {
+            result.append(fmt, pos, fmt.size() - pos);
+            break;
+        }
+        result.append(fmt, pos, begin - pos);
+        result.push_back('%');
+        pos = end + 1;
+    }
+    return result;
+}
+
+std::string FormatHilogMsg(const char* hilogFmt, ...)
+{
+    std::string fmt = ConvertHilongToTmt(hilogFmt);
+    constexpr size_t MAX_MSG_SIZE = 4096;
+    std::string msg(MAX_MSG_SIZE, '\0');
+    va_list args;
+    va_start(args, hilogFmt);
+    int size = vsnprintf_s(msg.data(), MAX_MSG_SIZE, MAX_MSG_SIZE - 1, fmt.c_str(), args);
+    va_end(args);
+    if (size <= 0) {
+        return fmt;
+    }
+    msg.resize(static_cast<size_t>(size));
+    return msg;
+}
+
 #if defined(OHOS_PLATFORM)
 
 #include <atomic>

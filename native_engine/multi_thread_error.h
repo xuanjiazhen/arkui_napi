@@ -20,6 +20,9 @@
 
 class NativeEngine;
 
+std::string ConvertHilongToTmt(const char* hilogFmt);
+std::string FormatHilogMsg(const char* hilongFmt, ...);
+
 void NotifyMultiThreadError(NativeEngine* engine, const std::string& msg);
 
 #endif /* FOUNDATION_ACE_NAPI_NATIVE_ENGINE_MULTI_THREAD_ERROR_H */

@@ -17,7 +17,6 @@
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_NATIVE_API_INTERNAL_H
 
 #include <cinttypes>
-#include <cstdio>
 #include <string>
 
 #include "napi/native_api.h"
@@ -25,50 +24,6 @@
 #include "ark_native_engine.h"
 #include "multi_thread_error.h"
 #include "utils/log.h"
-
-static inline std::string ConvertHilongToTmt(const char* hilogFmt)
-{
-    if (hilogFmt == nullptr) {
-        return "";
-    }
-    std::string result;
-    std::string fmt(hilogFmt);
-    size_t pos = 0;
-    while (pos < fmt.size()) {
-        size_t begin = fmt.find("%{", pos);
-        if (begin == std::string::npos) {
-            result.append(fmt, pos, fmt.size() - pos);
-            break;
-        }
-        size_t end = fmt.find('}', begin);
-        if (end == std::string::npos) {
-            result.append(fmt, pos, fmt.size() - pos);
-            break;
-        }
-        result.append(fmt, pos, begin - pos);
-        result.push_back('%');
-        pos = end + 1;
-    }
-    return result;
-}
-
-template<typename... Args>
-static inline std::string FormatHilogMsg(const char* hilongFmt, Args&&... args)
-{
-    std::string fmt = ConvertHilongToTmt(hilongFmt);
-    if constexpr (sizeof...(args) == 0) {
-        return fmt;
-    } else {
-        int size = std::snprintf(nullptr, 0, fmt.c_str(), std::forward<Args>(args)...);
-        if (size <= 0) {
-            return fmt;
-        }
-        std::string msg(static_cast<size_t>(size) + 1, '\0');
-        (void)std::snprintf(msg.data(), static_cast<size_t>(size) + 1, fmt.c_str(), std::forward<Args>(args)...);
-        msg.resize(static_cast<size_t>(size));
-        return msg;
-    }
-}
 
 static inline napi_status napi_clear_last_error(napi_env env)
 {
@@ -151,21 +106,22 @@ static inline napi_status napi_set_last_error(napi_env env,
         };                                                                                                \
     } while (0)
 
-#define LOG_IF_SPECIAL(engine, condition, fmt, ...)                                                            \
-    do {                                                                                                       \
-        if ((condition)) {                                                                                     \
-            HILOG_FATAL(fmt, ##__VA_ARGS__);                                                                   \
-        } else {                                                                                               \
-            std::string stack;                                                                                 \
-            bool backtrace = DumpHybridStack((engine)->GetEcmaVm(), stack, 0, 8);                              \
-            HILOG_ERROR(fmt "\n%{public}s", ##__VA_ARGS__, backtrace ? stack.c_str() : "Faild to backtrace."); \
-            std::string msg = FormatHilogMsg(fmt, ##__VA_ARGS__);                                              \
-            if (backtrace) {                                                                                   \
-                msg += "\n";                                                                                   \
-                msg += stack;                                                                                  \
-            }                                                                                                  \
-            NotifyMultiThreadError(engine, msg);                                                                          \
-        }                                                                                                      \
+static inline void ReportMultiThreadFault(NativeEngine* engine, const std::string& msg)
+{
+    std::string stack;
+    bool backtrace = DumpHybridStack(engine->GetEcmaVm(), stack, 0, 8);
+    std::string fullMsg = msg + "\n" + (backtrace ? stack : "Faild to backtrace.");
+    HILOG_ERROR("%{public}s", fullMsg.c_str());
+    NotifyMultiThreadError(engine, fullMsg);
+}
+
+#define LOG_IF_SPECIAL(engine, condition, fmt, ...)                             \
+    do {                                                                        \
+        if ((condition)) {                                                      \
+            HILOG_FATAL(fmt, ##__VA_ARGS__);                                    \
+        } else {                                                                \
+            ReportMultiThreadFault((engine), FormatHilogMsg(fmt, ##__VA_ARGS__)); \
+        }                                                                      \
     } while (0)
 
 #ifndef LIKELY
