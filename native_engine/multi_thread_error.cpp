@@ -78,7 +78,7 @@ std::string FormatHilogMsg(const char* hilogFmt, ...)
 #include "utils/log.h"
 
 namespace {
-struct debug_msg {
+struct MultiThreadDebugMsg {
     uint64_t timestamp;
     const char *msg;
 };
@@ -150,7 +150,7 @@ void NotifyMultiThreadError(NativeEngine* engine, const std::string &msg)
     uint64_t now = NowMs();
     g_lastReportTime.store(now, std::memory_order_relaxed);
 
-    debug_msg debugMessage = {now, msg.c_str()};
+    MultiThreadDebugMsg debugMessage = {now, msg.c_str()};
 
     static constexpr int signo = 42;
     static constexpr int siCode = -4;
