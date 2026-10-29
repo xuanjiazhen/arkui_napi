@@ -632,7 +632,10 @@ ArkNativeEngine::~ArkNativeEngine()
         JSNApi::SetTimerTaskCallback(vm_, nullptr);
         JSNApi::SetCancelTimerCallback(vm_, nullptr);
         NativeTimerCallbackInfo::ReleaseTimerList(this);
-        JSNApi::SetPostTaskToThreadCallback(vm_, nullptr);
+        JSNApi::BeginGCCallbackShutdown(vm_);
+        // Drain detached GC callbacks while the engine, references and loop are
+        // intact. Subsequent GCs retain the remaining resources for destruction.
+        JSNApi::DrainGCCallbacksForShutdown(vm_);
         // destroy looper resource on the ark native engine
         Deinit();
         if (JSNApi::IsJSMainThreadOfEcmaVM(vm_)) {
