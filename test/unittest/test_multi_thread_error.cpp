@@ -69,14 +69,14 @@ public:
         struct sigaction action = {};
         action.sa_sigaction = TestSignalHandler;
         action.sa_flags = SA_SIGINFO;
-        constexpr int MULTI_THREAD_ERROR_SIGNO = 42;
-        sigaction(MULTI_THREAD_ERROR_SIGNO, &action, &oldAction_);
+        constexpr int multiThreadErrorSigno = 42;
+        sigaction(multiThreadErrorSigno, &action, &oldAction_);
     }
 
     ~SignalHandlerGuard()
     {
-        constexpr int MULTI_THREAD_ERROR_SIGNO = 42;
-        sigaction(MULTI_THREAD_ERROR_SIGNO, &oldAction_, nullptr);
+        constexpr int multiThreadErrorSigno = 42;
+        sigaction(multiThreadErrorSigno, &oldAction_, nullptr);
     }
 
 private:
@@ -202,10 +202,10 @@ HWTEST_F(MultiThreadErrorTest, NotifyMultiThreadErrorTest002, testing::ext::Test
     SignalHandlerGuard handlerGuard;
     SetDetectionConfigForTest(2, 0);
 
-    constexpr int LOOP_LIMIT = 100;
+    constexpr int loopLimit = 100;
     int loops = 0;
     ResetCapture();
-    while (g_signalCount == 0 && loops < LOOP_LIMIT) {
+    while (g_signalCount == 0 && loops < loopLimit) {
         NotifyMultiThreadError(engine_, "frequency gate");
         ++loops;
     }

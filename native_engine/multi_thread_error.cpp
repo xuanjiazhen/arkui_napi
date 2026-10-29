@@ -48,11 +48,11 @@ std::string ConvertHilongToTmt(const char* hilogFmt)
 std::string FormatHilogMsg(const char* hilogFmt, ...)
 {
     std::string fmt = ConvertHilongToTmt(hilogFmt);
-    constexpr size_t MAX_MSG_SIZE = 4096;
-    std::string msg(MAX_MSG_SIZE, '\0');
+    constexpr size_t maxMsgSize = 4096;
+    std::string msg(maxMsgSize, '\0');
     va_list args;
     va_start(args, hilogFmt);
-    int size = vsnprintf_s(msg.data(), MAX_MSG_SIZE, MAX_MSG_SIZE - 1, fmt.c_str(), args);
+    int size = vsnprintf_s(msg.data(), maxMsgSize, maxMsgSize - 1, fmt.c_str(), args);
     va_end(args);
     if (size <= 0) {
         return fmt;
@@ -152,19 +152,19 @@ void NotifyMultiThreadError(NativeEngine* engine, const std::string &msg)
 
     debug_msg debugMessage = {now, msg.c_str()};
 
-    static constexpr int SIGNO = 42;
-    static constexpr int SI_CODE = -4;
+    static constexpr int signo = 42;
+    static constexpr int siCode = -4;
     siginfo_t info;
-    info.si_code = SI_CODE;
+    info.si_code = siCode;
     info.si_value.sival_ptr = &debugMessage;
 
 #if defined(__aarch64__)
     pid_t tid = static_cast<pid_t>(Syscall(__NR_gettid, 0, 0, 0, 0, 0, 0));
     if (Syscall(__NR_rt_tgsigqueueinfo, static_cast<unsigned long>(getpid()),
-                static_cast<unsigned long>(tid), static_cast<unsigned long>(SIGNO),
+                static_cast<unsigned long>(tid), static_cast<unsigned long>(signo),
                 reinterpret_cast<unsigned long>(&info), 0, 0) == -1) {
 #else
-    if (syscall(SYS_rt_tgsigqueueinfo, getpid(), syscall(SYS_gettid), SIGNO, &info) == -1) {
+    if (syscall(SYS_rt_tgsigqueueinfo, getpid(), syscall(SYS_gettid), signo, &info) == -1) {
 #endif
         HILOG_ERROR("%{public}s", msg.c_str());
     }
