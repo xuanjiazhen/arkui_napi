@@ -16,14 +16,16 @@
 #ifndef FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 #define FOUNDATION_ACE_NAPI_NATIVE_ENGINE_IMPL_ARK_ARK_NATIVE_ENGINE_H
 
-#include <memory>
 #if !defined(PREVIEW) && !defined(IOS_PLATFORM)
 #include <sys/wait.h>
 #include <sys/types.h>
 #endif
 #include <iostream>
 #include <map>
+#include <memory>
 #include <mutex>
+#include <atomic>
+#include <condition_variable>
 #include <regex>
 #include <thread>
 #include <unistd.h>
@@ -159,6 +161,13 @@ private:
     NapiAppStateCallback callback_ {nullptr};
 };
 
+struct SharedRootEntry {
+    std::unique_ptr<panda::SendableGlobal<JSValueRef>> root;
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::atomic<bool> initializing {false};
+};
+
 class NAPI_EXPORT ArkNativeEngine : public NativeEngine {
 friend struct MoudleNameLocker;
 public:
@@ -176,6 +185,10 @@ public:
     __attribute__((noinline)) void GetEcmaVmFatal() const;
     const EcmaVM* GetEcmaVmCritical() const override;
     const ArkNativeEngine* GetParent() const override;
+
+    Local<JSValueRef> LoadSharedNativeModule(NativeModule* module, const std::string& key);
+    Local<JSValueRef> CreateSendableRoot(NativeModule* module);
+    bool IsSharedModule(NativeModule* module) const;
 
     void Loop(LoopMode mode, bool needSync = false) override;
     void SetPromiseRejectCallback(NativeReference* rejectCallbackRef, NativeReference* checkCallbackRef) override;
@@ -556,6 +569,9 @@ private:
     NativeReference* promiseRejectCallbackRef_ { nullptr };
     NativeReference* checkCallbackRef_ { nullptr };
     std::map<NativeModule*, panda::Global<panda::JSValueRef>> loadedModules_ {};
+    static std::mutex sharedRootIndexMutex_;
+    static std::map<NativeModule*, SharedRootEntry> sharedRootMap_;
+    SharedRootEntry& GetOrCreateSharedRootEntry(NativeModule* key);
     static PermissionCheckCallback permissionCheckCallback_;
     NapiUncaughtExceptionCallback napiUncaughtExceptionCallback_ { nullptr };
     NapiAllPromiseRejectCallback allPromiseRejectCallback_ {nullptr};
