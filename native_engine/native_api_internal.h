@@ -141,7 +141,7 @@ inline bool ValidEngineCheck(NativeEngine* input,
 {
     if (input != owner) {
         input->UpdateCrossThreadCheckStatus();
-        HILOG_ERROR("GetectionAbort=%{public}d", input->GetDetectionAbort());
+        HILOG_ERROR("detectionAbort=%{public}d", input->GetDetectionAbort());
         LOG_IF_SPECIAL(input, UNLIKELY(input->IsCrossThreadCheckEnabled()&&
                        input->GetDetectionAbort()),
                        "param env not equal to its owner. %{public}s at %{public}s:%{public}d",

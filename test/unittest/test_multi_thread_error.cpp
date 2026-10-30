@@ -83,6 +83,27 @@ private:
     struct sigaction oldAction_ {};
 };
 
+class DefaultHandlerGuard {
+public:
+    DefaultHandlerGuard()
+    {
+        constexpr int multiThreadErrorSigno = 42;
+        struct sigaction action = {};
+        action.sa_handler = SIG_DFL;
+        sigemptyset(&action.sa_mask);
+        sigaction(multiThreadErrorSigno, &action, &oldAction_);
+    }
+
+    ~DefaultHandlerGuard()
+    {
+        constexpr int multiThreadErrorSigno = 42;
+        sigaction(multiThreadErrorSigno, &oldAction_, nullptr);
+    }
+
+private:
+    struct sigaction oldAction_ {};
+};
+
 void SetDetectionConfigForTest(int64_t frequency, int64_t interval)
 {
     auto &config = const_cast<panda::DFXJSNApi::MultithreadingDetectionOptions &>(
@@ -246,6 +267,26 @@ HWTEST_F(MultiThreadErrorTest, NotifyMultiThreadErrorTest003, testing::ext::Test
     ResetCapture();
     NotifyMultiThreadError(engine_, "interval gate");
     ASSERT_EQ(g_signalCount, 1);
+}
+
+/**
+ * @tc.name: NotifyMultiThreadErrorNoHandlerTest001
+ * @tc.desc: Test NotifyMultiThreadError skips signal 42 and falls back to
+ *           plain hilog when no handler is installed (SIG_DFL), so the
+ *           real-time signal default action never terminates the process
+ * @tc.type: FUNC
+ */
+HWTEST_F(MultiThreadErrorTest, NotifyMultiThreadErrorNoHandlerTest001, testing::ext::TestSize.Level1)
+{
+    ASSERT_NE(engine_, nullptr);
+    DetectionConfigGuard configGuard;
+    DefaultHandlerGuard defaultGuard;
+    SetDetectionConfigForTest(1, 0);
+
+    ResetCapture();
+    NotifyMultiThreadError(engine_, "report without handler");
+
+    ASSERT_EQ(g_signalCount, 0);
 }
 
 /**

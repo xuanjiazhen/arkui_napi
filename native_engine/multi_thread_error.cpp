@@ -139,6 +139,18 @@ bool CheckTimeInterval(int64_t interval)
     return currentTime - lastTime >=
         static_cast<uint64_t>(interval) * SECOND_PER_MINUTE * MS_PER_SECOND;
 }
+
+bool IsSignalHandlerAvailable(int signo)
+{
+    struct sigaction prevAction;
+    if (sigaction(signo, nullptr, &prevAction) != 0) {
+        return false;
+    }
+    if (prevAction.sa_flags & SA_SIGINFO) {
+        return prevAction.sa_sigaction != nullptr;
+    }
+    return prevAction.sa_handler != SIG_DFL && prevAction.sa_handler != SIG_IGN;
+}
 } // namespace
 
 void NotifyMultiThreadError(NativeEngine* engine, const std::string &msg)
@@ -150,9 +162,14 @@ void NotifyMultiThreadError(NativeEngine* engine, const std::string &msg)
     uint64_t now = NowMs();
     g_lastReportTime.store(now, std::memory_order_relaxed);
 
+    static constexpr int signo = 42;
+    if (!IsSignalHandlerAvailable(signo)) {
+        HILOG_ERROR("no handler for signal %{public}d, report by hilog: %{public}s", signo, msg.c_str());
+        return;
+    }
+
     MultiThreadDebugMsg debugMessage = {now, msg.c_str()};
 
-    static constexpr int signo = 42;
     static constexpr int siCode = -4;
     siginfo_t info;
     info.si_code = siCode;
