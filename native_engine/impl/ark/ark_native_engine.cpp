@@ -3078,6 +3078,11 @@ void ArkNativeEngine::NotifyForceExpandState(uint64_t tid, int32_t value)
     }
     nativeEngine->NotifyForceExpandState(value);
 }
+
+void ArkNativeEngine::NotifyPowerSavingMode(bool enabled)
+{
+    DFXJSNApi::NotifyPowerSavingMode(vm_, enabled);
+}
 #else
 void ArkNativeEngine::PrintStatisticResult()
 {
@@ -3192,6 +3197,11 @@ NativeEngine* ArkNativeEngine::GetArkNativeEngineByID([[maybe_unused]] uint64_t 
 }
 
 void ArkNativeEngine::NotifyForceExpandState([[maybe_unused]] uint64_t tid, [[maybe_unused]] int32_t value)
+{
+    HILOG_WARN("ARK does not support dfx on windows");
+}
+
+void ArkNativeEngine::NotifyPowerSavingMode(bool enabled)
 {
     HILOG_WARN("ARK does not support dfx on windows");
 }
