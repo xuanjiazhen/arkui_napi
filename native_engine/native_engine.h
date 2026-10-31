@@ -486,6 +486,7 @@ public:
     virtual void NotifyMemoryPressure(bool inHighMemoryPressure = false) = 0;
     virtual void NotifyForceExpandState(int32_t value) = 0;
     virtual void NotifyForceExpandState(uint64_t tid, int32_t value) = 0;
+    virtual void NotifyPowerSavingMode(bool enabled) = 0;
     virtual void RegisterAppStateCallback(NapiAppStateCallback callback) = 0;
     virtual void SetMockModuleList(const std::map<std::string, std::string> &list) = 0;
     virtual int32_t GetObjectHash(napi_env env, napi_value src) = 0;

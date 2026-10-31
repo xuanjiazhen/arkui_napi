@@ -325,6 +325,7 @@ public:
     void NotifyMemoryPressure(bool inHighMemoryPressure = false) override;
     void NotifyForceExpandState(int32_t value) override;
     void NotifyForceExpandState(uint64_t tid, int32_t value) override;
+    void NotifyPowerSavingMode(bool enabled) override;
     void RegisterAppStateCallback(NapiAppStateCallback callback) override;
 
     void AllowCrossThreadExecution() const override;
