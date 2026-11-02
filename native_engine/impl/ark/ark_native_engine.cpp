@@ -2856,6 +2856,12 @@ bool ArkNativeEngine::EnableLocalHandleDetection()
     return true;
 }
 
+void ArkNativeEngine::HintGC(UrgencyLevel level)
+{
+    const EcmaVM* vm = GetEcmaVm();
+    JSNApi::HintGC(vm, level);
+}
+
 void ArkNativeEngine::GetHybridStackTraceForCrash(napi_env env, std::string &stackTraceStr)
 {
     auto vm = reinterpret_cast<NativeEngine*>(env)->GetEcmaVm();
