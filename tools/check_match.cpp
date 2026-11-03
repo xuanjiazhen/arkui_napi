@@ -22,10 +22,11 @@ namespace ohos::check {
 namespace {
 
 bool MatchInCandidates(const ApiMeta& exposed, const std::vector<const ApiMeta*>& candidates,
-                       const std::map<std::string, std::string>& inheritMap)
+                       const std::map<std::string, std::string>& inheritMap,
+                       const std::set<std::string>* fileAliases)
 {
     for (const ApiMeta* legal : candidates) {
-        if (Match(exposed, *legal, inheritMap)) {
+        if (Match(exposed, *legal, inheritMap, fileAliases)) {
             return true;
         }
     }
@@ -38,7 +39,8 @@ CheckErrorCode CheckIllegalExposed(
     const LegalIndex& legalIndex,
     const std::vector<ApiMeta> &exposedList,
     const std::map<std::string, std::string> &inheritMap,
-    std::vector<ApiMeta> &illegalList
+    std::vector<ApiMeta> &illegalList,
+    const std::set<std::string> *fileAliases
 )
 {
     CheckErrorCode ret = CHECK_OK;
@@ -48,7 +50,7 @@ CheckErrorCode CheckIllegalExposed(
         bool found = false;
         auto it = legalIndex.find(exposed.apiText);
         if (it != legalIndex.end()) {
-            found = MatchInCandidates(exposed, it->second, inheritMap);
+            found = MatchInCandidates(exposed, it->second, inheritMap, fileAliases);
         }
 
         if (!found) {

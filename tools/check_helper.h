@@ -128,7 +128,8 @@ std::string NormalizeModuleName(const std::string& file);
 // Case-insensitive equality: d.ts and runtime names often differ in case (avSession/avsession).
 bool EqualsIgnoreCase(const std::string& a, const std::string& b);
 
-bool Match(const ApiMeta &exposed, const ApiMeta &legal, const std::map<std::string, std::string> &inheritMap);
+bool Match(const ApiMeta &exposed, const ApiMeta &legal, const std::map<std::string, std::string> &inheritMap,
+           const std::set<std::string> *fileAliases = nullptr);
 
 }
 

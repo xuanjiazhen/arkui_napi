@@ -1,0 +1,39 @@
+{
+    "modules": {
+        "@ohos.file.photoAccessHelper": {
+            "kit": "Media Library Kit",
+            "files": [
+                "/system/lib64/module/file/libphotoaccesshelpernative.z.so",
+                "/system/etc/abc/file/photoaccesshelper.abc"
+            ]
+        },
+        "@ohos.framework.bundle": {
+            "kit": "ArkUI",
+            "files": [
+                "/system/framework/sample_bundle.abc"
+            ]
+        },
+        "@ohos.pure.type": {
+            "kit": "Test Kit",
+            "files": []
+        },
+        "@ohos.util.Vector": {
+            "kit": "Test Kit",
+            "files": [
+                "/system/framework/sample_vector.abc"
+            ]
+        },
+        "@ohos.util.ArrayList": {
+            "kit": "ArkTS",
+            "files": [
+                "/system/lib64/module/util/libstructdemo.z.so"
+            ]
+        },
+        "@ohos.util.HashMap": {
+            "kit": "ArkTS",
+            "files": [
+                "/system/lib64/module/util/libstructdemo.z.so"
+            ]
+        }
+    }
+}

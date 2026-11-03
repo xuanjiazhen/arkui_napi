@@ -48,3 +48,40 @@ ohos_shared_library("depdemo") {
     subsystem_name = "arkui"
     part_name = "napi"
 }
+
+# module-map sample: ONE shared so (module "util.struct") backing two d.ts modules
+# (@ohos.util.ArrayList / @ohos.util.HashMap in module_map.json) - the many-to-one case.
+ohos_shared_library("structdemo") {
+    sources = [ "structdemo.cpp" ]
+
+    deps = [ "../../../..:ace_napi" ]
+
+    subsystem_name = "arkui"
+    part_name = "napi"
+}
+
+# module-map sample: renamed so (module "file.photoAccessHelperNative") backing
+# @ohos.file.photoAccessHelper, whose conventional requireNapi paths do not exist.
+# Target name = output file stem: the so must land as libphotoaccesshelpernative.so to
+# match the module map (file/libphotoaccesshelpernative.z.so on device).
+ohos_shared_library("photoaccesshelpernative") {
+    sources = [ "nativehelper.cpp" ]
+
+    deps = [ "../../../..:ace_napi" ]
+
+    subsystem_name = "arkui"
+    part_name = "napi"
+}
+
+# module-map sample: conventionally-named so (module "util.vector") for a module the
+# map classifies as a framework abc (see module_map.json @ohos.util.Vector) - the
+# claim-time conventional fallback must keep it checkable, so the check-time judgement
+# must defer to the load instead of hiding this file (stale-map protection).
+ohos_shared_library("vector") {
+    sources = [ "vector.cpp" ]
+
+    deps = [ "../../../..:ace_napi" ]
+
+    subsystem_name = "arkui"
+    part_name = "napi"
+}

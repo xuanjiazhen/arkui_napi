@@ -1,0 +1,79 @@
+[
+    {
+        "apiText": "ping",
+        "apiType": "method",
+        "kit": "scandirmap",
+        "file": "api/@ohos.app.ability.scandirdemo.d.ts",
+        "className": "unnamed"
+    },
+    {
+        "apiText": "level",
+        "apiType": "field",
+        "kit": "scandirmap",
+        "file": "api/@ohos.app.ability.scandirdemo.d.ts",
+        "className": "unnamed"
+    },
+    {
+        "apiText": "peek(",
+        "apiType": "method",
+        "kit": "scandirmap",
+        "file": "api/@ohos.util.Vector.d.ts",
+        "className": "unnamed"
+    },
+    {
+        "apiText": "class ArrayList",
+        "apiType": "class",
+        "kit": "scandirmap",
+        "file": "api/@ohos.util.ArrayList.d.ts",
+        "className": "unnamed"
+    },
+    {
+        "apiText": "add(",
+        "apiType": "method",
+        "kit": "scandirmap",
+        "file": "api/@ohos.util.ArrayList.d.ts",
+        "className": "ArrayList"
+    },
+    {
+        "apiText": "class HashMap",
+        "apiType": "class",
+        "kit": "scandirmap",
+        "file": "api/@ohos.util.HashMap.d.ts",
+        "className": "unnamed"
+    },
+    {
+        "apiText": "set(",
+        "apiType": "method",
+        "kit": "scandirmap",
+        "file": "api/@ohos.util.HashMap.d.ts",
+        "className": "HashMap"
+    },
+    {
+        "apiText": "getAssets(",
+        "apiType": "method",
+        "kit": "scandirmap",
+        "file": "api/@ohos.file.photoAccessHelper.d.ts",
+        "className": "unnamed"
+    },
+    {
+        "apiText": "COMMENT",
+        "apiType": "field",
+        "kit": "scandirmap",
+        "file": "api/@ohos.file.photoAccessHelper.d.ts",
+        "className": "unnamed"
+    },
+    {
+        "apiText": "placeholder(",
+        "apiType": "method",
+        "kit": "scandirmap",
+        "file": "api/@ohos.framework.bundle.d.ts",
+        "className": "unnamed"
+    },
+    {
+        "apiText": "placeholder(",
+        "apiType": "method",
+        "kit": "scandirmap",
+        "file": "api/@ohos.pure.type.d.ts",
+        "className": "unnamed"
+    }
+]

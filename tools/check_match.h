@@ -17,6 +17,7 @@
 #define CHECK_MATCH_H
 
 #include <map>
+#include <set>
 #include <vector>
 #include <string>
 
@@ -26,12 +27,15 @@
 
 namespace ohos::check {
 
-// Full-field match check over name-indexed legal candidates.
+// Full-field match check over name-indexed legal candidates. fileAliases (optional)
+// names the sibling d.ts modules backed by the same binary as the checked module
+// (many-to-one module map case): legal entries filed under an alias module match too.
 CheckErrorCode CheckIllegalExposed(
     const LegalIndex& legalIndex,
     const std::vector<ApiMeta>& exposedList,
     const std::map<std::string, std::string> &inheritMap,
-    std::vector<ApiMeta> &illegalList
+    std::vector<ApiMeta> &illegalList,
+    const std::set<std::string> *fileAliases = nullptr
 );
 
 }

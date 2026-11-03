@@ -522,6 +522,27 @@ bool IsFileMatched(const ApiMeta& exposed, const ApiMeta& legal)
     return EndsWith(legal.file, "/" + exposed.file);
 }
 
+// Case-insensitive EndsWith, for alias file matching (case drift between module map
+// names and whitelist file fields).
+bool EndsIgnoreCase(const std::string& str, const std::string& suffix)
+{
+    if (str.size() < suffix.size()) {
+        return false;
+    }
+    return EqualsIgnoreCase(str.substr(str.size() - suffix.size()), suffix);
+}
+
+// File matching against one alias module name (a sibling d.ts module backed by the same
+// binary). Same shapes as the direct comparison, but case-insensitive: map module names
+// and whitelist file fields often differ in case only.
+bool IsAliasFileMatched(const std::string& alias, const ApiMeta& legal)
+{
+    if (legal.file.empty()) {
+        return true;
+    }
+    return EqualsIgnoreCase(legal.file, alias) || EndsIgnoreCase(legal.file, "/" + alias);
+}
+
 } // namespace
 
 void SetLogLevel(LogLevel level)
@@ -826,7 +847,8 @@ std::ostream& operator<<(std::ostream& os, const ApiMeta& v)
     return os;
 }
 
-bool Match(const ApiMeta &exposed, const ApiMeta &legal, const std::map<std::string, std::string> &inheritMap)
+bool Match(const ApiMeta &exposed, const ApiMeta &legal, const std::map<std::string, std::string> &inheritMap,
+           const std::set<std::string> *fileAliases)
 {
     // Prescreen: the legal apiText must contain the exposed name.
     if (legal.apiText.find(exposed.apiText) == std::string::npos) {
@@ -855,8 +877,23 @@ bool Match(const ApiMeta &exposed, const ApiMeta &legal, const std::map<std::str
             return IsInherit(exposed, legal, inheritMap) && MatchApiText(exposed, legal);
         }
     }
+    // File scoping: the declaration file must be the checked module, OR - when one binary
+    // backs several d.ts modules (many-to-one, e.g. module/util/libstruct.z.so serving the
+    // @ohos.util.* collections) - one of the sibling modules sharing that binary.
     if (!IsFileMatched(exposed, legal)) {
-        return false;
+        if (fileAliases == nullptr) {
+            return false;
+        }
+        bool aliasMatched = false;
+        for (const std::string& alias : *fileAliases) {
+            if (IsAliasFileMatched(alias, legal)) {
+                aliasMatched = true;
+                break;
+            }
+        }
+        if (!aliasMatched) {
+            return false;
+        }
     }
     return MatchApiText(exposed, legal);
 }

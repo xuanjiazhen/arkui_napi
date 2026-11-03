@@ -108,3 +108,48 @@ action("run_scandir") {
 
   outputs = [ _result_path_ ]
 }
+
+# scan-dir + module-map regression: map-driven claiming and loading. Covers the shared so
+# (structdemo backs @ohos.util.ArrayList AND @ohos.util.HashMap - whitelist entries of the
+# sibling module must match through the file-alias set), the renamed so (nativehelper backs
+# @ohos.file.photoAccessHelper whose conventional paths do not exist), the conventional
+# channel still working alongside the map (scandirdemo), a stale-map corner (vector: the map
+# classifies it as a framework abc while its conventionally-named so exists - it must be
+# CHECKED, not reported as unsupported), and the map judgement reporting framework-abc /
+# NA modules as unsupported (asserted via --expect-unsupported-modules; unsupported modules
+# never affect the exit code).
+action("run_scandir_map") {
+    _host_checkapi_target_ = "../..:checkapi"
+    _root_out_dir_ = get_label_info(_host_checkapi_target_, "root_out_dir")
+    _result_path_ = "${_root_out_dir_}/checkapi/so/scandirmap/result.json"
+
+    deps = [
+        _host_checkapi_target_,
+        "scandir:scandirdemo",
+        "scandir:structdemo",
+        "scandir:photoaccesshelpernative",
+        "scandir:vector",
+    ]
+
+    inputs = [
+        "scandir/scandir_map.json",
+        "scandir/module_map.json",
+    ]
+
+    args = [
+        rebase_path("${_root_out_dir_}/arkui/napi/checkapi"),
+        rebase_path("${_root_out_dir_}"),
+        "scandirmap",
+        "@ohos.app.ability.scandirdemo,@ohos.util.vector",
+        rebase_path("scandir/scandir_map.json"),
+        rebase_path(_result_path_),
+        "--module-map",
+        rebase_path("scandir/module_map.json"),
+        "--expect-unsupported-modules",
+        "@ohos.framework.bundle,@ohos.pure.type",
+    ]
+
+    script = "../../run_scan_check.py"
+
+    outputs = [ _result_path_ ]
+}

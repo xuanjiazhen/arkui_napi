@@ -23,6 +23,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "api_meta.h"
@@ -42,7 +43,7 @@ namespace {
 // other stems are kept, e.g. "check.json" -> "unknown_check.json"), so the two artifacts of
 // one run are always found together and parallel runs with different result files never
 // overwrite each other. Both '/' and '\\' count as directory separators (Windows runs).
-std::string DeriveUnknownFilePath(const std::string& resultFile)
+std::string DeriveSiblingJsonPath(const std::string& resultFile, const std::string& stemName)
 {
     const std::string resultStem = "result";
     size_t slash = resultFile.find_last_of("/\\");
@@ -57,7 +58,7 @@ std::string DeriveUnknownFilePath(const std::string& resultFile)
     } else if (!stem.empty()) {
         stem = "_" + stem; // separator so kept stems stay readable ("check" -> "unknown_check")
     }
-    return resultFile.substr(0, dirEnd) + "unknown" + stem + ".json";
+    return resultFile.substr(0, dirEnd) + stemName + stem + ".json";
 }
 
 // Check task configuration assembled from CLI parsing (kit->files map, whitelist location, ignore sources).
@@ -72,6 +73,13 @@ struct CheckConfig {
     std::vector<std::string> unknownModules; // scan-dir: .so files with no whitelist registration
     std::set<std::string> skipModules; // normalized module names given via --skip-module
     std::string moduleSoDir; // module .so dir (scan-dir arg / platform default; ABC fallback)
+    std::string moduleMapFile; // --module-map path, empty when the option is absent
+    ParsedModuleMap moduleMap; // parsed module map (xlsx_to_module_map.py output)
+    std::string unsupportedFile; // unsupported-module json, derived from resultFile
+    // module -> reason, filled while resolving scan-dir inputs (modules whose mapped
+    // binaries are not requireNapi-loadable or absent from the module dir); check-time
+    // judgements (multi/single-file mode) are collected separately in main.
+    std::vector<std::pair<std::string, std::string>> unsupportedModules;
 };
 
 // Deprecated-module bucket: API<=10 frozen snapshot checked against the current shared
@@ -98,6 +106,7 @@ struct KitContext {
     const std::map<std::string, std::string>* inheritMap = nullptr;
     const std::set<std::string>* expandableNames = nullptr;
     std::string soDir; // module .so dir for the mixed-so ABC fallback
+    const ParsedModuleMap* moduleMap = nullptr; // --module-map data (null when absent)
 };
 
 // Per-run counters; the current-kit and deprecated-bucket channels are tallied separately.
@@ -115,6 +124,7 @@ struct CheckSummary {
     size_t depApiExposed = 0;
     size_t depApiFlagged = 0;
     size_t moduleSkipped = 0; // modules skipped via --skip-module
+    size_t moduleUnsupported = 0; // judged not requireNapi-loadable via the module map
     CheckErrorCode firstError = CHECK_OK;
 };
 
@@ -135,9 +145,15 @@ void PrintUsage(const char* name)
         " next option" << std::endl;
     std::cerr << "  --skip-module <name[,name...]>        skip checking given module(s), e.g." <<
         " @ohos.util (crash isolation); summary shows skip count" << std::endl;
+    std::cerr << "  --module-map <file>                   module map json (xlsx_to_module_map.py" <<
+        " output): real binary files per d.ts module; resolves renamed/shared so and" <<
+        " abc-backed modules the file-name convention cannot, and judges modules whose" <<
+        " binaries are not requireNapi-loadable (reported as unsupported, never as" <<
+        " load failures)" << std::endl;
     std::cerr << "Note: options should be placed after positional arguments." << std::endl;
     std::cerr << "Note: unknown modules (scan-dir) are archived next to the result file as" <<
-        " unknown*.json derived from its name (result.json -> unknown.json)." << std::endl;
+        " unknown*.json derived from its name (result.json -> unknown.json); modules whose" <<
+        " mapped binaries cannot be requireNapi-loaded are archived as unsupported*.json." << std::endl;
 }
 
 bool FileExists(const std::string& path)
@@ -164,6 +180,28 @@ std::string ToLower(const std::string& s)
     std::transform(out.begin(), out.end(), out.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return out;
+}
+
+// Comma-joined path list for one-line reasons ("a, b (+2 more)" stays readable).
+std::string JoinPathList(const std::vector<std::string>& paths)
+{
+    const size_t maxShown = 2;
+    std::string joined;
+    size_t shown = 0;
+    for (const std::string& p : paths) {
+        if (shown >= maxShown) {
+            break;
+        }
+        if (!joined.empty()) {
+            joined += ", ";
+        }
+        joined += p;
+        shown++;
+    }
+    if (paths.size() > maxShown) {
+        joined += " (+" + std::to_string(paths.size() - maxShown) + " more)";
+    }
+    return joined;
 }
 
 // Resolves {legalDir}/{kit}.json; falls back to a case-insensitive scan because checklist
@@ -224,40 +262,67 @@ void LoadIgnoreSource(const std::string& path,
     }
 }
 
-// Maps a .so file back to its requireName-form module name (all lowercase), the inverse of
-// GetNativeModulePath: strip the lib/so/_napi parts and turn each relDir separator into a
-// dot ("hms/core/ar" + "libarengine.z.so" -> "hms.core.ar.arengine").
-void SoFileToModuleName(const std::string& relDir, const std::string& fileName,
-                        std::set<std::string>& names)
+// Maps a .so/.abc file back to its requireName-form module name (all lowercase), the
+// inverse of GetNativeModulePath: strip the lib/so/_napi parts and turn each relDir
+// separator into a dot ("hms/core/ar" + "libarengine.z.so" -> "hms.core.ar.arengine";
+// "file" + "photoaccesshelper.abc" -> "file.photoaccesshelper" - the abc fallback root
+// mirrors the so search root one-to-one). Returns false for non-module file names.
+bool ModuleFileToRequireName(const std::string& relDir, const std::string& fileName,
+                             std::string& name)
 {
-    const std::string libPrefix = "lib";
-    if (!StartsWith(fileName, libPrefix)) {
-        return;
-    }
-    std::string stem = fileName.substr(libPrefix.size());
-    if (EndsWith(stem, ".z.so")) {
-        stem = stem.substr(0, stem.size() - 5); // 5: strlen(".z.so")
-    } else if (EndsWith(stem, ".so")) {
-        stem = stem.substr(0, stem.size() - 3); // 3: strlen(".so")
+    std::string stem;
+    if (EndsWith(fileName, ".abc")) {
+        stem = fileName.substr(0, fileName.size() - 4); // 4: strlen(".abc")
+    } else if (StartsWith(fileName, "lib")) {
+        stem = fileName.substr(3); // 3: strlen("lib")
+        if (EndsWith(stem, ".z.so")) {
+            stem = stem.substr(0, stem.size() - 5); // 5: strlen(".z.so")
+        } else if (EndsWith(stem, ".so")) {
+            stem = stem.substr(0, stem.size() - 3); // 3: strlen(".so")
+        } else {
+            return false;
+        }
+        const std::string napiSuffix = "_napi";
+        if (EndsWith(stem, napiSuffix)) {
+            stem = stem.substr(0, stem.size() - napiSuffix.size());
+        }
     } else {
-        return;
-    }
-    const std::string napiSuffix = "_napi";
-    if (EndsWith(stem, napiSuffix)) {
-        stem = stem.substr(0, stem.size() - napiSuffix.size());
+        return false;
     }
     if (stem.empty()) {
-        return;
+        return false;
     }
     std::string dottedRelDir = relDir;
     std::replace(dottedRelDir.begin(), dottedRelDir.end(), '/', '.');
-    std::string name = dottedRelDir.empty() ? stem : dottedRelDir + "." + stem;
-    names.insert(ToLower(name));
+    name = ToLower(dottedRelDir.empty() ? stem : dottedRelDir + "." + stem);
+    return true;
 }
 
-// Recursively collects the requireName set of all .so files under moduleDir.
-void EnumerateSoModules(const std::string& moduleDir, const std::string& relDir,
-                        std::set<std::string>& names)
+// Normalized module-dir rel path of a scanned file (lowercase; ".z.so" reduced to ".so"),
+// the key shared with the module map (NormalizeModuleFileRel).
+std::string ScanFileRel(const std::string& relDir, const std::string& fileName)
+{
+    std::string rel = ToLower(relDir.empty() ? fileName : relDir + "/" + fileName);
+    const std::string zSoSuffix = ".z.so";
+    if (EndsWith(rel, zSoSuffix)) {
+        rel = rel.substr(0, rel.size() - zSoSuffix.size()) + ".so";
+    }
+    return rel;
+}
+
+// Files found under the module dir, indexed for the two scan-dir lookups: rel -> derived
+// requireName (module-map claiming + unknown detection) and name -> rel (conventional
+// whitelist claiming).
+struct ScanFileSet {
+    std::map<std::string, std::string> relToName;
+    std::map<std::string, std::string> nameToRel;
+    size_t Count() const { return relToName.size(); }
+};
+
+// Recursively collects all module files (.so and the engine's abc fallback ".abc") under
+// moduleDir.
+void EnumerateModuleFiles(const std::string& moduleDir, const std::string& relDir,
+                          ScanFileSet& files)
 {
     std::string full = relDir.empty() ? moduleDir : moduleDir + "/" + relDir;
     DIR* dir = opendir(full.c_str());
@@ -277,20 +342,42 @@ void EnumerateSoModules(const std::string& moduleDir, const std::string& relDir,
             continue;
         }
         if (S_ISDIR(st.st_mode)) {
-            EnumerateSoModules(moduleDir, childRel, names);
+            EnumerateModuleFiles(moduleDir, childRel, files);
         } else if (S_ISREG(st.st_mode)) {
-            SoFileToModuleName(relDir, name, names);
+            std::string derived;
+            if (!ModuleFileToRequireName(relDir, name, derived)) {
+                continue;
+            }
+            std::string rel = ScanFileRel(relDir, name);
+            files.relToName[rel] = derived;
+            // First file wins for the conventional name->rel index: the .so and the _napi
+            // variant derive the same requireName and either satisfies the claim.
+            files.nameToRel.emplace(derived, rel);
         }
     }
     closedir(dir);
 }
 
-// Claims one whitelist file's canonical module names for its kit: every canonical name whose
-// requireName form exists among requireNames is appended to kitFileMap[kit]; each requireName
-// is claimed by at most one kit (first claim wins).
+// Claims one whitelist file's modules for its kit. Two channels per canonical module name:
+// 1. module map (when --module-map was given and covers the module): every mapped module
+//    file present under the scan dir claims the module for the kit - this resolves the
+//    conventions the file-name rules cannot express (renamed so like
+//    file/libphotoaccesshelpernative.z.so backing @ohos.file.photoAccessHelper, one shared
+//    so backing several d.ts modules, ani so under module/ani/...).
+// 2. name convention (fallback, also for map-covered modules whose mapped files are all
+//    absent): the requireName form of the module matches a scanned file, exactly the
+//    pre-module-map behavior, first kit wins.
+// Modules covered by the map but without any loadable binary (framework abc, platformsdk,
+// ndk, NA) or without their binaries in the scan dir are judged unsupported and reported
+// instead of being checked or failing.
+// Each module is claimed by at most one kit (first claim wins; the caller maps the
+// deprecated bucket last so a module registered both in a normal kit and in the
+// deprecated snapshot always belongs to the normal kit).
 void MapWhitelistFile(const std::string& legalDir, const std::string& name,
-                      const std::set<std::string>& requireNames,
-                      std::set<std::string>& mapped, CheckConfig& config)
+                      const ScanFileSet& scanFiles, CheckConfig& config,
+                      std::set<std::string>& claimedModules,
+                      std::set<std::string>& claimedRequireNames,
+                      std::set<std::string>& claimedFiles)
 {
     std::string kit = name.substr(0, name.size() - 5); // 5: strlen(".json")
     std::set<std::string> canonicalNames;
@@ -299,23 +386,69 @@ void MapWhitelistFile(const std::string& legalDir, const std::string& name,
         return;
     }
     for (const std::string& canonical : canonicalNames) {
+        const std::string mKey = ToLower(canonical);
+        if (!claimedModules.insert(mKey).second) {
+            continue; // already claimed (or judged) by an earlier kit
+        }
+        const ModuleMapEntry* entry =
+            config.moduleMap.Empty() ? nullptr : config.moduleMap.Find(mKey);
+        if (entry != nullptr) {
+            std::vector<std::string> presentRels;
+            for (const std::string& rel : entry->moduleFiles) {
+                if (scanFiles.relToName.count(rel) > 0) {
+                    presentRels.push_back(rel);
+                }
+            }
+            if (!presentRels.empty()) {
+                for (const std::string& rel : presentRels) {
+                    claimedFiles.insert(rel);
+                }
+                config.kitFileMap[kit].push_back(canonical);
+                continue;
+            }
+            // No mapped binary in the scan dir: keep the conventional fallback alive
+            // before judging the module unsupported (a stale map must not hide a real
+            // conventionally-named file). It respects the conventional first-claim-wins
+            // rule: this is the map-data-gap corner, not the many-to-one case (that one
+            // goes through the present mapped files above).
+            const std::string convName = ToLower(ModuleNameForRequireNapi(canonical));
+            if (scanFiles.nameToRel.count(convName) > 0 && claimedRequireNames.insert(convName).second) {
+                claimedFiles.insert(scanFiles.nameToRel.at(convName));
+                config.kitFileMap[kit].push_back(canonical);
+                continue;
+            }
+            std::string reason = entry->nonModuleReason;
+            if (reason.empty()) {
+                reason = "mapped module binary not present under scan dir: " +
+                    JoinPathList(entry->files);
+            }
+            if (!entry->kit.empty()) {
+                reason += " (kit: " + entry->kit + ")";
+            }
+            config.unsupportedModules.push_back({canonical, reason});
+            continue;
+        }
+        // Conventional claim (pre-module-map behavior): requireName of the module matches
+        // a scanned file; first kit wins, so the shared-so case without a map still keeps
+        // its old single-owner semantics.
         std::string key = ToLower(ModuleNameForRequireNapi(canonical));
-        if (requireNames.count(key) > 0 && mapped.insert(key).second) {
+        if (scanFiles.nameToRel.count(key) > 0 && claimedRequireNames.insert(key).second) {
+            claimedFiles.insert(scanFiles.nameToRel.at(key));
             config.kitFileMap[kit].push_back(canonical);
         }
     }
 }
 
-// scan-dir input assembly: enumerate .so requireNames, then reverse-map them against the
-// canonical module names collected from each {kit}.json. Hits go to kitFileMap, misses to
-// unknownModules.
+// scan-dir input assembly: enumerate module files (.so + abc fallback), then map them
+// against the canonical module names collected from each {kit}.json (module map first,
+// name convention as fallback). Hits go to kitFileMap, misses to unknownModules.
 CheckErrorCode ResolveScanDirInputs(const std::string& moduleDir, const std::string& legalDir,
                                     CheckConfig& config)
 {
-    std::set<std::string> requireNames;
-    EnumerateSoModules(moduleDir, "", requireNames);
-    LogInfo() << "scan-dir: " << requireNames.size() << " module(s) under " << moduleDir;
-    if (requireNames.empty()) {
+    ScanFileSet scanFiles;
+    EnumerateModuleFiles(moduleDir, "", scanFiles);
+    LogInfo() << "scan-dir: " << scanFiles.Count() << " module file(s) under " << moduleDir;
+    if (scanFiles.Count() == 0) {
         std::cerr << "no module so found under: " << moduleDir << std::endl;
         return ERROR_PARAM_INVALID;
     }
@@ -338,25 +471,31 @@ CheckErrorCode ResolveScanDirInputs(const std::string& moduleDir, const std::str
     // snapshot always belongs to the normal kit.
     std::sort(whitelistFiles.begin(), whitelistFiles.end());
     const std::string deprecatedJson = std::string(DEPRECATED_KIT_NAME) + ".json";
-    std::set<std::string> mapped; // requireNames already claimed by a kit
+    std::set<std::string> claimedModules;     // module names resolved (claimed or judged)
+    std::set<std::string> claimedRequireNames; // conventionally claimed requireNames
+    std::set<std::string> claimedFiles;       // scan-dir rels backing a claimed module
     for (const std::string& name : whitelistFiles) {
         if (name != deprecatedJson) {
-            MapWhitelistFile(legalDir, name, requireNames, mapped, config);
+            MapWhitelistFile(legalDir, name, scanFiles, config, claimedModules,
+                             claimedRequireNames, claimedFiles);
         }
     }
     for (const std::string& name : whitelistFiles) {
         if (name == deprecatedJson) {
-            MapWhitelistFile(legalDir, name, requireNames, mapped, config);
+            MapWhitelistFile(legalDir, name, scanFiles, config, claimedModules,
+                             claimedRequireNames, claimedFiles);
         }
     }
 
-    for (const std::string& name : requireNames) {
-        if (mapped.count(name) == 0) {
-            config.unknownModules.push_back(name);
+    for (const auto& [rel, derivedName] : scanFiles.relToName) {
+        if (claimedFiles.count(rel) == 0 && claimedRequireNames.count(derivedName) == 0) {
+            config.unknownModules.push_back(derivedName);
         }
     }
+    std::sort(config.unknownModules.begin(), config.unknownModules.end());
     LogInfo() << "scan-dir: " << config.kitFileMap.size() << " kit(s), " <<
-        config.unknownModules.size() << " unknown module(s)";
+        config.unknownModules.size() << " unknown module(s), " <<
+        config.unsupportedModules.size() << " unsupported module(s)";
     return CHECK_OK;
 }
 
@@ -364,6 +503,9 @@ struct ModuleCheckResult {
     std::vector<ApiMeta> exposedList;
     std::vector<ApiMeta> illegalList;
     size_t exposedCount = 0;
+    std::set<std::string> fileAliases;  // sibling modules sharing the loaded binary
+    bool unsupported = false;            // judged not requireNapi-loadable (module map)
+    std::string unsupportedReason;
 };
 
 struct ModuleLoadInfo {
@@ -383,36 +525,172 @@ CheckErrorCode LoadAbcExposed(napi_env env, const KitContext& kitCtx,
     return LoadAbcFileAndGetExposedMeta(env, abcParam, result.exposedList);
 }
 
-// requireNapi loading with the mixed-so ABC fallback.
-CheckErrorCode LoadSoExposed(napi_env env, const KitContext& kitCtx,
-                             const ModuleLoadInfo& info, ModuleCheckResult& result)
+// requireNapi candidates for one module: the requireName of the module itself (device
+// search order: so path[0], _napi path[1], abc path[2]) followed by the module-map files
+// (renamed/shared so, ani so) - each mapped rel derives its own requireName the same way
+// the scan does, so requireNapi reaches it through the same path rules.
+std::vector<std::string> RequireNameCandidates(const KitContext& kitCtx,
+                                              const ModuleLoadInfo& info,
+                                              const ModuleMapEntry* entry)
 {
-    SoLoadParam param;
-    param.kit = info.kit;
-    param.displayName = info.moduleName;
-    param.requireName = ModuleNameForRequireNapi(info.moduleName);
-    CheckErrorCode err = LoadSoAndGetExposedMeta(env, param, result.exposedList, kitCtx.expandableNames);
-    if (err == CHECK_OK) {
-        return CHECK_OK;
+    std::vector<std::string> candidates;
+    candidates.push_back(ModuleNameForRequireNapi(info.moduleName));
+    if (entry == nullptr) {
+        return candidates;
     }
-    // Mixed .so fallback: requireNapi needs runtime context a bare process lacks, so dlopen
-    // the .so directly and execute its embedded ABC instead.
-    AbcLoadParam abcParam;
-    abcParam.kit = info.kit;
-    abcParam.displayName = info.moduleName;
-    abcParam.requireName = param.requireName;
-    abcParam.expandableNames = kitCtx.expandableNames;
-    for (const std::string& soPath : CandidateSoPaths(kitCtx.soDir, param.requireName)) {
-        if (!IsRegularFile(soPath) || !SoHasEmbeddedAbc(soPath)) {
+    for (const std::string& rel : entry->moduleFiles) {
+        std::string soDir;
+        std::string fileName;
+        size_t slash = rel.find_last_of('/');
+        if (slash == std::string::npos) {
+            fileName = rel;
+        } else {
+            soDir = rel.substr(0, slash);
+            fileName = rel.substr(slash + 1);
+        }
+        std::string derived;
+        if (!ModuleFileToRequireName(soDir, fileName, derived)) {
             continue;
         }
-        abcParam.soPath = soPath;
-        err = LoadMixedSoAbcAndGetExposedMeta(env, abcParam, result.exposedList);
-        if (err == CHECK_OK) {
-            return CHECK_OK;
+        std::string path = kitCtx.soDir.empty() ? rel : kitCtx.soDir + "/" + rel;
+        if (IsRegularFile(path)) {
+            candidates.push_back(derived);
         }
     }
-    return err;
+    return candidates;
+}
+
+// The rel forms GetNativeModulePath would derive for one requireName: so path[0],
+// _napi path[1] and the abc fallback path[2], normalized like the module-map keys.
+std::vector<std::string> CandidateModuleRels(const std::string& requireName)
+{
+    std::string lower = ToLower(requireName);
+    size_t lastDot = lower.find_last_of('.');
+    std::string stem = (lastDot == std::string::npos) ? lower : lower.substr(lastDot + 1);
+    std::string dirPart = (lastDot == std::string::npos) ? "" : lower.substr(0, lastDot);
+    std::replace(dirPart.begin(), dirPart.end(), '.', '/');
+    std::vector<std::string> rels;
+    rels.push_back((dirPart.empty() ? "" : dirPart + "/") + "lib" + stem + ".so");
+    rels.push_back((dirPart.empty() ? "" : dirPart + "/") + "lib" + stem + "_napi.so");
+    rels.push_back(dirPart.empty() ? stem + ".abc" : dirPart + "/" + stem + ".abc");
+    return rels;
+}
+
+// Alias set for the loaded module: every module the map registers for the actually
+// existing candidate files of the loaded requireName (the shared-so case: exports of
+// libstruct.z.so legitimately belong to all @ohos.util.* modules backing it).
+std::set<std::string> CollectFileAliases(const ParsedModuleMap& moduleMap,
+                                         const std::string& soDir,
+                                         const std::string& loadedRequireName)
+{
+    std::set<std::string> aliases;
+    for (const std::string& rel : CandidateModuleRels(loadedRequireName)) {
+        auto it = moduleMap.fileOwners.find(rel);
+        if (it == moduleMap.fileOwners.end()) {
+            continue;
+        }
+        std::string path = soDir.empty() ? rel : soDir + "/" + rel;
+        if (!IsRegularFile(path)) {
+            continue; // owners of absent candidates must not widen the whitelist scope
+        }
+        aliases.insert(it->second.begin(), it->second.end());
+    }
+    return aliases;
+}
+
+// requireNapi loading with the module-map fallbacks. Candidates are tried in order: for
+// each, requireNapi first, then the mixed-so ABC fallback (embedded GetABCCode). The
+// displayName stays the checked module name so whitelist file scoping keeps working.
+CheckErrorCode LoadSoExposed(napi_env env, const KitContext& kitCtx,
+                             const ModuleLoadInfo& info, const ModuleMapEntry* entry,
+                             ModuleCheckResult& result)
+{
+    CheckErrorCode lastErr = ERROR_PARAM_INVALID;
+    for (const std::string& candidate : RequireNameCandidates(kitCtx, info, entry)) {
+        SoLoadParam param;
+        param.kit = info.kit;
+        param.displayName = info.moduleName;
+        param.requireName = candidate;
+        CheckErrorCode err = LoadSoAndGetExposedMeta(env, param, result.exposedList,
+                                                     kitCtx.expandableNames);
+        if (err == CHECK_OK) {
+            if (kitCtx.moduleMap != nullptr && !kitCtx.moduleMap->Empty()) {
+                result.fileAliases = CollectFileAliases(*kitCtx.moduleMap, kitCtx.soDir, candidate);
+            }
+            if (candidate != ModuleNameForRequireNapi(info.moduleName)) {
+                LogInfo() << "module loaded via mapped binary candidate: " << info.moduleName <<
+                    " -> requireNapi(" << candidate << ")";
+            }
+            return CHECK_OK;
+        }
+        lastErr = err;
+        // Mixed .so fallback: requireNapi needs runtime context a bare process lacks, so
+        // dlopen the .so directly and execute its embedded ABC instead.
+        AbcLoadParam abcParam;
+        abcParam.kit = info.kit;
+        abcParam.displayName = info.moduleName;
+        abcParam.requireName = candidate;
+        abcParam.expandableNames = kitCtx.expandableNames;
+        for (const std::string& soPath : CandidateSoPaths(kitCtx.soDir, candidate)) {
+            if (!IsRegularFile(soPath) || !SoHasEmbeddedAbc(soPath)) {
+                continue;
+            }
+            abcParam.soPath = soPath;
+            err = LoadMixedSoAbcAndGetExposedMeta(env, abcParam, result.exposedList);
+            if (err == CHECK_OK) {
+                if (kitCtx.moduleMap != nullptr && !kitCtx.moduleMap->Empty()) {
+                    result.fileAliases = CollectFileAliases(*kitCtx.moduleMap, kitCtx.soDir,
+                                                            candidate);
+                }
+                LogInfo() << "module loaded via mapped mixed-so candidate: " << info.moduleName <<
+                    " (so: " << soPath << ")";
+                return CHECK_OK;
+            }
+            lastErr = err;
+        }
+    }
+    return lastErr;
+}
+
+// The map-based judgement: can any binary of this module be requireNapi-loaded in this
+// run at all? Covers both "wrong kind of binary" (framework abc, platformsdk, ndk, NA)
+// and "right kind, but absent from the module dir".
+bool HasLoadableBinary(const std::string& soDir, const ModuleMapEntry& entry)
+{
+    for (const std::string& rel : entry.moduleFiles) {
+        std::string path = soDir.empty() ? rel : soDir + "/" + rel;
+        if (IsRegularFile(path)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string UnsupportedReasonFor(const ModuleMapEntry& entry)
+{
+    if (!entry.nonModuleReason.empty()) {
+        return entry.nonModuleReason;
+    }
+    return "mapped module binary not found: " + JoinPathList(entry.files);
+}
+
+// The conventionally-named binaries of the module itself: the rel forms GetNativeModulePath
+// derives for its own requireName (so path[0], _napi path[1], abc path[2]). A real
+// conventionally-named file must not be hidden by a map classification (stale maps
+// happen): its presence defers the unsupported judgement to an actual load attempt.
+bool HasConventionalBinary(const std::string& soDir, const std::string& moduleName)
+{
+    const std::string requireName = ModuleNameForRequireNapi(moduleName);
+    if (requireName.empty()) {
+        return false;
+    }
+    for (const std::string& rel : CandidateModuleRels(requireName)) {
+        std::string path = soDir.empty() ? rel : soDir + "/" + rel;
+        if (IsRegularFile(path)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Checks a single artifact file. Whitelist structures are prebuilt per kit (KitContext) so
@@ -433,11 +711,33 @@ CheckErrorCode CheckSingleFile(napi_env env,
     info.kit = kit;
     info.file = file;
     info.moduleName = NormalizeModuleName(file);
+    const ModuleMapEntry* entry = nullptr;
+    if (kitCtx.moduleMap != nullptr && !kitCtx.moduleMap->Empty()) {
+        entry = kitCtx.moduleMap->Find(ToLower(info.moduleName));
+        // Judge first: modules whose binaries are not requireNapi-loadable at all are
+        // reported as unsupported without a load attempt (they would only fail noisily).
+        // A real conventionally-named binary defers to the load instead: the claim path
+        // keeps the conventional fallback alive for exactly this case (a stale map must
+        // not hide a loadable file), so the map classification must not hide it either.
+        if (entry != nullptr && !entry->nonModuleReason.empty()) {
+            if (HasConventionalBinary(kitCtx.soDir, info.moduleName)) {
+                LogInfo() << "map classifies as non-requireNapi, conventional binary "
+                             "present, loading it: " << info.moduleName <<
+                    " (map reason: " << entry->nonModuleReason << ")";
+            } else {
+                result.unsupported = true;
+                result.unsupportedReason = entry->nonModuleReason;
+                LogInfo() << "module judged unsupported (not requireNapi-loadable): " <<
+                    info.moduleName << ", reason: " << result.unsupportedReason;
+                return CHECK_OK;
+            }
+        }
+    }
     if (EndsWith(info.moduleName, ".abc")) {
         err = LoadAbcExposed(env, kitCtx, info, result);
 #if defined(OHOS_PLATFORM) || defined(LINUX_PLATFORM)
     } else if (StartsWith(info.moduleName, "@")) {
-        err = LoadSoExposed(env, kitCtx, info, result);
+        err = LoadSoExposed(env, kitCtx, info, entry, result);
 #else
     } else if (StartsWith(info.moduleName, "@")) {
         LogError() << "非ohos/linux平台不支持检查 so 模块: " << info.moduleName;
@@ -448,13 +748,25 @@ CheckErrorCode CheckSingleFile(napi_env env,
         return ERROR_PARAM_INVALID;
     }
     if (err != CHECK_OK) {
+        // Second judgement: neither the mapped module-dir binaries nor a conventionally
+        // named one is present, and the load failed - the map explains the failure, so
+        // report it as unsupported instead of a plain load failure. A conventionally
+        // named file that exists but fails to load is a real failure and stays one.
+        if (entry != nullptr && !HasLoadableBinary(kitCtx.soDir, *entry) &&
+            !HasConventionalBinary(kitCtx.soDir, info.moduleName)) {
+            result.unsupported = true;
+            result.unsupportedReason = UnsupportedReasonFor(*entry);
+            LogInfo() << "module judged unsupported (binary unavailable): " << info.moduleName <<
+                ", reason: " << result.unsupportedReason;
+            return CHECK_OK;
+        }
         return err;
     }
 
     result.exposedCount = result.exposedList.size();
 
     err = CheckIllegalExposed(*kitCtx.legalIndex, result.exposedList, *kitCtx.inheritMap,
-                              result.illegalList);
+                              result.illegalList, &result.fileAliases);
     const size_t nExposed = result.exposedList.size();
     const size_t nIllegal = result.illegalList.size();
     if (err != CHECK_OK) {
@@ -526,10 +838,23 @@ int HandleSkipModuleOption(int argc, char* argv[], int index,
     return valueIndex + 1;
 }
 
+int HandleModuleMapOption(int argc, char* argv[], int index, std::string& moduleMapFile)
+{
+    int valueIndex = index + 1;
+    if (valueIndex >= argc || argv[valueIndex][0] == '-') {
+        std::cerr << "--module-map requires a json file path" << std::endl;
+        PrintUsage(argv[0]);
+        return -1;
+    }
+    moduleMapFile = argv[valueIndex];
+    return valueIndex + 1;
+}
+
 // Parses command-line options and positionals; prints errors (usage in some cases) on failure.
 bool ParseCommandLine(int argc, char* argv[], std::vector<std::string>& positionals,
                       std::vector<std::string>& ignoreSources,
-                      std::vector<std::string>& skipModules)
+                      std::vector<std::string>& skipModules,
+                      std::string& moduleMapFile)
 {
     int index = 1;
     while (index < argc) {
@@ -542,6 +867,8 @@ bool ParseCommandLine(int argc, char* argv[], std::vector<std::string>& position
             index = HandleIgnoreFileOption(argc, argv, index, ignoreSources);
         } else if (arg == "--skip-module") {
             index = HandleSkipModuleOption(argc, argv, index, skipModules);
+        } else if (arg == "--module-map") {
+            index = HandleModuleMapOption(argc, argv, index, moduleMapFile);
         } else if (arg.size() > 1 && arg[0] == '-' && arg[1] == '-') {
             std::cerr << "unknown option: " << arg << std::endl;
             PrintUsage(argv[0]);
@@ -622,12 +949,25 @@ CheckErrorCode ResolveSingleFileInputs(const char* programName,
 }
 
 // Positional args -> CheckConfig (kit->files map, whitelist location, result file),
-// merging the ignore sources given via --ignore-file.
+// merging the ignore sources given via --ignore-file and the optional module map.
 CheckErrorCode ResolveCheckInputs(const char* programName,
                                   const std::vector<std::string>& positionals,
                                   const std::vector<std::string>& ignoreSources,
+                                  const std::string& moduleMapFile,
                                   CheckConfig& config)
 {
+    // --module-map first: the scan-dir claiming consults the map, so it must be parsed
+    // before the mode resolution. Bad maps are a hard error (the caller asked for
+    // map-driven behavior, silently degrading to name-convention mode would hide the
+    // mapping gaps).
+    if (!moduleMapFile.empty()) {
+        config.moduleMapFile = moduleMapFile;
+        CheckErrorCode mapErr = ParseModuleMap(config.moduleMapFile, config.moduleMap);
+        if (mapErr != CHECK_OK) {
+            std::cerr << "parse module map failed: " << config.moduleMapFile << std::endl;
+            return mapErr;
+        }
+    }
     if (EndsWith(positionals[ARG_INPUT], ".json")) {
         CheckErrorCode multiErr = ResolveMultiFileInputs(programName, positionals, config);
         if (multiErr != CHECK_OK) {
@@ -653,7 +993,8 @@ CheckErrorCode ResolveCheckInputs(const char* programName,
         config.moduleSoDir = "./module";
 #endif
     }
-    config.unknownFile = DeriveUnknownFilePath(config.resultFile);
+    config.unknownFile = DeriveSiblingJsonPath(config.resultFile, "unknown");
+    config.unsupportedFile = DeriveSiblingJsonPath(config.resultFile, "unsupported");
     // --ignore-file sources (the only ignore entry point)
     for (const std::string& src : ignoreSources) {
         LoadIgnoreSource(src, config.ignoreList, config.ignoreInheritMap);
@@ -708,15 +1049,24 @@ struct RouteContext {
     CheckSummary* summary = nullptr;
     std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>* illegalMap = nullptr;
     std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>* deprecatedMap = nullptr;
+    std::vector<std::pair<std::string, std::string>>* unsupportedModules = nullptr;
 };
 
 // Routes module results: current kits feed illegalMap/summary, the deprecated bucket feeds
-// deprecatedMap (kept separate from firstError and the exit code).
+// deprecatedMap (kept separate from firstError and the exit code). Unsupported judgements
+// (module map says the binary is not requireNapi-loadable) are collected for the
+// unsupported-module report and excluded from the pass/flag/fail counters.
 void RouteModuleResult(CheckErrorCode ret, const ModuleCheckResult& result, RouteContext& ctx)
 {
     const std::vector<ApiMeta>& illegalList = result.illegalList;
     const size_t exposedCount = result.exposedCount;
     CheckSummary& summary = *ctx.summary;
+    if (result.unsupported) {
+        summary.moduleUnsupported++;
+        ctx.unsupportedModules->push_back({NormalizeModuleName(ctx.file),
+                                           result.unsupportedReason});
+        return;
+    }
     if (ctx.deprecatedKit) {
         summary.depApiExposed += exposedCount;
         if (ret == CHECK_OK) {
@@ -749,7 +1099,8 @@ void RouteModuleResult(CheckErrorCode ret, const ModuleCheckResult& result, Rout
 
 void RunKitChecks(napi_env env, const CheckConfig& config, CheckSummary& summary,
                   std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>& illegalMap,
-                  std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>& deprecatedMap)
+                  std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>& deprecatedMap,
+                  std::vector<std::pair<std::string, std::string>>& runtimeUnsupported)
 {
     for (const auto& [kit, files] : config.kitFileMap) {
         const bool deprecatedKit = (kit == DEPRECATED_KIT_NAME);
@@ -775,6 +1126,7 @@ void RunKitChecks(napi_env env, const CheckConfig& config, CheckSummary& summary
         kitCtx.inheritMap = &inheritMap;
         kitCtx.expandableNames = &expandableNames;
         kitCtx.soDir = config.moduleSoDir;
+        kitCtx.moduleMap = config.moduleMap.Empty() ? nullptr : &config.moduleMap;
 
         for (const auto& file : files) {
             if (config.skipModules.count(NormalizeModuleName(file)) > 0) {
@@ -792,27 +1144,35 @@ void RunKitChecks(napi_env env, const CheckConfig& config, CheckSummary& summary
             routeCtx.summary = &summary;
             routeCtx.illegalMap = &illegalMap;
             routeCtx.deprecatedMap = &deprecatedMap;
+            routeCtx.unsupportedModules = &runtimeUnsupported;
             RouteModuleResult(ret, result, routeCtx);
             // Checkpoint after each module (atomic write): a native crash mid-run keeps every
             // result checked so far; the last log line marks the crash point. The unknown
-            // save applies the same omit-when-empty rule as the final output (the skip lives
-            // in SaveUnknownModulesToJson), so both paths behave identically.
+            // and unsupported saves apply the same omit-when-empty rule as the final output
+            // (the skip lives in the savers), so all paths behave identically.
             SaveIllegalApiToJson(config.resultFile, illegalMap, deprecatedMap);
             SaveUnknownModulesToJson(config.unknownFile, config.unknownModules);
+            std::vector<std::pair<std::string, std::string>> unsupportedSoFar = config.unsupportedModules;
+            unsupportedSoFar.insert(unsupportedSoFar.end(), runtimeUnsupported.begin(),
+                                    runtimeUnsupported.end());
+            SaveUnsupportedModulesToJson(config.unsupportedFile, unsupportedSoFar);
             LogDebug() << "checkpoint written: " << config.resultFile;
             if (!config.unknownModules.empty()) {
                 LogDebug() << "checkpoint written: " << config.unknownFile;
+            }
+            if (!unsupportedSoFar.empty()) {
+                LogDebug() << "checkpoint written: " << config.unsupportedFile;
             }
         }
     }
 }
 
-void PrintSummary(const CheckSummary& summary, size_t unknownCount)
+void PrintSummary(const CheckSummary& summary, size_t unknownCount, size_t unsupportedCount)
 {
     std::cout << "===== 检查完成 =====" << std::endl;
     std::cout << "模块: " << summary.filePassed << " 全部合法 / " << summary.fileFlagged <<
         " 检出非法 / " << summary.fileFailed << " 失败未检 / " << summary.moduleSkipped <<
-        " 跳过" << std::endl;
+        " 跳过 / " << summary.moduleUnsupported << " 无法检视" << std::endl;
     std::cout << "导出API: " << summary.apiExposed << " 条, 合法 " <<
         (summary.apiExposed - summary.apiIllegal) << " / 非法 " << summary.apiIllegal << std::endl;
     // deprecated bucket exists only when scan-dir mapped modules onto the deprecated whitelist
@@ -824,6 +1184,8 @@ void PrintSummary(const CheckSummary& summary, size_t unknownCount)
             summary.depApiFlagged << " 条(快照失配)" << std::endl;
     }
     std::cout << "未登记模块: " << unknownCount << std::endl;
+    std::cout << "无法检视模块: " << unsupportedCount <<
+        " (映射二进制非requireNapi或缺失, 详见unsupported报告)" << std::endl;
     std::cout << "==================" << std::endl;
 }
 
@@ -845,11 +1207,14 @@ void PrintDeprecatedResult(const std::map<std::string, std::map<std::string, std
 
 // Prints illegal APIs line by one (hdc shell echoes stdout), then the deprecated and
 // unknown-module sections, and archives the result json plus the derived unknown-module
-// json. Returns the illegal-API total (deprecated-bucket entries excluded).
+// and unsupported-module jsons. Returns the illegal-API total (deprecated-bucket entries
+// excluded).
 size_t PrintIllegalResult(const std::string& resultFile, const std::string& unknownFile,
+                          const std::string& unsupportedFile,
                           const std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>& illegalMap,
                           const std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>& deprecatedMap,
-                          const std::vector<std::string>& unknownModules)
+                          const std::vector<std::string>& unknownModules,
+                          const std::vector<std::pair<std::string, std::string>>& unsupportedModules)
 {
     size_t illegalTotal = 0;
     for (const auto& [kit, fileMap] : illegalMap) {
@@ -865,12 +1230,19 @@ size_t PrintIllegalResult(const std::string& resultFile, const std::string& unkn
     for (const std::string& name : unknownModules) {
         std::cout << "[unknown-module] " << name << std::endl;
     }
+    for (const auto& [name, reason] : unsupportedModules) {
+        std::cout << "[unsupported-module] " << name << " | " << reason << std::endl;
+    }
     SaveIllegalApiToJson(resultFile, illegalMap, deprecatedMap);
     LogInfo() << "非法API报告已保存: " << resultFile;
     // omit-when-empty: no unknown.json when there is nothing to report (SaveUnknownModulesToJson)
     SaveUnknownModulesToJson(unknownFile, unknownModules);
     if (!unknownModules.empty()) {
         LogInfo() << "未登记模块报告已保存: " << unknownFile;
+    }
+    SaveUnsupportedModulesToJson(unsupportedFile, unsupportedModules);
+    if (!unsupportedModules.empty()) {
+        LogInfo() << "无法检视模块报告已保存: " << unsupportedFile;
     }
     return illegalTotal;
 }
@@ -901,8 +1273,9 @@ int CheckApiMain(int argc, char* argv[])
     std::vector<std::string> positionals;
     std::vector<std::string> ignoreSources; // --ignore-file sources (files/dirs)
     std::vector<std::string> skipArgs;      // --skip-module lists (comma-separated)
+    std::string moduleMapFile;              // --module-map json (empty when absent)
     CheckConfig config;
-    if (!ParseCommandLine(argc, argv, positionals, ignoreSources, skipArgs)) {
+    if (!ParseCommandLine(argc, argv, positionals, ignoreSources, skipArgs, moduleMapFile)) {
         return ERROR_PARAM_INVALID;
     }
     if (positionals.empty()) {
@@ -910,7 +1283,8 @@ int CheckApiMain(int argc, char* argv[])
         return ERROR_PARAM_INVALID;
     }
     ParseSkipModules(skipArgs, config.skipModules);
-    CheckErrorCode inputErr = ResolveCheckInputs(argv[0], positionals, ignoreSources, config);
+    CheckErrorCode inputErr = ResolveCheckInputs(argv[0], positionals, ignoreSources,
+                                                 moduleMapFile, config);
     if (inputErr != CHECK_OK) {
         return inputErr;
     }
@@ -926,18 +1300,28 @@ int CheckApiMain(int argc, char* argv[])
 
     std::map<std::string, std::map<std::string, std::vector<ApiMeta>>> illegalMap;
     std::map<std::string, std::map<std::string, std::vector<ApiMeta>>> deprecatedMap;
+    std::vector<std::pair<std::string, std::string>> runtimeUnsupported;
     CheckSummary summary;
-    RunKitChecks(env, config, summary, illegalMap, deprecatedMap);
+    RunKitChecks(env, config, summary, illegalMap, deprecatedMap, runtimeUnsupported);
 
     napi_close_handle_scope(env, scope);
     DestroyArkEnv(env);
 
-    PrintIllegalResult(config.resultFile, config.unknownFile, illegalMap, deprecatedMap, config.unknownModules);
-    PrintSummary(summary, config.unknownModules.size());
+    // Unsupported modules come from two fill points: scan-dir claiming (modules never
+    // entering the check loop) and check-time judgement (multi/single-file mode). Merge
+    // both, keeping scan order first.
+    std::vector<std::pair<std::string, std::string>> unsupportedModules = config.unsupportedModules;
+    unsupportedModules.insert(unsupportedModules.end(), runtimeUnsupported.begin(),
+                              runtimeUnsupported.end());
+
+    PrintIllegalResult(config.resultFile, config.unknownFile, config.unsupportedFile,
+                       illegalMap, deprecatedMap, config.unknownModules, unsupportedModules);
+    PrintSummary(summary, config.unknownModules.size(), unsupportedModules.size());
     CloseLogFile();
 
-    // The exit code excludes the deprecated bucket: known snapshot mismatch must not drown
-    // the main verdict; suspected real findings stay in the DeprecatedModules section.
+    // The exit code excludes the deprecated bucket and the unsupported judgements: known
+    // snapshot mismatch and known non-requireNapi binaries must not drown the main verdict;
+    // suspected real findings stay in their dedicated sections/artifacts.
     if (illegalMap.empty() && config.unknownModules.empty() && summary.firstError == CHECK_OK) {
         return CHECK_OK;
     }

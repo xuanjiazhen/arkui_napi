@@ -15,12 +15,15 @@
 
 #include "parse_json.h"
 
+#include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <map>
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "check_helper.h"
@@ -654,6 +657,168 @@ CheckErrorCode CollectModuleNames(const std::string& jsonFile, std::set<std::str
     return CHECK_OK;
 }
 
+// Device-path prefixes of requireNapi module binaries: the so search root and the abc
+// fallback root of NativeModuleManager::GetNativeModulePath.
+constexpr const char* MODULE_SO_ROOT = "/system/lib64/module/";
+constexpr const char* MODULE_ABC_ROOT = "/system/etc/abc/";
+
+std::string ToLowerCopy(const std::string& input)
+{
+    std::string out;
+    out.reserve(input.size());
+    for (char c : input) {
+        out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    }
+    return out;
+}
+
+bool NormalizeModuleFileRel(const std::string& devicePath, std::string& rel)
+{
+    std::string path = devicePath;
+    // tolerate Windows-style separators from hand-written maps
+    std::replace(path.begin(), path.end(), '\\', '/');
+    std::string lowered = ToLowerCopy(path);
+    std::string relPart;
+    if (StartsWith(lowered, MODULE_SO_ROOT)) {
+        relPart = lowered.substr(strlen(MODULE_SO_ROOT));
+    } else if (StartsWith(lowered, MODULE_ABC_ROOT)) {
+        relPart = lowered.substr(strlen(MODULE_ABC_ROOT));
+    } else {
+        return false;
+    }
+    while (StartsWith(relPart, "/")) {
+        relPart.erase(0, 1); // tolerate a doubled slash after the prefix
+    }
+    if (relPart.empty() || relPart.back() == '/') {
+        return false;
+    }
+    // Host layouts carry plain .so (GetNativeModulePath zfix is empty on LINUX), so the
+    // device ".z.so" suffix is dropped to keep map rels and scanned rels comparable:
+    // "file/libphotoaccesshelpernative.z.so" -> "file/libphotoaccesshelpernative.so".
+    const std::string zSoSuffix = ".z.so";
+    if (EndsWith(relPart, zSoSuffix)) {
+        relPart = relPart.substr(0, relPart.size() - zSoSuffix.size()) + ".so";
+    }
+    rel = relPart;
+    return true;
+}
+
+std::string NonModuleFileReason(const std::string& devicePath)
+{
+    if (devicePath.empty() || devicePath == "NA" || devicePath == "N/A") {
+        return "no NAPI/ANI binary (NA in module map)";
+    }
+    std::string path = devicePath;
+    std::replace(path.begin(), path.end(), '\\', '/');
+    std::string lowered = ToLowerCopy(path);
+    struct PrefixReason {
+        const char* prefix;
+        const char* reason;
+    };
+    static const PrefixReason TABLE[] = {
+        {"/system/framework/", "framework abc (not requireNapi-loadable)"},
+        {"/system/lib64/platformsdk/", "platformsdk library (not requireNapi-loadable)"},
+        {"/system/lib/ndk/", "ndk native library (no JS module surface)"},
+        {"/system/lib64/ndk/", "ndk native library (no JS module surface)"},
+    };
+    for (const PrefixReason& item : TABLE) {
+        if (StartsWith(lowered, item.prefix)) {
+            return item.reason;
+        }
+    }
+    if (StartsWith(lowered, "/system/lib64/") || StartsWith(lowered, "/system/lib/")) {
+        return "system library outside the module dir (not requireNapi-loadable)";
+    }
+    return "non-module binary (not under /system/lib64/module or /system/etc/abc)";
+}
+
+// Aggregated reason when a module has files but none is a module binary: classifies the
+// first file (the sheet lists them in importance order) and appends the count.
+std::string BuildNonModuleReason(const std::vector<std::string>& files)
+{
+    std::string reason = files.empty() ? "no NAPI/ANI binary (NA in module map)"
+                                       : NonModuleFileReason(files[0]);
+    if (files.size() > 1) {
+        reason += " (+" + std::to_string(files.size() - 1) + " more)";
+    }
+    return reason;
+}
+
+CheckErrorCode ParseModuleMap(const std::string& jsonFile, ParsedModuleMap& moduleMap)
+{
+    std::ifstream ifs(jsonFile);
+    if (!ifs.is_open()) {
+        LogWarn() << "[ParseModuleMap] open file failed: " << jsonFile;
+        return ERROR_FILE_OPEN_FAILED;
+    }
+
+    std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    cJSON* root = cJSON_Parse(NulTerminatedCopy(content).data());
+    if (!root || !cJSON_IsObject(root)) {
+        LogWarn() << "[ParseModuleMap] json parse failed or not object: " << jsonFile;
+        cJSON_Delete(root);
+        return ERROR_JSON_PARSE_FAILED;
+    }
+
+    cJSON* modulesObj = cJSON_GetObjectItem(root, "modules");
+    if (modulesObj == nullptr || !cJSON_IsObject(modulesObj)) {
+        LogWarn() << "[ParseModuleMap] missing \"modules\" object: " << jsonFile;
+        cJSON_Delete(root);
+        return ERROR_JSON_PARSE_FAILED;
+    }
+
+    cJSON* item = nullptr;
+    cJSON_ArrayForEach(item, modulesObj) {
+        if (item->string == nullptr) {
+            continue;
+        }
+        std::string moduleName = NormalizeModuleName(item->string);
+        if (moduleName.empty() || moduleName[0] != '@') {
+            LogWarn() << "[ParseModuleMap] skip non-module key: " << item->string;
+            continue;
+        }
+        ModuleMapEntry entry;
+        const char* kitStr = GetStringField(item, "kit");
+        if (kitStr != nullptr) {
+            entry.kit = kitStr;
+        }
+        cJSON* files = cJSON_GetObjectItem(item, "files");
+        if (files != nullptr && cJSON_IsArray(files)) {
+            int size = cJSON_GetArraySize(files);
+            for (int i = 0; i < size; i++) {
+                cJSON* fileItem = cJSON_GetArrayItem(files, i);
+                if (!fileItem || !cJSON_IsString(fileItem) || fileItem->valuestring == nullptr) {
+                    continue;
+                }
+                std::string file = fileItem->valuestring;
+                if (file.empty()) {
+                    continue;
+                }
+                if (std::find(entry.files.begin(), entry.files.end(), file) == entry.files.end()) {
+                    entry.files.push_back(file);
+                }
+                std::string rel;
+                if (NormalizeModuleFileRel(file, rel)) {
+                    if (std::find(entry.moduleFiles.begin(), entry.moduleFiles.end(), rel) ==
+                        entry.moduleFiles.end()) {
+                        entry.moduleFiles.push_back(rel);
+                    }
+                    moduleMap.fileOwners[rel].insert(moduleName);
+                }
+            }
+        }
+        if (entry.moduleFiles.empty()) {
+            entry.nonModuleReason = BuildNonModuleReason(entry.files);
+        }
+        moduleMap.modules[ToLowerCopy(moduleName)] = entry;
+    }
+
+    cJSON_Delete(root);
+    LogInfo() << "module map loaded: " << moduleMap.modules.size() << " module(s), " <<
+        moduleMap.fileOwners.size() << " module file(s)";
+    return CHECK_OK;
+}
+
 // Attaches one kit's illegal APIs to root: {kitName: {file: [ApiMeta...]}}.
 void AddKitToJson(cJSON* root, const std::string& kitName,
                   const std::map<std::string, std::vector<ApiMeta>>& fileMap)
@@ -798,6 +963,49 @@ CheckErrorCode SaveUnknownModulesToJson(
         return CHECK_OK;
     }
     cJSON* root = BuildUnknownModulesJsonTree(unknownModules);
+    if (root == nullptr) {
+        return ERROR_JSON_PARSE_FAILED;
+    }
+    char* jsonStr = cJSON_Print(root);
+    cJSON_Delete(root);
+    if (jsonStr == nullptr) {
+        return ERROR_JSON_PARSE_FAILED;
+    }
+    bool written = AtomicWriteJson(outputFilePath, jsonStr);
+    cJSON_free(jsonStr);
+    return written ? CHECK_OK : ERROR_FILE_OPEN_FAILED;
+}
+
+// Unsupported-module tree: {"UnsupportedModules": {module: reason}} - modules whose mapped
+// binaries cannot be requireNapi-loaded (or are missing from the module dir). They stay
+// out of the illegal/unknown channels: being registered and judged is not a finding.
+cJSON* BuildUnsupportedModulesJsonTree(const std::vector<std::pair<std::string, std::string>>& items)
+{
+    cJSON* root = cJSON_CreateObject();
+    if (root == nullptr) {
+        return nullptr;
+    }
+    cJSON* unsupportedObj = cJSON_CreateObject();
+    if (unsupportedObj == nullptr) {
+        cJSON_Delete(root);
+        return nullptr;
+    }
+    cJSON_AddItemToObject(root, "UnsupportedModules", unsupportedObj);
+    for (const auto& item : items) {
+        cJSON_AddStringToObject(unsupportedObj, item.first.c_str(), item.second.c_str());
+    }
+    return root;
+}
+
+CheckErrorCode SaveUnsupportedModulesToJson(
+    const std::string& outputFilePath,
+    const std::vector<std::pair<std::string, std::string>>& unsupportedModules)
+{
+    // Omit-when-empty, same as the unknown-module json.
+    if (unsupportedModules.empty()) {
+        return CHECK_OK;
+    }
+    cJSON* root = BuildUnsupportedModulesJsonTree(unsupportedModules);
     if (root == nullptr) {
         return ERROR_JSON_PARSE_FAILED;
     }

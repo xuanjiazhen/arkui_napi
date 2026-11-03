@@ -22,4 +22,6 @@ group("run_test") {
     deps += [ "./so:run_poison" ]
     # scan-dir multi-level mapping regression (see run_scandir in so/BUILD.gn)
     deps += [ "./so:run_scandir" ]
+    # scan-dir module-map regression (see run_scandir_map in so/BUILD.gn)
+    deps += [ "./so:run_scandir_map" ]
 }
