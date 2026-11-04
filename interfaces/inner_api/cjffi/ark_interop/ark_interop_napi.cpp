@@ -1017,6 +1017,10 @@ ARKTS_Value ARKTS_RequireArkModule(ARKTS_Env env, const char* path, size_t pathL
         result = JSNApi::ExecuteNativeModule(vm, srcPath);
     } else {
         std::string moduleInfo = JSNApi::GetBundleName(vm) + "/" + JSNApi::GetModuleName(vm);
+        if (moduleInfo == "/" && srcPath.find('/') != std::string::npos) {
+            ARKTSInner_ReportNativeError("current module is empty");
+            return ARKTS_CreateUndefined();
+        }
         result = JSNApi::GetModuleNameSpaceWithModuleInfoForNormalApp(vm, srcPath, moduleInfo);
     }
     ARKTSInner_ReportJSErrors(env, false);
