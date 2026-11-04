@@ -67,8 +67,9 @@ using TaskPoolShrinkCallback = std::function<void(bool inBackground)>;
 typedef bool (*NapiModuleValidateCallback)(const char* moduleName);
 
 class NativeTimerCallbackInfo;
-template <bool changeState = true>
-panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo);
+
+panda::JSValueRef ArkNativeFunctionCallbackNotChangeState(JsiRuntimeCallInfo *runtimeInfo);
+panda::JSValueRef ArkNativeFunctionCallbackChangeState(JsiRuntimeCallInfo *runtimeInfo);
 void NapiDefinePropertyInner(napi_env env,
                              Local<panda::ObjectRef> &obj,
                              NapiPropertyDescriptor &propertyDescriptor,

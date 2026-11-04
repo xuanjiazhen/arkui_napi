@@ -580,7 +580,7 @@ NAPI_EXTERN napi_status napi_create_function(napi_env env,
 #endif
 
     Local<JSValueRef> context = engine->GetContext();
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(vm, context, ArkNativeFunctionCallBack,
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(vm, context, ArkNativeFunctionCallbackChangeState,
         CommonDeleter, reinterpret_cast<void*>(funcInfo), true);
     Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm, utf8name != nullptr ? utf8name : name);
     fn->SetName(vm, fnName);
@@ -1530,7 +1530,9 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     bool enableContainerScope = EnableContainerScope(env);
     if (enableContainerScope) {
         scopeId = reinterpret_cast<NativeEngine*>(env)->GetContainerScopeIdFunc();
-        if (!function->IsConcurrentFunction(vm)) {
+        auto pointer = function->GetExternalPointer(vm);
+        if ((pointer == ArkNativeFunctionCallbackNotChangeState || pointer == ArkNativeFunctionCallbackChangeState)
+            && !function->IsConcurrentFunction(vm)) {
             auto funcInfo = reinterpret_cast<NapiFunctionInfo*>(function->GetData(vm));
             if (funcInfo != nullptr) {
                 scopeId = funcInfo->scopeId;
