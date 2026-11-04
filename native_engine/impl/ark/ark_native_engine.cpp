@@ -209,9 +209,8 @@ static Local<panda::JSValueRef> NapiNativeCreateFunction(napi_env env, const cha
 #endif
 
     Local<JSValueRef> context = engine->GetContext();
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentWithName(vm, context, ArkNativeFunctionCallBack,
-                                                                             CommonDeleter, name,
-                                                                             reinterpret_cast<void*>(funcInfo), true);
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrentWithName(vm, context,
+        ArkNativeFunctionCallbackChangeState, CommonDeleter, name, reinterpret_cast<void*>(funcInfo), true);
     return fn;
 }
 
@@ -296,27 +295,25 @@ static Local<panda::FunctionRef> NapiCreateClassFunction(napi_env env, std::stri
     Local<JSValueRef> context = engine->GetContext();
     Local<panda::FunctionRef> fn;
     if (propCount == 0) {
-        fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context, ArkNativeFunctionCallBack,
-                                                                    CommonDeleter, className.c_str(),
-                                                                    reinterpret_cast<void*>(funcInfo), true);
+        fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context,
+            ArkNativeFunctionCallbackChangeState, CommonDeleter, className.c_str(),
+            reinterpret_cast<void*>(funcInfo), true);
     } else if (propCount <= panda::ObjectRef::MAX_PROPERTIES_ON_STACK) {
         Local<panda::JSValueRef> keys[panda::ObjectRef::MAX_PROPERTIES_ON_STACK];
         PropertyAttribute attrs[panda::ObjectRef::MAX_PROPERTIES_ON_STACK];
         size_t staticPropCount = NapiGetKeysAndAttrsFromProps(env, propCount, properties, &keys[0], &attrs[0]);
-        fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context, ArkNativeFunctionCallBack,
-                                                                    CommonDeleter, className.c_str(),
-                                                                    reinterpret_cast<void*>(funcInfo), true, propCount,
-                                                                    staticPropCount, &keys[0], &attrs[0]);
+        fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context,
+            ArkNativeFunctionCallbackChangeState, CommonDeleter, className.c_str(),
+            reinterpret_cast<void*>(funcInfo), true, propCount, staticPropCount, &keys[0], &attrs[0]);
     } else {
         Local<panda::JSValueRef> *keys =
             reinterpret_cast<Local<panda::JSValueRef> *>(malloc(sizeof(Local<panda::JSValueRef>) * propCount));
         PropertyAttribute *attrs = reinterpret_cast<PropertyAttribute *>(malloc(sizeof(PropertyAttribute) * propCount));
         if (attrs != nullptr && keys != nullptr) {
             size_t staticPropCount = NapiGetKeysAndAttrsFromProps(env, propCount, properties, keys, attrs);
-            fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context, ArkNativeFunctionCallBack,
-                                                                        CommonDeleter, className.c_str(),
-                                                                        reinterpret_cast<void*>(funcInfo), true,
-                                                                        propCount, staticPropCount, keys, attrs);
+            fn = panda::FunctionRef::NewConcurrentClassFunctionWithName(vm, context,
+                ArkNativeFunctionCallbackChangeState, CommonDeleter, className.c_str(),
+                reinterpret_cast<void*>(funcInfo), true, propCount, staticPropCount, keys, attrs);
         } else {
             fn = panda::JSValueRef::Undefined(vm);
             napi_throw_error(env, nullptr, "malloc failed in napi_define_class");
@@ -402,7 +399,8 @@ panda::Local<panda::JSValueRef> NapiDefineSendableClass(napi_env env,
     }
 
     auto infos = NativeSendable::CreateSendablePropertiesInfos(env, properties, propertiesLength);
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewSendableClassFunction(vm, ArkNativeFunctionCallBack,
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewSendableClassFunction(vm,
+        ArkNativeFunctionCallbackChangeState,
         CommonDeleter, reinterpret_cast<void*>(funcInfo), fnName, infos, localParent, true);
 
     return fn;
@@ -1446,6 +1444,16 @@ panda::JSValueRef ArkNativeFunctionCallBack(JsiRuntimeCallInfo *runtimeInfo)
         JSNApi::GetStackAfterCallNapi(vm);
     }
     return **localRet;
+}
+
+panda::JSValueRef ArkNativeFunctionCallbackNotChangeState(JsiRuntimeCallInfo *runtimeInfo)
+{
+    return ArkNativeFunctionCallBack<false>(runtimeInfo);
+}
+
+panda::JSValueRef ArkNativeFunctionCallbackChangeState(JsiRuntimeCallInfo *runtimeInfo)
+{
+    return ArkNativeFunctionCallBack<true>(runtimeInfo);
 }
 
 static Local<JSValueRef> GetProperty(EcmaVM* vm, Local<panda::ObjectRef> &obj, const char* name)
@@ -3763,7 +3771,8 @@ void ArkNativeEngine::RegisterAllPromiseCallback(NapiAllPromiseRejectCallback ca
     funcInfo->env = reinterpret_cast<napi_env>(this);
 
     Local<JSValueRef> context = GetContext();
-    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(vm_, context, ArkNativeFunctionCallBack,
+    Local<panda::FunctionRef> fn = panda::FunctionRef::NewConcurrent(vm_, context,
+        ArkNativeFunctionCallbackChangeState,
         CommonDeleter, reinterpret_cast<void*>(funcInfo), true);
     Local<panda::StringRef> fnName = panda::StringRef::NewFromUtf8(vm_, checkCallbackName.c_str());
     fn->SetName(vm_, fnName);
