@@ -27,6 +27,7 @@
 #include "native_engine/worker_manager.h"
 #include "securec.h"
 #include <algorithm>
+#include <atomic>
 
 #ifdef ENABLE_CONTAINER_SCOPE
 #include "native_engine/native_container_scope.h"
@@ -1531,10 +1532,24 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     if (enableContainerScope) {
         scopeId = reinterpret_cast<NativeEngine*>(env)->GetContainerScopeIdFunc();
         if (!function->IsConcurrentFunction(vm)) {
+#if defined(NAPI_HAS_NAPI_FUNCTION_TAG)
+            bool isNapiFunc = function->IsNapiFunction(vm);
+            auto funcInfo = isNapiFunc ? reinterpret_cast<NapiFunctionInfo*>(function->GetData(vm)) : nullptr;
+            if (funcInfo != nullptr) {
+                scopeId = funcInfo->scopeId;
+            } else {
+                static std::atomic<bool> hasWarnedScopeFallback {false};
+                if (!hasWarnedScopeFallback.exchange(true)) {
+                    HILOG_WARN("napi_call_function: function is not NAPI-typed or has no data, "
+                               "scopeId fallback to engine-level");
+                }
+            }
+#else
             auto funcInfo = reinterpret_cast<NapiFunctionInfo*>(function->GetData(vm));
             if (funcInfo != nullptr) {
                 scopeId = funcInfo->scopeId;
             }
+#endif
         }
     }
     NapiContainerScope containerScope(reinterpret_cast<NativeEngine*>(env), scopeId, enableContainerScope);
