@@ -18,8 +18,8 @@
 
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
-#include "module_manager/native_module_manager.h"
 #include "native_api_internal.h"
+#include "module_manager/native_module_manager.h"
 #include "native_engine/impl/ark/ark_native_reference.h"
 #include "native_engine/impl/ark/ark_sendable_native_reference.h"
 #include "native_engine/native_create_env.h"
