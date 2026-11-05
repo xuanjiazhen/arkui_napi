@@ -1531,9 +1531,13 @@ NAPI_EXTERN napi_status napi_call_function(napi_env env,
     if (enableContainerScope) {
         scopeId = reinterpret_cast<NativeEngine*>(env)->GetContainerScopeIdFunc();
         if (!function->IsConcurrentFunction(vm)) {
-            auto funcInfo = reinterpret_cast<NapiFunctionInfo*>(function->GetData(vm));
+            bool isNapiFunc = function->IsNapiFunction(vm);
+            auto funcInfo = isNapiFunc ? reinterpret_cast<NapiFunctionInfo*>(function->GetData(vm)) : nullptr;
             if (funcInfo != nullptr) {
                 scopeId = funcInfo->scopeId;
+            } else if (!isNapiFunc) {
+                HILOG_WARN("napi_call_function: function is not NAPI-typed, "
+                           "scopeId fallback to engine-level");
             }
         }
     }
