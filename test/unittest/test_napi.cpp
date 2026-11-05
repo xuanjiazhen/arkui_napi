@@ -19119,3 +19119,93 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest009, testing::ext::TestSize.Level1)
     deathTest.AssertSignal(SIGABRT).AssertError("[CheckThread] Fatal: ecma_vm cannot run in multi-thread!");
     ASSERT_TRUE(deathTest.GetResult());
 }
+
+static panda::Local<panda::JSValueRef> NapiFuncGuardTestCallback(panda::JsiRuntimeCallInfo* info)
+{
+    return panda::JSValueRef::Undefined(info->GetVM());
+}
+
+HWTEST_F(NapiBasicTest, NapiFunctionTypeGuardTest001, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    auto vm = const_cast<EcmaVM*>(engine_->GetEcmaVm());
+
+    auto napiCb = [](napi_env env, napi_callback_info info) -> napi_value {
+        napi_value result = nullptr;
+        napi_get_undefined(env, &result);
+        return result;
+    };
+    napi_value napiFunc = nullptr;
+    ASSERT_CHECK_CALL(napi_create_function(env, "napiFunc", NAPI_AUTO_LENGTH, napiCb, nullptr, &napiFunc));
+    auto* napiFuncRef = reinterpret_cast<panda::FunctionRef*>(napiFunc);
+    EXPECT_TRUE(napiFuncRef->IsNapiFunction(vm));
+
+    int32_t foreignData = 42;
+    auto foreignFunc = panda::FunctionRef::New(vm, NapiFuncGuardTestCallback, nullptr, &foreignData, false);
+    EXPECT_FALSE(foreignFunc->IsNapiFunction(vm));
+
+    int32_t taggedData = 99;
+    auto taggedFunc = panda::FunctionRef::New(vm, NapiFuncGuardTestCallback, nullptr, &taggedData, true);
+    EXPECT_TRUE(taggedFunc->IsNapiFunction(vm));
+}
+
+HWTEST_F(NapiBasicTest, NapiFunctionTypeGuardTest002, testing::ext::TestSize.Level1)
+{
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    auto vm = const_cast<EcmaVM*>(engine_->GetEcmaVm());
+
+    auto func = panda::FunctionRef::New(vm, NapiFuncGuardTestCallback, nullptr, nullptr, false);
+    EXPECT_FALSE(func->IsNapiFunction(vm));
+
+    int32_t data = 7;
+    func->SetData(vm, &data, nullptr, true);
+    EXPECT_TRUE(func->IsNapiFunction(vm));
+
+    func->SetData(vm, &data, nullptr, false);
+    EXPECT_FALSE(func->IsNapiFunction(vm));
+}
+
+HWTEST_F(NapiBasicTest, NapiFunctionTypeGuardTest003, testing::ext::TestSize.Level1)
+{
+#ifdef ENABLE_CONTAINER_SCOPE
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+    auto vm = const_cast<EcmaVM*>(engine_->GetEcmaVm());
+
+    struct ForeignFuncData {
+        int32_t marker;
+    };
+    ForeignFuncData foreignData { 0xDEAD };
+
+    auto foreignFunc = panda::FunctionRef::New(vm, NapiFuncGuardTestCallback, nullptr, &foreignData, false);
+    napi_value funcValue = JsValueFromLocalValue(foreignFunc);
+
+    napi_value recv = nullptr;
+    ASSERT_CHECK_CALL(napi_get_undefined(env, &recv));
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_call_function(env, recv, funcValue, 0, nullptr, &result));
+    ASSERT_NE(result, nullptr);
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_undefined);
+#endif
+}
+
+HWTEST_F(NapiBasicTest, NapiFunctionTypeGuardTest004, testing::ext::TestSize.Level1)
+{
+#ifdef ENABLE_CONTAINER_SCOPE
+    napi_env env = reinterpret_cast<napi_env>(engine_);
+
+    auto cb = [](napi_env env, napi_callback_info info) -> napi_value {
+        napi_value result = nullptr;
+        napi_get_undefined(env, &result);
+        return result;
+    };
+    napi_value napiFunc = nullptr;
+    ASSERT_CHECK_CALL(napi_create_function(env, "napiFuncGuard", NAPI_AUTO_LENGTH, cb, nullptr, &napiFunc));
+
+    napi_value recv = nullptr;
+    ASSERT_CHECK_CALL(napi_get_undefined(env, &recv));
+    napi_value result = nullptr;
+    ASSERT_CHECK_CALL(napi_call_function(env, recv, napiFunc, 0, nullptr, &result));
+    ASSERT_NE(result, nullptr);
+    ASSERT_CHECK_VALUE_TYPE(env, result, napi_undefined);
+#endif
+}
