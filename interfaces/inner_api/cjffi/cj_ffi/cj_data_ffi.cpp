@@ -23,6 +23,11 @@ void FfiOHOSFFIFFIDataRelease(int64_t id)
     FFIData::Release(id);
 }
 
+bool FfiOHOSFFIFFIDataExist(int64_t id)
+{
+    return FFIData::Exist(id);
+}
+
 void FfiOHOSFFIRegisterCJFuncs(FFIAtCPackage cjFuncs)
 {
     if (!CJFFIFnInvoker::GetInstance()->CJFuncsLoaded()) {

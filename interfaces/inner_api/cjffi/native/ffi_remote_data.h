@@ -20,6 +20,7 @@
 #include "refbase.h"
 #include "unordered_map"
 
+#include <atomic>
 #include <mutex>
 
 #include "cj_fn_invoker.h"
@@ -60,6 +61,7 @@ public:
     }
     void StoreFFIData(const sptr<FFIData>& data);
     void StoreRemoteData(const sptr<RemoteData>& data);
+    sptr<RemoteData> TryStoreRemoteData(int64_t id, const sptr<RemoteData>& data);
     void RemoveFFIData(int64_t id)
     {
         [[maybe_unused]] sptr<FFIData> keepAlive = nullptr;
@@ -137,9 +139,11 @@ public:
             return nullptr;
         }
         sptr<T> ref(rawRef);
-        manager->StoreRemoteData(ref);
-
-        return ref;
+        auto winner = manager->TryStoreRemoteData(id, ref);
+        if (winner == nullptr) {
+            return nullptr;
+        }
+        return sptr<T>(winner.GetRefPtr()->template DynamicCast<T>());
     }
 
     ~RemoteData() override;
@@ -153,9 +157,20 @@ private:
 public:
     int64_t GetID() const;
 
+    void SetReleaseNotifyEnabled(bool enabled)
+    {
+        releaseNotifyEnabled_ = enabled;
+    }
+
+    bool IsReleaseNotifyEnabled() const
+    {
+        return releaseNotifyEnabled_;
+    }
+
 private:
     int64_t id_;
     bool isValid_;
+    std::atomic<bool> releaseNotifyEnabled_{false};
 };
 
 class FFI_EXPORT CJLambdaRemoteData : public RemoteData {
@@ -216,7 +231,6 @@ public:
     }
     static bool Exist(int64_t id)
     {
-        // 复用持锁路径：避免与 RemoveFFIData/StoreFFIData 并发访问 ffiDataStore_
         return FFIDataManager::GetInstance()->GetFFIData(id) != nullptr;
     }
 

@@ -21,6 +21,7 @@
 
 extern "C" {
 void FFI_EXPORT FfiOHOSFFIFFIDataRelease(int64_t id);
+bool FFI_EXPORT FfiOHOSFFIFFIDataExist(int64_t id);
 void FFI_EXPORT FfiOHOSFFIRegisterCJFuncs(FFIAtCPackage cjFuncs);
 }
 
