@@ -92,11 +92,6 @@ private:
     std::unordered_map<int64_t, sptr<FFIData>> ffiDataStore_;
     std::unordered_map<int64_t, wptr<RemoteData>> remoteDataStore_;
 
-    bool FFIDataExist(int64_t id) const
-    {
-        return ffiDataStore_.find(id) != ffiDataStore_.end();
-    }
-
     int FFIDataIdSafeIncrease();
 };
 
@@ -221,8 +216,8 @@ public:
     }
     static bool Exist(int64_t id)
     {
-        auto& store_ = FFIDataManager::GetInstance()->ffiDataStore_;
-        return store_.find(id) != store_.end();
+        // 复用持锁路径：避免与 RemoveFFIData/StoreFFIData 并发访问 ffiDataStore_
+        return FFIDataManager::GetInstance()->GetFFIData(id) != nullptr;
     }
 
     int64_t GetID() const
