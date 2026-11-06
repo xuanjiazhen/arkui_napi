@@ -20,6 +20,7 @@
 #include "refbase.h"
 #include "unordered_map"
 
+#include <atomic>
 #include <mutex>
 
 #include "cj_fn_invoker.h"
@@ -60,6 +61,8 @@ public:
     }
     void StoreFFIData(const sptr<FFIData>& data);
     void StoreRemoteData(const sptr<RemoteData>& data);
+    // 锁内二次检查后插入：已登记则返回已登记者，否则登记 data 并返回 data
+    sptr<RemoteData> TryStoreRemoteData(int64_t id, const sptr<RemoteData>& data);
     void RemoveFFIData(int64_t id)
     {
         [[maybe_unused]] sptr<FFIData> keepAlive = nullptr;
@@ -137,9 +140,12 @@ public:
             return nullptr;
         }
         sptr<T> ref(rawRef);
-        manager->StoreRemoteData(ref);
-
-        return ref;
+        // 并发 Create 同一 id 时，锁内二次检查保证至多一个对象被登记
+        auto winner = manager->TryStoreRemoteData(id, ref);
+        if (winner == nullptr) {
+            return nullptr;
+        }
+        return sptr<T>(winner.GetRefPtr()->template DynamicCast<T>());
     }
 
     ~RemoteData() override;
@@ -153,9 +159,22 @@ private:
 public:
     int64_t GetID() const;
 
+    void SetReleaseNotifyEnabled(bool enabled)
+    {
+        releaseNotifyEnabled_ = enabled;
+    }
+
+    bool IsReleaseNotifyEnabled() const
+    {
+        return releaseNotifyEnabled_;
+    }
+
 private:
     int64_t id_;
     bool isValid_;
+    // 仅成功登记到 remoteDataStore_ 的对象才通知 CJ 侧 release；
+    // 并发 Create 的"输家"临时对象不通知，避免误发 release 回调
+    std::atomic<bool> releaseNotifyEnabled_{false};
 };
 
 class FFI_EXPORT CJLambdaRemoteData : public RemoteData {

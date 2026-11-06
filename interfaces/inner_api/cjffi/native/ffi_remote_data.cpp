@@ -50,6 +50,22 @@ void FFIDataManager::StoreRemoteData(const sptr<RemoteData>& data)
 {
     std::lock_guard<std::recursive_mutex> lock(mtx);
     remoteDataStore_[data->GetID()] = data;
+    data->SetReleaseNotifyEnabled(true);
+}
+
+sptr<RemoteData> FFIDataManager::TryStoreRemoteData(int64_t id, const sptr<RemoteData>& data)
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx);
+    auto itor = remoteDataStore_.find(id);
+    if (itor != remoteDataStore_.end()) {
+        auto existed = itor->second.promote();
+        if (existed != nullptr) {
+            return existed;  // 已有存活登记者：不覆盖，返回它（本对象为"输家"）
+        }
+    }
+    remoteDataStore_[id] = data;
+    data->SetReleaseNotifyEnabled(true);
+    return data;
 }
 
 int64_t FFIDataManager::NewFFIDataId()
@@ -97,6 +113,11 @@ RemoteData::RemoteData(int64_t id) : id_(id), isValid_(id != 0)
 RemoteData::~RemoteData()
 {
     HiLog::Debug(LABEL, "RemoteData destructed: %{public}" PRId64 ".", id_);
+    if (!IsReleaseNotifyEnabled()) {
+        // 未成功登记的临时对象（并发 Create 的输家）不通知 CJ 侧
+        isValid_ = false;
+        return;
+    }
     auto cjFunc = CJFFIFnInvoker::GetInstance()->GetCJFuncs().atCOHOSFFIReleaseFFIData;
     if (!cjFunc) {
         HiLog::Error(LABEL, "Failed to invoke CJ function: FFIReleaseFFIData!");
@@ -108,6 +129,10 @@ RemoteData::~RemoteData()
 
 CJLambdaRemoteData::~CJLambdaRemoteData()
 {
+    // 并发 Create 的"输家"未登记，不能删掉赢家的登记条目
+    if (!IsReleaseNotifyEnabled()) {
+        return;
+    }
     auto manager = FFIDataManager::GetInstance();
     manager->RemoveRemoteData(GetID());
 }
