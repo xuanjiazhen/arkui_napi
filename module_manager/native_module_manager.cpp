@@ -719,6 +719,26 @@ bool NativeModuleManager::GetLdNamespaceName(const std::string &moduleName, std:
 #endif
 }
 
+void NativeModuleManager::MarkNameSpaceCreated(const std::string &moduleName)
+{
+#if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
+    !defined(LINUX_PLATFORM)
+    if (nsMap_.find(moduleName) != nsMap_.end()) {
+        MODULEMNG_HILOG_DEBUG("namespace already marked: %{public}s", moduleName.c_str());
+        return;
+    }
+    std::string nsName = MODULE_NS + moduleName;
+    Dl_namespace ns;
+    dlns_init(&ns, nsName.c_str());
+    if (dlns_get(nsName.c_str(), &ns) != 0) {
+        MODULEMNG_HILOG_ERROR("dlns_get failed for namespace: %{public}s", nsName.c_str());
+        return;
+    }
+    nsMap_[moduleName] = ns;
+    MODULEMNG_HILOG_INFO("namespace marked as created: %{public}s", nsName.c_str());
+#endif
+}
+
 void NativeModuleManager::InheritNamespaceEachOther(const std::string& src, const std::string& dst)
 {
 #if !defined(WINDOWS_PLATFORM) && !defined(MAC_PLATFORM) && !defined(__BIONIC__) && !defined(IOS_PLATFORM) && \
