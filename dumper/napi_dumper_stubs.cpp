@@ -955,6 +955,7 @@ napi_status napi_fatal_exception(napi_env, napi_value)
     return napi_ok;
 }
 
+// NOLINTNEXTLINE - API name defined in napi native_api.h, cannot rename
 void napi_fatal_error(const char*, size_t, const char*, size_t)
 {
     _exit(1);

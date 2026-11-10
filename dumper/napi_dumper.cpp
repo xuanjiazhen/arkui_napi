@@ -505,8 +505,6 @@ static void OutputText()
 }
 
 /* ===== JSON output (split into per-module/per-iface/per-class) ===== */
-static const char* g_so_path = nullptr;
-
 static void OutputJsonIface(const CapturedIface* f, bool first)
 {
     if (!first) {
@@ -574,10 +572,10 @@ static void OutputJsonModule(const CapturedModule* m, bool first)
     printf("]}");
 }
 
-static void OutputJson()
+static void OutputJson(const char* soPath)
 {
     printf("{\"so_path\":");
-    JsonEscape(g_so_path != nullptr ? g_so_path : "");
+    JsonEscape(soPath != nullptr ? soPath : "");
     printf(",\"modules\":[");
     bool first = true;
     for (int i = 0; i < g_moduleCount; i++) {
@@ -711,7 +709,6 @@ int main(int argc, char** argv)
     sigaction(SIGSEGV, &sa, nullptr);
     sigaction(SIGABRT, &sa, nullptr);
 
-    g_so_path = soPath;
     LogMsg("[dumper] Loading: %s\n", soPath);
 
     void* handle = dlopen(soPath, RTLD_NOW | RTLD_GLOBAL);
@@ -733,7 +730,7 @@ int main(int argc, char** argv)
     CallInitFunctions();
 
     if (useJson) {
-        OutputJson();
+        OutputJson(soPath);
     } else {
         OutputText();
     }
