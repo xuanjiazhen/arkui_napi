@@ -28,6 +28,10 @@ ohos_executable("napi_dumper") {
   subsystem_name = "arkui"
   part_name = "napi"
 
+  # Dev-only tool: compile but do not install into system image.
+  # Use --build-target napi_dumper to build, then push manually.
+  install_enable = false
+
   # Use deps (same part) — gets real napi headers (via ace_napi_config)
   # and links libace_napi.z.so. Our definitions override its symbols
   # (executable symbols have higher priority with --export-dynamic).
