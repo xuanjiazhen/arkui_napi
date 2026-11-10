@@ -457,6 +457,7 @@ if (!ark_standalone_build) {
       deps += [
         "interfaces/inner_api/cjffi/ark_interop:ark_interop",
         "interfaces/inner_api/cjffi/cj_backtrace:cj_backtrace",
+        "dumper:napi_dumper",
       ]
     }
   }

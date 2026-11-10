@@ -1,0 +1,55 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//build/ohos.gni")
+
+# Single executable — merges hook stubs + dumper into one binary.
+# With -Wl,--export-dynamic, the executable's napi symbols have the highest
+# priority in the global scope. When target .so is dlopen'd, its napi calls
+# resolve to our stubs automatically — no separate hook .so needed.
+#
+# Uses real napi headers via external_deps — type consistency guaranteed.
+# C++ name mangling is automatic — no asm aliases needed.
+ohos_executable("napi_dumper") {
+  sources = [
+    "napi_dumper.cpp",        # main + global state + data capture + SIGSEGV
+    "napi_dumper_stubs.cpp",  # ~200 napi stubs (no global refs, avoids ThinLTO)
+  ]
+  visibility = [ "*" ]
+  subsystem_name = "arkui"
+  part_name = "napi"
+
+  # Dev-only tool: compile but do not install into system image.
+  # Use --build-target napi_dumper to build, then push manually.
+  install_enable = false
+
+  # Use deps (same part) — gets real napi headers (via ace_napi_config)
+  # and links libace_napi.z.so. Our definitions override its symbols
+  # (executable symbols have higher priority with --export-dynamic).
+  deps = [ "//foundation/arkui/napi:ace_napi" ]
+
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+  libs = [ "dl" ]
+
+  ldflags = [
+    "-Wl,--export-dynamic",   # Export all symbols to global scope (for dlopen)
+    "-Wl,--no-as-needed",     # Keep libace_napi.z.so in NEEDED (for RTLD)
+  ]
+
+  cflags = [
+    "-Wall",
+    "-Wno-unused-parameter",
+    "-Wno-deprecated-declarations",
+    "-O2",
+  ]
+}
