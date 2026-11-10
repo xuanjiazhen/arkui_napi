@@ -55,106 +55,141 @@ def cmd_scan(args):
     output_dir = os.path.abspath(args.output)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Check device
+    so_list = prepare_device(args, dumper_path)
+    if so_list is None:
+        return 1
+
+    results, stats = scan_all(args, output_dir, so_list)
+    write_summary(output_dir, args, stats, results)
+    return 0
+
+
+def prepare_device(args, dumper_path):
+    """Check device, push dumper, return .so list or None on failure."""
     out, _, rc = hdc(args.target, ["shell", "echo", "OK"])
     if rc != 0 or "OK" not in out:
         print(f"ERROR: Cannot connect to device {args.target}", file=sys.stderr)
-        return 1
+        return None
     print(f"Device: {args.target or 'default'}", file=sys.stderr)
 
-    # Push dumper
     print(f"Pushing napi_dumper ({os.path.getsize(dumper_path)} bytes)...", file=sys.stderr)
     _, _, rc = hdc(args.target, ["file", "send", dumper_path, DEVICE_DUMPER])
     if rc != 0:
         print("ERROR: Failed to push napi_dumper", file=sys.stderr)
-        return 1
+        return None
     hdc(args.target, ["shell", f"chmod 755 {DEVICE_DUMPER}"])
 
-    # Get .so list
     print(f"Scanning {args.so_dir}...", file=sys.stderr)
     out, _, _ = hdc(args.target, ["shell", f"find {args.so_dir} -name '*.so' -type f | sort"])
     so_list = [line.strip() for line in out.splitlines()
                if line.strip() and not line.strip().startswith("[")]
-    total = len(so_list)
-    print(f"Found {total} .so files", file=sys.stderr)
+    print(f"Found {len(so_list)} .so files", file=sys.stderr)
+    return so_list
 
+
+def scan_single_so(args, output_dir, so_path, idx, total):
+    """Scan one .so file, save report, return (result_dict, mods, ifaces, classes, status, counter_type)."""
+    so_name = os.path.basename(so_path)
+    t0 = time.time()
+    out, _, rc = hdc(args.target,
+                     ["shell", f"{DEVICE_DUMPER} -f {args.format} {so_path} 2>/dev/null"],
+                     timeout=args.timeout + 5)
+    elapsed = int((time.time() - t0) * 1000)
+
+    status = "ok"
+    mods = ifaces = cls = 0
+
+    if rc == 0 and out:
+        if '"module_name"' in out or "=== Module:" in out:
+            ext = "json" if args.format == "json" else "txt"
+            report_file = os.path.join(output_dir, f"{so_name}.{ext}")
+            with open(report_file, "w", encoding="utf-8") as f:
+                f.write(out)
+            if args.format == "json":
+                mods, ifaces, cls, status = parse_json_result(out)
+            else:
+                mods = out.count("=== Module:")
+                ifaces = out.count("    [")
+            result = {"idx": idx, "so": so_name, "so_path": so_path, "ms": elapsed,
+                      "status": status, "mods": mods, "ifaces": ifaces, "classes": cls}
+            if args.verbose or idx % 50 == 0:
+                print(f"[{idx:4d}/{total}] {elapsed:6d}ms {status:16s} "
+                      f"M={mods} I={ifaces} C={cls}  {so_name}", file=sys.stderr)
+            return result, mods, ifaces, cls, status, "napi"
+        else:
+            status = "no_napi"
+    elif rc == -1:
+        status = "timeout"
+    else:
+        status = "crash"
+
+    result = {"idx": idx, "so": so_name, "so_path": so_path, "ms": elapsed,
+              "status": status, "mods": 0, "ifaces": 0, "classes": 0}
+    if args.verbose or idx % 50 == 0:
+        print(f"[{idx:4d}/{total}] {elapsed:6d}ms {status:16s}  {so_name}", file=sys.stderr)
+    return result, 0, 0, 0, status, status
+
+
+def parse_json_result(out):
+    """Parse JSON output from dumper, return (mods, ifaces, classes, status)."""
+    mods = ifaces = cls = 0
+    status = "ok"
+    try:
+        data = json.loads(out)
+        mods = len(data.get("modules", []))
+        ifaces = sum(len(m.get("interfaces", [])) for m in data.get("modules", []))
+        cls = sum(len(m.get("classes", [])) for m in data.get("modules", []))
+        if data.get("crashed"):
+            status = "crash_recovered"
+    except json.JSONDecodeError:
+        pass
+    return mods, ifaces, cls, status
+
+
+def scan_all(args, output_dir, so_list):
+    """Scan all .so files, return (results, stats)."""
+    total = len(so_list)
     results = []
-    napi_count = crash_count = timeout_count = no_napi_count = 0
-    total_modules = total_ifaces = total_classes = 0
+    stats = {"napi": 0, "crash": 0, "timeout": 0, "no_napi": 0,
+             "modules": 0, "ifaces": 0, "classes": 0}
     start_time = time.time()
 
     for idx, so_path in enumerate(so_list, 1):
-        so_name = os.path.basename(so_path)
-        t0 = time.time()
-        out, _, rc = hdc(args.target,
-                         ["shell", f"{DEVICE_DUMPER} -f {args.format} {so_path} 2>/dev/null"],
-                         timeout=args.timeout + 5)
-        elapsed = int((time.time() - t0) * 1000)
+        result, mods, ifaces, cls, status, counter = scan_single_so(
+            args, output_dir, so_path, idx, total)
+        results.append(result)
+        stats[counter] = stats.get(counter, 0) + 1
+        stats["modules"] += mods
+        stats["ifaces"] += ifaces
+        stats["classes"] += cls
 
-        status = "ok"
-        mods = ifaces = cls = 0
+    stats["total"] = total
+    stats["duration"] = int(time.time() - start_time)
+    return results, stats
 
-        if rc == 0 and out:
-            if '"module_name"' in out or "=== Module:" in out:
-                napi_count += 1
-                ext = "json" if args.format == "json" else "txt"
-                report_file = os.path.join(output_dir, f"{so_name}.{ext}")
-                with open(report_file, "w", encoding="utf-8") as f:
-                    f.write(out)
-                if args.format == "json":
-                    try:
-                        data = json.loads(out)
-                        mods = len(data.get("modules", []))
-                        ifaces = sum(len(m.get("interfaces", [])) for m in data.get("modules", []))
-                        cls = sum(len(m.get("classes", [])) for m in data.get("modules", []))
-                        if data.get("crashed"):
-                            status = "crash_recovered"
-                    except json.JSONDecodeError:
-                        pass
-                else:
-                    mods = out.count("=== Module:")
-                    ifaces = out.count("    [")
-                total_modules += mods
-                total_ifaces += ifaces
-                total_classes += cls
-            else:
-                no_napi_count += 1
-                status = "no_napi"
-        elif rc == -1:
-            timeout_count += 1
-            status = "timeout"
-        else:
-            crash_count += 1
-            status = "crash"
 
-        results.append({"idx": idx, "so": so_name, "so_path": so_path, "ms": elapsed,
-                        "status": status, "mods": mods, "ifaces": ifaces, "classes": cls})
-
-        if args.verbose or idx % 50 == 0:
-            print(f"[{idx:4d}/{total}] {elapsed:6d}ms {status:16s} M={mods} I={ifaces} C={cls}  {so_name}",
-                  file=sys.stderr)
-
-    elapsed_total = int(time.time() - start_time)
-
+def write_summary(output_dir, args, stats, results):
+    """Write summary.json and summary.txt."""
+    dumper_path = os.path.abspath(args.dumper)
     summary = {
         "scan_info": {
             "device": args.target or "default",
             "so_dir": args.so_dir,
             "dumper": dumper_path,
-            "output_dir": output_dir,
+            "output_dir": os.path.abspath(output_dir),
             "timestamp": datetime.now().isoformat(),
-            "duration_sec": elapsed_total,
+            "duration_sec": stats["duration"],
             "format": args.format,
         },
         "statistics": {
-            "total_so": total,
-            "napi_so": napi_count,
-            "non_napi_so": no_napi_count,
-            "crash": crash_count,
-            "timeout": timeout_count,
-            "total_modules": total_modules,
-            "total_interfaces": total_ifaces,
-            "total_classes": total_classes,
+            "total_so": stats["total"],
+            "napi_so": stats["napi"],
+            "non_napi_so": stats["no_napi"],
+            "crash": stats["crash"],
+            "timeout": stats["timeout"],
+            "total_modules": stats["modules"],
+            "total_interfaces": stats["ifaces"],
+            "total_classes": stats["classes"],
         },
         "results": results,
     }
@@ -163,35 +198,30 @@ def cmd_scan(args):
     with open(summary_json, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, ensure_ascii=False)
 
-    _write_summary_txt(output_dir, args, elapsed_total, results, napi_count,
-                       crash_count, timeout_count, no_napi_count,
-                       total_modules, total_ifaces, total_classes)
+    write_summary_txt(output_dir, args, stats, results)
 
     with open(os.path.join(output_dir, "summary.txt"), encoding="utf-8") as f:
         print(f.read(), file=sys.stderr)
 
-    return 0
 
-
-def _write_summary_txt(output_dir, args, elapsed_total, results,
-                       napi_count, crash_count, timeout_count, no_napi_count,
-                       total_modules, total_ifaces, total_classes):
+def write_summary_txt(output_dir, args, stats, results):
+    """Write human-readable summary.txt."""
     with open(os.path.join(output_dir, "summary.txt"), "w", encoding="utf-8") as f:
         f.write("=" * 70 + "\nNAPI Batch Scan Summary\n" + "=" * 70 + "\n\n")
         f.write(f"Device:        {args.target or 'default'}\n")
         f.write(f"SO Directory:  {args.so_dir}\n")
         f.write(f"Timestamp:     {datetime.now().isoformat()}\n")
-        f.write(f"Duration:      {elapsed_total}s\n")
+        f.write(f"Duration:      {stats['duration']}s\n")
         f.write(f"Format:        {args.format}\n\n")
-        f.write(f"Total .so scanned:     {len(results)}\n")
-        f.write(f"NAPI .so (has modules): {napi_count}\n")
-        f.write(f"  OK:                  {napi_count - crash_count - timeout_count}\n")
-        f.write(f"  Crash:              {crash_count}\n")
-        f.write(f"  Timeout:            {timeout_count}\n")
-        f.write(f"Non-NAPI (no modules): {no_napi_count}\n\n")
-        f.write(f"Total modules:         {total_modules}\n")
-        f.write(f"Total interfaces:      {total_ifaces}\n")
-        f.write(f"Total classes:         {total_classes}\n\n")
+        f.write(f"Total .so scanned:     {stats['total']}\n")
+        f.write(f"NAPI .so (has modules): {stats['napi']}\n")
+        f.write(f"  OK:                  {stats['napi'] - stats['crash'] - stats['timeout']}\n")
+        f.write(f"  Crash:              {stats['crash']}\n")
+        f.write(f"  Timeout:            {stats['timeout']}\n")
+        f.write(f"Non-NAPI (no modules): {stats['no_napi']}\n\n")
+        f.write(f"Total modules:         {stats['modules']}\n")
+        f.write(f"Total interfaces:      {stats['ifaces']}\n")
+        f.write(f"Total classes:         {stats['classes']}\n\n")
         abnormal = [r for r in results if r["status"] in ("crash", "timeout", "crash_recovered")]
         if abnormal:
             f.write("Abnormal .so files:\n")
@@ -202,12 +232,13 @@ def _write_summary_txt(output_dir, args, elapsed_total, results,
         if top:
             f.write("Top 10 .so by interface count:\n")
             for r in top:
-                f.write(f"  {r['ifaces']:5d} ifaces  {r['mods']} mods  {r['classes']:3d} classes  {r['so']}\n")
+                f.write(f"  {r['ifaces']:5d} ifaces  {r['mods']} mods  "
+                        f"{r['classes']:3d} classes  {r['so']}\n")
             f.write("\n")
         f.write(f"Reports saved to: {os.path.abspath(output_dir)}\n")
         f.write(f"  summary.json     Full JSON with all results\n")
         f.write(f"  summary.txt      This text report\n")
-        f.write(f"  *.{args.format}        Per-.so detailed reports ({napi_count} files)\n")
+        f.write(f"  *.{args.format}        Per-.so detailed reports ({stats['napi']} files)\n")
         f.write("=" * 70 + "\n")
 
 

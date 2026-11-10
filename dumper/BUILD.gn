@@ -21,6 +21,8 @@ ohos_executable("napi_dumper") {
   # (executable symbols have higher priority with --export-dynamic).
   deps = [ "//foundation/arkui/napi:ace_napi" ]
 
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+
   libs = [ "dl" ]
 
   ldflags = [
