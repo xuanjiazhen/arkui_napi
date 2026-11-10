@@ -845,7 +845,10 @@ void AddKitToJson(cJSON* root, const std::string& kitName,
                 continue;
             }
             cJSON_AddStringToObject(apiObj, "apiText", meta.apiText.c_str());
-            cJSON_AddStringToObject(apiObj, "file", meta.file.c_str());
+            // Emit the grouping key (the actually-loaded file path, or the module-name
+            // fallback) instead of meta.file: meta.file stays the module name because
+            // whitelist matching (AppendApiMeta/IsFileMatched) relies on it.
+            cJSON_AddStringToObject(apiObj, "file", fileName.c_str());
             cJSON_AddStringToObject(apiObj, "apiType", meta.apiType.c_str());
             cJSON_AddStringToObject(apiObj, "className", meta.className.c_str());
             cJSON_AddStringToObject(apiObj, "kit", meta.kit.c_str());

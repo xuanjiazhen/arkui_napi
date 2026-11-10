@@ -32,6 +32,7 @@
 #include "error_codes.h"
 #include "load_abc.h"
 #include "load_so.h"
+#include "native_module_manager.h"
 #include "parse_json.h"
 
 using namespace ohos::check;
@@ -506,6 +507,11 @@ struct ModuleCheckResult {
     std::set<std::string> fileAliases;  // sibling modules sharing the loaded binary
     bool unsupported = false;            // judged not requireNapi-loadable (module map)
     std::string unsupportedReason;
+    // Actually-loaded implementation file (engine truth: NativeModule::systemFilePath of
+    // the winning requireNapi candidate, the explicit mixed-so path, or the innermost .so
+    // behind an abc wrapper). Empty when unknowable (registered-without-disk module, no
+    // load happened) - the result grouping key then falls back to the module name.
+    std::string loadedFile;
 };
 
 struct ModuleLoadInfo {
@@ -514,15 +520,95 @@ struct ModuleLoadInfo {
     std::string moduleName; // normalized module name (or the .abc path)
 };
 
+// Engine truth query: the file the module manager actually loaded for one requireName. The
+// module was just loaded by requireNapi with the same string, so this is a pure cache hit
+// (FindNativeModuleByCache matches moduleName/nm_modname and the disk branch stays guarded
+// by "nativeModule == nullptr") - no extra dlopen happens here. Modules registered without
+// a disk file (and compatibility-path hits) carry no systemFilePath: return empty and let
+// the caller fall back to the module name.
+std::string QueryLoadedFileForRequireName(const std::string& requireName)
+{
+    if (requireName.empty()) {
+        return "";
+    }
+    std::string errInfo;
+    NativeModule* module = NativeModuleManager::GetInstance()->LoadNativeModule(
+        requireName.c_str(), nullptr, false, errInfo);
+    if (module == nullptr || module->systemFilePath == nullptr || module->systemFilePath[0] == '\0') {
+        LogDebug() << "no loaded-file record for requireNapi name: " << requireName;
+        return "";
+    }
+    return module->systemFilePath;
+}
+
+// An abc-backed module wraps a native module loaded by the abc's own requireNapi call; the
+// final implementation file is that inner module's .so. The inner requireName is not
+// statically knowable from the abc, but the module map documents it: every mapped rel
+// derives its requireName the same way RequireNameCandidates does. The stat filter first
+// rejects names with no on-disk .so (they cannot be the loaded backer, and the filter also
+// keeps the cache query from ever dlopening a non-existent path); the cache hit then
+// decides - only a module this run actually loaded is accepted, so a stale sheet line
+// cannot win. Returns "" when no mapped name resolves to a loaded .so (the caller keeps
+// the abc path as the actually-loaded file).
+std::string ResolveInnerLoadedSo(const KitContext& kitCtx, const ModuleMapEntry* entry)
+{
+    if (entry == nullptr) {
+        return "";
+    }
+    for (const std::string& rel : entry->moduleFiles) {
+        std::string relDir;
+        std::string fileName;
+        size_t slash = rel.find_last_of('/');
+        if (slash == std::string::npos) {
+            fileName = rel;
+        } else {
+            relDir = rel.substr(0, slash);
+            fileName = rel.substr(slash + 1);
+        }
+        std::string innerName;
+        if (!ModuleFileToRequireName(relDir, fileName, innerName)) {
+            continue;
+        }
+        bool onDisk = false;
+        for (const std::string& soPath : CandidateSoPaths(kitCtx.soDir, innerName)) {
+            if (IsRegularFile(soPath)) {
+                onDisk = true;
+                break;
+            }
+        }
+        if (!onDisk) {
+            continue;
+        }
+        std::string loaded = QueryLoadedFileForRequireName(innerName);
+        if (!loaded.empty() && EndsWith(loaded, ".so")) {
+            LogInfo() << "abc-backed module resolves to inner native binary: " << innerName <<
+                " -> " << loaded;
+            return loaded;
+        }
+    }
+    return "";
+}
+
 CheckErrorCode LoadAbcExposed(napi_env env, const KitContext& kitCtx,
-                              const ModuleLoadInfo& info, ModuleCheckResult& result)
+                              const ModuleLoadInfo& info, const ModuleMapEntry* entry,
+                              ModuleCheckResult& result)
 {
     AbcLoadParam abcParam;
     abcParam.kit = info.kit;
     abcParam.displayName = info.file;
     abcParam.abcFilePath = info.moduleName;
     abcParam.expandableNames = kitCtx.expandableNames;
-    return LoadAbcFileAndGetExposedMeta(env, abcParam, result.exposedList);
+    CheckErrorCode err = LoadAbcFileAndGetExposedMeta(env, abcParam, result.exposedList);
+    if (err == CHECK_OK) {
+        // The checked abc file itself is the implementation; an inner native module loaded
+        // by the abc's requireNapi (device runs) still wins as the final implementation file.
+        result.loadedFile = info.moduleName;
+        std::string inner = ResolveInnerLoadedSo(kitCtx, entry);
+        if (!inner.empty()) {
+            result.loadedFile = inner;
+        }
+    }
+    return err;
 }
 
 // requireNapi candidates for one module: the requireName of the module itself (device
@@ -621,6 +707,15 @@ CheckErrorCode LoadSoExposed(napi_env env, const KitContext& kitCtx,
                 LogInfo() << "module loaded via mapped binary candidate: " << info.moduleName <<
                     " -> requireNapi(" << candidate << ")";
             }
+            result.loadedFile = QueryLoadedFileForRequireName(candidate);
+            if (EndsWith(result.loadedFile, ".abc")) {
+                // The module's own file is an abc wrapper: attribute to the innermost
+                // native .so it loaded (the photoAccessHelper-style chain).
+                std::string inner = ResolveInnerLoadedSo(kitCtx, entry);
+                if (!inner.empty()) {
+                    result.loadedFile = inner;
+                }
+            }
             return CHECK_OK;
         }
         lastErr = err;
@@ -644,6 +739,8 @@ CheckErrorCode LoadSoExposed(napi_env env, const KitContext& kitCtx,
                 }
                 LogInfo() << "module loaded via mapped mixed-so candidate: " << info.moduleName <<
                     " (so: " << soPath << ")";
+                // This branch dlopened soPath itself: the file is known without a query.
+                result.loadedFile = soPath;
                 return CHECK_OK;
             }
             lastErr = err;
@@ -734,7 +831,7 @@ CheckErrorCode CheckSingleFile(napi_env env,
         }
     }
     if (EndsWith(info.moduleName, ".abc")) {
-        err = LoadAbcExposed(env, kitCtx, info, result);
+        err = LoadAbcExposed(env, kitCtx, info, entry, result);
 #if defined(OHOS_PLATFORM) || defined(LINUX_PLATFORM)
     } else if (StartsWith(info.moduleName, "@")) {
         err = LoadSoExposed(env, kitCtx, info, entry, result);
@@ -1050,7 +1147,26 @@ struct RouteContext {
     std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>* illegalMap = nullptr;
     std::map<std::string, std::map<std::string, std::vector<ApiMeta>>>* deprecatedMap = nullptr;
     std::vector<std::pair<std::string, std::string>>* unsupportedModules = nullptr;
+    // Kit-scoped set of attribution keys already stored under this kit's map nodes: a later
+    // module loading the same shared binary gets a '#<checklist name>' suffix so the map
+    // assignment cannot overwrite the earlier module's findings.
+    std::set<std::string>* usedAttributionKeys = nullptr;
 };
+
+// The result-grouping key: the actually-loaded implementation file when the run knows one
+// (engine truth, ModuleCheckResult::loadedFile), else the module name (the fallback for
+// modules without a discoverable load path). A path already claimed by another stored
+// module of the same kit gets a '#<checklist name>' suffix.
+std::string AttributionKey(const ModuleCheckResult& result, RouteContext& ctx)
+{
+    if (result.loadedFile.empty()) {
+        return ctx.file;
+    }
+    if (ctx.usedAttributionKeys != nullptr && !ctx.usedAttributionKeys->insert(result.loadedFile).second) {
+        return result.loadedFile + "#" + ctx.file;
+    }
+    return result.loadedFile;
+}
 
 // Routes module results: current kits feed illegalMap/summary, the deprecated bucket feeds
 // deprecatedMap (kept separate from firstError and the exit code). Unsupported judgements
@@ -1074,7 +1190,7 @@ void RouteModuleResult(CheckErrorCode ret, const ModuleCheckResult& result, Rout
         } else if (!illegalList.empty()) {
             summary.depModuleFlagged++;
             summary.depApiFlagged += illegalList.size();
-            (*ctx.deprecatedMap)[ctx.kit][ctx.file] = illegalList;
+            (*ctx.deprecatedMap)[ctx.kit][AttributionKey(result, ctx)] = illegalList;
         } else {
             summary.depModuleFailed++;
         }
@@ -1093,7 +1209,7 @@ void RouteModuleResult(CheckErrorCode ret, const ModuleCheckResult& result, Rout
         summary.fileFailed++;
     }
     if (!illegalList.empty()) {
-        (*ctx.illegalMap)[ctx.kit][ctx.file] = illegalList;
+        (*ctx.illegalMap)[ctx.kit][AttributionKey(result, ctx)] = illegalList;
     }
 }
 
@@ -1127,6 +1243,8 @@ void RunKitChecks(napi_env env, const CheckConfig& config, CheckSummary& summary
         kitCtx.expandableNames = &expandableNames;
         kitCtx.soDir = config.moduleSoDir;
         kitCtx.moduleMap = config.moduleMap.Empty() ? nullptr : &config.moduleMap;
+        // Attribution-key collision set lives at kit scope: RouteContext is rebuilt per file.
+        std::set<std::string> usedAttributionKeys;
 
         for (const auto& file : files) {
             if (config.skipModules.count(NormalizeModuleName(file)) > 0) {
@@ -1145,6 +1263,7 @@ void RunKitChecks(napi_env env, const CheckConfig& config, CheckSummary& summary
             routeCtx.illegalMap = &illegalMap;
             routeCtx.deprecatedMap = &deprecatedMap;
             routeCtx.unsupportedModules = &runtimeUnsupported;
+            routeCtx.usedAttributionKeys = &usedAttributionKeys;
             RouteModuleResult(ret, result, routeCtx);
             // Checkpoint after each module (atomic write): a native crash mid-run keeps every
             // result checked so far; the last log line marks the crash point. The unknown
