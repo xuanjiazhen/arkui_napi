@@ -1,4 +1,17 @@
 /*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * napi_dumper.cpp — NAPI Runtime Module Info Extractor
  *
  * Single binary: executable provides all napi stubs via --export-dynamic.
@@ -27,55 +40,55 @@
 #include "napi/native_node_api.h"
 
 /* ===== Constants ===== */
-constexpr int kMaxIfaces = 512;
-constexpr int kMaxClasses = 64;
-constexpr int kMaxMethods = 128;
-constexpr int kMaxName = 256;
-constexpr int kMaxModules = 8;
-constexpr int kMaxSoPath = 512;
-constexpr int kDummyEnvSize = 8192;
-constexpr int kDummyExportsSize = 256;
+constexpr int MAX_IFACES = 512;
+constexpr int MAX_CLASSES = 64;
+constexpr int MAX_METHODS = 128;
+constexpr int MAX_NAME = 256;
+constexpr int MAX_MODULES = 8;
+constexpr int MAX_SO_PATH = 512;
+constexpr int DUMMY_ENV_SIZE = 8192;
+constexpr int DUMMY_EXPORTS_SIZE = 256;
 
 /* ===== Interface type enum (replaces magic numbers 0-4) ===== */
 enum IfaceType {
-    kIfaceFunction = 0,
-    kIfaceGetter = 1,
-    kIfaceSetter = 2,
-    kIfaceProperty = 3,
-    kIfaceGetterSetter = 4,
+    IFACE_FUNCTION = 0,
+    IFACE_GETTER = 1,
+    IFACE_SETTER = 2,
+    IFACE_PROPERTY = 3,
+    IFACE_GETTER_SETTER = 4,
 };
 
 /* ===== Registration type enum (replaces magic numbers 0/1) ===== */
 enum RegType {
-    kRegNapiModuleRegister = 0,
-    kRegNapiModuleWithJsRegister = 1,
+    REG_NAPI_MODULE_REGISTER = 0,
+    REG_NAPI_MODULE_WITH_JS_REGISTER = 1,
 };
 
 /* ===== Captured data structures ===== */
 struct CapturedIface {
-    char name[kMaxName];
+    char name[MAX_NAME];
     IfaceType type;
     void* callbackAddr;
-    char callbackName[kMaxName];
-    char soPath[kMaxSoPath];
+    char callbackName[MAX_NAME];
+    char soPath[MAX_SO_PATH];
 };
 
 struct CapturedClass {
-    char className[kMaxName];
+    char className[MAX_NAME];
     void* ctorAddr;
-    char ctorName[kMaxName];
+    char ctorName[MAX_NAME];
     CapturedIface* methods;
     int methodCount;
 };
 
 struct CapturedModule {
-    char moduleName[kMaxName];
+    char moduleName[MAX_NAME];
     int nmVersion;
     unsigned int nmFlags;
     const char* nmFilename;
     void* registerFuncAddr;
-    char registerFuncName[kMaxName];
-    char registerSoPath[kMaxSoPath];
+    char registerFuncName[MAX_NAME];
+    char registerSoPath[MAX_SO_PATH];
     RegType registrationType;
     bool hasJsCode;
     bool hasAbcCode;
@@ -86,7 +99,7 @@ struct CapturedModule {
 };
 
 /* ===== Global state ===== */
-static CapturedModule* g_modules[kMaxModules];
+static CapturedModule* g_modules[MAX_MODULES];
 static int g_moduleCount = 0;
 static CapturedModule* g_current = nullptr;
 static bool g_capture = false;
@@ -153,18 +166,18 @@ static void ResolveSymbol(void* addr, char* nameBuf, int nameSize, char* pathBuf
 static IfaceType DescToType(const napi_property_descriptor* desc)
 {
     if (desc->method != nullptr) {
-        return kIfaceFunction;
+        return IFACE_FUNCTION;
     }
     if (desc->getter != nullptr && desc->setter != nullptr) {
-        return kIfaceGetterSetter;
+        return IFACE_GETTER_SETTER;
     }
     if (desc->getter != nullptr) {
-        return kIfaceGetter;
+        return IFACE_GETTER;
     }
     if (desc->setter != nullptr) {
-        return kIfaceSetter;
+        return IFACE_SETTER;
     }
-    return kIfaceProperty;
+    return IFACE_PROPERTY;
 }
 
 static void CaptureFromDesc(const napi_property_descriptor* desc, CapturedIface* iface)
@@ -173,7 +186,7 @@ static void CaptureFromDesc(const napi_property_descriptor* desc, CapturedIface*
         return;
     }
     if (desc->utf8name != nullptr) {
-        CopyStr(iface->name, kMaxName, desc->utf8name);
+        CopyStr(iface->name, MAX_NAME, desc->utf8name);
     }
     iface->type = DescToType(desc);
     if (desc->method != nullptr) {
@@ -186,7 +199,7 @@ static void CaptureFromDesc(const napi_property_descriptor* desc, CapturedIface*
         iface->callbackAddr = nullptr;
     }
     if (iface->callbackAddr != nullptr) {
-        ResolveSymbol(iface->callbackAddr, iface->callbackName, kMaxName, iface->soPath, kMaxSoPath);
+        ResolveSymbol(iface->callbackAddr, iface->callbackName, MAX_NAME, iface->soPath, MAX_SO_PATH);
     }
 }
 
@@ -210,8 +223,8 @@ static CapturedModule* AllocModule()
     if (m == nullptr) {
         return nullptr;
     }
-    m->interfaces = static_cast<CapturedIface*>(calloc(kMaxIfaces, sizeof(CapturedIface)));
-    m->classes = static_cast<CapturedClass*>(calloc(kMaxClasses, sizeof(CapturedClass)));
+    m->interfaces = static_cast<CapturedIface*>(calloc(MAX_IFACES, sizeof(CapturedIface)));
+    m->classes = static_cast<CapturedClass*>(calloc(MAX_CLASSES, sizeof(CapturedClass)));
     if (m->interfaces == nullptr || m->classes == nullptr) {
         free(m->interfaces);
         free(m->classes);
@@ -224,7 +237,7 @@ static CapturedModule* AllocModule()
 /* ===== Data-capturing napi functions ===== */
 void napi_module_register(napi_module* mod)
 {
-    if (mod == nullptr || g_moduleCount >= kMaxModules) {
+    if (mod == nullptr || g_moduleCount >= MAX_MODULES) {
         return;
     }
     auto m = AllocModule();
@@ -233,23 +246,23 @@ void napi_module_register(napi_module* mod)
     }
     g_modules[g_moduleCount++] = m;
     if (mod->nm_modname != nullptr) {
-        CopyStr(m->moduleName, kMaxName, mod->nm_modname);
+        CopyStr(m->moduleName, MAX_NAME, mod->nm_modname);
     }
     m->nmVersion = mod->nm_version;
     m->nmFlags = mod->nm_flags;
     m->nmFilename = mod->nm_filename;
     m->registerFuncAddr = reinterpret_cast<void*>(mod->nm_register_func);
-    m->registrationType = kRegNapiModuleRegister;
+    m->registrationType = REG_NAPI_MODULE_REGISTER;
     if (mod->nm_register_func != nullptr) {
         ResolveSymbol(reinterpret_cast<void*>(mod->nm_register_func),
-                      m->registerFuncName, kMaxName, m->registerSoPath, kMaxSoPath);
+                      m->registerFuncName, MAX_NAME, m->registerSoPath, MAX_SO_PATH);
     }
     LogMsg("[dumper] Module registered: %s\n", m->moduleName);
 }
 
 void napi_module_with_js_register(napi_module_with_js* mod)
 {
-    if (mod == nullptr || g_moduleCount >= kMaxModules) {
+    if (mod == nullptr || g_moduleCount >= MAX_MODULES) {
         return;
     }
     auto m = AllocModule();
@@ -258,18 +271,18 @@ void napi_module_with_js_register(napi_module_with_js* mod)
     }
     g_modules[g_moduleCount++] = m;
     if (mod->nm_modname != nullptr) {
-        CopyStr(m->moduleName, kMaxName, mod->nm_modname);
+        CopyStr(m->moduleName, MAX_NAME, mod->nm_modname);
     }
     m->nmVersion = mod->nm_version;
     m->nmFlags = mod->nm_flags;
     m->nmFilename = mod->nm_filename;
     m->registerFuncAddr = reinterpret_cast<void*>(mod->nm_register_func);
-    m->registrationType = kRegNapiModuleWithJsRegister;
+    m->registrationType = REG_NAPI_MODULE_WITH_JS_REGISTER;
     m->hasJsCode = (mod->nm_get_js_code != nullptr);
     m->hasAbcCode = (mod->nm_get_abc_code != nullptr);
     if (mod->nm_register_func != nullptr) {
         ResolveSymbol(reinterpret_cast<void*>(mod->nm_register_func),
-                      m->registerFuncName, kMaxName, m->registerSoPath, kMaxSoPath);
+                      m->registerFuncName, MAX_NAME, m->registerSoPath, MAX_SO_PATH);
     }
     LogMsg("[dumper] Module registered (with_js): %s\n", m->moduleName);
 }
@@ -280,7 +293,7 @@ napi_status napi_define_properties(napi_env, napi_value, size_t count,
     if (!g_capture || g_current == nullptr || props == nullptr) {
         return napi_ok;
     }
-    for (size_t i = 0; i < count && g_current->ifaceCount < kMaxIfaces; i++) {
+    for (size_t i = 0; i < count && g_current->ifaceCount < MAX_IFACES; i++) {
         CaptureFromDesc(&props[i], &g_current->interfaces[g_current->ifaceCount++]);
     }
     return napi_ok;
@@ -293,23 +306,23 @@ napi_status napi_define_class(napi_env, const char* name, size_t len,
     if (result != nullptr) {
         *result = g_dummy;
     }
-    if (!g_capture || g_current == nullptr || g_current->classCount >= kMaxClasses) {
+    if (!g_capture || g_current == nullptr || g_current->classCount >= MAX_CLASSES) {
         return napi_ok;
     }
     auto c = &g_current->classes[g_current->classCount++];
     if (memset_s(c, sizeof(*c), 0, sizeof(*c)) != EOK) {
         return napi_ok;
     }
-    c->methods = static_cast<CapturedIface*>(calloc(kMaxMethods, sizeof(CapturedIface)));
+    c->methods = static_cast<CapturedIface*>(calloc(MAX_METHODS, sizeof(CapturedIface)));
     if (name != nullptr) {
-        CopyNameLen(c->className, kMaxName, name, len);
+        CopyNameLen(c->className, MAX_NAME, name, len);
     }
     c->ctorAddr = reinterpret_cast<void*>(ctor);
     if (ctor != nullptr) {
-        ResolveSymbol(reinterpret_cast<void*>(ctor), c->ctorName, kMaxName, nullptr, 0);
+        ResolveSymbol(reinterpret_cast<void*>(ctor), c->ctorName, MAX_NAME, nullptr, 0);
     }
     if (props != nullptr) {
-        for (size_t i = 0; i < count && c->methodCount < kMaxMethods; i++) {
+        for (size_t i = 0; i < count && c->methodCount < MAX_METHODS; i++) {
             CaptureFromDesc(&props[i], &c->methods[c->methodCount++]);
         }
     }
@@ -322,20 +335,20 @@ napi_status napi_create_function(napi_env, const char* name, size_t len,
     if (result != nullptr) {
         *result = g_dummy;
     }
-    if (!g_capture || g_current == nullptr || g_current->ifaceCount >= kMaxIfaces) {
+    if (!g_capture || g_current == nullptr || g_current->ifaceCount >= MAX_IFACES) {
         return napi_ok;
     }
     auto f = &g_current->interfaces[g_current->ifaceCount++];
     if (memset_s(f, sizeof(*f), 0, sizeof(*f)) != EOK) {
         return napi_ok;
     }
-    f->type = kIfaceFunction;
+    f->type = IFACE_FUNCTION;
     f->callbackAddr = reinterpret_cast<void*>(cb);
     if (name != nullptr) {
-        CopyNameLen(f->name, kMaxName, name, len);
+        CopyNameLen(f->name, MAX_NAME, name, len);
     }
     if (cb != nullptr) {
-        ResolveSymbol(reinterpret_cast<void*>(cb), f->callbackName, kMaxName, f->soPath, kMaxSoPath);
+        ResolveSymbol(reinterpret_cast<void*>(cb), f->callbackName, MAX_NAME, f->soPath, MAX_SO_PATH);
     }
     return napi_ok;
 }
@@ -357,15 +370,15 @@ static void SigHandler(int)
 static const char* IfaceTypeName(IfaceType type)
 {
     switch (type) {
-        case kIfaceFunction:
+        case IFACE_FUNCTION:
             return "function";
-        case kIfaceGetter:
+        case IFACE_GETTER:
             return "getter";
-        case kIfaceSetter:
+        case IFACE_SETTER:
             return "setter";
-        case kIfaceProperty:
+        case IFACE_PROPERTY:
             return "property";
-        case kIfaceGetterSetter:
+        case IFACE_GETTER_SETTER:
             return "getter_setter";
         default:
             return "unknown";
@@ -374,7 +387,7 @@ static const char* IfaceTypeName(IfaceType type)
 
 static const char* RegTypeName(RegType type)
 {
-    return (type == kRegNapiModuleWithJsRegister) ? "napi_module_with_js_register"
+    return (type == REG_NAPI_MODULE_WITH_JS_REGISTER) ? "napi_module_with_js_register"
                                                    : "napi_module_register";
 }
 
@@ -600,23 +613,35 @@ static void PrintUsage(const char* prog)
 }
 
 /* ===== Argument parsing ===== */
+static bool HandleFormatArg(int argc, char** argv, int& index, bool& useJson)
+{
+    if (index + 1 >= argc) {
+        (void)fprintf(stderr, "Error: -f requires 'json' or 'text'\n");
+        return false;
+    }
+    if (strcmp(argv[index + 1], "json") == 0) {
+        useJson = true;
+    } else if (strcmp(argv[index + 1], "text") == 0) {
+        useJson = false;
+    } else {
+        (void)fprintf(stderr, "Error: -f requires 'json' or 'text'\n");
+        return false;
+    }
+    index++;
+    return true;
+}
+
 static bool ParseArgs(int argc, char** argv, bool& useJson, const char*& soPath)
 {
-    for (int i = 1; i < argc; i++) {
+    int i = 1;
+    while (i < argc) {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             PrintUsage(argv[0]);
             return false;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
             g_verbose = true;
         } else if (strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) {
-            if (i + 1 < argc && strcmp(argv[i + 1], "json") == 0) {
-                useJson = true;
-                i++;
-            } else if (i + 1 < argc && strcmp(argv[i + 1], "text") == 0) {
-                useJson = false;
-                i++;
-            } else {
-                (void)fprintf(stderr, "Error: -f requires 'json' or 'text'\n");
+            if (!HandleFormatArg(argc, argv, i, useJson)) {
                 return false;
             }
         } else if (argv[i][0] != '-') {
@@ -626,6 +651,7 @@ static bool ParseArgs(int argc, char** argv, bool& useJson, const char*& soPath)
             PrintUsage(argv[0]);
             return false;
         }
+        i++;
     }
     if (soPath == nullptr) {
         PrintUsage(argv[0]);
@@ -637,8 +663,8 @@ static bool ParseArgs(int argc, char** argv, bool& useJson, const char*& soPath)
 /* ===== Init call with crash recovery ===== */
 static void CallInitFunctions()
 {
-    static char* dummyEnvMem = static_cast<char*>(calloc(1, kDummyEnvSize));
-    static char* dummyExportsMem = static_cast<char*>(calloc(1, kDummyExportsSize));
+    static char* dummyEnvMem = static_cast<char*>(calloc(1, DUMMY_ENV_SIZE));
+    static char* dummyExportsMem = static_cast<char*>(calloc(1, DUMMY_EXPORTS_SIZE));
 
     for (int mi = 0; mi < g_moduleCount; mi++) {
         auto mod = g_modules[mi];

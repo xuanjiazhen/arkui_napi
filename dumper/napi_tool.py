@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 napi_tool.py — NAPI module scanner & report generator (merged tool).
 
@@ -285,32 +297,47 @@ def load_data(report_dir):
     }
 
 
+def _extract_iface_entry(iface, mod_name, so_name):
+    return {
+        "name": iface.get("name", ""),
+        "type": iface.get("type", ""),
+        "callback": iface.get("callback"),
+        "addr": iface.get("callback_addr"),
+        "module": mod_name,
+        "so": so_name,
+    }
+
+
+def _extract_method_entry(method, mod_name, so_name, cls_name):
+    return {
+        "name": method.get("name", ""),
+        "type": method.get("type", ""),
+        "callback": method.get("callback"),
+        "addr": None,
+        "module": mod_name,
+        "so": so_name,
+        "class": cls_name,
+    }
+
+
+def _flatten_module_interfaces(mod, so_name):
+    """Extract all interface and method entries from a single module."""
+    entries = []
+    mod_name = mod.get("module_name", "")
+    for iface in mod.get("interfaces", []):
+        entries.append(_extract_iface_entry(iface, mod_name, so_name))
+    for cls in mod.get("classes", []):
+        cls_name = cls.get("class_name", "")
+        for method in cls.get("methods", []):
+            entries.append(_extract_method_entry(method, mod_name, so_name, cls_name))
+    return entries
+
+
 def build_flat_interfaces(so_files):
     flat = []
     for so in so_files:
         for mod in so["modules"]:
-            mod_name = mod.get("module_name", "")
-            for iface in mod.get("interfaces", []):
-                flat.append({
-                    "name": iface.get("name", ""),
-                    "type": iface.get("type", ""),
-                    "callback": iface.get("callback"),
-                    "addr": iface.get("callback_addr"),
-                    "module": mod_name,
-                    "so": so["name"],
-                })
-            for cls in mod.get("classes", []):
-                cls_name = cls.get("class_name", "")
-                for m in cls.get("methods", []):
-                    flat.append({
-                        "name": m.get("name", ""),
-                        "type": m.get("type", ""),
-                        "callback": m.get("callback"),
-                        "addr": None,
-                        "module": mod_name,
-                        "so": so["name"],
-                        "class": cls_name,
-                    })
+            flat.extend(_flatten_module_interfaces(mod, so["name"]))
     return flat
 
 
@@ -351,6 +378,19 @@ def build_flat_modules(so_files):
     return flat
 
 
+def _collect_module_mapping(mod, so_path, module_map, class_map):
+    """Collect module→so and class→so entries for a single module."""
+    mod_name = mod.get("module_name", "")
+    if not mod_name:
+        return
+    module_map[mod_name] = so_path
+    for cls in mod.get("classes", []):
+        cls_name = cls.get("class_name", "")
+        if not cls_name:
+            continue
+        class_map[cls_name] = {"module": mod_name, "so": so_path}
+
+
 def build_mapping(data):
     module_map = {}
     class_map = {}
@@ -359,15 +399,7 @@ def build_mapping(data):
         if so_path.startswith("/"):
             so_path = so_path[1:]
         for mod in so["modules"]:
-            mod_name = mod.get("module_name", "")
-            if not mod_name:
-                continue
-            module_map[mod_name] = so_path
-            for cls in mod.get("classes", []):
-                cls_name = cls.get("class_name", "")
-                if not cls_name:
-                    continue
-                class_map[cls_name] = {"module": mod_name, "so": so_path}
+            _collect_module_mapping(mod, so_path, module_map, class_map)
     return {"module_to_so": module_map, "class_to_so": class_map}
 
 
@@ -794,12 +826,11 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "scan":
-        return cmd_scan(args)
-    elif args.command == "report":
-        return cmd_report(args)
-    elif args.command == "all":
-        return cmd_all(args)
+    commands = {"scan": cmd_scan, "report": cmd_report, "all": cmd_all}
+    handler = commands.get(args.command)
+    if handler is not None:
+        return handler(args)
+    return 1
 
 
 if __name__ == "__main__":
