@@ -147,6 +147,9 @@ ohos_source_set("ace_napi_static") {
     if (napi_enable_container_scope) {
       defines += [ "ENABLE_CONTAINER_SCOPE" ]
     }
+    if (napi_enable_cross_platform_idle_gc) {
+      defines += [ "ENABLE_CROSS_PLATFORM_IDLE_GC" ]
+    }
     if (target_os == "android") {
       libs = [ "log" ]
     }

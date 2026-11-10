@@ -63,6 +63,11 @@ declare_args() {
 
   # Set pgo profdata path
   napi_feature_pgo_path = ""
+
+  # Enable cross-platform (ArkUI-X Android/iOS) idle GC. Only consumed by
+  # is_arkui_x builds (defines ENABLE_CROSS_PLATFORM_IDLE_GC); OHOS builds
+  # are not affected. See codespec/changes/arkui_napi/20261110000001.
+  napi_enable_cross_platform_idle_gc = true
 }
 
 if (defined(target_cpu) && target_cpu == "arm64" &&

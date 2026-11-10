@@ -72,6 +72,22 @@ bool ArkIdleMonitor::gEnableDeferFreeze =
     OHOS::system::GetBoolParameter("persist.ark.deferfreeze", true);
 #else
 uint64_t ArkIdleMonitor::gIdleMonitoringInterval = 1000; // ms
+bool ArkIdleMonitor::gEnableIdleGC = true;
+#endif
+
+// Weak references to the host-side (ace_engine Android/iOS adapter) idle signal
+// registration entry points. Declared at file scope OUTSIDE any namespace so the
+// C linkage matches the extern "C" definitions in the host repo; when the host
+// symbols are absent (adapter not merged yet) the addresses resolve to null and
+// the monitor silently falls back to pure uv_timer polling mode.
+#if defined(ENABLE_CROSS_PLATFORM_IDLE_GC) && (defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM))
+#if defined(ANDROID_PLATFORM)
+extern "C" __attribute__((weak)) void StartIdleMonitorAndroid();
+extern "C" __attribute__((weak)) void StopIdleMonitorAndroid();
+#elif defined(IOS_PLATFORM)
+extern "C" __attribute__((weak)) void StartIdleMonitorIOS();
+extern "C" __attribute__((weak)) void StopIdleMonitorIOS();
+#endif
 #endif
 // gDelayOverTime Detect whether there is any process freezing during the delay process of the delay task
 uint64_t ArkIdleMonitor::gDelayOverTime = gIdleMonitoringInterval + 100; // ms
@@ -200,8 +216,14 @@ void ArkIdleMonitor::IntervalMonitor()
     auto nowTimestamp = std::chrono::time_point_cast<std::chrono::milliseconds>(
         std::chrono::high_resolution_clock::now()).time_since_epoch().count();
     int64_t idleDuration = GetTotalIdleDuration() - lastTotalIdleDuration_;
+    int64_t recordTotalDuration = nowTimestamp - startRecordTimestamp_;
     if (IsIdleState()) {
         idleDuration += (nowTimestamp - GetNotifyTimestamp());
+        // Without an idle-end signal (cross-platform) idleState_ stays true, so the
+        // accumulated idle duration must never exceed the recording window.
+        if (idleDuration > recordTotalDuration) {
+            idleDuration = recordTotalDuration;
+        }
     }
     lastTotalIdleDuration_ = GetTotalIdleDuration();
     if (GetIdleNotifyCount() <= LOW_IDLE_NOTIFY_THRESHOLD) {
@@ -210,7 +232,6 @@ void ArkIdleMonitor::IntervalMonitor()
         numberOfLowIdleNotifyCycles_ = 0U;
     }
     ResetIdleNotifyCount();
-    int64_t recordTotalDuration = nowTimestamp - startRecordTimestamp_;
     if (recordTotalDuration <= 0) {
         numberOfHighIdleTimeRatio_ = 0U;
         HILOG_ERROR("ArkIdleMonitor: recordTotalDuration <= 0");
@@ -266,6 +287,8 @@ void ArkIdleMonitor::PostMonitorTask(uint64_t delayMs)
     }
     waitForStopTimerHandler_ = currentTimerHandler_;
     currentTimerHandler_ = ffrt_timer_start(ffrt_qos_user_initiated, delayMs, this, task, false);
+#elif defined(ENABLE_CROSS_PLATFORM_IDLE_GC) && (defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM))
+    PostMonitorTaskCrossPlatform(delayMs);
 #endif
 }
 
@@ -299,6 +322,17 @@ void ArkIdleMonitor::NotifyMainThreadTryCompressGC()
         }
     };
     mainThreadHandler_->PostTask(task, "ARKTS_IDLE_COMPRESS", 0, OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE);
+#elif defined(ENABLE_CROSS_PLATFORM_IDLE_GC) && (defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM))
+    // Cross-platform: Platform/UI/JS share the main thread (useUIAsJSThread=true), so this
+    // function already runs on the main thread and can trigger GC directly without PostTask.
+    if (mainVM_ == nullptr) {
+        return;
+    }
+    HILOG_INFO("ArkIdleMonitor: triggering idle GC (cross-platform)");
+    JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    if (CheckWorkerEnvQueueAllInIdle(IDLE_WORKER_TRIGGER_COUNT)) {
+        JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+    }
 #endif
 }
 
@@ -404,10 +438,26 @@ void ArkIdleMonitor::EnableIdleGC(NativeEngine *engine)
     };
 #elif defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
     auto vm = const_cast<EcmaVM *>(engine->GetEcmaVm());
-    if (JSNApi::IsJSMainThreadOfEcmaVM(vm)) {
+    bool isMain = JSNApi::IsJSMainThreadOfEcmaVM(vm);
+    HILOG_INFO("ArkIdleMonitor: EnableIdleGC called, gEnableIdleGC=%{public}d", gEnableIdleGC ? 1 : 0);
+    HILOG_INFO("ArkIdleMonitor: IsJSMainThreadOfEcmaVM=%{public}d", isMain ? 1 : 0);
+    if (isMain) {
+        // Base setup is shared with the existing background-GC path and must stay
+        // unconditional; the idle-monitor hooks below are flag-gated.
         SetMainThreadEcmaVM(vm);
         mainLoop_ = engine->GetUVLoop();
+        HILOG_INFO("ArkIdleMonitor: mainLoop_=%{public}p", mainLoop_);
+#if defined(ENABLE_CROSS_PLATFORM_IDLE_GC)
+        if (gEnableIdleGC) {
+            JSNApi::SetTriggerGCTaskCallback(vm, [engine](TriggerGCData& data) {
+                engine->PostTriggerGCTask(data, nullptr);
+            });
+            SetStartTimerCallback();
+            StartIdleHooks();
+        }
+#endif
     } else {
+        HILOG_INFO("ArkIdleMonitor: not main thread, registering worker env");
         RegisterWorkerEnv(reinterpret_cast<napi_env>(engine));
     }
 #endif
@@ -767,6 +817,9 @@ ArkIdleMonitor::~ArkIdleMonitor()
         CrossPlatformBgGCThreadStarted_ = false;
     }
 #endif
+#if defined(ENABLE_CROSS_PLATFORM_IDLE_GC) && (defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM))
+    StopCrossPlatformTimerTasks();
+#endif
 }
 
 std::shared_ptr<ArkIdleMonitor> ArkIdleMonitor::GetInstance()
@@ -1124,5 +1177,123 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcessCrossPlatformGC(TRIGGER_IDLE_G
     }
     delete data;
 }
+
+#if defined(ENABLE_CROSS_PLATFORM_IDLE_GC)
+void ArkIdleMonitor::StartIdleHooks()
+{
+    if (idleHooksStarted_ || mainLoop_ == nullptr) {
+        HILOG_ERROR("ArkIdleMonitor: skip StartIdleHooks, started=%{public}d, loop=%{public}d",
+            idleHooksStarted_ ? 1 : 0, mainLoop_ != nullptr ? 1 : 0);
+        return;
+    }
+    idleHooksStarted_ = true;
+#if defined(ANDROID_PLATFORM)
+    // Weak reference: the symbol is defined by the ace_engine Android adapter; when the
+    // adapter is not merged/registered, the address is null and we silently fall back to
+    // pure timer-based polling.
+    if (&StartIdleMonitorAndroid != nullptr) {
+        StartIdleMonitorAndroid();
+    }
+#elif defined(IOS_PLATFORM)
+    if (&StartIdleMonitorIOS != nullptr) {
+        StartIdleMonitorIOS();
+    }
+#endif
+    PostMonitorTaskCrossPlatform(gIdleMonitoringInterval);
+    HILOG_INFO("ArkIdleMonitor: idle monitor started (cross-platform timer-based)");
+}
+
+void ArkIdleMonitor::StopIdleHooks()
+{
+    if (!idleHooksStarted_) {
+        return;
+    }
+    idleHooksStarted_ = false;
+#if defined(ANDROID_PLATFORM)
+    if (&StopIdleMonitorAndroid != nullptr) {
+        StopIdleMonitorAndroid();
+    }
+#elif defined(IOS_PLATFORM)
+    if (&StopIdleMonitorIOS != nullptr) {
+        StopIdleMonitorIOS();
+    }
+#endif
+    StopCrossPlatformTimerTasks();
+}
+
+void ArkIdleMonitor::OnMonitorTimer([[maybe_unused]] uv_timer_t* handle)
+{
+    auto monitorPtr = ArkIdleMonitor::GetInstance();
+    ArkIdleMonitor* monitor = monitorPtr.get();
+    if (monitor != nullptr) {
+        monitor->IntervalMonitor();
+    }
+}
+
+void ArkIdleMonitor::PostMonitorTaskCrossPlatform(uint64_t delayMs)
+{
+    if (mainLoop_ == nullptr) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(uvTimerMutex_);
+    if (monitorTimerHandle_ == nullptr) {
+        monitorTimerHandle_ = new (std::nothrow) uv_timer_t();
+        if (monitorTimerHandle_ == nullptr) {
+            HILOG_ERROR("ArkIdleMonitor: alloc uv_timer_t failed");
+            return;
+        }
+        if (uv_timer_init(mainLoop_, monitorTimerHandle_) != 0) {
+            delete monitorTimerHandle_;
+            monitorTimerHandle_ = nullptr;
+            HILOG_ERROR("ArkIdleMonitor: uv_timer_init failed");
+            return;
+        }
+    } else {
+        uv_timer_stop(monitorTimerHandle_);
+    }
+    // One-shot timer: the next scheduling point is decided by IntervalMonitor itself
+    // (1s polling or 90s post-GC sleep), mirroring the ffrt_timer semantics on OHOS.
+    if (uv_timer_start(monitorTimerHandle_, OnMonitorTimer, delayMs, 0) != 0) {
+        HILOG_ERROR("ArkIdleMonitor: uv_timer_start failed");
+    }
+}
+
+void ArkIdleMonitor::StopCrossPlatformTimerTasks()
+{
+    std::lock_guard<std::mutex> lock(uvTimerMutex_);
+    if (monitorTimerHandle_ == nullptr) {
+        return;
+    }
+    uv_timer_stop(monitorTimerHandle_);
+    // close-and-free in loop thread, same pattern as OnMainThreadGCTask
+    uv_close(reinterpret_cast<uv_handle_t*>(monitorTimerHandle_), [](uv_handle_t* handle) {
+        delete reinterpret_cast<uv_timer_t*>(handle);
+    });
+    monitorTimerHandle_ = nullptr;
+}
+#endif
 #endif
 } // namespace panda::ecmascript
+
+#if defined(ENABLE_CROSS_PLATFORM_IDLE_GC) && (defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM))
+// C-linkage bridges for the ace_engine Android/iOS adapters (JNI side). The adapters do NOT
+// include ark_idle_monitor.h (it pulls in jsnapi.h which is unreachable from ace_engine include
+// paths); they call these two exported functions instead.
+extern "C" void NotifyIdleStartCrossPlatform(int64_t timestamp)
+{
+    auto monitorPtr = panda::ecmascript::ArkIdleMonitor::GetInstance();
+    panda::ecmascript::ArkIdleMonitor* monitor = monitorPtr.get();
+    if (monitor != nullptr) {
+        monitor->NotifyLooperIdleStart(timestamp, 0);
+    }
+}
+
+extern "C" void NotifyIdleEndCrossPlatform(int64_t timestamp)
+{
+    auto monitorPtr = panda::ecmascript::ArkIdleMonitor::GetInstance();
+    panda::ecmascript::ArkIdleMonitor* monitor = monitorPtr.get();
+    if (monitor != nullptr) {
+        monitor->NotifyLooperIdleEnd(timestamp);
+    }
+}
+#endif

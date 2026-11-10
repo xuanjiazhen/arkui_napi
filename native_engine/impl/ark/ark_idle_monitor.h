@@ -381,9 +381,9 @@ private:
     std::vector<napi_env> workerEnvVector_;
     static uint64_t gIdleMonitoringInterval;
     static uint64_t gDelayOverTime;
+    static bool gEnableIdleGC;
 #if defined(ENABLE_EVENT_HANDLER)
     std::shared_ptr<OHOS::AppExecFwk::EventHandler> mainThreadHandler_ {};
-    static bool gEnableIdleGC;
 #endif
     static bool gEnableDeferFreeze;
     void* dynamicLoadHandle_ {nullptr};
@@ -400,6 +400,16 @@ private:
     uv_loop_t* mainLoop_ {nullptr};
     uv_thread_t CrossPlatformBgGCThread_ {};
     bool CrossPlatformBgGCThreadStarted_ {false};
+#if defined(ENABLE_CROSS_PLATFORM_IDLE_GC)
+    void StartIdleHooks();
+    void StopIdleHooks();
+    static void OnMonitorTimer(uv_timer_t* handle);
+    void PostMonitorTaskCrossPlatform(uint64_t delayMs);
+    void StopCrossPlatformTimerTasks();
+    bool idleHooksStarted_ {false};
+    uv_timer_t* monitorTimerHandle_ {nullptr};
+    std::mutex uvTimerMutex_;
+#endif
 #endif
 };
 
