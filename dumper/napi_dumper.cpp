@@ -48,6 +48,8 @@ constexpr int MAX_MODULES = 8;
 constexpr int MAX_SO_PATH = 512;
 constexpr int DUMMY_ENV_SIZE = 8192;
 constexpr int DUMMY_EXPORTS_SIZE = 256;
+constexpr int TEXT_INDENT_IFACE = 4;
+constexpr int TEXT_INDENT_CLASS_METHOD = 6;
 
 /* ===== Interface type enum (replaces magic numbers 0-4) ===== */
 enum IfaceType {
@@ -124,7 +126,10 @@ static void CopyStr(char* dst, int dstSize, const char* src)
     if (dst == nullptr || dstSize <= 0 || src == nullptr) {
         return;
     }
-    (void)strncpy_s(dst, dstSize, src, dstSize - 1);
+    if (strncpy_s(dst, dstSize, src, dstSize - 1) != EOK) {
+        dst[0] = '\0';
+        return;
+    }
     dst[dstSize - 1] = '\0';
 }
 
@@ -135,7 +140,9 @@ static void CopyMem(void* dst, int dstSize, const void* src, int srcSize)
         return;
     }
     int copyLen = (srcSize < dstSize) ? srcSize : dstSize;
-    (void)memcpy_s(dst, dstSize, src, copyLen);
+    if (memcpy_s(dst, dstSize, src, copyLen) != EOK) {
+        return;
+    }
 }
 
 /* ===== Symbol resolution ===== */
@@ -444,7 +451,7 @@ static void OutputTextClass(const CapturedClass* c)
     }
     printf("\n");
     for (int k = 0; k < c->methodCount; k++) {
-        OutputTextIface(&c->methods[k], 6);
+        OutputTextIface(&c->methods[k], TEXT_INDENT_CLASS_METHOD);
     }
 }
 
@@ -469,7 +476,7 @@ static void OutputTextModule(const CapturedModule* m)
     }
     printf("  Interfaces (%d):\n", m->ifaceCount);
     for (int j = 0; j < m->ifaceCount; j++) {
-        OutputTextIface(&m->interfaces[j], 4);
+        OutputTextIface(&m->interfaces[j], TEXT_INDENT_IFACE);
     }
     if (m->classCount > 0) {
         printf("  Classes (%d):\n", m->classCount);
@@ -498,7 +505,7 @@ static void OutputText()
 }
 
 /* ===== JSON output (split into per-module/per-iface/per-class) ===== */
-static const char* g_soPath = nullptr;
+static const char* g_so_path = nullptr;
 
 static void OutputJsonIface(const CapturedIface* f, bool first)
 {
@@ -570,7 +577,7 @@ static void OutputJsonModule(const CapturedModule* m, bool first)
 static void OutputJson()
 {
     printf("{\"so_path\":");
-    JsonEscape(g_soPath != nullptr ? g_soPath : "");
+    JsonEscape(g_so_path != nullptr ? g_so_path : "");
     printf(",\"modules\":[");
     bool first = true;
     for (int i = 0; i < g_moduleCount; i++) {
@@ -704,7 +711,7 @@ int main(int argc, char** argv)
     sigaction(SIGSEGV, &sa, nullptr);
     sigaction(SIGABRT, &sa, nullptr);
 
-    g_soPath = soPath;
+    g_so_path = soPath;
     LogMsg("[dumper] Loading: %s\n", soPath);
 
     void* handle = dlopen(soPath, RTLD_NOW | RTLD_GLOBAL);

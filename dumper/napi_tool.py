@@ -256,6 +256,38 @@ def write_summary_txt(output_dir, args, stats, results):
 
 # ── report ──────────────────────────────────────────────────────
 
+def _load_so_detail(report_dir, so_name):
+    """Load per-.so detail JSON, return (modules, so_path_override)."""
+    detail_path = os.path.join(report_dir, f"{so_name}.json")
+    if not os.path.exists(detail_path):
+        return [], None
+    try:
+        with open(detail_path, encoding="utf-8") as f:
+            detail = json.load(f)
+        return detail.get("modules", []), detail.get("so_path")
+    except json.JSONDecodeError:
+        return [], None
+
+
+def _build_so_entry(item, report_dir):
+    """Build a single so_files entry from a summary result item."""
+    so_name = item["so"]
+    so_path = item.get("so_path", so_name)
+    modules, detail_so_path = _load_so_detail(report_dir, so_name)
+    if detail_so_path and (not so_path or so_path == so_name):
+        so_path = detail_so_path
+    return {
+        "name": so_name,
+        "so_path": so_path,
+        "status": item["status"],
+        "ms": item.get("ms", 0),
+        "modules": modules,
+        "mod_count": item.get("mods", 0),
+        "iface_count": item.get("ifaces", 0),
+        "class_count": item.get("classes", 0),
+    }
+
+
 def load_data(report_dir):
     summary_path = os.path.join(report_dir, "summary.json")
     if not os.path.exists(summary_path):
@@ -266,31 +298,8 @@ def load_data(report_dir):
     with open(summary_path, encoding="utf-8") as f:
         summary = json.load(f)
 
-    so_files = []
-    for item in summary.get("results", []):
-        so_name = item["so"]
-        so_path = item.get("so_path", so_name)
-        detail_path = os.path.join(report_dir, f"{so_name}.json")
-        modules = []
-        if os.path.exists(detail_path):
-            try:
-                with open(detail_path, encoding="utf-8") as f:
-                    detail = json.load(f)
-                modules = detail.get("modules", [])
-                if not so_path or so_path == so_name:
-                    so_path = detail.get("so_path", so_name)
-            except json.JSONDecodeError:
-                pass
-        so_files.append({
-            "name": so_name,
-            "so_path": so_path,
-            "status": item["status"],
-            "ms": item.get("ms", 0),
-            "modules": modules,
-            "mod_count": item.get("mods", 0),
-            "iface_count": item.get("ifaces", 0),
-            "class_count": item.get("classes", 0),
-        })
+    so_files = [_build_so_entry(item, report_dir)
+                for item in summary.get("results", [])]
     return {
         "meta": {**summary.get("scan_info", {}), **summary.get("statistics", {})},
         "so_files": so_files,

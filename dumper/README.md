@@ -53,7 +53,6 @@ python3 napi_tool.py all -t 127.0.0.1:5555
 | `napi_dumper_stubs.cpp` | ~200 个 napi 桩函数（无全局引用，避免 ThinLTO 重定位溢出） |
 | `napi_tool.py` | 合并工具：scan 子命令批量扫描 + report 子命令生成 HTML/JSON |
 | `BUILD.gn` | 构建配置（ohos_executable，依赖 ace_napi 获取真实头文件） |
-| `DESIGN.md` | 设计文档（架构、决策、验证结果） |
 
 ## 设计要点
 
@@ -64,7 +63,7 @@ python3 napi_tool.py all -t 127.0.0.1:5555
 
 ## analysis/ 目录
 
-分析报告存放在 `analysis/` 下：
+分析报告独立维护，不随本工具提交。
 
 - `crash_fixes/` — 扫描过程中发现的 .so 崩溃问题分析与修复方案
 - `sdk_gap/` — interface/sdk-js API 与 NAPI 实现的差距分析

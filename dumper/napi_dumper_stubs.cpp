@@ -27,6 +27,8 @@
 
 static napi_value g_dummy = reinterpret_cast<napi_value>(0xDEAD);
 
+constexpr uint32_t NAPI_VERSION_NUMBER = 8;
+
 /* Create family */
 napi_status napi_create_object(napi_env, napi_value* result)
 {
@@ -530,7 +532,7 @@ napi_status napi_get_buffer_info(napi_env, napi_value, void** data, size_t* leng
 napi_status napi_get_version(napi_env, uint32_t* result)
 {
     if (result != nullptr) {
-        *result = 8;
+        *result = NAPI_VERSION_NUMBER;
     }
     return napi_ok;
 }
