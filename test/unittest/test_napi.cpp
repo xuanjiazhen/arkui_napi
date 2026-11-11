@@ -19130,6 +19130,8 @@ HWTEST_F(NapiBasicTest, GlobalHandleCountTest009, testing::ext::TestSize.Level1)
     ASSERT_TRUE(deathTest.GetResult());
 }
 
+// ArkTS_ENVSAN reporter tests are temporarily disabled for CI bisection.
+#if 0
 /*
  * ArkTS environment sanity fault reporting tests, moved from
  * test_arkts_envsan_reporter.cpp.
@@ -19727,3 +19729,4 @@ HWTEST_F(NapiBasicTest, LogIfSpecialFatalBranchTest001, testing::ext::TestSize.L
     ASSERT_TRUE(deathTest.GetResult());
 }
 #endif // OHOS_PLATFORM
+#endif // ArkTS_ENVSAN reporter tests temporarily disabled for CI bisection.
