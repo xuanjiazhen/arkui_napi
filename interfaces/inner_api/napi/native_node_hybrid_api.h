@@ -52,6 +52,8 @@ typedef struct NapiStackInfo {
 
 using NapiAppStateCallback = void (*)(int state, int64_t timestamp);
 
+using NapiArkTsStaIdleObserver = void (*)(bool isIdleStart, int64_t timestamp, int64_t sleepTime);
+
 NAPI_EXTERN napi_status napi_load_module_with_info_hybrid(napi_env env,
                                                           const char* path,
                                                           const char* module_info,
@@ -124,5 +126,7 @@ NAPI_EXTERN napi_status napi_wrap_with_xref(napi_env env,
                                             napi_ref* result);
 #endif // PANDA_JS_ETS_HYBRID_MODE
 NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppStateCallback callback);
+
+NAPI_EXTERN napi_status napi_register_arkts_sta_idle_observer(NapiArkTsStaIdleObserver observer);
 
 #endif /* FOUNDATION_ACE_NAPI_INTERFACES_KITS_NAPI_NATIVE_NODE_HYBRID_API_H */

@@ -23,6 +23,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "native_api_internal.h"
+#include "native_engine/impl/ark/ark_idle_monitor.h"
 #include "native_engine/impl/ark/ark_native_reference.h"
 #include "native_engine/native_create_env.h"
 #include "native_engine/native_utils.h"
@@ -345,6 +346,15 @@ NAPI_EXTERN napi_status napi_register_appstate_callback(napi_env env, NapiAppSta
     engine->RegisterAppStateCallback(callback);
 
     return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_register_arkts_sta_idle_observer(NapiArkTsStaIdleObserver observer)
+{
+    if (observer == nullptr) {
+        return napi_invalid_arg;
+    }
+    panda::ecmascript::ArkIdleMonitor::GetInstance()->SetArkTsStaIdleObserver(observer);
+    return napi_ok;
 }
 
 NAPI_EXTERN napi_status napi_vm_handshake(napi_env env,

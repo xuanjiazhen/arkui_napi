@@ -346,6 +346,11 @@ void ArkIdleMonitor::NotifyNeedFreeze(bool needFreeze)
 #endif
 }
 
+void ArkIdleMonitor::SetArkTsStaIdleObserver(NapiArkTsStaIdleObserver observer)
+{
+    arkTsStaIdleObserver_ = observer;
+}
+
 void ArkIdleMonitor::PostLooperTriggerIdleGCTask()
 {
 #if defined(ENABLE_EVENT_HANDLER)
@@ -372,6 +377,19 @@ void ArkIdleMonitor::PostLooperTriggerIdleGCTask()
                 break;
             default:
                 HILOG_ERROR("this branch is unreachable");
+        }
+        auto staObserver = arkIdleMonitor->arkTsStaIdleObserver_;
+        if (staObserver != nullptr) {
+            switch (stage) {
+                case OHOS::AppExecFwk::EventRunnerStage::STAGE_BEFORE_WAITING:
+                    staObserver(true, info->timestamp, info->sleepTime);
+                    break;
+                case OHOS::AppExecFwk::EventRunnerStage::STAGE_AFTER_WAITING:
+                    staObserver(false, info->timestamp, 0);
+                    break;
+                default:
+                    break;
+            }
         }
         return 0;
     };
