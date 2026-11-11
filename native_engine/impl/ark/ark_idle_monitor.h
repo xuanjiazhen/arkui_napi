@@ -35,6 +35,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "interfaces/inner_api/napi/native_node_api.h"
+#include "interfaces/inner_api/napi/native_node_hybrid_api.h"
 
 class NativeEngine;
 
@@ -278,6 +279,7 @@ public:
     void PostLooperTriggerIdleGCTask();
     void EnableIdleGC(NativeEngine *engine);
     void UnregisterEnv(NativeEngine *engine);
+    void SetArkTsStaIdleObserver(NapiArkTsStaIdleObserver observer);
     void NotifyNeedFreeze(bool needFreeze);
     ReportDataFunc LoadReportDataFunc();
 
@@ -315,6 +317,7 @@ private:
     static uint64_t GetIdleMonitoringInterval();
 
     EcmaVM* mainVM_ {nullptr};
+    NapiArkTsStaIdleObserver arkTsStaIdleObserver_ { nullptr };
 
     static constexpr uint32_t IDLE_CHECK_LENGTH = 15;
     static constexpr uint32_t IDLE_INBACKGROUND_CHECK_LENGTH = 4;
