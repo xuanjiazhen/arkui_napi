@@ -236,6 +236,9 @@ napi_value MedianOfThreeValues(napi_env env, napi_callback_info info)
 
 static double NewtonSqrtStep(double value, double guess)
 {
+    if (guess == 0.0) {
+        return 0.0;
+    }
     return (guess + value / guess) / SQRT_INITIAL_GUESS;
 }
 
