@@ -114,8 +114,8 @@ std::vector<int64_t> SortedCopy(const std::vector<int64_t>& values)
 
 bool IsSortedAscendingValue(const std::vector<int64_t>& values)
 {
-    for (size_t i = INDEX_ONE; i < values.size(); ++i) {
-        if (values[i] < values[i - INDEX_ONE]) {
+    for (size_t i = SECOND_INDEX; i < values.size(); ++i) {
+        if (values[i] < values[i - SECOND_INDEX]) {
             return false;
         }
     }
@@ -124,9 +124,9 @@ bool IsSortedAscendingValue(const std::vector<int64_t>& values)
 
 static void BubbleSortPass(std::vector<int64_t>& values)
 {
-    for (size_t i = EMPTY_RESULT_SIZE; i + INDEX_ONE < values.size(); ++i) {
-        if (values[i + INDEX_ONE] < values[i]) {
-            std::swap(values[i], values[i + INDEX_ONE]);
+    for (size_t i = EMPTY_ARRAY_SIZE; i + SECOND_INDEX < values.size(); ++i) {
+        if (values[i + SECOND_INDEX] < values[i]) {
+            std::swap(values[i], values[i + SECOND_INDEX]);
         }
     }
 }
@@ -139,9 +139,11 @@ napi_value BubbleSortAsc(napi_env env, napi_callback_info info)
     NAPI_ASSERT(env, argc >= REQUIRED_ARGS_ONE, "Requires 1 argument: values");
 
     std::vector<int64_t> values;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values), "Values extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values)) {
+        return nullptr;
+    }
 
-    for (size_t pass = EMPTY_RESULT_SIZE; pass < values.size(); ++pass) {
+    for (size_t pass = EMPTY_ARRAY_SIZE; pass < values.size(); ++pass) {
         BubbleSortPass(values);
     }
     return CreateInt64ArrayValue(env, values);
@@ -151,8 +153,8 @@ static void InsertionSortStep(std::vector<int64_t>& values, size_t position)
 {
     int64_t key = values[position];
     size_t cursor = position;
-    while (cursor > EMPTY_RESULT_SIZE && values[cursor - INDEX_ONE] < key) {
-        values[cursor] = values[cursor - INDEX_ONE];
+    while (cursor > EMPTY_ARRAY_SIZE && values[cursor - SECOND_INDEX] < key) {
+        values[cursor] = values[cursor - SECOND_INDEX];
         --cursor;
     }
     values[cursor] = key;
@@ -166,9 +168,11 @@ napi_value InsertionSortDesc(napi_env env, napi_callback_info info)
     NAPI_ASSERT(env, argc >= REQUIRED_ARGS_ONE, "Requires 1 argument: values");
 
     std::vector<int64_t> values;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values), "Values extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values)) {
+        return nullptr;
+    }
 
-    for (size_t i = INDEX_ONE; i < values.size(); ++i) {
+    for (size_t i = SECOND_INDEX; i < values.size(); ++i) {
         InsertionSortStep(values, i);
     }
     return CreateInt64ArrayValue(env, values);
@@ -177,7 +181,7 @@ napi_value InsertionSortDesc(napi_env env, napi_callback_info info)
 static size_t SmallestIndexFrom(std::vector<int64_t>& values, size_t start)
 {
     size_t smallest = start;
-    for (size_t i = start + INDEX_ONE; i < values.size(); ++i) {
+    for (size_t i = start + SECOND_INDEX; i < values.size(); ++i) {
         if (values[i] < values[smallest]) {
             smallest = i;
         }
@@ -193,9 +197,11 @@ napi_value SelectionSortAsc(napi_env env, napi_callback_info info)
     NAPI_ASSERT(env, argc >= REQUIRED_ARGS_ONE, "Requires 1 argument: values");
 
     std::vector<int64_t> values;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values), "Values extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values)) {
+        return nullptr;
+    }
 
-    for (size_t i = EMPTY_RESULT_SIZE; i + INDEX_ONE < values.size(); ++i) {
+    for (size_t i = EMPTY_ARRAY_SIZE; i + SECOND_INDEX < values.size(); ++i) {
         size_t smallest = SmallestIndexFrom(values, i);
         std::swap(values[i], values[smallest]);
     }
@@ -220,22 +226,22 @@ int64_t MedianOfThreeValue(std::vector<int64_t>& values, size_t low, size_t high
 size_t PartitionMedianPivot(std::vector<int64_t>& values, size_t low, size_t high)
 {
     int64_t pivot = MedianOfThreeValue(values, low, high);
-    size_t store = low;
-    for (size_t i = low; i <= high; ++i) {
-        if (values[i] < pivot) {
-            std::swap(values[store], values[i]);
-            ++store;
+    size_t less = low;
+    size_t equal = low;
+    size_t greater = high + SECOND_INDEX;
+    while (equal < greater) {
+        if (values[equal] < pivot) {
+            std::swap(values[less], values[equal]);
+            ++less;
+            ++equal;
+        } else if (values[equal] == pivot) {
+            ++equal;
+        } else {
+            --greater;
+            std::swap(values[equal], values[greater]);
         }
     }
-
-    size_t equalStart = store;
-    for (size_t i = store; i <= high; ++i) {
-        if (values[i] == pivot) {
-            std::swap(values[equalStart], values[i]);
-            ++equalStart;
-        }
-    }
-    return equalStart - INDEX_ONE;
+    return less;
 }
 
 static void QuickSortRange(std::vector<int64_t>& values, size_t low, size_t high)
@@ -244,9 +250,27 @@ static void QuickSortRange(std::vector<int64_t>& values, size_t low, size_t high
         return;
     }
 
-    size_t pivotIndex = PartitionMedianPivot(values, low, high);
-    QuickSortRange(values, low, pivotIndex - INDEX_ONE);
-    QuickSortRange(values, pivotIndex + INDEX_ONE, high);
+    size_t lessEnd = PartitionMedianPivot(values, low, high);
+    size_t greaterStart = lessEnd;
+    size_t equalCount = SECOND_INDEX;
+    for (size_t i = lessEnd + SECOND_INDEX; i <= high; ++i) {
+        if (values[i] == values[lessEnd]) {
+            ++equalCount;
+        } else {
+            greaterStart = i;
+            break;
+        }
+    }
+    if (equalCount == high - low + SECOND_INDEX) {
+        greaterStart = high + SECOND_INDEX;
+    }
+
+    if (lessEnd > low) {
+        QuickSortRange(values, low, lessEnd - SECOND_INDEX);
+    }
+    if (greaterStart <= high) {
+        QuickSortRange(values, greaterStart, high);
+    }
 }
 
 napi_value QuickSortMedianAsc(napi_env env, napi_callback_info info)
@@ -257,10 +281,12 @@ napi_value QuickSortMedianAsc(napi_env env, napi_callback_info info)
     NAPI_ASSERT(env, argc >= REQUIRED_ARGS_ONE, "Requires 1 argument: values");
 
     std::vector<int64_t> values;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values), "Values extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values)) {
+        return nullptr;
+    }
     NAPI_ASSERT(env, !values.empty(), "Array must not be empty");
 
-    QuickSortRange(values, EMPTY_RESULT_SIZE, values.size() - INDEX_ONE);
+    QuickSortRange(values, EMPTY_ARRAY_SIZE, values.size() - SECOND_INDEX);
     return CreateInt64ArrayValue(env, values);
 }
 
@@ -272,7 +298,9 @@ napi_value SortAscending(napi_env env, napi_callback_info info)
     NAPI_ASSERT(env, argc >= REQUIRED_ARGS_ONE, "Requires 1 argument: values");
 
     std::vector<int64_t> values;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values), "Values extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values)) {
+        return nullptr;
+    }
 
     return CreateInt64ArrayValue(env, SortedCopy(values));
 }
@@ -285,7 +313,9 @@ napi_value SortDescending(napi_env env, napi_callback_info info)
     NAPI_ASSERT(env, argc >= REQUIRED_ARGS_ONE, "Requires 1 argument: values");
 
     std::vector<int64_t> values;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values), "Values extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values)) {
+        return nullptr;
+    }
 
     std::vector<int64_t> sorted = SortedCopy(values);
     std::reverse(sorted.begin(), sorted.end());
@@ -300,7 +330,9 @@ napi_value IsSortedAscending(napi_env env, napi_callback_info info)
     NAPI_ASSERT(env, argc >= REQUIRED_ARGS_ONE, "Requires 1 argument: values");
 
     std::vector<int64_t> values;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values), "Values extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values)) {
+        return nullptr;
+    }
 
     return CreateBoolValue(env, IsSortedAscendingValue(values));
 }
@@ -314,8 +346,12 @@ napi_value MergeTwoSorted(napi_env env, napi_callback_info info)
 
     std::vector<int64_t> left;
     std::vector<int64_t> right;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], left), "First array extraction failed");
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ONE], right), "Second array extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], left)) {
+        return nullptr;
+    }
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ONE], right)) {
+        return nullptr;
+    }
     NAPI_ASSERT(env, IsSortedAscendingValue(left) && IsSortedAscendingValue(right), "Inputs must be ascending");
 
     std::vector<int64_t> merged;
@@ -332,10 +368,14 @@ napi_value NthLargestElement(napi_env env, napi_callback_info info)
     NAPI_ASSERT(env, argc >= REQUIRED_ARGS_TWO, "Requires 2 arguments: values, n");
 
     std::vector<int64_t> values;
-    NAPI_ASSERT(env, ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values), "Values extraction failed");
+    if (!ExtractInt64Array(env, argv[ARG_INDEX_ZERO], values)) {
+        return nullptr;
+    }
 
     int64_t rank = 0;
-    NAPI_ASSERT(env, ExtractInt64Arg(env, argv[ARG_INDEX_ONE], rank), "Rank extraction failed");
+    if (!ExtractInt64Arg(env, argv[ARG_INDEX_ONE], rank)) {
+        return nullptr;
+    }
     NAPI_ASSERT(env, rank >= INT64_MIN_INPUT && rank <= INT64_MAX_INPUT, "Rank out of range");
     NAPI_ASSERT(env, rank >= static_cast<int64_t>(MIN_ARRAY_LENGTH) &&
                          rank <= static_cast<int64_t>(values.size()),

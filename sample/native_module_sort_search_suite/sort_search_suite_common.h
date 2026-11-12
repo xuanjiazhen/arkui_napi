@@ -34,10 +34,10 @@ constexpr size_t MIN_ARRAY_LENGTH = 1;
 constexpr size_t COUNTING_SORT_SPAN_LIMIT = 65536;
 constexpr size_t SPAN_EXTRA_SLOTS = 1;
 constexpr size_t HALF_DIVISOR = 2;
-constexpr size_t EMPTY_RESULT_SIZE = 0;
-constexpr size_t INDEX_ZERO = 0;
-constexpr size_t INDEX_ONE = 1;
-constexpr size_t INDEX_THREE = 3;
+constexpr size_t EMPTY_ARRAY_SIZE = 0;
+constexpr size_t FIRST_INDEX = 0;
+constexpr size_t SECOND_INDEX = 1;
+constexpr size_t FOURTH_INDEX = 3;
 constexpr uint32_t UINT32_INDEX_ZERO = 0;
 
 bool ExtractInt64Arg(napi_env env, napi_value value, int64_t& result);
