@@ -291,6 +291,7 @@ private:
     bool CheckIfInBackgroundInCompressGC();
     bool SwitchBackgroundCheckGCTask(int64_t timestamp, int64_t idleDuration);
     void IntervalMonitor();
+    void PostGlobalCCStressTask();
     void NotifyMainThreadTryCompressGC();
     void ClearIdleStats();
     void TryTriggerGC(TriggerGCType gcType);
@@ -370,6 +371,7 @@ private:
     int switchBackgroundTimerHandler_ {-1};
     uint32_t numberOfLowIdleNotifyCycles_ {0U};
     uint32_t numberOfHighIdleTimeRatio_ {0U};
+    uint32_t globalCCStressCycleCount_ {0};
     std::queue<int> timerHandlerQueue_;
     uint32_t handlerWaitToStopCount_ {0};
     RingBuffer<int64_t, IDLE_CHECK_INTERVAL_LENGTH> recordedIdleNotifyInterval_;
