@@ -38,10 +38,18 @@
 #endif
 #include "ark_native_engine.h"
 
+// Set to 1 to replace the background local/shared idle GC sequence with GlobalCC.
+#define ENABLE_BACKGROUND_GLOBAL_CC 0
+
 namespace panda::ecmascript {
 const std::string RES_SCHED_CLIENT_SO = "libressched_client.z.so";
 using ReportDataFunc = void (*)(uint32_t resType, int64_t value,
     const std::unordered_map<std::string, std::string>& payload);
+
+#if defined(ENABLE_EVENT_HANDLER)
+static constexpr uint32_t GLOBAL_CC_STRESS_CYCLES = 5;
+static constexpr const char* GLOBAL_CC_STRESS_TASK_NAME = "ARKTS_GLOBAL_CC_STRESS";
+#endif
 
 class CallbackTimerScope {
 public:
@@ -204,11 +212,8 @@ void ArkIdleMonitor::IntervalMonitor()
         idleDuration += (nowTimestamp - GetNotifyTimestamp());
     }
     lastTotalIdleDuration_ = GetTotalIdleDuration();
-    if (GetIdleNotifyCount() <= LOW_IDLE_NOTIFY_THRESHOLD) {
-        numberOfLowIdleNotifyCycles_++;
-    } else {
-        numberOfLowIdleNotifyCycles_ = 0U;
-    }
+    numberOfLowIdleNotifyCycles_ = GetIdleNotifyCount() <= LOW_IDLE_NOTIFY_THRESHOLD
+        ? numberOfLowIdleNotifyCycles_ + 1 : 0U;
     ResetIdleNotifyCount();
     int64_t recordTotalDuration = nowTimestamp - startRecordTimestamp_;
     if (recordTotalDuration <= 0) {
@@ -221,6 +226,7 @@ void ArkIdleMonitor::IntervalMonitor()
     }
     startRecordTimestamp_ = nowTimestamp;
     CheckWorkerEnvQueue();
+    bool globalCCStressActive = TryTriggerGlobalCCStress();
     uint32_t checkCounts = IsInBackground() ? IDLE_INBACKGROUND_CHECK_LENGTH : IDLE_CHECK_LENGTH;
     int64_t intervalDuration = nowTimestamp - intervalTimestamp_;
     if (numberOfLowIdleNotifyCycles_ >= checkCounts &&
@@ -239,13 +245,61 @@ void ArkIdleMonitor::IntervalMonitor()
         } else {
             NotifyMainThreadTryCompressGC();
         }
-        PostMonitorTask(SLEEP_MONITORING_INTERVAL);
+        // Keep stress cycles at the monitoring interval instead of sleeping after an idle GC.
+        PostMonitorTask(globalCCStressActive ? gIdleMonitoringInterval : SLEEP_MONITORING_INTERVAL);
         ClearIdleStats();
     } else {
         PostMonitorTask(gIdleMonitoringInterval);
     }
     intervalTimestamp_ = nowTimestamp;
     timerMutex_.unlock();
+}
+
+bool ArkIdleMonitor::TryTriggerGlobalCCStress()
+{
+    bool globalCCStressActive = false;
+#if defined(ENABLE_EVENT_HANDLER)
+    if (!IsInBackground()) {
+        // Read once in the application, avoiding a cached read failure during appspawn preload.
+        static const bool enableGlobalCCStress = []() {
+            bool enabled = OHOS::system::GetBoolParameter("persist.ark.globalcc.stress", false);
+            HILOG_INFO("ArkIdleMonitor: GlobalCC stress enabled:%{public}d", enabled);
+            return enabled;
+        }();
+        globalCCStressActive = enableGlobalCCStress;
+    }
+    if (!globalCCStressActive) {
+        globalCCStressCycleCount_ = 0;
+    } else if (++globalCCStressCycleCount_ >= GLOBAL_CC_STRESS_CYCLES) {
+        globalCCStressCycleCount_ = 0;
+        PostGlobalCCStressTask();
+    }
+#endif
+    return globalCCStressActive;
+}
+
+void ArkIdleMonitor::PostGlobalCCStressTask()
+{
+#if defined(ENABLE_EVENT_HANDLER)
+    if (mainVM_ == nullptr || mainThreadHandler_ == nullptr) {
+        return;
+    }
+    auto task = [this]() {
+        if (mainVM_ == nullptr || IsInBackground()) {
+            return;
+        }
+        TraceScope trace("ArkIdleMonitor::GlobalCCStress");
+        HILOG_INFO("ArkIdleMonitor: force trigger global cc for stress");
+        // The runtime idle entry bypasses heap thresholds when stress is enabled.
+        JSNApi::TriggerIdleGC(mainVM_, TRIGGER_IDLE_GC_TYPE::GLOBAL_CC);
+    };
+    // Keep at most one pending stress task when the main thread is busy.
+    mainThreadHandler_->RemoveTask(GLOBAL_CC_STRESS_TASK_NAME);
+    if (!mainThreadHandler_->PostTask(task, GLOBAL_CC_STRESS_TASK_NAME, 0,
+        OHOS::AppExecFwk::EventQueue::Priority::IMMEDIATE)) {
+        HILOG_WARN("ArkIdleMonitor: failed to post global cc stress task");
+    }
+#endif
 }
 
 void ArkIdleMonitor::PostMonitorTask(uint64_t delayMs)
@@ -875,9 +929,16 @@ void ArkIdleMonitor::TryTriggerWorkerLocalGC()
     }
 }
 
+ArkIdleMonitor::TRIGGER_IDLE_GC_TYPE ArkIdleMonitor::GetBackgroundGCType(bool isSwitchToBackground)
+{
+    return ENABLE_BACKGROUND_GLOBAL_CC ? TRIGGER_IDLE_GC_TYPE::GLOBAL_CC
+        : (isSwitchToBackground ? TRIGGER_IDLE_GC_TYPE::SHARED_CC : TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+}
+
 void ArkIdleMonitor::TryTriggerCompressGCOfProcess(bool isSwitchToBackground)
 {
     NotifyNeedFreeze(false);
+#if !ENABLE_BACKGROUND_GLOBAL_CC
 #if defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
     TryTriggerCompressGCOfProcessCrossPlatformGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
 #elif defined(ENABLE_EVENT_HANDLER)
@@ -953,12 +1014,13 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcess(bool isSwitchToBackground)
         }
     }
 
-    // cancel gc if in high cpu usage or not all in idle.
+    // The local/shared GC sequence requires idle workers; GlobalCC does not.
     if (!isAllInIdle) {
         NotifyNeedFreeze(true);
         HILOG_INFO("ArkIdleMonitor: cancel shared gc because not all in idle");
         return;
     }
+#endif
 #if !defined(ANDROID_PLATFORM) && !defined(IOS_PLATFORM)
     double cpuUsage = GetCpuUsage();
     if (cpuUsage > IDLE_BACKGROUND_CPU_USAGE) {
@@ -970,13 +1032,11 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcess(bool isSwitchToBackground)
 #endif
 
 #if defined(ENABLE_EVENT_HANDLER)
-    // try trigger shared gc
-    TRIGGER_IDLE_GC_TYPE sharedGcType = isSwitchToBackground
-        ? TRIGGER_IDLE_GC_TYPE::SHARED_CC
-        : TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC;
+    // GlobalCC replaces both the local GC sequence above and the shared GC below.
+    TRIGGER_IDLE_GC_TYPE sharedGcType = GetBackgroundGCType(isSwitchToBackground);
     auto mainThreadSharedTask = [this, sharedGcType]() {
-        const char* gcTypeStr =
-            (sharedGcType == TRIGGER_IDLE_GC_TYPE::SHARED_CC) ? "shared cc" : "shared full gc";
+        const char* gcTypeStr = (sharedGcType == TRIGGER_IDLE_GC_TYPE::GLOBAL_CC) ? "global cc"
+            : (sharedGcType == TRIGGER_IDLE_GC_TYPE::SHARED_CC) ? "shared cc" : "shared full gc";
         HILOG_DEBUG("ArkIdleMonitor: try trigger %{public}s", gcTypeStr);
         std::unique_lock<std::mutex> lock(waitGCFinishjedMutex_);
         JSNApi::TriggerIdleGC(mainVM_, sharedGcType);
@@ -992,9 +1052,7 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcess(bool isSwitchToBackground)
         HILOG_WARN("ArkIdleMonitor: app is not in idle or in background.");
     }
 #elif defined(ANDROID_PLATFORM) || defined(IOS_PLATFORM)
-    TryTriggerCompressGCOfProcessCrossPlatformGC(isSwitchToBackground
-        ? TRIGGER_IDLE_GC_TYPE::SHARED_CC
-        : TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+    TryTriggerCompressGCOfProcessCrossPlatformGC(GetBackgroundGCType(isSwitchToBackground));
 #endif
 }
 
@@ -1113,6 +1171,7 @@ void ArkIdleMonitor::TryTriggerCompressGCOfProcessCrossPlatformGC(TRIGGER_IDLE_G
         return;
     }
     const char* gcTypeStr = (type == TRIGGER_IDLE_GC_TYPE::FULL_GC) ? "local full gc"
+        : (type == TRIGGER_IDLE_GC_TYPE::GLOBAL_CC) ? "global cc"
         : (type == TRIGGER_IDLE_GC_TYPE::SHARED_CC) ? "shared cc" : "shared full gc";
     HILOG_DEBUG("ArkIdleMonitor: try trigger %s start", gcTypeStr);
     uv_async_send(async);
